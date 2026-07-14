@@ -13,6 +13,8 @@ import { FormulaDetailPage } from '../features/formulas/FormulaDetailPage'
 import { IngredientDetailPage } from '../features/ingredients/IngredientDetailPage'
 import { InventoryPage } from '../features/inventory/InventoryPage'
 import { LotDetailPage } from '../features/inventory/LotDetailPage'
+import { LabBatchDetailPage } from '../features/lab/LabBatchDetailPage'
+import { TestingPage } from '../features/testing/TestingPage'
 
 export function App() {
   return (
@@ -28,6 +30,8 @@ export function App() {
         <Route path="inventory" element={<InventoryPage />} />
         <Route path="inventory/lots/:lotId" element={<LotDetailPage />} />
         <Route path="lab" element={<LabPage />} />
+        <Route path="lab/:labBatchId" element={<LabBatchDetailPage />} />
+        <Route path="testing" element={<TestingPage />} />
         <Route path="scent-house" element={<ScentHousePage />} />
         {placeholderModules.map((module) => (
           <Route key={module.path} path={module.path} element={<PlaceholderPage module={module} />} />

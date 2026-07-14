@@ -12,9 +12,9 @@ Functional product workspaces and filters; formula library and detail routes; ed
 
 Functional Ingredient Library and detail workspaces; local ingredient CRUD and archival; scoped Supplier Products; physical lot receipt with unique internal numbers; immutable movement ledger; manual consumption, waste, sample, and adjustment workflows; unit validation and conversion; reorder and expiry awareness; formula stock context; responsive Inventory overview; and safe Phase 2 state migration. Supplier entities, purchasing, documents, and costing remain later work.
 
-## Phase 4: Lab + Testing
+## Phase 4: Lab + Testing — Complete
 
-Run sheets, weigh-ins, process timing, deviations, yield, images, observation schedules, test protocols, and comparable results.
+Functional Lab Notebook and batch workspaces; formula execution snapshots; controlled lifecycle; planned and actual weigh-ins; multi-lot allocation; explicit referenced inventory consumption; process steps; yield variance; scheduled observations; lightweight Testers and Templates; batch-linked Sessions; immutable Responses; and descriptive result summaries. Images and deeper test protocols remain later refinements.
 
 ## Phase 5: Production + Costing
 

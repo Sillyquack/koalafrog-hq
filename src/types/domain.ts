@@ -60,6 +60,15 @@ export interface FormulaState {
   supplierProducts: SupplierProduct[]
   inventoryLots: InventoryLot[]
   inventoryMovements: InventoryMovement[]
+  labBatches: LabBatch[]
+  labBatchLines: LabBatchLine[]
+  labBatchAllocations: LabBatchAllocation[]
+  processSteps: BatchProcessStep[]
+  labObservations: LabObservation[]
+  testers: Tester[]
+  testTemplates: TestTemplate[]
+  testSessions: TestSession[]
+  testResponses: TestResponse[]
 }
 
 export type IngredientStatus = 'Active' | 'Research' | 'Archived'
@@ -95,6 +104,24 @@ export interface InventoryMovement {
   id: string; inventoryLotId: string; type: InventoryMovementType; quantity: number; unit: InventoryUnit
   reason: string; referenceType?: string; referenceId?: string; notes: string; occurredAt: string; createdAt: string
 }
+
+export type LabBatchStatus = 'Planned' | 'In Progress' | 'Completed' | 'Aborted' | 'Archived'
+export interface LabBatch { id:string; batchNumber:string; productId:string; formulaId:string; formulaVersionId:string; status:LabBatchStatus; plannedBatchSize:number; plannedBatchUnit:InventoryUnit; startedAt?:string; completedAt?:string; actualYield?:number; yieldUnit?:InventoryUnit; createdAt:string; updatedAt:string; purpose:string; notes:string; summary:string; targetCharacteristics:string }
+export type LabBatchLineStatus = 'Pending' | 'Weighed' | 'Skipped'
+export interface LabBatchLine { id:string; labBatchId:string; formulaLineId:string; ingredientId:string; ingredientNameSnapshot:string; phase:string; plannedPercentage:number; plannedQuantity:number; actualQuantity?:number; unit:InventoryUnit; variance?:number; notes:string; status:LabBatchLineStatus }
+export interface LabBatchAllocation { id:string; labBatchLineId:string; inventoryLotId?:string; quantity:number; unit:InventoryUnit; inventoryMovementId?:string }
+export type ProcessStepStatus = 'Pending' | 'Completed' | 'Skipped'
+export interface BatchProcessStep { id:string; labBatchId:string; stepNumber:number; instruction:string; status:ProcessStepStatus; completedAt?:string; notes:string }
+export interface LabObservation { id:string; labBatchId:string; observationType:string; targetDate?:string; observedAt?:string; appearance:string; texture:string; scent:string; stability:string; packaging:string; notes:string; rating?:number; createdAt:string }
+export type TesterStatus = 'Active' | 'Inactive'
+export interface Tester { id:string; displayName:string; notes:string; status:TesterStatus; createdAt:string; updatedAt:string }
+export type TestQuestionType = 'Numeric Rating' | 'Yes / No' | 'Single Choice' | 'Free Text'
+export interface TestQuestion { id:string; prompt:string; type:TestQuestionType; sortOrder:number; choices?:string[] }
+export interface TestTemplate { id:string; name:string; description:string; questions:TestQuestion[]; createdAt:string; updatedAt:string }
+export type TestSessionStatus = 'Planned' | 'Active' | 'Completed' | 'Archived'
+export interface TestSession { id:string; labBatchId:string; testTemplateId:string; name:string; status:TestSessionStatus; createdAt:string; dueDate?:string; completedAt?:string; notes:string }
+export interface TestAnswer { questionId:string; value:string | number | boolean }
+export interface TestResponse { id:string; testSessionId:string; testerId:string; answers:TestAnswer[]; overallNotes:string; submittedAt:string }
 
 export type BatchStatus = 'Planned' | 'In progress' | 'Observing' | 'Complete'
 export interface Batch {

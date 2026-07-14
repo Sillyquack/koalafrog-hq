@@ -3,6 +3,7 @@ import { ArrowLeft, Check, Copy, LockKeyhole, Save, ShieldCheck } from 'lucide-r
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { StatusPill } from '../../components/ui/StatusPill'
+import { SectionHeader } from '../../components/ui/SectionHeader'
 import type { FormulaVersionStatus } from '../../types/domain'
 import { formatDate } from '../../utils/format'
 import { BatchScaler } from './components/BatchScaler'
@@ -12,9 +13,10 @@ import { useFormulaData } from './state/FormulaDataContext'
 
 export function FormulaDetailPage() {
   const { formulaId } = useParams(); const [params, setParams] = useSearchParams()
-  const { formulas, formulaVersions, formulaLines, products, saveVersion, transitionVersion, duplicateAsDraft } = useFormulaData()
+  const { formulas, formulaVersions, formulaLines, products, labBatches, saveVersion, transitionVersion, duplicateAsDraft } = useFormulaData()
   const formula = formulas.find((item) => item.id === formulaId); const versions = formulaVersions.filter((item) => item.formulaId === formulaId).sort((a,b) => b.createdAt.localeCompare(a.createdAt))
   const selected = versions.find((item) => item.id === params.get('version')) ?? versions[0]; const lines = formulaLines.filter((line) => line.formulaVersionId === selected?.id)
+  const versionBatches = labBatches.filter((batch) => batch.formulaVersionId === selected?.id)
   const [description, setDescription] = useState(selected?.description ?? ''); const [characteristics, setCharacteristics] = useState(selected?.targetCharacteristics ?? '')
   if (!formula || !selected) return <div className="empty-state"><h1>Formula not found</h1><Link to="/formulas">Return to formulas</Link></div>
   const product = products.find((item) => item.id === formula.productId); const valid = calculatePercentageTotal(lines) === 100
@@ -28,6 +30,7 @@ export function FormulaDetailPage() {
       <div className="formula-main"><section className="version-banner"><div><span className="eyebrow">Active version</span><h2>{selected.version}</h2></div><StatusPill tone={selected.status === 'Draft' ? 'amber' : selected.status === 'Approved' ? 'green' : selected.status === 'Retired' ? 'neutral' : 'blue'}>{selected.status === 'Draft' ? <Save size={12} /> : <LockKeyhole size={12} />}{selected.status}</StatusPill><p>{selected.status === 'Draft' ? 'Editable working version' : 'Frozen for traceability'}</p><div className="version-actions">{selected.status === 'Draft' ? <><button className="button ghost" onClick={() => saveVersion(selected.id, { description, targetCharacteristics: characteristics })}><Save size={15} />Save changes</button><button className="button primary" disabled={!valid} title={!valid ? 'Formula must total exactly 100%' : ''} onClick={() => transition('Candidate')}><ShieldCheck size={15} />Promote to Candidate</button></> : <><button className="button ghost" onClick={duplicate}><Copy size={15} />Duplicate as New Draft</button>{selected.status === 'Candidate' && <button className="button primary" onClick={() => transition('Approved')}><Check size={15} />Approve</button>}{selected.status !== 'Retired' && <button className="button ghost" onClick={() => transition('Retired')}>Retire</button>}</>}</div></section>
         <section className="formula-notes panel"><label>Version description<textarea disabled={selected.status !== 'Draft'} value={description} onChange={(e) => setDescription(e.target.value)} /></label><label>Target characteristics<textarea disabled={selected.status !== 'Draft'} value={characteristics} onChange={(e) => setCharacteristics(e.target.value)} /></label></section>
         <FormulaBuilder version={selected} lines={lines} /><BatchScaler lines={lines} />
+        <section className="panel linked-testing"><SectionHeader title="Lab history" detail="Batches created from this exact version" />{versionBatches.map((batch)=><Link to={`/lab/${batch.id}`} key={batch.id}><strong>{batch.batchNumber}</strong><span>{batch.status} · {batch.purpose}</span></Link>)}{!versionBatches.length&&<p className="empty-copy">No Lab Batches reference this version.</p>}</section>
         <p className="development-disclaimer">Development mock formulation data only. No safety, performance, regulatory, or commercial approval is implied.</p>
       </div>
     </div>

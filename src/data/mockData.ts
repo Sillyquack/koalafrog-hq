@@ -58,7 +58,6 @@ export const testingActivities: TestingActivity[] = [
 
 export const placeholderModules: ModuleDefinition[] = [
   { path: 'production', name: 'Production', eyebrow: 'Repeatable making', description: 'Turn validated formulas into controlled, documented production runs.', capabilities: ['Production orders', 'Run sheets', 'Yield and deviation records'] },
-  { path: 'testing', name: 'Testing', eyebrow: 'Evidence over instinct', description: 'Plan and record stability, wear, packaging and validation activities.', capabilities: ['Test protocols', 'Scheduled observations', 'Comparable results'] },
   { path: 'suppliers', name: 'Suppliers', eyebrow: 'Source intelligence', description: 'Keep contacts, samples, quotes and material relationships in one considered record.', capabilities: ['Supplier profiles', 'Quotes and lead times', 'Sample history'] },
   { path: 'equipment', name: 'Equipment', eyebrow: 'Workshop readiness', description: 'Catalogue tools, calibration needs, maintenance and working procedures.', capabilities: ['Equipment register', 'Maintenance log', 'Calibration reminders'] },
   { path: 'costing', name: 'Costing', eyebrow: 'Commercial reality', description: 'Understand material, packaging and production cost as products evolve.', capabilities: ['Formula cost rollups', 'Packaging scenarios', 'Margin modelling'] },

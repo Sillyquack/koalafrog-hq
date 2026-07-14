@@ -40,7 +40,19 @@ Units remain deliberately small: g, kg, ml, L, and pcs. Only kg ↔ g and L ↔ 
 
 ## Batch
 
-A batch belongs to one product and references a formula version. It records a human-readable batch number, date, status, target and actual yield, notes, and observations. Planned child records include ingredient weigh-ins, process steps, deviations, images, and time-based observations.
+A Lab Batch belongs to a Product and Formula and references an exact Formula Version. It records planning, lifecycle, purpose, actual final yield, summary, and timestamps. Planned → In Progress fixes the source and opens execution; Completed freezes core execution but still permits later Observations and linked Testing; Aborted preserves work and movements; Archived remains historical. Completed means execution finished, not commercial approval.
+
+## Lab Batch Line and Lot Allocation
+
+Lab Batch Lines are execution snapshots generated once from canonical formula percentages. They preserve ingredient identity/name context, phase, planned quantity, actual quantity, variance, status, and notes. They never update the Formula Version.
+
+A line may have multiple Lot Allocations. Each allocation records the actual lot and quantity used. Stock changes only when allocations are explicitly committed. Commit creates immutable Consumption movements with `referenceType: LabBatch`, the batch ID, and stores each movement ID on its allocation to prevent duplicates.
+
+## Process, observations, and testing
+
+Ordered Process Steps are copied from available formula instructions and then belong to the batch. Lab Observations support arbitrary types and target dates plus structured sensory and physical notes. Due state is derived as Completed, Overdue, Due, Upcoming, or Unscheduled.
+
+A Tester is a lightweight display identity. Test Templates contain ordered focused questions. A Test Session references one exact Lab Batch and Template. A submitted Test Response references its Session and Tester and is immutable.
 
 ## Scent domain
 
@@ -58,12 +70,10 @@ Testing activities schedule observations against a product, batch, packaging stu
 
 ```text
 Product ──< Formula ──< FormulaVersion ──< FormulaLine >── Ingredient
-   │                         │
-   ├──< Batch >──────────────┘
-   │      ├──< BatchObservation
-   │      ├──< BatchWeighIn
-   │      └──< BatchDeviation
-   ├──< TestActivity
+   │                         └──< LabBatch ──< LabBatchLine ──< LotAllocation
+   │                                              │                  │
+   │                                              ├──< Observation   └── InventoryMovement
+   │                                              └──< TestSession ──< TestResponse
    └── ScentProfile
 
 ScentProfile ──< FragranceExperiment >──< Accord >──< ScentMaterial

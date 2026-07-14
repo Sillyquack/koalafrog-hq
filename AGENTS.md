@@ -9,6 +9,8 @@ Koalafrog HQ is a private, single-user product development and operations system
 - Treat formula percentages as canonical and formula versions as immutable after Draft. Candidate, Approved, and Retired compositions may only be changed by deriving a new Draft.
 - Ingredient identity is separate from physical inventory. Never restore ingredient-level quantity as a stock truth: derive balances from immutable Inventory Movements grouped by Inventory Lot.
 - Historical stock movements are append-only. Corrections use a new Adjustment movement.
+- A Formula Version describes intent; a Lab Batch records execution. Never mutate the source Formula Version from a batch, and never consume stock until explicit allocation commit.
+- Completed Lab Batch execution and submitted Test Responses are historical records. Preserve them; add observations or explicit corrections instead of silent rewrites.
 - Keep mock data outside UI components and easy to replace with repository/service implementations.
 - Prefer small, legible components and explicit data flow over broad abstractions.
 - Preserve the premium, experimental “laboratory meets private workshop” character. Use playful Koalafrog touches sparingly.

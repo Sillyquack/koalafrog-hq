@@ -17,13 +17,17 @@ The source tree separates concerns:
 
 Static reference fixtures remain separate from views. The functional workspace uses a `FormulaDataProvider` backed by a small repository contract. Its name is retained from Phase 2 for compatibility, though it now owns Product, Formula, Ingredient, Supplier Product, Inventory Lot, and Inventory Movement collections. `LocalFormulaRepository` stores one versioned aggregate in browser local storage and keeps storage calls outside UI components.
 
-The Phase 3 storage key is `koalafrog-hq:workspace:v4`. If it is absent but the Phase 2 key exists, one explicit migration preserves all Product and Formula collections and adds seeded Phase 3 collections. Seed data is used only for absent Phase 3 collections; existing Phase 2 user work is never overwritten. This is deliberately a small migration path rather than a general migration framework.
+The Phase 4 storage key is `koalafrog-hq:workspace:v6`. If it is absent, the repository first checks the Phase 3 `v4` aggregate and explicitly preserves every Product, Formula, Ingredient, Supplier Product, Lot, and Movement while adding seeded Lab and Testing collections. The earlier Phase 2 migration remains available as a second fallback.
 
 Formula calculations and lifecycle rules live in pure domain utilities. Percentage totals use bounded decimal rounding, scaling derives gram weights without mutating percentages, status transitions are explicit, and duplication produces a new Draft with new version and line IDs.
 
 Inventory logic is also pure and tested. Movements are authoritative signed history: Receipt is positive; Consumption, Waste, and Sample are negative; Adjustment accepts an explicit positive or negative correction. Lot and ingredient balances are derived on read. Within a lot, only compatible mass, volume, or count units are accepted. The supported conversions are kg ↔ g and L ↔ ml; density conversion is intentionally absent.
 
 Formula scaling remains planning-only. It reads inventory context for awareness but never creates movements. A future executed Lab Batch may create referenced Consumption movements through an explicit workflow.
+
+Lab execution uses its own immutable snapshots. Creating a batch copies the formula line ID, ingredient ID and name-at-creation, percentage, phase, notes, and calculated planned quantity into Lab Batch Lines. The Formula Version remains untouched. Each line supports multiple Lot Allocations; explicit commit validates their total against the actual weigh-in and creates one referenced Consumption movement per allocation. The allocation stores the resulting movement ID, making duplicate commits detectable.
+
+Testing remains batch-linked. Templates hold a focused ordered question set, Sessions reference an exact Lab Batch, and submitted Responses carry tester identity plus answer snapshots. Result summaries are descriptive averages and counts only.
 
 ## Intended Supabase integration
 

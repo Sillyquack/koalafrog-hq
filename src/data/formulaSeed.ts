@@ -2,6 +2,7 @@ import { products } from './mockData'
 import type { FormulaState } from '../types/domain'
 import { inventoryLots, inventoryMovements, supplierProducts } from './inventorySeed'
 import { ingredients } from './mockData'
+import { labBatchAllocations, labBatchLines, labBatches, labObservations, processSteps, testers, testResponses, testSessions, testTemplates } from './labSeed'
 
 type SeedLine = readonly [string, number, string, string]
 const baseLines: readonly SeedLine[] = [
@@ -37,4 +38,5 @@ export const formulaSeed: FormulaState = {
   supplierProducts,
   inventoryLots,
   inventoryMovements,
+  labBatches, labBatchLines, labBatchAllocations, processSteps, labObservations, testers, testTemplates, testSessions, testResponses,
 }
