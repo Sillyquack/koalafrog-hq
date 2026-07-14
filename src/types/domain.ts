@@ -56,20 +56,44 @@ export interface FormulaState {
   formulas: Formula[]
   formulaVersions: FormulaVersion[]
   formulaLines: FormulaLine[]
+  ingredients: Ingredient[]
+  supplierProducts: SupplierProduct[]
+  inventoryLots: InventoryLot[]
+  inventoryMovements: InventoryMovement[]
 }
 
+export type IngredientStatus = 'Active' | 'Research' | 'Archived'
+export type InventoryUnit = 'g' | 'kg' | 'ml' | 'L' | 'pcs'
 export interface Ingredient {
   id: string
   commonName: string
   inciName: string
   category: string
-  function: string
-  supplier: string
-  quantityOnHand: number
-  unit: string
-  reorderLevel: number
-  cost: number
+  functions: string[]
+  description: string
+  defaultUnit: InventoryUnit
+  reorderThreshold?: number
   notes: string
+  status: IngredientStatus
+  createdAt: string
+  updatedAt: string
+}
+
+export interface SupplierProduct {
+  id: string; ingredientId: string; supplierName: string; productName: string; supplierSku?: string
+  packageQuantity: number; packageUnit: InventoryUnit; price: number; currency: string; productUrl?: string
+  notes: string; isPreferred: boolean; createdAt: string; updatedAt: string
+}
+export type InventoryLotStatus = 'Active' | 'Quarantined' | 'Exhausted' | 'Expired' | 'Disposed'
+export interface InventoryLot {
+  id: string; ingredientId: string; supplierProductId?: string; internalLotNumber: string; supplierLotNumber?: string
+  receivedDate: string; openingQuantity: number; unit: InventoryUnit; expiryDate?: string; bestBeforeDate?: string
+  location: string; status: InventoryLotStatus; notes: string; createdAt: string; updatedAt: string
+}
+export type InventoryMovementType = 'Receipt' | 'Consumption' | 'Waste' | 'Sample' | 'Adjustment'
+export interface InventoryMovement {
+  id: string; inventoryLotId: string; type: InventoryMovementType; quantity: number; unit: InventoryUnit
+  reason: string; referenceType?: string; referenceId?: string; notes: string; occurredAt: string; createdAt: string
 }
 
 export type BatchStatus = 'Planned' | 'In progress' | 'Observing' | 'Complete'

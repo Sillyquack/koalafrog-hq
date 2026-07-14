@@ -8,9 +8,9 @@ Responsive application shell, domain models, local fixtures, core layouts for Da
 
 Functional product workspaces and filters; formula library and detail routes; editable Draft composition lines; immutable Candidate, Approved, and Retired history; safe Draft duplication; status transitions; canonical percentage validation; live gram scaling; refresh-safe local persistence; and focused domain tests. Deeper product editing and side-by-side formula comparison remain candidates for later refinement.
 
-## Phase 3: Ingredient + Inventory System
+## Phase 3: Ingredient + Inventory System — Complete
 
-Deeper material records, suppliers, lots, storage locations, stock movements, reorder planning, costs, and document attachments.
+Functional Ingredient Library and detail workspaces; local ingredient CRUD and archival; scoped Supplier Products; physical lot receipt with unique internal numbers; immutable movement ledger; manual consumption, waste, sample, and adjustment workflows; unit validation and conversion; reorder and expiry awareness; formula stock context; responsive Inventory overview; and safe Phase 2 state migration. Supplier entities, purchasing, documents, and costing remain later work.
 
 ## Phase 4: Lab + Testing
 

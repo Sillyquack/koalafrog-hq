@@ -7,6 +7,8 @@ Koalafrog HQ is a private, single-user product development and operations system
 - Organise application code by domain feature. Feature pages compose reusable components; they do not own shared layout, domain types, or global data fixtures.
 - Keep domain models independent of React and of any persistence vendor.
 - Treat formula percentages as canonical and formula versions as immutable after Draft. Candidate, Approved, and Retired compositions may only be changed by deriving a new Draft.
+- Ingredient identity is separate from physical inventory. Never restore ingredient-level quantity as a stock truth: derive balances from immutable Inventory Movements grouped by Inventory Lot.
+- Historical stock movements are append-only. Corrections use a new Adjustment movement.
 - Keep mock data outside UI components and easy to replace with repository/service implementations.
 - Prefer small, legible components and explicit data flow over broad abstractions.
 - Preserve the premium, experimental “laboratory meets private workshop” character. Use playful Koalafrog touches sparingly.
@@ -24,6 +26,6 @@ Koalafrog HQ is a private, single-user product development and operations system
 
 Supabase is the expected backend for PostgreSQL, authentication, file storage, and Row Level Security. Do not scatter Supabase calls through components. Introduce domain repository interfaces at the boundary when persistence work begins, then provide mock and Supabase implementations. Even though this is a single-user system, authentication and RLS should enforce private ownership at the database boundary.
 
-The pre-Supabase formula system uses a single local repository adapter. UI code must access it through the formula data provider rather than calling browser storage directly.
+The pre-Supabase workspace uses a single local repository adapter with explicit schema migration. UI code must access it through the workspace data provider rather than calling browser storage directly.
 
 New features must preserve domain separation and must not turn the product into a generic metric-card dashboard. Operational information should remain concrete, traceable, and connected to product work.

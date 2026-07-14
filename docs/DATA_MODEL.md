@@ -22,7 +22,21 @@ A Formula Version owns ordered Formula Lines. Each line references an Ingredient
 
 ## Ingredient
 
-An ingredient identifies a material by common and INCI names, category and function. The foundation also carries a current supplier, quantity on hand, unit, reorder level, unit cost, and working notes. Future inventory work should move stock and supplier relationships into their own entities instead of expanding this convenience model indefinitely.
+An Ingredient is the raw-material concept: common and INCI names, category, multiple functions, description, default unit, reorder threshold, notes, and lifecycle status. It carries no authoritative physical quantity.
+
+## Supplier Product
+
+A Supplier Product is one purchasable source for an Ingredient. It records the supplier as a name until the dedicated Supplier module exists, plus SKU, package size, price, currency, URL, notes, and preferred status. One Ingredient may have multiple supplier products and at most one is marked preferred by the current UI.
+
+## Inventory Lot
+
+An Inventory Lot represents a specific physical receipt or container group. It belongs to an Ingredient and may reference a Supplier Product. It owns an immutable internal lot number, receipt metadata, opening receipt quantity, unit, dates, location, status, and notes. Internal numbers currently follow `KF-ING-YYMMDD-NNN`; generation is isolated so the format can evolve.
+
+## Inventory Movement
+
+Every stock change is an append-only Inventory Movement against one lot. Receipt adds stock; Consumption, Waste, and Sample remove it; Adjustment carries an explicit positive or negative correction. Movement history is authoritative and balances are derived rather than overwritten. Old movements are not edited casually.
+
+Units remain deliberately small: g, kg, ml, L, and pcs. Only kg ↔ g and L ↔ ml conversions are supported. Mass and volume are never interconverted.
 
 ## Batch
 
@@ -53,7 +67,9 @@ Product ──< Formula ──< FormulaVersion ──< FormulaLine >── Ingre
    └── ScentProfile
 
 ScentProfile ──< FragranceExperiment >──< Accord >──< ScentMaterial
-Ingredient ──< InventoryLot >── Supplier
+Ingredient ──< SupplierProduct
+     │
+     └──< InventoryLot ──< InventoryMovement
 ```
 
 Cardinalities and ownership rules should be validated through real workflows before a database schema is created.
