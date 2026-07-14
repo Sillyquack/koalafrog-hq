@@ -68,3 +68,15 @@ Finished Goods are explicit output registrations, not Production Run state. A ba
 Actual physical Packaging allocation cost is authoritative once committed. Overlapping manual Production Packaging Cost Lines are excluded from the Finished Goods packaging basis and surfaced with a warning, preventing double counting. Finished Goods balances derive only from their immutable movement ledger.
 
 Persistence advances from workspace v7 to v8. The explicit Phase 5 migration preserves all Phase 1–5 collections and adds empty Phase 6 collections; seed records are used only for new workspaces.
+
+## Phase 7 — Compliance Evidence and Launch Readiness
+
+A Compliance Dossier binds one exact Product, Formula Version, optional Packaging Specification Version, optional Label Artwork Version, target market, and language. Old dossiers remain immutable configuration history. Duplication creates a new record and marks copied version-sensitive evidence Needs Review; CPSR and CPNP validity are never carried forward automatically.
+
+Readiness is isolated pure domain logic derived from evidence gaps. Its vocabulary is deliberately internal and can never produce “compliant”, “safe”, certified, or authority-approved states. CPSR metadata records an external assessor workflow only. CPNP metadata records external portal references only. Regulatory Reviews record a human conclusion against dated Source records rather than permanent ingredient legality.
+
+Compliance Documents are metadata records behind a future document-storage boundary. localStorage may contain file names, external URLs, and references, but never binary files or Base64 data. A future storage adapter can provide durable files without changing Compliance components.
+
+Launch Plans consume dossier blockers but remain operational project records. Compliance blockers and commercial milestones are separate. Go/No-Go decisions are append-only internal business records preserving unresolved blockers at decision time. Minimal undesirable-effect records document escalation without automatic medical classification.
+
+Persistence advances from workspace v8 to v9. The explicit Phase 6 migration preserves all earlier collections and adds empty Compliance and Launch collections without seeding existing user workspaces.

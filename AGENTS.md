@@ -14,6 +14,8 @@ Koalafrog HQ is a private, single-user product development and operations system
 - Estimated costs are planning references; actual production material costs come only from committed lot allocations and their acquisition-cost snapshots. Missing cost is Unknown, never zero.
 - Packaging Components and Packaging Inventory are separate from raw materials and use their own immutable lot ledger. Packaging Specifications follow Formula-style version immutability.
 - Finished Goods are explicit Production output registrations with their own movement ledger. Packaged batches remain quarantined until Packaging Consumption is committed; never infer legal sale readiness from Finished Goods status.
+- Compliance Dossiers bind an exact Formula, Packaging, Label, market, and language configuration. Internal readiness and launch decisions are workflow records, never legal compliance, safety assessment, or authority approval.
+- Store compliance document metadata and external references locally, never binary files or Base64 blobs. CPSR conclusions and CPNP confirmation require real external evidence metadata.
 - Completed Lab Batch execution and submitted Test Responses are historical records. Preserve them; add observations or explicit corrections instead of silent rewrites.
 - Keep mock data outside UI components and easy to replace with repository/service implementations.
 - Prefer small, legible components and explicit data flow over broad abstractions.

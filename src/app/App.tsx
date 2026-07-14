@@ -23,6 +23,10 @@ import { PackagingComponentDetailPage } from '../features/packaging/PackagingCom
 import { PackagingSpecificationPage } from '../features/packaging/PackagingSpecificationPage'
 import { FinishedGoodsPage } from '../features/finished-goods/FinishedGoodsPage'
 import { FinishedGoodsDetailPage } from '../features/finished-goods/FinishedGoodsDetailPage'
+import { CompliancePage } from '../features/compliance/CompliancePage'
+import { ComplianceDossierPage } from '../features/compliance/ComplianceDossierPage'
+import { LaunchPage } from '../features/launch/LaunchPage'
+import { LaunchPlanPage } from '../features/launch/LaunchPlanPage'
 
 export function App() {
   return (
@@ -48,6 +52,10 @@ export function App() {
         <Route path="packaging/specifications/:packagingSpecificationId" element={<PackagingSpecificationPage />} />
         <Route path="finished-goods" element={<FinishedGoodsPage />} />
         <Route path="finished-goods/:finishedGoodsBatchId" element={<FinishedGoodsDetailPage />} />
+        <Route path="compliance" element={<CompliancePage />} />
+        <Route path="compliance/:complianceDossierId" element={<ComplianceDossierPage />} />
+        <Route path="launch" element={<LaunchPage />} />
+        <Route path="launch/:launchPlanId" element={<LaunchPlanPage />} />
         <Route path="scent-house" element={<ScentHousePage />} />
         {placeholderModules.map((module) => (
           <Route key={module.path} path={module.path} element={<PlaceholderPage module={module} />} />

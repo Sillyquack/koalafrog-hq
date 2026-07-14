@@ -1,0 +1,4 @@
+import { describe,expect,it } from 'vitest'
+import type { LaunchDecision,ReadinessIssue } from '../../../types/domain'
+import { launchComplianceBlockers,recordDecision } from './launchLogic'
+describe('Launch readiness',()=>{it('propagates only open compliance blockers',()=>{const issue=(severity:ReadinessIssue['severity'],status:ReadinessIssue['status'])=>({severity,status} as ReadinessIssue);expect(launchComplianceBlockers([issue('Blocking','Open'),issue('Important','Open'),issue('Blocking','Resolved')])).toHaveLength(1)});it('preserves historical decisions',()=>{const first={id:'1',decision:'No-Go'} as LaunchDecision,second={id:'2',decision:'Conditional Go'} as LaunchDecision;const history=recordDecision([first],second);expect(history).toEqual([first,second]);expect(history[0]).toBe(first)})})

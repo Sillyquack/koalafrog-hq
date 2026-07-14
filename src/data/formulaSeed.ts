@@ -5,6 +5,7 @@ import { ingredients } from './mockData'
 import { labBatchAllocations, labBatchLines, labBatches, labObservations, processSteps, testers, testResponses, testSessions, testTemplates } from './labSeed'
 import { costLines, productionProcessSteps, productionRunAllocations, productionRunLines, productionRuns } from './productionSeed'
 import { finishedGoodsBatches,finishedGoodsMovements,packagingAllocations,packagingComponents,packagingInventoryLots,packagingInventoryMovements,packagingSpecifications,packagingSpecificationLines,packagingSpecificationVersions,packagingSupplierProducts } from './packagingSeed'
+import { claimEvidence,claims,complianceDocuments,complianceDossiers,cpnpRecords,cpsrRecords,inciDrafts,labelArtworkVersions,labelReviewItems,launchDecisions,launchMilestones,launchPlans,pifSections,readinessIssues,regulatoryReviews,regulatorySources,responsiblePersons,safetyEffectRecords } from './complianceSeed'
 
 type SeedLine = readonly [string, number, string, string]
 const baseLines: readonly SeedLine[] = [
@@ -43,4 +44,5 @@ export const formulaSeed: FormulaState = {
   labBatches, labBatchLines, labBatchAllocations, processSteps, labObservations, testers, testTemplates, testSessions, testResponses,
   productionRuns, productionRunLines, productionRunAllocations, productionProcessSteps, costLines,
   packagingComponents,packagingSupplierProducts,packagingInventoryLots,packagingInventoryMovements,packagingSpecifications,packagingSpecificationVersions,packagingSpecificationLines,packagingAllocations,finishedGoodsBatches,finishedGoodsMovements,
+  responsiblePersons,complianceDossiers,complianceDocuments,regulatorySources,regulatoryReviews,pifSections,cpsrRecords,labelArtworkVersions,labelReviewItems,inciDrafts,claims,claimEvidence,cpnpRecords,readinessIssues,launchPlans,launchMilestones,launchDecisions,safetyEffectRecords,
 }

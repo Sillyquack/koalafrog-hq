@@ -106,3 +106,13 @@ Historical run rules: source and execution become fixed after starting/completio
 Packaging allocations connect exact Specification Lines and physical Packaging Lots to a Finished Goods Batch. Committed allocations retain movement and unit-cost snapshots. Finished Goods availability is the sum of ProductionReceipt and Adjustment less Sample, Tester, Sale, Waste, and InternalUse movements. `Sale` is manual stock bookkeeping only.
 
 Registered Finished Goods quantities across a Production Run may never exceed `actualUnitsProduced`. Finished Goods trace back through exact Production Run and Formula Version IDs; packaged output additionally retains the exact Approved Packaging Specification Version.
+
+## Compliance and Launch
+
+`Product + FormulaVersion + PackagingSpecificationVersion + LabelArtworkVersion + Market + Language → ComplianceDossier`
+
+A dossier owns or links composition snapshots, Ingredient Regulatory Reviews, PIF sections, CPSR tracking, Label checklist, INCI Working Draft, Claims and evidence, CPNP tracking, Documents, Sources, and Readiness Issues. External evidence metadata—not a selected local status—is required for issued CPSR and confirmed CPNP states.
+
+`ComplianceDossier → LaunchPlan → LaunchMilestone / LaunchDecision`
+
+Launch decisions are historical records rather than mutable plan fields. SafetyEffectRecord provides minimal post-market documentation linked to Product and optionally Finished Goods Batch without diagnosing seriousness.
