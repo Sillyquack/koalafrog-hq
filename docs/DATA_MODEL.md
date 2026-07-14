@@ -94,3 +94,15 @@ Cardinalities and ownership rules should be validated through real workflows bef
 - CostLine has ProductionRun, Product, or FormulaVersion scope and a simple category/amount/currency/quantity record. It is deliberately not packaging inventory or accounting.
 
 Historical run rules: source and execution become fixed after starting/completion as appropriate; Completed execution, committed movements, and allocation cost snapshots are not silently rewritten. Acquisition metadata on an editable lot may be corrected without rewriting movements, while already-committed Production allocations retain their earlier snapshot.
+
+## Packaging and Finished Goods
+
+`PackagingComponent → PackagingSupplierProduct → PackagingInventoryLot → PackagingInventoryMovement`
+
+`Product → PackagingSpecification → PackagingSpecificationVersion → PackagingSpecificationLine`
+
+`ProductionRun → FinishedGoodsBatch → FinishedGoodsMovement`
+
+Packaging allocations connect exact Specification Lines and physical Packaging Lots to a Finished Goods Batch. Committed allocations retain movement and unit-cost snapshots. Finished Goods availability is the sum of ProductionReceipt and Adjustment less Sample, Tester, Sale, Waste, and InternalUse movements. `Sale` is manual stock bookkeeping only.
+
+Registered Finished Goods quantities across a Production Run may never exceed `actualUnitsProduced`. Finished Goods trace back through exact Production Run and Formula Version IDs; packaged output additionally retains the exact Approved Packaging Specification Version.

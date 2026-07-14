@@ -58,3 +58,13 @@ Inventory remains ledger-led. Lot selection, allocation, and weigh-in do not aff
 Costing logic is pure and React-independent in `features/costing/domain`. NOK is the workspace base currency. Estimated formula costs first use a remaining-quantity-weighted unit cost across compatible Active, non-expired, positive-balance NOK lots with acquisition cost; if none qualify, they use a compatible preferred Supplier Product reference in NOK. Otherwise cost is Unknown and coverage is reduced. Actual material cost remains independent and uses only committed allocation snapshots, so later lot metadata, supplier prices, and receipts cannot rewrite Production history.
 
 Local persistence advances from workspace v6 to v7. The explicit Phase 4 migration preserves every existing Phase 1–4 collection and adds empty Production and Costing collections; it never introduces seed records into an existing workspace.
+
+## Phase 6 — Packaging and Finished Goods
+
+Packaging is a separate physical inventory boundary: Component → Supplier Product → Lot → immutable Packaging Movement. Packaging Specifications belong to Products and use Draft-editable, Candidate/Approved/Retired-frozen versions. Requirements and shortages are projections only.
+
+Finished Goods are explicit output registrations, not Production Run state. A batch snapshots Product, Formula Version, Production Run, optional Approved Packaging Specification Version, and cost context. Packaged output is initially Quarantined; committing all required multi-lot Packaging allocations appends Packaging Consumption movements, appends the Finished Goods ProductionReceipt, and activates the batch. The Packaging movements reference `FinishedGoodsBatch`, providing the shortest physical traceability path.
+
+Actual physical Packaging allocation cost is authoritative once committed. Overlapping manual Production Packaging Cost Lines are excluded from the Finished Goods packaging basis and surfaced with a warning, preventing double counting. Finished Goods balances derive only from their immutable movement ledger.
+
+Persistence advances from workspace v7 to v8. The explicit Phase 5 migration preserves all Phase 1–5 collections and adds empty Phase 6 collections; seed records are used only for new workspaces.

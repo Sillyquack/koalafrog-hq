@@ -18,6 +18,11 @@ import { TestingPage } from '../features/testing/TestingPage'
 import { ProductionPage } from '../features/production/ProductionPage'
 import { ProductionRunDetailPage } from '../features/production/ProductionRunDetailPage'
 import { CostingPage } from '../features/costing/CostingPage'
+import { PackagingPage } from '../features/packaging/PackagingPage'
+import { PackagingComponentDetailPage } from '../features/packaging/PackagingComponentDetailPage'
+import { PackagingSpecificationPage } from '../features/packaging/PackagingSpecificationPage'
+import { FinishedGoodsPage } from '../features/finished-goods/FinishedGoodsPage'
+import { FinishedGoodsDetailPage } from '../features/finished-goods/FinishedGoodsDetailPage'
 
 export function App() {
   return (
@@ -38,6 +43,11 @@ export function App() {
         <Route path="production" element={<ProductionPage />} />
         <Route path="production/:productionRunId" element={<ProductionRunDetailPage />} />
         <Route path="costing" element={<CostingPage />} />
+        <Route path="packaging" element={<PackagingPage />} />
+        <Route path="packaging/components/:packagingComponentId" element={<PackagingComponentDetailPage />} />
+        <Route path="packaging/specifications/:packagingSpecificationId" element={<PackagingSpecificationPage />} />
+        <Route path="finished-goods" element={<FinishedGoodsPage />} />
+        <Route path="finished-goods/:finishedGoodsBatchId" element={<FinishedGoodsDetailPage />} />
         <Route path="scent-house" element={<ScentHousePage />} />
         {placeholderModules.map((module) => (
           <Route key={module.path} path={module.path} element={<PlaceholderPage module={module} />} />

@@ -74,6 +74,16 @@ export interface FormulaState {
   productionRunAllocations: ProductionRunAllocation[]
   productionProcessSteps: ProductionProcessStep[]
   costLines: CostLine[]
+  packagingComponents: PackagingComponent[]
+  packagingSupplierProducts: PackagingSupplierProduct[]
+  packagingInventoryLots: PackagingInventoryLot[]
+  packagingInventoryMovements: PackagingInventoryMovement[]
+  packagingSpecifications: PackagingSpecification[]
+  packagingSpecificationVersions: PackagingSpecificationVersion[]
+  packagingSpecificationLines: PackagingSpecificationLine[]
+  packagingAllocations: PackagingAllocation[]
+  finishedGoodsBatches: FinishedGoodsBatch[]
+  finishedGoodsMovements: FinishedGoodsMovement[]
 }
 
 export type IngredientStatus = 'Active' | 'Research' | 'Archived'
@@ -137,6 +147,23 @@ export interface ProductionProcessStep { id:string; productionRunId:string; step
 export type CostLineScope = 'ProductionRun' | 'Product' | 'FormulaVersion'
 export type CostLineCategory = 'Packaging' | 'Labels' | 'Labour' | 'Freight' | 'Overhead' | 'Equipment' | 'Other'
 export interface CostLine { id:string; scope:CostLineScope; referenceId:string; category:CostLineCategory; description:string; amount:number; currency:string; quantity:number; notes:string; createdAt:string; updatedAt:string }
+
+export type PackagingComponentStatus='Active'|'Research'|'Archived'
+export interface PackagingComponent { id:string;name:string;category:string;description:string;defaultUnit:InventoryUnit;colour:string;material:string;capacity?:number;capacityUnit?:InventoryUnit;notes:string;status:PackagingComponentStatus;reorderThreshold?:number;createdAt:string;updatedAt:string }
+export interface PackagingSupplierProduct { id:string;packagingComponentId:string;supplierName:string;productName:string;supplierSku?:string;packageQuantity:number;packageUnit:InventoryUnit;price:number;currency:string;productUrl?:string;notes:string;isPreferred:boolean;createdAt:string;updatedAt:string }
+export type PackagingInventoryLotStatus='Active'|'Quarantined'|'Exhausted'|'Disposed'|'Archived'
+export interface PackagingInventoryLot { id:string;packagingComponentId:string;packagingSupplierProductId?:string;internalLotNumber:string;supplierLotNumber?:string;receivedDate:string;openingQuantity:number;unit:InventoryUnit;location:string;status:PackagingInventoryLotStatus;notes:string;totalAcquisitionCost?:number;acquisitionCostCurrency?:string;costNotes?:string;createdAt:string;updatedAt:string }
+export type PackagingMovementType='Receipt'|'Consumption'|'Waste'|'Sample'|'Adjustment'
+export interface PackagingInventoryMovement { id:string;packagingInventoryLotId:string;type:PackagingMovementType;quantity:number;unit:InventoryUnit;reason:string;referenceType?:string;referenceId?:string;notes:string;occurredAt:string;createdAt:string }
+export interface PackagingSpecification { id:string;productId:string;name:string;description:string;createdAt:string;updatedAt:string }
+export type PackagingSpecificationStatus='Draft'|'Candidate'|'Approved'|'Retired'
+export interface PackagingSpecificationVersion { id:string;packagingSpecificationId:string;version:string;status:PackagingSpecificationStatus;description:string;notes:string;createdAt:string;updatedAt:string;derivedFromVersionId?:string }
+export interface PackagingSpecificationLine { id:string;packagingSpecificationVersionId:string;packagingComponentId:string;quantityPerUnit:number;unit:InventoryUnit;sortOrder:number;purpose:string;notes:string }
+export interface PackagingAllocation { id:string;finishedGoodsBatchId:string;packagingSpecificationLineId:string;packagingInventoryLotId?:string;quantity:number;unit:InventoryUnit;packagingInventoryMovementId?:string;unitCostSnapshot?:number;costCurrencySnapshot?:string }
+export type FinishedGoodsStatus='Active'|'Quarantined'|'Exhausted'|'Archived'
+export interface FinishedGoodsBatch { id:string;finishedGoodsBatchNumber:string;productionRunId:string;productId:string;formulaVersionId:string;packagingSpecificationVersionId?:string;status:FinishedGoodsStatus;productionDate:string;initialQuantity:number;unit:InventoryUnit;notes:string;createdAt:string;updatedAt:string;productionCostPerUnitSnapshot?:number;packagingCostSnapshot?:number;costCurrencySnapshot?:string }
+export type FinishedGoodsMovementType='ProductionReceipt'|'Sample'|'Tester'|'Sale'|'Waste'|'InternalUse'|'Adjustment'
+export interface FinishedGoodsMovement { id:string;finishedGoodsBatchId:string;type:FinishedGoodsMovementType;quantity:number;unit:InventoryUnit;reason:string;referenceType?:string;referenceId?:string;notes:string;occurredAt:string;createdAt:string }
 
 export type BatchStatus = 'Planned' | 'In progress' | 'Observing' | 'Complete'
 export interface Batch {

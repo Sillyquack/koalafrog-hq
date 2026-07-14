@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { formulaSeed } from '../../../data/formulaSeed'
-import { migratePhaseFourState, migratePhaseThreeState, migratePhaseTwoState } from './formulaRepository'
+import { migratePhaseFiveState, migratePhaseFourState, migratePhaseThreeState, migratePhaseTwoState } from './formulaRepository'
 
 describe('Phase 2 local-state migration', () => {
   it('preserves product and formula records while adding Phase 3 inventory collections', () => {
@@ -17,3 +17,4 @@ describe('Phase 3 local-state migration', () => {
     expect(migrated.inventoryMovements).toEqual(phaseThree.inventoryMovements); expect(migrated.formulaVersions).toEqual(phaseThree.formulaVersions); expect(migrated.labBatches.length).toBeGreaterThan(0); expect(migrated.testTemplates.length).toBeGreaterThan(0)
   })
 })
+describe('Phase 5 local-state migration',()=>{it('preserves Phase 1–5 records while adding empty Phase 6 collections',()=>{const {packagingComponents: _a,packagingSupplierProducts:_b,packagingInventoryLots:_c,packagingInventoryMovements:_d,packagingSpecifications:_e,packagingSpecificationVersions:_f,packagingSpecificationLines:_g,packagingAllocations:_h,finishedGoodsBatches:_i,finishedGoodsMovements:_j,...legacy}=formulaSeed;void[_a,_b,_c,_d,_e,_f,_g,_h,_i,_j];const migrated=migratePhaseFiveState(legacy);expect(migrated.productionRuns).toEqual(formulaSeed.productionRuns);expect(migrated.inventoryMovements).toEqual(formulaSeed.inventoryMovements);expect(migrated.packagingComponents).toEqual([]);expect(migrated.finishedGoodsBatches).toEqual([])})})

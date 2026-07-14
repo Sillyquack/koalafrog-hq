@@ -12,6 +12,8 @@ Koalafrog HQ is a private, single-user product development and operations system
 - A Formula Version describes intent; a Lab Batch records execution. Never mutate the source Formula Version from a batch, and never consume stock until explicit allocation commit.
 - A Production Run is a controlled manufacturing event, never a promoted Lab Batch. New runs require an exact Approved Formula Version, preserve execution snapshots, and create Consumption movements only through explicit production commitment.
 - Estimated costs are planning references; actual production material costs come only from committed lot allocations and their acquisition-cost snapshots. Missing cost is Unknown, never zero.
+- Packaging Components and Packaging Inventory are separate from raw materials and use their own immutable lot ledger. Packaging Specifications follow Formula-style version immutability.
+- Finished Goods are explicit Production output registrations with their own movement ledger. Packaged batches remain quarantined until Packaging Consumption is committed; never infer legal sale readiness from Finished Goods status.
 - Completed Lab Batch execution and submitted Test Responses are historical records. Preserve them; add observations or explicit corrections instead of silent rewrites.
 - Keep mock data outside UI components and easy to replace with repository/service implementations.
 - Prefer small, legible components and explicit data flow over broad abstractions.

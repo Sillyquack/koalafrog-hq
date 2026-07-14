@@ -31,4 +31,15 @@ Search and synthesis across accumulated private knowledge, assisted comparison o
 
 Phase 5 Production + Costing is implemented: Approved-version run creation, immutable execution snapshots, controlled lifecycle, multi-lot explicit consumption, yield/output capture, acquisition-cost snapshots, coverage-aware estimates, actual run costing, additional cost lines, and a lightweight pricing scenario.
 
-Packaging remains a later module. It may replace manual packaging Cost Lines with structured components and inventory. Compliance remains separate; Formula `Approved` is the existing internal formula status and Production `Completed` is only execution completion, not commercial or regulatory approval.
+Phase 6 now replaces overlapping manual packaging Cost Lines with authoritative physical Packaging Consumption where available. Compliance remains separate; Formula or Packaging `Approved`, Production `Completed`, and Finished Goods `Active` are internal operational states—not commercial or regulatory approval.
+
+## Current roadmap
+
+- Phase 1: Foundation — Complete
+- Phase 2: Product + Formula — Complete
+- Phase 3: Ingredient + Inventory — Complete
+- Phase 4: Lab + Testing — Complete
+- Phase 5: Production + Costing — Complete
+- Phase 6: Packaging + Finished Goods — Current
+- Phase 7: Compliance + Launch Readiness
+- Phase 8: Koalafrog Intelligence Layer
