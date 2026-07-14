@@ -49,3 +49,12 @@ Backend clients, generated database types, and query details should remain in an
 ## UI approach
 
 The visual system uses shared CSS tokens and purposeful components rather than a third-party component kit. The dense sidebar supports the breadth of the operating system; content remains calm and tactile. Scent House intentionally shifts into a darker, more atmospheric workspace while retaining shared navigation and interaction conventions.
+## Phase 5 — Production and Costing
+
+Production is a separate feature boundary from Lab. A `ProductionRun` references one exact Approved `FormulaVersion`, snapshots formula lines and process instructions, and never mutates its source. Planned runs are editable; starting fixes the source; Completed and Archived execution is effectively read-only. Aborted records retain all work and committed movements.
+
+Inventory remains ledger-led. Lot selection, allocation, and weigh-in do not affect stock. `Commit Production Consumption` appends `Consumption` movements with `referenceType: ProductionRun`; allocations retain movement IDs and acquisition unit-cost/currency snapshots. Duplicate commitment is rejected, and corrections remain explicit Adjustment movements.
+
+Costing logic is pure and React-independent in `features/costing/domain`. NOK is the workspace base currency. Estimated formula costs first use a remaining-quantity-weighted unit cost across compatible Active, non-expired, positive-balance NOK lots with acquisition cost; if none qualify, they use a compatible preferred Supplier Product reference in NOK. Otherwise cost is Unknown and coverage is reduced. Actual material cost remains independent and uses only committed allocation snapshots, so later lot metadata, supplier prices, and receipts cannot rewrite Production history.
+
+Local persistence advances from workspace v6 to v7. The explicit Phase 4 migration preserves every existing Phase 1–4 collection and adds empty Production and Costing collections; it never introduces seed records into an existing workspace.

@@ -13,10 +13,11 @@ import { useFormulaData } from './state/FormulaDataContext'
 
 export function FormulaDetailPage() {
   const { formulaId } = useParams(); const [params, setParams] = useSearchParams()
-  const { formulas, formulaVersions, formulaLines, products, labBatches, saveVersion, transitionVersion, duplicateAsDraft } = useFormulaData()
+  const { formulas, formulaVersions, formulaLines, products, labBatches, productionRuns, saveVersion, transitionVersion, duplicateAsDraft } = useFormulaData()
   const formula = formulas.find((item) => item.id === formulaId); const versions = formulaVersions.filter((item) => item.formulaId === formulaId).sort((a,b) => b.createdAt.localeCompare(a.createdAt))
   const selected = versions.find((item) => item.id === params.get('version')) ?? versions[0]; const lines = formulaLines.filter((line) => line.formulaVersionId === selected?.id)
   const versionBatches = labBatches.filter((batch) => batch.formulaVersionId === selected?.id)
+  const versionRuns=productionRuns.filter(run=>run.formulaVersionId===selected?.id)
   const [description, setDescription] = useState(selected?.description ?? ''); const [characteristics, setCharacteristics] = useState(selected?.targetCharacteristics ?? '')
   if (!formula || !selected) return <div className="empty-state"><h1>Formula not found</h1><Link to="/formulas">Return to formulas</Link></div>
   const product = products.find((item) => item.id === formula.productId); const valid = calculatePercentageTotal(lines) === 100
@@ -31,6 +32,7 @@ export function FormulaDetailPage() {
         <section className="formula-notes panel"><label>Version description<textarea disabled={selected.status !== 'Draft'} value={description} onChange={(e) => setDescription(e.target.value)} /></label><label>Target characteristics<textarea disabled={selected.status !== 'Draft'} value={characteristics} onChange={(e) => setCharacteristics(e.target.value)} /></label></section>
         <FormulaBuilder version={selected} lines={lines} /><BatchScaler lines={lines} />
         <section className="panel linked-testing"><SectionHeader title="Lab history" detail="Batches created from this exact version" />{versionBatches.map((batch)=><Link to={`/lab/${batch.id}`} key={batch.id}><strong>{batch.batchNumber}</strong><span>{batch.status} · {batch.purpose}</span></Link>)}{!versionBatches.length&&<p className="empty-copy">No Lab Batches reference this version.</p>}</section>
+        <section className="panel linked-testing"><SectionHeader title="Production history" detail="Controlled runs sourced from this exact immutable version" action={<Link className="text-button" to="/costing">Cost planning</Link>}/>{versionRuns.map(run=><Link to={`/production/${run.id}`} key={run.id}><strong>{run.productionRunNumber}</strong><span>{run.status} · {run.purpose}</span></Link>)}{!versionRuns.length&&<p className="empty-copy">No Production Runs reference this version.</p>}</section>
         <p className="development-disclaimer">Development mock formulation data only. No safety, performance, regulatory, or commercial approval is implied.</p>
       </div>
     </div>

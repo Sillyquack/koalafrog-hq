@@ -15,6 +15,9 @@ import { InventoryPage } from '../features/inventory/InventoryPage'
 import { LotDetailPage } from '../features/inventory/LotDetailPage'
 import { LabBatchDetailPage } from '../features/lab/LabBatchDetailPage'
 import { TestingPage } from '../features/testing/TestingPage'
+import { ProductionPage } from '../features/production/ProductionPage'
+import { ProductionRunDetailPage } from '../features/production/ProductionRunDetailPage'
+import { CostingPage } from '../features/costing/CostingPage'
 
 export function App() {
   return (
@@ -32,6 +35,9 @@ export function App() {
         <Route path="lab" element={<LabPage />} />
         <Route path="lab/:labBatchId" element={<LabBatchDetailPage />} />
         <Route path="testing" element={<TestingPage />} />
+        <Route path="production" element={<ProductionPage />} />
+        <Route path="production/:productionRunId" element={<ProductionRunDetailPage />} />
+        <Route path="costing" element={<CostingPage />} />
         <Route path="scent-house" element={<ScentHousePage />} />
         {placeholderModules.map((module) => (
           <Route key={module.path} path={module.path} element={<PlaceholderPage module={module} />} />

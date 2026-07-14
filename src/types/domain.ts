@@ -69,6 +69,11 @@ export interface FormulaState {
   testTemplates: TestTemplate[]
   testSessions: TestSession[]
   testResponses: TestResponse[]
+  productionRuns: ProductionRun[]
+  productionRunLines: ProductionRunLine[]
+  productionRunAllocations: ProductionRunAllocation[]
+  productionProcessSteps: ProductionProcessStep[]
+  costLines: CostLine[]
 }
 
 export type IngredientStatus = 'Active' | 'Research' | 'Archived'
@@ -97,7 +102,7 @@ export type InventoryLotStatus = 'Active' | 'Quarantined' | 'Exhausted' | 'Expir
 export interface InventoryLot {
   id: string; ingredientId: string; supplierProductId?: string; internalLotNumber: string; supplierLotNumber?: string
   receivedDate: string; openingQuantity: number; unit: InventoryUnit; expiryDate?: string; bestBeforeDate?: string
-  location: string; status: InventoryLotStatus; notes: string; createdAt: string; updatedAt: string
+  location: string; status: InventoryLotStatus; notes: string; totalAcquisitionCost?: number; acquisitionCostCurrency?: string; costNotes?: string; createdAt: string; updatedAt: string
 }
 export type InventoryMovementType = 'Receipt' | 'Consumption' | 'Waste' | 'Sample' | 'Adjustment'
 export interface InventoryMovement {
@@ -122,6 +127,16 @@ export type TestSessionStatus = 'Planned' | 'Active' | 'Completed' | 'Archived'
 export interface TestSession { id:string; labBatchId:string; testTemplateId:string; name:string; status:TestSessionStatus; createdAt:string; dueDate?:string; completedAt?:string; notes:string }
 export interface TestAnswer { questionId:string; value:string | number | boolean }
 export interface TestResponse { id:string; testSessionId:string; testerId:string; answers:TestAnswer[]; overallNotes:string; submittedAt:string }
+
+export type ProductionRunStatus = 'Planned' | 'In Progress' | 'Completed' | 'Aborted' | 'Archived'
+export interface ProductionRun { id:string; productionRunNumber:string; productId:string; formulaId:string; formulaVersionId:string; status:ProductionRunStatus; plannedBatchSize:number; plannedBatchUnit:InventoryUnit; plannedUnits?:number; actualYield?:number; actualYieldUnit?:InventoryUnit; actualUnitsProduced?:number; startedAt?:string; completedAt?:string; createdAt:string; updatedAt:string; purpose:string; notes:string; summary:string }
+export type ProductionRunLineStatus = 'Pending' | 'Weighed' | 'Skipped'
+export interface ProductionRunLine { id:string; productionRunId:string; formulaLineId:string; ingredientId:string; ingredientNameSnapshot:string; phase:string; plannedPercentage:number; plannedQuantity:number; actualQuantity?:number; unit:InventoryUnit; variance?:number; notes:string; status:ProductionRunLineStatus }
+export interface ProductionRunAllocation { id:string; productionRunLineId:string; inventoryLotId?:string; quantity:number; unit:InventoryUnit; inventoryMovementId?:string; unitCostSnapshot?:number; costCurrencySnapshot?:string }
+export interface ProductionProcessStep { id:string; productionRunId:string; stepNumber:number; instruction:string; status:ProcessStepStatus; completedAt?:string; notes:string }
+export type CostLineScope = 'ProductionRun' | 'Product' | 'FormulaVersion'
+export type CostLineCategory = 'Packaging' | 'Labels' | 'Labour' | 'Freight' | 'Overhead' | 'Equipment' | 'Other'
+export interface CostLine { id:string; scope:CostLineScope; referenceId:string; category:CostLineCategory; description:string; amount:number; currency:string; quantity:number; notes:string; createdAt:string; updatedAt:string }
 
 export type BatchStatus = 'Planned' | 'In progress' | 'Observing' | 'Complete'
 export interface Batch {

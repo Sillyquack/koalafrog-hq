@@ -1,7 +1,7 @@
 import type { Accord, Activity, Batch, Ingredient, ModuleDefinition, Product, ScentMaterial, ScentProfile, TestingActivity } from '../types/domain'
 
 export const products: Product[] = [
-  { id: 'p1', name: 'Signature Beard Oil', category: 'Beard Care', status: 'Active', developmentStage: 'Testing', description: 'A dry-touch daily oil balancing glide, absorption and a quiet signature scent.', currentDevelopmentFormulaVersionId: 'fv-bo-02', scentProfile: 'Workshop No. 01', targetLaunchDate: '2026-11-15', createdAt: '2026-03-02', updatedAt: '2026-07-14' },
+  { id: 'p1', name: 'Signature Beard Oil', category: 'Beard Care', status: 'Active', developmentStage: 'Testing', description: 'A dry-touch daily oil balancing glide, absorption and a quiet signature scent.', currentDevelopmentFormulaVersionId: 'fv-bo-02', currentApprovedFormulaVersionId:'fv-bo-02', scentProfile: 'Workshop No. 01', targetLaunchDate: '2026-11-15', createdAt: '2026-03-02', updatedAt: '2026-07-14' },
   { id: 'p2', name: 'Beard Butter', category: 'Beard Care', status: 'Active', developmentStage: 'Formulation', description: 'A soft, non-waxy conditioning butter with controlled melt and a refined finish.', currentDevelopmentFormulaVersionId: 'fv-bb-01', scentProfile: 'Warm Woods Study', targetLaunchDate: '2027-02-01', createdAt: '2026-04-18', updatedAt: '2026-07-12' },
   { id: 'p3', name: 'Beard Balm', category: 'Beard Care', status: 'Active', developmentStage: 'Research', description: 'Medium-control shaping balm designed for restyling without a heavy residue.', scentProfile: 'Unassigned', targetLaunchDate: '2027-04-20', createdAt: '2026-05-04', updatedAt: '2026-07-08' },
   { id: 'p4', name: 'Koalafrog Signature Fragrance', category: 'Fragrance', status: 'Active', developmentStage: 'Research', description: 'The olfactive cornerstone: mineral air, worn leather, warm timber and amber.', scentProfile: 'Signature DNA', targetLaunchDate: '2027-09-01', createdAt: '2026-02-12', updatedAt: '2026-07-13' },
@@ -57,10 +57,8 @@ export const testingActivities: TestingActivity[] = [
 ]
 
 export const placeholderModules: ModuleDefinition[] = [
-  { path: 'production', name: 'Production', eyebrow: 'Repeatable making', description: 'Turn validated formulas into controlled, documented production runs.', capabilities: ['Production orders', 'Run sheets', 'Yield and deviation records'] },
   { path: 'suppliers', name: 'Suppliers', eyebrow: 'Source intelligence', description: 'Keep contacts, samples, quotes and material relationships in one considered record.', capabilities: ['Supplier profiles', 'Quotes and lead times', 'Sample history'] },
   { path: 'equipment', name: 'Equipment', eyebrow: 'Workshop readiness', description: 'Catalogue tools, calibration needs, maintenance and working procedures.', capabilities: ['Equipment register', 'Maintenance log', 'Calibration reminders'] },
-  { path: 'costing', name: 'Costing', eyebrow: 'Commercial reality', description: 'Understand material, packaging and production cost as products evolve.', capabilities: ['Formula cost rollups', 'Packaging scenarios', 'Margin modelling'] },
   { path: 'compliance', name: 'Compliance', eyebrow: 'Structured readiness', description: 'Organise product documentation and future market-readiness workflows.', capabilities: ['Document checklists', 'Market requirements', 'Review milestones'] },
   { path: 'packaging', name: 'Packaging', eyebrow: 'Object & experience', description: 'Develop vessels, components, labels and pack specifications alongside the formula.', capabilities: ['Component library', 'Compatibility trials', 'Artwork versions'] },
   { path: 'launch', name: 'Launch', eyebrow: 'From workshop to world', description: 'Coordinate dependencies, decisions and launch readiness without losing the product story.', capabilities: ['Readiness gates', 'Critical dates', 'Launch assets'] },

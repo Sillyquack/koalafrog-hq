@@ -83,3 +83,14 @@ Ingredient ──< SupplierProduct
 ```
 
 Cardinalities and ownership rules should be validated through real workflows before a database schema is created.
+## Production and costing
+
+`Product → Formula → Approved FormulaVersion → ProductionRun → ProductionRunLine → ProductionRunAllocation → InventoryMovement`
+
+- ProductionRunLine is an execution snapshot: source line and ingredient IDs plus ingredient name, phase, percentage, planned quantity, unit, and notes at creation.
+- ProductionRunAllocation supports many physical lots per line. Commitment stores its append-only movement ID and historical unit-cost/currency snapshot.
+- ProductionProcessStep copies source instructions and can be completed, skipped, or annotated independently.
+- InventoryLot optionally stores `totalAcquisitionCost`, `acquisitionCostCurrency`, and `costNotes`. Absence means Unknown.
+- CostLine has ProductionRun, Product, or FormulaVersion scope and a simple category/amount/currency/quantity record. It is deliberately not packaging inventory or accounting.
+
+Historical run rules: source and execution become fixed after starting/completion as appropriate; Completed execution, committed movements, and allocation cost snapshots are not silently rewritten. Acquisition metadata on an editable lot may be corrected without rewriting movements, while already-committed Production allocations retain their earlier snapshot.

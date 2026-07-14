@@ -11,7 +11,7 @@ export function ReceiveStockForm({ ingredientId, onClose }: { ingredientId?: str
     event.preventDefault()
     const form = new FormData(event.currentTarget)
     try {
-      data.receiveStock({ ingredientId: String(form.get('ingredientId')), supplierProductId: String(form.get('supplierProductId')) || undefined, supplierLotNumber: String(form.get('supplierLotNumber')) || undefined, receivedDate: String(form.get('receivedDate')), openingQuantity: Number(form.get('quantity')), unit: String(form.get('unit')) as InventoryUnit, expiryDate: String(form.get('expiryDate')) || undefined, bestBeforeDate: String(form.get('bestBeforeDate')) || undefined, location: String(form.get('location')), notes: String(form.get('notes')) })
+      data.receiveStock({ ingredientId: String(form.get('ingredientId')), supplierProductId: String(form.get('supplierProductId')) || undefined, supplierLotNumber: String(form.get('supplierLotNumber')) || undefined, receivedDate: String(form.get('receivedDate')), openingQuantity: Number(form.get('quantity')), unit: String(form.get('unit')) as InventoryUnit, expiryDate: String(form.get('expiryDate')) || undefined, bestBeforeDate: String(form.get('bestBeforeDate')) || undefined, location: String(form.get('location')), notes: String(form.get('notes')), totalAcquisitionCost:Number(form.get('totalAcquisitionCost'))||undefined,acquisitionCostCurrency:Number(form.get('totalAcquisitionCost'))?'NOK':undefined,costNotes:String(form.get('costNotes'))||undefined })
       onClose()
     } catch (caught) { setError(caught instanceof Error ? caught.message : 'Could not receive stock.') }
   }
@@ -23,6 +23,7 @@ export function ReceiveStockForm({ ingredientId, onClose }: { ingredientId?: str
       <label>Opening quantity<input name="quantity" type="number" min="0.1" step="0.1" required /></label>
       <label>Unit<select name="unit" defaultValue={data.ingredients.find((item) => item.id === selected)?.defaultUnit}>{['g','kg','ml','L','pcs'].map((unit) => <option key={unit}>{unit}</option>)}</select></label>
       <label>Supplier lot<input name="supplierLotNumber" /></label><label>Received date<input name="receivedDate" type="date" defaultValue="2026-07-14" required /></label>
+      <label>Total acquisition cost<input name="totalAcquisitionCost" type="number" min="0" step=".01"/><small>Workspace base currency: NOK</small></label><label>Cost notes<input name="costNotes" placeholder="Receipt or transaction context"/></label>
       <label>Expiry date<input name="expiryDate" type="date" /></label><label>Best before<input name="bestBeforeDate" type="date" /></label>
       <label className="span-2">Storage location<input name="location" defaultValue="Raw Materials / Shelf A" required /></label><label className="span-2">Notes<textarea name="notes" /></label>
     </div>{error && <p className="form-error">{error}</p>}<footer><button type="button" className="button ghost" onClick={onClose}>Cancel</button><button className="button primary">Receive physical stock</button></footer>

@@ -27,3 +27,8 @@ Product documentation, market-specific readiness, packaging specifications and a
 ## Phase 7: Koalafrog Intelligence Layer
 
 Search and synthesis across accumulated private knowledge, assisted comparison of experiments, anomaly and follow-up surfacing, and decision context. This phase must remain evidence-linked, private, and transparent; it should never invent laboratory or compliance conclusions.
+# Phase 5 status
+
+Phase 5 Production + Costing is implemented: Approved-version run creation, immutable execution snapshots, controlled lifecycle, multi-lot explicit consumption, yield/output capture, acquisition-cost snapshots, coverage-aware estimates, actual run costing, additional cost lines, and a lightweight pricing scenario.
+
+Packaging remains a later module. It may replace manual packaging Cost Lines with structured components and inventory. Compliance remains separate; Formula `Approved` is the existing internal formula status and Production `Completed` is only execution completion, not commercial or regulatory approval.

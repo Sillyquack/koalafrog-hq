@@ -3,6 +3,7 @@ import type { FormulaState } from '../types/domain'
 import { inventoryLots, inventoryMovements, supplierProducts } from './inventorySeed'
 import { ingredients } from './mockData'
 import { labBatchAllocations, labBatchLines, labBatches, labObservations, processSteps, testers, testResponses, testSessions, testTemplates } from './labSeed'
+import { costLines, productionProcessSteps, productionRunAllocations, productionRunLines, productionRuns } from './productionSeed'
 
 type SeedLine = readonly [string, number, string, string]
 const baseLines: readonly SeedLine[] = [
@@ -24,7 +25,7 @@ export const formulaSeed: FormulaState = {
   ],
   formulaVersions: [
     { id: 'fv-bo-01', formulaId: 'f-bo-original', version: 'v0.1', status: 'Retired', description: 'First balanced carrier study.', targetCharacteristics: 'Medium glide, clean finish, subtle woody profile.', createdAt: '2026-03-02', updatedAt: '2026-04-10' },
-    { id: 'fv-bo-02', formulaId: 'f-bo-original', version: 'v0.2', status: 'Candidate', description: 'Reduced perceived heaviness and refined scent load.', targetCharacteristics: 'Dry touch within five minutes; calm woody-spice trail.', processInstructions: 'Combine Phase A with gentle stirring. Add fragrance and final additions below 35°C.', developmentNotes: 'Development mock data only. Not assessed for safety, compliance, or performance.', createdAt: '2026-04-11', updatedAt: '2026-07-14', derivedFromVersionId: 'fv-bo-01' },
+    { id: 'fv-bo-02', formulaId: 'f-bo-original', version: 'v0.2', status: 'Approved', description: 'Reduced perceived heaviness and refined scent load.', targetCharacteristics: 'Dry touch within five minutes; calm woody-spice trail.', processInstructions: 'Combine Phase A with gentle stirring. Add fragrance and final additions below 35°C.', developmentNotes: 'Development/demo approval status only. Not a safety, compliance, or commercial approval.', approvedAt:'2026-07-14', createdAt: '2026-04-11', updatedAt: '2026-07-14', derivedFromVersionId: 'fv-bo-01' },
     { id: 'fv-bo-s-01', formulaId: 'f-bo-summer', version: 'v0.1', status: 'Draft', description: 'Early lightweight seasonal study.', targetCharacteristics: 'Very light wear and restrained scent.', createdAt: '2026-06-10', updatedAt: '2026-07-10' },
     { id: 'fv-bb-01', formulaId: 'f-bb-original', version: 'v0.4', status: 'Draft', description: 'Cooling curve and butter-ratio iteration.', targetCharacteristics: 'Soft scoop, clean melt, minimal wax drag.', createdAt: '2026-07-01', updatedAt: '2026-07-12' },
   ],
@@ -39,4 +40,5 @@ export const formulaSeed: FormulaState = {
   inventoryLots,
   inventoryMovements,
   labBatches, labBatchLines, labBatchAllocations, processSteps, labObservations, testers, testTemplates, testSessions, testResponses,
+  productionRuns, productionRunLines, productionRunAllocations, productionProcessSteps, costLines,
 }
