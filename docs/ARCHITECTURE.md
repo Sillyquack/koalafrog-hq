@@ -15,11 +15,13 @@ The source tree separates concerns:
 - `utils`: small formatting helpers.
 - `styles`: visual system and responsive behaviour.
 
-The current data imports are intentionally direct because the foundation is read-only and local. Components do not contain data fixtures or backend assumptions.
+Static reference fixtures remain direct imports. The functional Product and Formula system uses a `FormulaDataProvider` backed by a small `FormulaRepository` contract. `LocalFormulaRepository` stores one versioned aggregate in browser local storage, seeds it only when no saved data exists, and keeps storage calls outside UI components. User-created state therefore survives refreshes without being overwritten by seed changes.
+
+Formula calculations and lifecycle rules live in pure domain utilities. Percentage totals use bounded decimal rounding, scaling derives gram weights without mutating percentages, status transitions are explicit, and duplication produces a new Draft with new version and line IDs.
 
 ## Intended Supabase integration
 
-When persistence is introduced, add repository contracts grouped around domain use cases rather than database tables. For example, a `ProductRepository` may expose list, get, create, and update operations. A local implementation can preserve fast development while a Supabase implementation maps database rows into domain types.
+When Supabase persistence is introduced, evolve the existing boundary into repositories grouped around domain use cases rather than mirroring database tables. Supabase adapters will map database rows into domain types while the current local adapter can remain useful for isolated development.
 
 The planned boundary is:
 

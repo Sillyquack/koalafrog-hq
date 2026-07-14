@@ -8,11 +8,54 @@ export interface Product {
   status: ProductStatus
   developmentStage: ProductStage
   description: string
-  currentFormulaVersion: string
+  currentDevelopmentFormulaVersionId?: string
+  currentApprovedFormulaVersionId?: string
   scentProfile: string
   targetLaunchDate: string
   createdAt: string
   updatedAt: string
+}
+
+export interface Formula {
+  id: string
+  productId: string
+  name: string
+  description: string
+  createdAt: string
+  updatedAt: string
+}
+
+export type FormulaVersionStatus = 'Draft' | 'Candidate' | 'Approved' | 'Retired'
+export interface FormulaVersion {
+  id: string
+  formulaId: string
+  version: string
+  status: FormulaVersionStatus
+  description: string
+  targetCharacteristics: string
+  processInstructions?: string
+  developmentNotes?: string
+  approvedAt?: string
+  createdAt: string
+  updatedAt: string
+  derivedFromVersionId?: string
+}
+
+export interface FormulaLine {
+  id: string
+  formulaVersionId: string
+  ingredientId: string
+  percentage: number
+  phase: string
+  sortOrder: number
+  notes: string
+}
+
+export interface FormulaState {
+  products: Product[]
+  formulas: Formula[]
+  formulaVersions: FormulaVersion[]
+  formulaLines: FormulaLine[]
 }
 
 export interface Ingredient {

@@ -1,11 +1,11 @@
 import type { Accord, Activity, Batch, Ingredient, ModuleDefinition, Product, ScentMaterial, ScentProfile, TestingActivity } from '../types/domain'
 
 export const products: Product[] = [
-  { id: 'p1', name: 'Signature Beard Oil', category: 'Beard Care', status: 'Active', developmentStage: 'Testing', description: 'A dry-touch daily oil balancing glide, absorption and a quiet signature scent.', currentFormulaVersion: 'v0.8', scentProfile: 'Workshop No. 01', targetLaunchDate: '2026-11-15', createdAt: '2026-03-02', updatedAt: '2026-07-14' },
-  { id: 'p2', name: 'Beard Butter', category: 'Beard Care', status: 'Active', developmentStage: 'Formulation', description: 'A soft, non-waxy conditioning butter with controlled melt and a refined finish.', currentFormulaVersion: 'v0.4', scentProfile: 'Warm Woods Study', targetLaunchDate: '2027-02-01', createdAt: '2026-04-18', updatedAt: '2026-07-12' },
-  { id: 'p3', name: 'Beard Balm', category: 'Beard Care', status: 'Active', developmentStage: 'Research', description: 'Medium-control shaping balm designed for restyling without a heavy residue.', currentFormulaVersion: 'v0.2', scentProfile: 'Unassigned', targetLaunchDate: '2027-04-20', createdAt: '2026-05-04', updatedAt: '2026-07-08' },
-  { id: 'p4', name: 'Koalafrog Signature Fragrance', category: 'Fragrance', status: 'Active', developmentStage: 'Research', description: 'The olfactive cornerstone: mineral air, worn leather, warm timber and amber.', currentFormulaVersion: 'Study 06', scentProfile: 'Signature DNA', targetLaunchDate: '2027-09-01', createdAt: '2026-02-12', updatedAt: '2026-07-13' },
-  { id: 'p5', name: 'Daily Deodorant', category: 'Body Care', status: 'On hold', developmentStage: 'Idea', description: 'A dependable daily format explored through texture, wear and packaging studies.', currentFormulaVersion: '—', scentProfile: 'Open brief', targetLaunchDate: '2028-03-01', createdAt: '2026-06-21', updatedAt: '2026-06-21' },
+  { id: 'p1', name: 'Signature Beard Oil', category: 'Beard Care', status: 'Active', developmentStage: 'Testing', description: 'A dry-touch daily oil balancing glide, absorption and a quiet signature scent.', currentDevelopmentFormulaVersionId: 'fv-bo-02', scentProfile: 'Workshop No. 01', targetLaunchDate: '2026-11-15', createdAt: '2026-03-02', updatedAt: '2026-07-14' },
+  { id: 'p2', name: 'Beard Butter', category: 'Beard Care', status: 'Active', developmentStage: 'Formulation', description: 'A soft, non-waxy conditioning butter with controlled melt and a refined finish.', currentDevelopmentFormulaVersionId: 'fv-bb-01', scentProfile: 'Warm Woods Study', targetLaunchDate: '2027-02-01', createdAt: '2026-04-18', updatedAt: '2026-07-12' },
+  { id: 'p3', name: 'Beard Balm', category: 'Beard Care', status: 'Active', developmentStage: 'Research', description: 'Medium-control shaping balm designed for restyling without a heavy residue.', scentProfile: 'Unassigned', targetLaunchDate: '2027-04-20', createdAt: '2026-05-04', updatedAt: '2026-07-08' },
+  { id: 'p4', name: 'Koalafrog Signature Fragrance', category: 'Fragrance', status: 'Active', developmentStage: 'Research', description: 'The olfactive cornerstone: mineral air, worn leather, warm timber and amber.', scentProfile: 'Signature DNA', targetLaunchDate: '2027-09-01', createdAt: '2026-02-12', updatedAt: '2026-07-13' },
+  { id: 'p5', name: 'Daily Deodorant', category: 'Body Care', status: 'On hold', developmentStage: 'Idea', description: 'A dependable daily format explored through texture, wear and packaging studies.', scentProfile: 'Open brief', targetLaunchDate: '2028-03-01', createdAt: '2026-06-21', updatedAt: '2026-06-21' },
 ]
 
 export const ingredients: Ingredient[] = [
@@ -17,6 +17,8 @@ export const ingredients: Ingredient[] = [
   { id: 'i6', commonName: 'Cedarwood Atlas Essential Oil', inciName: 'Cedrus Atlantica Bark Oil', category: 'Scent Material', function: 'Woody scent note', supplier: 'Atelier Botanica', quantityOnHand: 38, unit: 'g', reorderLevel: 20, cost: 0.42, notes: 'Dry pencil shaving character.' },
   { id: 'i7', commonName: 'Bergamot Calabrian Essential Oil', inciName: 'Citrus Aurantium Bergamia Peel Oil', category: 'Scent Material', function: 'Citrus scent note', supplier: 'Atelier Botanica', quantityOnHand: 15, unit: 'g', reorderLevel: 20, cost: 0.61, notes: 'Bright opening material for evaluation.' },
   { id: 'i8', commonName: 'Cardamom Essential Oil', inciName: 'Elettaria Cardamomum Seed Oil', category: 'Scent Material', function: 'Spiced scent note', supplier: 'Atelier Botanica', quantityOnHand: 9, unit: 'g', reorderLevel: 15, cost: 0.88, notes: 'Cool aromatic spice; signature candidate.' },
+  { id: 'i9', commonName: 'Castor Oil', inciName: 'Ricinus Communis Seed Oil', category: 'Carrier Oil', function: 'Body & glide', supplier: 'Nordic Raw Materials', quantityOnHand: 310, unit: 'g', reorderLevel: 150, cost: 0.07, notes: 'Development sample; evaluate tack at different levels.' },
+  { id: 'i10', commonName: 'Workshop No. 01 Blend', inciName: 'Parfum', category: 'Scent Blend', function: 'Development scent direction', supplier: 'Koalafrog Scent House', quantityOnHand: 28, unit: 'g', reorderLevel: 10, cost: 0.54, notes: 'Internal mock blend record for formula demonstrations.' },
 ]
 
 export const batches: Batch[] = [
@@ -55,7 +57,6 @@ export const testingActivities: TestingActivity[] = [
 ]
 
 export const placeholderModules: ModuleDefinition[] = [
-  { path: 'formulas', name: 'Formulas', eyebrow: 'Versioned formulation', description: 'Build, compare and promote controlled formula versions for every product.', capabilities: ['Percentage and weight calculations', 'Version history and change notes', 'Formula-to-batch handoff'] },
   { path: 'inventory', name: 'Inventory', eyebrow: 'Materials & finished goods', description: 'Track stock movements, lots, locations and expiry awareness across the workshop.', capabilities: ['Lot-level stock', 'Movement history', 'Reorder planning'] },
   { path: 'production', name: 'Production', eyebrow: 'Repeatable making', description: 'Turn validated formulas into controlled, documented production runs.', capabilities: ['Production orders', 'Run sheets', 'Yield and deviation records'] },
   { path: 'testing', name: 'Testing', eyebrow: 'Evidence over instinct', description: 'Plan and record stability, wear, packaging and validation activities.', capabilities: ['Test protocols', 'Scheduled observations', 'Comparable results'] },

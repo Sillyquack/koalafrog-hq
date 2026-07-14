@@ -1,12 +1,12 @@
 # Roadmap
 
-## Phase 1: Foundation
+## Phase 1: Foundation — Complete
 
 Responsive application shell, domain models, local fixtures, core layouts for Dashboard, Products, Ingredients, Lab, and Scent House, placeholder modules, and repository documentation.
 
-## Phase 2: Product + Formula System
+## Phase 2: Product + Formula System — Complete
 
-Editable product briefs, lifecycle history, formula versioning, ingredient lines, scaling, comparison, change notes, and formula promotion.
+Functional product workspaces and filters; formula library and detail routes; editable Draft composition lines; immutable Candidate, Approved, and Retired history; safe Draft duplication; status transitions; canonical percentage validation; live gram scaling; refresh-safe local persistence; and focused domain tests. Deeper product editing and side-by-side formula comparison remain candidates for later refinement.
 
 ## Phase 3: Ingredient + Inventory System
 
