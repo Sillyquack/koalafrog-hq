@@ -1,6 +1,7 @@
 import type { FormulaState } from '../../types/domain'
 
 export const workspaceActionNames = [
+  'createProduct','updateProduct',
   'updateLine','addLine','removeLine','moveLine','saveVersion','transitionVersion','duplicateAsDraft','createFormula',
   'createIngredient','updateIngredient','archiveIngredient','saveSupplierProduct','markSupplierPreferred','receiveStock','addMovement','updateInventoryLot',
   'createLabBatch','updateBatchLine','addAllocation','updateAllocation','commitBatchConsumption','transitionBatch','updateLabBatch','addProcessStep','updateProcessStep','addObservation',
@@ -8,7 +9,7 @@ export const workspaceActionNames = [
   'createProductionRun','updateProductionRun','transitionProductionRun','updateProductionLine','addProductionAllocation','updateProductionAllocation','commitProductionConsumption','addProductionStep','updateProductionStep','addCostLine',
   'createPackagingComponent','updatePackagingComponent','savePackagingSupplierProduct','receivePackagingStock','addPackagingMovement','createPackagingSpecification','updatePackagingLine','addPackagingLine','transitionPackagingVersion','duplicatePackagingVersion',
   'createFinishedGoodsBatch','addPackagingAllocation','updatePackagingAllocation','commitPackagingConsumption','addFinishedGoodsMovement',
-  'createComplianceDossier','duplicateComplianceDossier','updateComplianceDossier','recordLaunchDecision',
+  'createComplianceDossier','duplicateComplianceDossier','updateComplianceDossier','updateRegulatoryReview','updatePifSection','updateLaunchPlan','recordLaunchDecision',
 ] as const
 
 export type WorkspaceActionName = typeof workspaceActionNames[number]

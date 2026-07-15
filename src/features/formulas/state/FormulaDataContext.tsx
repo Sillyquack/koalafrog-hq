@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useMemo, useRef, useState } from 'react'
-import type { ComplianceDossier, CostLine, FinishedGoodsBatch, FinishedGoodsMovement, Formula, FormulaLine, FormulaState, FormulaVersion, FormulaVersionStatus, Ingredient, InventoryLot, InventoryMovement, InventoryUnit, LabBatch, LabBatchAllocation, LabBatchLine, LabBatchStatus, LabObservation, PackagingAllocation, PackagingComponent, PackagingInventoryLot, PackagingInventoryMovement, PackagingSpecification, PackagingSpecificationLine, PackagingSpecificationStatus, PackagingSupplierProduct, ProductionRun, ProductionRunAllocation, ProductionRunLine, ProductionRunStatus, SupplierProduct, TestResponse, TestSession, TestTemplate, Tester } from '../../../types/domain'
+import type { ComplianceDossier, CostLine, FinishedGoodsBatch, FinishedGoodsMovement, Formula, FormulaLine, FormulaState, FormulaVersion, FormulaVersionStatus, Ingredient, InventoryLot, InventoryMovement, InventoryUnit, LabBatch, LabBatchAllocation, LabBatchLine, LabBatchStatus, LabObservation, LaunchPlan, PackagingAllocation, PackagingComponent, PackagingInventoryLot, PackagingInventoryMovement, PackagingSpecification, PackagingSpecificationLine, PackagingSpecificationStatus, PackagingSupplierProduct, PifSection, Product, ProductionRun, ProductionRunAllocation, ProductionRunLine, ProductionRunStatus, RegulatoryReview, SupplierProduct, TestResponse, TestSession, TestTemplate, Tester } from '../../../types/domain'
 import { duplicateDossier as duplicateComplianceDossierDomain } from '../../compliance/domain/complianceLogic'
 import { canTransition, duplicateVersion } from '../domain/formulaLogic'
 import { generateLotNumber, validateMovement } from '../../inventory/domain/inventoryLogic'
@@ -15,6 +15,8 @@ import type { WorkspaceActionName, WorkspaceStateMutation } from '../../../platf
 interface FormulaDataValue extends FormulaState {
   pendingActions: readonly WorkspaceActionName[]
   actionError?: string
+  createProduct(input: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>): Product
+  updateProduct(id: string, patch: Partial<Product>): void
   updateLine(versionId: string, lineId: string, patch: Partial<FormulaLine>): void
   addLine(versionId: string, ingredientId: string): void
   removeLine(versionId: string, lineId: string): void
@@ -73,6 +75,9 @@ interface FormulaDataValue extends FormulaState {
   createComplianceDossier(input:Pick<ComplianceDossier,'productId'|'formulaVersionId'|'packagingSpecificationVersionId'|'targetMarket'|'targetLanguage'|'responsiblePersonId'|'internalOwner'|'notes'>):ComplianceDossier
   duplicateComplianceDossier(id:string,formulaVersionId:string,packagingSpecificationVersionId?:string):ComplianceDossier|undefined
   updateComplianceDossier(id:string,patch:Partial<ComplianceDossier>):void
+  updateRegulatoryReview(id:string,patch:Partial<RegulatoryReview>):void
+  updatePifSection(id:string,patch:Partial<PifSection>):void
+  updateLaunchPlan(id:string,patch:Partial<LaunchPlan>):void
   recordLaunchDecision(launchPlanId:string,decision:'Go'|'No-Go'|'Conditional Go'|'Deferred',notes:string):Promise<void>|undefined
 }
 const FormulaDataContext = createContext<FormulaDataValue | null>(null)
@@ -95,6 +100,8 @@ export function FormulaDataProvider({ children, repository = defaultWorkspaceRep
   }, [repository])
 
   const value = useMemo<FormulaDataValue>(() => ({ ...state, pendingActions, actionError,
+    createProduct(input) { const now=new Date().toISOString();const product:Product={...input,id:uid(),createdAt:now,updatedAt:now};commitState('createProduct',current=>({...current,products:[...current.products,product]}));return product },
+    updateProduct(id,patch) { commitState('updateProduct',current=>({...current,products:current.products.map(product=>product.id===id?{...product,...patch,id,updatedAt:new Date().toISOString()}:product)})) },
     updateLine(versionId, lineId, patch) { commitState("updateLine",(current) => ({ ...current, formulaLines: current.formulaLines.map((line) => line.formulaVersionId === versionId && line.id === lineId ? { ...line, ...patch } : line), formulaVersions: current.formulaVersions.map((version) => version.id === versionId ? { ...version, updatedAt: new Date().toISOString() } : version) })) },
     addLine(versionId, ingredientId) { commitState("addLine",(current) => ({ ...current, formulaLines: [...current.formulaLines, { id: uid(), formulaVersionId: versionId, ingredientId, percentage: 0, phase: 'Phase A', sortOrder: current.formulaLines.filter((line) => line.formulaVersionId === versionId).length + 1, notes: '' }] })) },
     removeLine(versionId, lineId) { commitState("removeLine",(current) => ({ ...current, formulaLines: current.formulaLines.filter((line) => !(line.formulaVersionId === versionId && line.id === lineId)) })) },
@@ -153,6 +160,9 @@ export function FormulaDataProvider({ children, repository = defaultWorkspaceRep
     createComplianceDossier(input){const version=state.formulaVersions.find(v=>v.id===input.formulaVersionId),formula=state.formulas.find(f=>f.id===version?.formulaId);if(!version||formula?.productId!==input.productId)throw new Error('Select an exact Formula Version belonging to the Product.');const now=new Date().toISOString(),id=uid();const compositionSnapshot=state.formulaLines.filter(l=>l.formulaVersionId===version.id).map(l=>{const ingredient=state.ingredients.find(i=>i.id===l.ingredientId);return{formulaLineId:l.id,ingredientId:l.ingredientId,ingredientNameSnapshot:ingredient?.commonName??'Unknown ingredient',inciNameSnapshot:ingredient?.inciName??'',concentration:l.percentage}});const dossier:ComplianceDossier={...input,id,status:'Draft',compositionSnapshot,createdAt:now,updatedAt:now};commitState("createComplianceDossier",c=>({...c,complianceDossiers:[...c.complianceDossiers,dossier]}));return dossier},
     duplicateComplianceDossier(id,formulaVersionId,packagingSpecificationVersionId){const source=state.complianceDossiers.find(d=>d.id===id);if(!source)return;const dossier=duplicateComplianceDossierDomain(source,{formulaVersionId,packagingSpecificationVersionId,labelArtworkVersionId:undefined},uid());commitState("duplicateComplianceDossier",c=>({...c,complianceDossiers:[...c.complianceDossiers,dossier],pifSections:[...c.pifSections,...c.pifSections.filter(p=>p.complianceDossierId===id).map(p=>({...p,id:uid(),complianceDossierId:dossier.id,status:['Evidence Recorded','External Review Complete'].includes(p.status)?'Needs Review':p.status}))]}));return dossier},
     updateComplianceDossier(id,patch){commitState("updateComplianceDossier",c=>({...c,complianceDossiers:c.complianceDossiers.map(d=>d.id===id?{...d,...patch,id,formulaVersionId:d.formulaVersionId,packagingSpecificationVersionId:d.packagingSpecificationVersionId,createdAt:d.createdAt,updatedAt:new Date().toISOString()}:d)}))},
+    updateRegulatoryReview(id,patch){commitState('updateRegulatoryReview',current=>({...current,regulatoryReviews:current.regulatoryReviews.map(review=>review.id===id?{...review,...patch,id,updatedAt:new Date().toISOString()}:review)}))},
+    updatePifSection(id,patch){commitState('updatePifSection',current=>({...current,pifSections:current.pifSections.map(section=>section.id===id?{...section,...patch,id}:section)}))},
+    updateLaunchPlan(id,patch){commitState('updateLaunchPlan',current=>({...current,launchPlans:current.launchPlans.map(plan=>plan.id===id?{...plan,...patch,id,updatedAt:new Date().toISOString()}:plan)}))},
     async recordLaunchDecision(launchPlanId,decision,notes){const plan=state.launchPlans.find(p=>p.id===launchPlanId);if(!plan)return;const now=new Date().toISOString();await commitState("recordLaunchDecision",c=>({...c,launchDecisions:[...c.launchDecisions,{id:uid(),launchPlanId,decision,decidedAt:now,decidedBy:'Owner',complianceDossierId:plan.complianceDossierId,unresolvedBlockingIssues:c.readinessIssues.filter(i=>i.complianceDossierId===plan.complianceDossierId&&i.severity==='Blocking'&&i.status==='Open').map(i=>i.title),acknowledgedRisks:'',notes}]}))},
   }), [state, pendingActions, actionError, commitState])
   return <FormulaDataContext.Provider value={value}>{children}</FormulaDataContext.Provider>

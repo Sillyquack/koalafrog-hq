@@ -5,9 +5,9 @@ import { executeWorkspaceAction } from './workspaceActionExecutor'
 import { workspaceActionNames } from './workspaceActions'
 
 describe('workspace application actions', () => {
-  it('inventories all 59 provider mutations without duplicates', () => {
-    expect(workspaceActionNames).toHaveLength(59)
-    expect(new Set(workspaceActionNames).size).toBe(59)
+  it('inventories all 64 provider mutations without duplicates', () => {
+    expect(workspaceActionNames).toHaveLength(64)
+    expect(new Set(workspaceActionNames).size).toBe(64)
   })
 
   it('commits in-memory state only after asynchronous persistence confirms', async () => {

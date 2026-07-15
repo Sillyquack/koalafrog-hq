@@ -5,6 +5,14 @@ import { compareReconciliation, reconciliationSnapshot, validateV9Workspace } fr
 import { relationalMigrationPayload, relationalTableByCollection, SupabaseWorkspaceRepository, toDomainValue } from './supabaseWorkspaceRepository'
 import { supabase } from '../supabase/client'
 import type { FormulaState } from '../../types/domain'
+import { executeWorkspaceAction } from '../actions/workspaceActionExecutor'
+import type { WorkspaceActionName, WorkspaceStateMutation } from '../actions/workspaceActions'
+import { lotBalance } from '../../features/inventory/domain/inventoryLogic'
+import { packagingLotBalance } from '../../features/packaging/domain/packagingLogic'
+import { finishedGoodsBalance } from '../../features/finished-goods/domain/finishedGoodsLogic'
+import { actualMaterialCost, additionalCostTotal, productionCost } from '../../features/costing/domain/costingLogic'
+import { LocalWorkspaceRepository } from './localWorkspaceRepository'
+import type { WorkspaceRepository } from './workspaceRepository'
 
 const url = import.meta.env.VITE_SUPABASE_TEST_URL as string | undefined
 const serviceKey = import.meta.env.VITE_SUPABASE_TEST_SERVICE_ROLE_KEY as string | undefined
@@ -25,6 +33,12 @@ run('relational v9 migration against local Supabase', () => {
     const signedIn = await client.auth.signInWithPassword({ email, password })
     if (signedIn.error) throw signedIn.error
     return { client, ownerId: created.data.user.id, email, password }
+  }
+
+  async function applicationAction(repository:WorkspaceRepository,current:FormulaState,action:WorkspaceActionName,mutation:WorkspaceStateMutation) {
+    let committed=current
+    await executeWorkspaceAction(repository,current,action,mutation,{committed:next=>{committed=next},failed:()=>{},pending:()=>{}})
+    return committed
   }
 
   beforeAll(() => {
@@ -155,4 +169,104 @@ run('relational v9 migration against local Supabase', () => {
     expect((await client.from('ingredients').select('notes').eq('id',stale.id).single()).data?.notes).toBe('Other tab')
     await supabase!.auth.signOut()
   })
+
+  it('persists representative application actions across every domain and survives fresh hydration without a local dual write', async () => {
+    const { ownerId, email, password } = await ownerClient('matrix')
+    const localKey='koalafrog.formula-workspace.v9'
+    const localValues=new Map<string,string>()
+    Object.defineProperty(globalThis,'localStorage',{configurable:true,value:{getItem:(key:string)=>localValues.get(key)??null,setItem:(key:string,value:string)=>localValues.set(key,value),removeItem:(key:string)=>localValues.delete(key),clear:()=>localValues.clear(),key:(index:number)=>[...localValues.keys()][index]??null,get length(){return localValues.size}}})
+    localStorage.setItem(localKey,'local-sentinel')
+    expect((await supabase!.auth.signInWithPassword({email,password})).error).toBeNull()
+    const repository=new SupabaseWorkspaceRepository()
+    expect((await repository.importV9(ownerId,formulaSeed)).state).toContain('Imported')
+    let state=await new SupabaseWorkspaceRepository().load(ownerId)
+    const reload=async()=>{state=await new SupabaseWorkspaceRepository().load(ownerId);return state}
+    const act=async(action:WorkspaceActionName,mutation:WorkspaceStateMutation)=>{await applicationAction(repository,state,action,mutation);return reload()}
+    const now='2026-07-15T12:00:00.000Z'
+
+    await act('createProduct',current=>({...current,products:[...current.products,{id:'p-matrix',name:'Matrix Balm',category:'Balm',status:'Active',developmentStage:'Research',description:'Created through application action',scentProfile:'Unscented',targetLaunchDate:'2027-01-15',createdAt:now,updatedAt:now}]}))
+    await act('updateProduct',current=>({...current,products:current.products.map(item=>item.id==='p-matrix'?{...item,description:'Persisted product metadata',developmentStage:'Formulation',updatedAt:'2026-07-15T12:01:00.000Z'}:item)}))
+    expect(state.products.filter(item=>item.id==='p-matrix')).toHaveLength(1)
+    expect(state.products.find(item=>item.id==='p-matrix')?.description).toBe('Persisted product metadata')
+
+    await act('createIngredient',current=>({...current,ingredients:[...current.ingredients,{id:'i-matrix',commonName:'Matrix Oil',inciName:'SIMMONDSIA CHINENSIS SEED OIL',category:'Emollient',functions:['Emollient','Skin conditioning'],description:'Verification ingredient',defaultUnit:'g',reorderThreshold:25,notes:'Created',status:'Active',createdAt:now,updatedAt:now}]}))
+    await act('updateIngredient',current=>({...current,ingredients:current.ingredients.map(item=>item.id==='i-matrix'?{...item,notes:'Hydrated metadata',updatedAt:'2026-07-15T12:02:00.000Z'}:item)}))
+    expect(state.ingredients.find(item=>item.id==='i-matrix')?.functions).toEqual(['Emollient','Skin conditioning'])
+
+    await act('createFormula',current=>({...current,formulas:[...current.formulas,{id:'f-matrix',productId:'p-matrix',name:'Matrix Formula',description:'Verification',createdAt:now,updatedAt:now}],formulaVersions:[...current.formulaVersions,{id:'fv-matrix',formulaId:'f-matrix',version:'v0.1',status:'Draft',description:'Draft',targetCharacteristics:'Stable',developmentNotes:'Independent draft',createdAt:now,updatedAt:now}],formulaLines:[...current.formulaLines,{id:'fl-matrix-1',formulaVersionId:'fv-matrix',ingredientId:'i-matrix',percentage:60,phase:'A',sortOrder:1,notes:'First'},{id:'fl-matrix-2',formulaVersionId:'fv-matrix',ingredientId:'i1',percentage:40,phase:'B',sortOrder:2,notes:'Second'}]}))
+    await act('duplicateAsDraft',current=>({...current,formulaVersions:[...current.formulaVersions,{id:'fv-matrix-copy',formulaId:'f-bo-original',version:'v0.3',status:'Draft',description:'Derived verification draft',targetCharacteristics:'',createdAt:now,updatedAt:now,derivedFromVersionId:'fv-bo-02'}],formulaLines:[...current.formulaLines,...current.formulaLines.filter(line=>line.formulaVersionId==='fv-bo-02').map((line,index)=>({...line,id:`fl-matrix-copy-${index}`,formulaVersionId:'fv-matrix-copy'}))]}))
+    expect(state.formulaLines.filter(line=>line.formulaVersionId==='fv-matrix').map(line=>line.sortOrder)).toEqual([1,2])
+    expect(state.formulaVersions.find(item=>item.id==='fv-bo-02')?.status).toBe('Approved')
+
+    await act('receiveStock',current=>({...current,inventoryLots:[...current.inventoryLots,{id:'lot-matrix',ingredientId:'i-matrix',internalLotNumber:'KF-RM-MATRIX',receivedDate:'2026-07-15',openingQuantity:100,unit:'g',location:'Test',status:'Active',notes:'',totalAcquisitionCost:20,acquisitionCostCurrency:'NOK',createdAt:now,updatedAt:now}],inventoryMovements:[...current.inventoryMovements,{id:'im-matrix-receipt',inventoryLotId:'lot-matrix',type:'Receipt',quantity:100,unit:'g',reason:'Verification receipt',notes:'',occurredAt:now,createdAt:now}]}))
+    await act('addMovement',current=>({...current,inventoryMovements:[...current.inventoryMovements,{id:'im-matrix-sample',inventoryLotId:'lot-matrix',type:'Sample',quantity:5,unit:'g',reason:'Verification sample',notes:'',occurredAt:now,createdAt:now}]}))
+    expect(lotBalance(state.inventoryLots.find(item=>item.id==='lot-matrix')!,state.inventoryMovements)).toBe(95)
+
+    await act('createLabBatch',current=>({...current,labBatches:[...current.labBatches,{id:'lb-matrix',batchNumber:'KF-LAB-MATRIX',productId:'p-matrix',formulaId:'f-matrix',formulaVersionId:'fv-matrix',status:'In Progress',plannedBatchSize:10,plannedBatchUnit:'g',createdAt:now,updatedAt:now,purpose:'Verification',notes:'',summary:'',targetCharacteristics:'Stable'}],labBatchLines:[...current.labBatchLines,{id:'lbl-matrix',labBatchId:'lb-matrix',formulaLineId:'fl-matrix-1',ingredientId:'i-matrix',ingredientNameSnapshot:'Matrix Oil',phase:'A',plannedPercentage:60,plannedQuantity:6,actualQuantity:6,unit:'g',variance:0,notes:'',status:'Weighed'}],labBatchAllocations:[...current.labBatchAllocations,{id:'la-matrix',labBatchLineId:'lbl-matrix',inventoryLotId:'lot-matrix',quantity:6,unit:'g'}]}))
+    await act('commitBatchConsumption',current=>({...current,inventoryMovements:[...current.inventoryMovements,{id:'im-matrix-lab',inventoryLotId:'lot-matrix',type:'Consumption',quantity:6,unit:'g',reason:'Lab verification',referenceType:'LabBatch',referenceId:'lb-matrix',notes:'',occurredAt:now,createdAt:now}],labBatchAllocations:current.labBatchAllocations.map(item=>item.id==='la-matrix'?{...item,inventoryMovementId:'im-matrix-lab'}:item)}))
+    expect(state.labBatchAllocations.find(item=>item.id==='la-matrix')?.inventoryMovementId).toBe('im-matrix-lab')
+
+    await act('createTestTemplate',current=>({...current,testTemplates:[...current.testTemplates,{id:'tt-matrix',name:'Matrix template',description:'Normalized questions',questions:[{id:'q-matrix-1',prompt:'Rating',type:'Numeric Rating',sortOrder:1},{id:'q-matrix-2',prompt:'Approved?',type:'Yes / No',sortOrder:2},{id:'q-matrix-3',prompt:'Notes',type:'Free Text',sortOrder:3}],createdAt:now,updatedAt:now}]}))
+    await act('createTestSession',current=>({...current,testSessions:[...current.testSessions,{id:'ts-matrix',labBatchId:'lb-matrix',testTemplateId:'tt-matrix',name:'Matrix session',status:'Active',createdAt:now,notes:''}]}))
+    await act('addTestResponse',current=>({...current,testResponses:[...current.testResponses,{id:'tr-matrix',testSessionId:'ts-matrix',testerId:'tester1',answers:[{questionId:'q-matrix-1',value:4},{questionId:'q-matrix-2',value:true},{questionId:'q-matrix-3',value:'Clean finish'}],overallNotes:'Immutable',submittedAt:now}]}))
+    expect(state.testResponses.find(item=>item.id==='tr-matrix')?.answers).toEqual([{questionId:'q-matrix-1',value:4},{questionId:'q-matrix-2',value:true},{questionId:'q-matrix-3',value:'Clean finish'}])
+
+    await act('createProductionRun',current=>({...current,productionRuns:[...current.productionRuns,{id:'pr-matrix',productionRunNumber:'KF-PR-MATRIX',productId:'p1',formulaId:'f-bo-original',formulaVersionId:'fv-bo-02',status:'In Progress',plannedBatchSize:10,plannedBatchUnit:'g',plannedUnits:4,actualUnitsProduced:4,createdAt:now,updatedAt:now,purpose:'Verification',notes:'',summary:''}],productionRunLines:[...current.productionRunLines,{id:'prl-matrix',productionRunId:'pr-matrix',formulaLineId:'fl-fv-bo-02-1',ingredientId:'i1',ingredientNameSnapshot:'Jojoba Oil',phase:'A',plannedPercentage:100,plannedQuantity:1,actualQuantity:1,unit:'g',variance:0,notes:'',status:'Weighed'}],productionRunAllocations:[...current.productionRunAllocations,{id:'pra-matrix',productionRunLineId:'prl-matrix',inventoryLotId:'lot1',quantity:1,unit:'g'}]}))
+    await act('commitProductionConsumption',current=>({...current,inventoryMovements:[...current.inventoryMovements,{id:'im-matrix-production',inventoryLotId:'lot1',type:'Consumption',quantity:1,unit:'g',reason:'Production verification',referenceType:'ProductionRun',referenceId:'pr-matrix',notes:'',occurredAt:now,createdAt:now}],productionRunAllocations:current.productionRunAllocations.map(item=>item.id==='pra-matrix'?{...item,inventoryMovementId:'im-matrix-production',unitCostSnapshot:.2,costCurrencySnapshot:'NOK'}:item)}))
+    expect(state.productionRunAllocations.find(item=>item.id==='pra-matrix')?.unitCostSnapshot).not.toBeNull()
+
+    await act('addCostLine',current=>({...current,costLines:[...current.costLines,{id:'cl-matrix-plan',scope:'Product',referenceId:'p-matrix',category:'Other',description:'Planning verification',amount:12,currency:'NOK',quantity:1,notes:'',createdAt:now,updatedAt:now},{id:'cl-matrix-actual',scope:'ProductionRun',referenceId:'pr-matrix',category:'Labour',description:'Actual labour',amount:30,currency:'NOK',quantity:2,notes:'',createdAt:now,updatedAt:now}]}))
+    const material=actualMaterialCost(state.productionRunLines.filter(line=>line.productionRunId==='pr-matrix'),state.productionRunAllocations)
+    expect(productionCost(material.total,additionalCostTotal(state.costLines.filter(line=>line.scope==='ProductionRun'&&line.referenceId==='pr-matrix')),4).total).toBeCloseTo(material.total+60)
+
+    await act('updatePackagingComponent',current=>({...current,packagingComponents:current.packagingComponents.map(item=>item.id==='pc-bottle'?{...item,notes:'Matrix persisted packaging',updatedAt:now}:item)}))
+    await act('updatePackagingLine',current=>({...current,packagingSpecificationLines:current.packagingSpecificationLines.map(item=>item.id==='pkgl-label'?{...item,purpose:'Matrix persisted line'}:item)}))
+    expect(state.packagingSpecificationLines.find(item=>item.id==='pkgl-label')?.purpose).toBe('Matrix persisted line')
+    await act('receivePackagingStock',current=>({...current,packagingInventoryLots:[...current.packagingInventoryLots,{id:'pl-matrix-label',packagingComponentId:'pc-label',internalLotNumber:'KF-PKG-MATRIX-LABEL',receivedDate:'2026-07-15',openingQuantity:20,unit:'pcs',location:'Test',status:'Active',notes:'',totalAcquisitionCost:20,acquisitionCostCurrency:'NOK',createdAt:now,updatedAt:now}],packagingInventoryMovements:[...current.packagingInventoryMovements,{id:'pm-matrix-label-receipt',packagingInventoryLotId:'pl-matrix-label',type:'Receipt',quantity:20,unit:'pcs',reason:'Packaging verification receipt',notes:'',occurredAt:now,createdAt:now}]}))
+
+    await act('createProductionRun',current=>({...current,productionRuns:[...current.productionRuns,{id:'pr-matrix-pack',productionRunNumber:'KF-PR-MATRIX-PACK',productId:'p1',formulaId:'f-bo-original',formulaVersionId:'fv-bo-02',status:'Completed',plannedBatchSize:2,plannedBatchUnit:'g',plannedUnits:2,actualUnitsProduced:2,createdAt:now,updatedAt:now,purpose:'Packaging verification',notes:'',summary:''}]}))
+    await act('createFinishedGoodsBatch',current=>({...current,finishedGoodsBatches:[...current.finishedGoodsBatches,{id:'fg-matrix-pack',finishedGoodsBatchNumber:'KF-FG-MATRIX-PACK',productionRunId:'pr-matrix-pack',productId:'p1',formulaVersionId:'fv-bo-02',packagingSpecificationVersionId:'pkgv-10',status:'Quarantined',productionDate:'2026-07-15',initialQuantity:2,unit:'pcs',notes:'Packaging verification',createdAt:now,updatedAt:now}]}))
+    await act('addPackagingAllocation',current=>({...current,packagingAllocations:[...current.packagingAllocations,...current.packagingSpecificationLines.filter(line=>line.packagingSpecificationVersionId==='pkgv-10').map((line,index)=>({id:`pa-matrix-${index}`,finishedGoodsBatchId:'fg-matrix-pack',packagingSpecificationLineId:line.id,packagingInventoryLotId:current.packagingInventoryLots.find(lot=>lot.packagingComponentId===line.packagingComponentId)!.id,quantity:line.quantityPerUnit*2,unit:line.unit}))]}))
+    await act('commitPackagingConsumption',current=>{const allocations=current.packagingAllocations.filter(item=>item.finishedGoodsBatchId==='fg-matrix-pack');const movements=allocations.map((allocation,index)=>({id:`pm-matrix-${index}`,packagingInventoryLotId:allocation.packagingInventoryLotId!,type:'Consumption' as const,quantity:allocation.quantity,unit:allocation.unit,reason:'Packaging verification',referenceType:'FinishedGoodsBatch',referenceId:'fg-matrix-pack',notes:'',occurredAt:now,createdAt:now}));return{...current,packagingInventoryMovements:[...current.packagingInventoryMovements,...movements],packagingAllocations:current.packagingAllocations.map(allocation=>{const index=allocations.findIndex(item=>item.id===allocation.id);return index<0?allocation:{...allocation,packagingInventoryMovementId:`pm-matrix-${index}`,unitCostSnapshot:1,costCurrencySnapshot:'NOK'}}),finishedGoodsMovements:[...current.finishedGoodsMovements,{id:'fgm-matrix-pack-receipt',finishedGoodsBatchId:'fg-matrix-pack',type:'ProductionReceipt',quantity:2,unit:'pcs',reason:'Packaging committed',referenceType:'ProductionRun',referenceId:'pr-matrix-pack',notes:'',occurredAt:now,createdAt:now}],finishedGoodsBatches:current.finishedGoodsBatches.map(batch=>batch.id==='fg-matrix-pack'?{...batch,status:'Active',updatedAt:now}:batch)}})
+    const bottleLot=state.packagingInventoryLots.find(item=>item.id==='pl-bottle')!
+    expect(packagingLotBalance(bottleLot,state.packagingInventoryMovements)).toBeLessThan(bottleLot.openingQuantity)
+
+    await act('createFinishedGoodsBatch',current=>({...current,finishedGoodsBatches:[...current.finishedGoodsBatches,{id:'fg-matrix',finishedGoodsBatchNumber:'KF-FG-MATRIX',productionRunId:'pr-matrix',productId:'p1',formulaVersionId:'fv-bo-02',status:'Active',productionDate:'2026-07-15',initialQuantity:4,unit:'pcs',notes:'Verification output',createdAt:now,updatedAt:now}],finishedGoodsMovements:[...current.finishedGoodsMovements,{id:'fgm-matrix-receipt',finishedGoodsBatchId:'fg-matrix',type:'ProductionReceipt',quantity:4,unit:'pcs',reason:'Verification output',referenceType:'ProductionRun',referenceId:'pr-matrix',notes:'',occurredAt:now,createdAt:now}]}))
+    await act('addFinishedGoodsMovement',current=>({...current,finishedGoodsMovements:[...current.finishedGoodsMovements,{id:'fgm-matrix-sample',finishedGoodsBatchId:'fg-matrix',type:'Sample',quantity:1,unit:'pcs',reason:'Verification sample',notes:'',occurredAt:now,createdAt:now}]}))
+    expect(finishedGoodsBalance(state.finishedGoodsBatches.find(item=>item.id==='fg-matrix')!,state.finishedGoodsMovements)).toBe(3)
+
+    const snapshot=[{formulaLineId:'fl-fv-bo-02-1',ingredientId:'i1',ingredientNameSnapshot:'Jojoba Oil',inciNameSnapshot:'SIMMONDSIA CHINENSIS SEED OIL',concentration:75}]
+    await act('createComplianceDossier',current=>({...current,complianceDossiers:[...current.complianceDossiers,{id:'cd-matrix',productId:'p1',formulaVersionId:'fv-bo-02',packagingSpecificationVersionId:'pkgv-10',labelArtworkVersionId:'lav1',responsiblePersonId:'rp-demo',targetMarket:'Norway',targetLanguage:'Norwegian',status:'Draft',internalOwner:'Owner',notes:'Matrix compliance',compositionSnapshot:snapshot,createdAt:now,updatedAt:now}]}))
+    await act('updateRegulatoryReview',current=>({...current,regulatoryReviews:current.regulatoryReviews.map(item=>item.id==='rr1'?{...item,sourceIds:[],notes:'Matrix source removal',updatedAt:now}:item)}))
+    await act('updateRegulatoryReview',current=>({...current,regulatoryReviews:current.regulatoryReviews.map(item=>item.id==='rr1'?{...item,sourceIds:['rs1'],notes:'Matrix source add',updatedAt:'2026-07-15T12:02:30.000Z'}:item)}))
+    const documentId=state.complianceDocuments[0].id
+    await act('updatePifSection',current=>({...current,pifSections:current.pifSections.map(item=>item.id==='pif0'?{...item,documentIds:[documentId],notes:'Matrix document'}:item)}))
+    expect(state.complianceDossiers.find(item=>item.id==='cd-matrix')?.compositionSnapshot).toEqual(snapshot)
+    expect(state.regulatoryReviews.find(item=>item.id==='rr1')?.sourceIds).toEqual(['rs1'])
+    expect(state.pifSections.find(item=>item.id==='pif0')?.documentIds).toEqual([documentId])
+    await act('updateRegulatoryReview',current=>({...current,regulatoryReviews:current.regulatoryReviews.map(item=>item.id==='rr1'?{...item,sourceIds:[],updatedAt:'2026-07-15T12:03:00.000Z'}:item)}))
+    await act('updatePifSection',current=>({...current,pifSections:current.pifSections.map(item=>item.id==='pif0'?{...item,documentIds:[]}:item)}))
+    expect(state.regulatoryReviews.find(item=>item.id==='rr1')?.sourceIds).toEqual([])
+    expect(state.pifSections.find(item=>item.id==='pif0')?.documentIds).toEqual([])
+
+    await act('updateLaunchPlan',current=>({...current,launchPlans:current.launchPlans.map(item=>item.id==='lp1'?{...item,notes:'Matrix launch plan',updatedAt:now}:item)}))
+    await act('recordLaunchDecision',current=>({...current,launchDecisions:[...current.launchDecisions,{id:'ld-matrix',launchPlanId:'lp1',decision:'Deferred',decidedAt:now,decidedBy:'Owner',complianceDossierId:'cd1',unresolvedBlockingIssues:['Evidence gap'],acknowledgedRisks:'Recorded',notes:'Matrix decision'}]}))
+    expect(state.launchDecisions.find(item=>item.id==='ld-matrix')?.unresolvedBlockingIssues).toEqual(['Evidence gap'])
+
+    expect(localStorage.getItem(localKey)).toBe('local-sentinel')
+    const workspace=await supabase!.from('workspaces').select('id').eq('owner_id',ownerId).single()
+    const joinCounts=await Promise.all([
+      supabase!.from('compliance_composition_snapshots').select('*',{count:'exact',head:true}).eq('workspace_id',workspace.data!.id).eq('compliance_dossier_id','cd-matrix'),
+      supabase!.from('regulatory_review_sources').select('*',{count:'exact',head:true}).eq('workspace_id',workspace.data!.id).eq('regulatory_review_id','rr1'),
+      supabase!.from('pif_section_documents').select('*',{count:'exact',head:true}).eq('workspace_id',workspace.data!.id).eq('pif_section_id','pif0'),
+    ])
+    expect(joinCounts.map(result=>result.count)).toEqual([1,0,0])
+    const relationalProductsBefore=await supabase!.from('products').select('*',{count:'exact',head:true}).eq('owner_id',ownerId)
+    let localState=formulaSeed
+    const localRepository=new LocalWorkspaceRepository({load:()=>localState,save:next=>{localState=next}})
+    await applicationAction(localRepository,localState,'updateProduct',current=>({...current,products:current.products.map(item=>item.id==='p1'?{...item,description:'Local-only verification'}:item)}))
+    expect(localState.products.find(item=>item.id==='p1')?.description).toBe('Local-only verification')
+    expect((await supabase!.from('products').select('*',{count:'exact',head:true}).eq('owner_id',ownerId)).count).toBe(relationalProductsBefore.count)
+    await supabase!.auth.signOut()
+  },30_000)
 })

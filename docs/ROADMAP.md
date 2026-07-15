@@ -44,6 +44,6 @@ Phase 6 now replaces overlapping manual packaging Cost Lines with authoritative 
 - Phase 7: Compliance Evidence + Launch Readiness — Complete
 - Phase 8: Platform + Data Foundation — Current
 - Phase 8B.1: Relational Schema + Proven v9 Migration — Complete
-- Phase 8B.2: Application Actions + Repository Refactor — Current (transactional boundaries complete; full cross-domain mutation matrix remains)
+- Phase 8B.2: Application Actions + Repository Refactor — Complete
 - Phase 8B.3: Authoritative Cutover + Security/Storage Verification — Next
 - Phase 9: Koalafrog Intelligence Layer — Blocked pending Phase 8
