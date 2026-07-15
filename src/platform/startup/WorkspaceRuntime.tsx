@@ -3,7 +3,14 @@ import type { FormulaState } from "../../types/domain";
 import { FormulaDataProvider } from "../../features/formulas/state/FormulaDataContext";
 import { LocalWorkspaceRepository } from "../repository/localWorkspaceRepository";
 import { SupabaseWorkspaceRepository } from "../repository/supabaseWorkspaceRepository";
+import type { WorkspaceRepository } from "../repository/workspaceRepository";
 import { supabase } from "../supabase/client";
+import { PlatformPage } from "../PlatformPage";
+import { STORAGE_KEY } from "../../features/formulas/data/formulaRepository";
+import {
+  resolveWorkspaceStartup,
+  type WorkspaceStartupResult,
+} from "./workspaceStartup";
 
 const configuredRuntime =
   (
@@ -12,15 +19,32 @@ const configuredRuntime =
     ? "supabase"
     : "local";
 
+class ReadOnlyMigrationRepository implements WorkspaceRepository {
+  readonly kind = "local" as const;
+  constructor(private readonly source: LocalWorkspaceRepository) {}
+  load() {
+    return this.source.load();
+  }
+  commit() {
+    throw new Error(
+      "The preserved local v9 source is read-only during hosted migration onboarding.",
+    );
+  }
+}
+
 export function WorkspaceRuntime({ children }: { children: React.ReactNode }) {
-  const local = useMemo(() => new LocalWorkspaceRepository(), []),
-    remote = useMemo(() => new SupabaseWorkspaceRepository(), []);
-  const [state, setState] = useState<FormulaState>(),
+  const local = useMemo(() => new LocalWorkspaceRepository(), []);
+  const remote = useMemo(() => new SupabaseWorkspaceRepository(), []);
+  const migrationSource = useMemo<WorkspaceRepository>(
+    () => new ReadOnlyMigrationRepository(local),
+    [local],
+  );
+  const [startup, setStartup] = useState<WorkspaceStartupResult>(),
     [error, setError] = useState(""),
     [attempt, setAttempt] = useState(0);
   const retry = useCallback(() => {
     setError("");
-    setState(undefined);
+    setStartup(undefined);
     setAttempt((value) => value + 1);
   }, []);
   useEffect(() => {
@@ -35,16 +59,29 @@ export function WorkspaceRuntime({ children }: { children: React.ReactNode }) {
           .from("workspaces")
           .select("lifecycle_state")
           .eq("owner_id", data.user.id)
-          .single();
-        if (workspace.error) throw workspace.error;
-        if (workspace.data.lifecycle_state !== "active")
-          throw new Error(
-            `Remote workspace is ${workspace.data.lifecycle_state}; successful reconciliation and activation are required.`,
-          );
-        return remote.load(data.user.id);
+          .maybeSingle();
+        let localV9: FormulaState | undefined;
+        const stored = window.localStorage.getItem(STORAGE_KEY);
+        if (stored) {
+          try {
+            localV9 = JSON.parse(stored) as FormulaState;
+          } catch {
+            localV9 = undefined;
+          }
+        }
+        return resolveWorkspaceStartup({
+          lookup: {
+            data: workspace.data,
+            error: workspace.error
+              ? new Error(workspace.error.message)
+              : null,
+          },
+          localV9,
+          loadRemote: () => remote.load(data.user.id),
+        });
       })
-      .then((workspace) => {
-        if (active) setState(workspace);
+      .then((result) => {
+        if (active) setStartup(result);
       })
       .catch((failure) => {
         if (active)
@@ -76,7 +113,7 @@ export function WorkspaceRuntime({ children }: { children: React.ReactNode }) {
         </div>
       </main>
     );
-  if (!state)
+  if (!startup)
     return (
       <main className="auth-screen">
         <div>
@@ -89,8 +126,29 @@ export function WorkspaceRuntime({ children }: { children: React.ReactNode }) {
         </div>
       </main>
     );
+  if (startup.mode === "migration-available")
+    return (
+      <FormulaDataProvider
+        repository={migrationSource}
+        initialState={startup.state}
+      >
+        <main>
+          <div className="compliance-notice">
+            <div>
+              <strong>Migration available</strong>
+              <p>
+                The hosted owner has no remote workspace. Local v9 is mounted
+                only for explicit backup, validation, and migration onboarding;
+                the normal editable application remains unavailable.
+              </p>
+            </div>
+          </div>
+          <PlatformPage />
+        </main>
+      </FormulaDataProvider>
+    );
   return (
-    <FormulaDataProvider repository={remote} initialState={state}>
+    <FormulaDataProvider repository={remote} initialState={startup.state}>
       {children}
     </FormulaDataProvider>
   );
