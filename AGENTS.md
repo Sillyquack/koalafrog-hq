@@ -18,7 +18,7 @@ Koalafrog HQ is a private, single-user product development and operations system
 - Store compliance document metadata and external references locally, never binary files or Base64 blobs. CPSR conclusions and CPNP confirmation require real external evidence metadata.
 - Supabase is the durable platform target. Browser code may use only the publishable key with Auth and RLS; service-role credentials never enter the frontend. Preserve the v9 local migration source until reconciliation succeeds.
 - Phase 8B.1 relational tables are the migration destination, but local v9 remains application-authoritative until the explicit Phase 8B.2/8B.3 cutover. Do not add new domain writes to `workspace_records`.
-- Persistent UI commands must use the workspace action executor and the single session-selected repository. Never reintroduce provider save effects or dual-write Local/Supabase behaviour. Supabase runtime selection remains blocked until its atomic consumption/output RPCs are complete.
+- Persistent UI commands must use the workspace action executor and the single session-selected repository. Never reintroduce provider save effects or dual-write Local/Supabase behaviour. Atomic consumption/output RPCs are complete; Supabase runtime selection remains deferred to the explicit Phase 8B.3 cutover.
 - Completed Lab Batch execution and submitted Test Responses are historical records. Preserve them; add observations or explicit corrections instead of silent rewrites.
 - Keep mock data outside UI components and easy to replace with repository/service implementations.
 - Prefer small, legible components and explicit data flow over broad abstractions.

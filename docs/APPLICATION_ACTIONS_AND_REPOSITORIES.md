@@ -24,11 +24,11 @@ Phase 8B.2 inventories 59 persistent commands. The provider retains query state,
 
 The action executor computes an intended next state, calls the selected repository, and publishes that state only after persistence succeeds. Local persistence is synchronous; Supabase persistence is asynchronous. Rejections never publish the intended state.
 
-Four operations are currently refused by the Supabase adapter rather than persisted unsafely:
+Four audit-critical operations use dedicated authenticated, transactional RPCs:
 
 - Lab consumption commitment
 - Production consumption commitment
 - Packaging consumption commitment
 - Finished Goods Batch creation/output registration
 
-They require dedicated authenticated transactional RPCs before Phase 8B.2 can be completed. Until those RPCs and representative cross-domain Supabase mutation tests exist, Supabase must not be selected as the application runtime. Phase 8B.3 startup cutover remains deferred.
+Each RPC validates ownership, available ledger balance, compatible units, duplicate commitment, and linked allocation/movement state inside one database transaction. Production allocation cost snapshots are written at commitment and remain historical. Normalized child collections are persisted relationally and reconstructed on refresh. Live local-Supabase regression tests cover the critical workflows, normalized Testing children, refresh, stale-write rejection, duplicate rejection, and rollback. The complete per-domain application-action mutation matrix remains required before closing Phase 8B.2. Local remains the default; selecting Supabase at startup is explicitly deferred to Phase 8B.3.

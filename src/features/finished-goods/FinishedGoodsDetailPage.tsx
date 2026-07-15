@@ -1,11 +1,305 @@
-import { ArrowLeft,Plus,Scale } from 'lucide-react'
-import { Link,useParams } from 'react-router-dom'
-import { useState } from 'react'
-import { PageHeader } from '../../components/ui/PageHeader'
-import { SectionHeader } from '../../components/ui/SectionHeader'
-import { StatusPill } from '../../components/ui/StatusPill'
-import type { FinishedGoodsMovementType } from '../../types/domain'
-import { useFormulaData } from '../formulas/state/FormulaDataContext'
-import { packagingLotBalance } from '../packaging/domain/packagingLogic'
-import { finishedGoodsBalance,finishedGoodsCostBasis } from './domain/finishedGoodsLogic'
-export function FinishedGoodsDetailPage(){const {finishedGoodsBatchId}=useParams(),d=useFormulaData(),[message,setMessage]=useState(''),batch=d.finishedGoodsBatches.find(b=>b.id===finishedGoodsBatchId);if(!batch)return <div className="empty-state"><h1>Finished Goods Batch not found</h1></div>;const product=d.products.find(p=>p.id===batch.productId),run=d.productionRuns.find(r=>r.id===batch.productionRunId),formula=d.formulas.find(f=>f.id===run?.formulaId),version=d.formulaVersions.find(v=>v.id===batch.formulaVersionId),packVersion=d.packagingSpecificationVersions.find(v=>v.id===batch.packagingSpecificationVersionId),packSpec=d.packagingSpecifications.find(s=>s.id===packVersion?.packagingSpecificationId),lines=d.packagingSpecificationLines.filter(l=>l.packagingSpecificationVersionId===packVersion?.id),allocations=d.packagingAllocations.filter(a=>a.finishedGoodsBatchId===batch.id),movements=d.finishedGoodsMovements.filter(m=>m.finishedGoodsBatchId===batch.id).sort((a,b)=>b.occurredAt.localeCompare(a.occurredAt)),physicalPackagingCost=allocations.filter(a=>a.packagingInventoryMovementId&&a.unitCostSnapshot!=null).reduce((s,a)=>s+a.quantity*a.unitCostSnapshot!,0),cost=finishedGoodsCostBasis(batch.productionCostPerUnitSnapshot,batch.initialQuantity,allocations.some(a=>a.packagingInventoryMovementId)?physicalPackagingCost:undefined,batch.packagingCostSnapshot??0);const addMovement=()=>{const type=(window.prompt('Movement type: Sample, Tester, Sale, Waste, InternalUse, Adjustment','Sample')??'') as FinishedGoodsMovementType,quantity=Number(window.prompt('Quantity'));if(!quantity)return;try{d.addFinishedGoodsMovement({finishedGoodsBatchId:batch.id,type,quantity,unit:batch.unit,reason:'Manual Finished Goods movement',notes:'',occurredAt:new Date().toISOString()})}catch(e){setMessage(e instanceof Error?e.message:'Movement failed.')}};const commit=()=>setMessage(d.commitPackagingConsumption(batch.id).join(' ')||'Packaging Consumption committed.');return <><Link className="back-link" to="/finished-goods"><ArrowLeft size={14}/>Finished Goods</Link><PageHeader eyebrow={`${product?.name} / Finished Goods`} title={batch.finishedGoodsBatchNumber} description="Physical output registration; Active does not imply regulatory approval or legal sale readiness." action={<button className="button primary" onClick={addMovement}><Plus size={14}/>Record Movement</button>}/><section className="batch-source"><div><span>Status</span><StatusPill tone="green">{batch.status}</StatusPill></div><div><span>Available / initial</span><strong>{finishedGoodsBalance(batch,d.finishedGoodsMovements)} / {batch.initialQuantity} {batch.unit}</strong></div><div><span>Production source</span><strong><Link to={`/production/${run?.id}`}>{run?.productionRunNumber}</Link></strong></div><div><span>Formula / Packaging</span><strong><Link to={`/formulas/${formula?.id}?version=${version?.id}`}>{formula?.name} {version?.version}</Link> · {packSpec?<Link to={`/packaging/specifications/${packSpec.id}`}>{packSpec.name} {packVersion?.version}</Link>:'Not applied'}</strong></div></section>{packVersion&&<section className="panel execution-section"><SectionHeader title="Packaging allocation" detail="One or more physical lots per component; no stock change before explicit commit" action={<button className="button ghost" onClick={commit}><Scale size={14}/>Commit Packaging Consumption</button>}/>{message&&<p className={message.includes('committed')?'success-message':'form-error'}>{message}</p>}<div className="execution-lines">{lines.map(line=>{const component=d.packagingComponents.find(c=>c.id===line.packagingComponentId),own=allocations.filter(a=>a.packagingSpecificationLineId===line.id),lots=d.packagingInventoryLots.filter(l=>l.packagingComponentId===component?.id&&l.status==='Active');return <article key={line.id}><div className="execution-plan"><h3>{component?.name}</h3><p>Required <b>{line.quantityPerUnit*batch.initialQuantity} {line.unit}</b></p></div><div className="allocations">{own.map(a=><div key={a.id}><select disabled={!!a.packagingInventoryMovementId} value={a.packagingInventoryLotId??''} onChange={e=>d.updatePackagingAllocation(a.id,{packagingInventoryLotId:e.target.value})}><option value="">Select physical lot</option>{lots.map(l=><option key={l.id} value={l.id}>{l.internalLotNumber} · {packagingLotBalance(l,d.packagingInventoryMovements)} {l.unit}</option>)}</select><input disabled={!!a.packagingInventoryMovementId} type="number" value={a.quantity} onChange={e=>d.updatePackagingAllocation(a.id,{quantity:Number(e.target.value)})}/><span>{a.unit}</span>{a.packagingInventoryMovementId&&<StatusPill tone="green">Committed</StatusPill>}</div>)}<button className="text-button" onClick={()=>d.addPackagingAllocation(batch.id,line.id)}><Plus size={13}/>Add lot allocation</button></div></article>})}</div></section>}<div className="batch-detail-grid"><section className="panel"><SectionHeader title="Finished Goods movement history" detail="ProductionReceipt and explicit manual movements"/><div className="movement-list">{movements.map(m=><article key={m.id}><span className="movement-mark">{m.type==='ProductionReceipt'||m.type==='Adjustment'?'+':'−'}</span><div><strong>{m.type}</strong><p>{m.reason}</p><small>{m.notes||'No notes'}</small></div><b>{m.quantity} {m.unit}</b><time>{new Date(m.occurredAt).toLocaleString('en-GB')}</time></article>)}</div></section><section className="panel"><SectionHeader title="Historical cost basis" detail="Actual packaging consumption replaces overlapping manual packaging cost"/><div className="cost-grid compact"><div><span>Production snapshot</span><strong>{batch.productionCostPerUnitSnapshot!=null?`${batch.productionCostPerUnitSnapshot} NOK/unit`:'Unknown'}</strong></div><div><span>Physical packaging</span><strong>{allocations.some(a=>a.packagingInventoryMovementId)?`${physicalPackagingCost.toFixed(2)} NOK`:'Not committed'}</strong></div><div><span>Finished Goods / unit</span><strong>{cost.perUnit!=null?`${cost.perUnit.toFixed(2)} NOK`:'Unknown'}</strong></div></div>{cost.warning&&<p className="form-error">{cost.warning}</p>}</section></div></>}
+import { ArrowLeft, Plus, Scale } from "lucide-react";
+import { Link, useParams } from "react-router-dom";
+import { useState } from "react";
+import { PageHeader } from "../../components/ui/PageHeader";
+import { SectionHeader } from "../../components/ui/SectionHeader";
+import { StatusPill } from "../../components/ui/StatusPill";
+import type { FinishedGoodsMovementType } from "../../types/domain";
+import { useFormulaData } from "../formulas/state/FormulaDataContext";
+import { packagingLotBalance } from "../packaging/domain/packagingLogic";
+import {
+  finishedGoodsBalance,
+  finishedGoodsCostBasis,
+} from "./domain/finishedGoodsLogic";
+export function FinishedGoodsDetailPage() {
+  const { finishedGoodsBatchId } = useParams(),
+    d = useFormulaData(),
+    [message, setMessage] = useState(""),
+    batch = d.finishedGoodsBatches.find((b) => b.id === finishedGoodsBatchId);
+  if (!batch)
+    return (
+      <div className="empty-state">
+        <h1>Finished Goods Batch not found</h1>
+      </div>
+    );
+  const product = d.products.find((p) => p.id === batch.productId),
+    run = d.productionRuns.find((r) => r.id === batch.productionRunId),
+    formula = d.formulas.find((f) => f.id === run?.formulaId),
+    version = d.formulaVersions.find((v) => v.id === batch.formulaVersionId),
+    packVersion = d.packagingSpecificationVersions.find(
+      (v) => v.id === batch.packagingSpecificationVersionId,
+    ),
+    packSpec = d.packagingSpecifications.find(
+      (s) => s.id === packVersion?.packagingSpecificationId,
+    ),
+    lines = d.packagingSpecificationLines.filter(
+      (l) => l.packagingSpecificationVersionId === packVersion?.id,
+    ),
+    allocations = d.packagingAllocations.filter(
+      (a) => a.finishedGoodsBatchId === batch.id,
+    ),
+    movements = d.finishedGoodsMovements
+      .filter((m) => m.finishedGoodsBatchId === batch.id)
+      .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt)),
+    physicalPackagingCost = allocations
+      .filter(
+        (a) => a.packagingInventoryMovementId && a.unitCostSnapshot != null,
+      )
+      .reduce((s, a) => s + a.quantity * a.unitCostSnapshot!, 0),
+    cost = finishedGoodsCostBasis(
+      batch.productionCostPerUnitSnapshot,
+      batch.initialQuantity,
+      allocations.some((a) => a.packagingInventoryMovementId)
+        ? physicalPackagingCost
+        : undefined,
+      batch.packagingCostSnapshot ?? 0,
+    );
+  const addMovement = async () => {
+    const type = (window.prompt(
+        "Movement type: Sample, Tester, Sale, Waste, InternalUse, Adjustment",
+        "Sample",
+      ) ?? "") as FinishedGoodsMovementType,
+      quantity = Number(window.prompt("Quantity"));
+    if (!quantity) return;
+    try {
+      await d.addFinishedGoodsMovement({
+        finishedGoodsBatchId: batch.id,
+        type,
+        quantity,
+        unit: batch.unit,
+        reason: "Manual Finished Goods movement",
+        notes: "",
+        occurredAt: new Date().toISOString(),
+      });
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : "Movement failed.");
+    }
+  };
+  const commit = async () => {
+    try {
+      const errors = await Promise.resolve(d.commitPackagingConsumption(batch.id));
+      setMessage(errors.join(" ") || "Packaging Consumption committed.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Packaging Consumption failed.");
+    }
+  };
+  return (
+    <>
+      <Link className="back-link" to="/finished-goods">
+        <ArrowLeft size={14} />
+        Finished Goods
+      </Link>
+      <PageHeader
+        eyebrow={`${product?.name} / Finished Goods`}
+        title={batch.finishedGoodsBatchNumber}
+        description="Physical output registration; Active does not imply regulatory approval or legal sale readiness."
+        action={
+          <button className="button primary" disabled={d.pendingActions.includes("addFinishedGoodsMovement")} onClick={addMovement}>
+            <Plus size={14} />
+            Record Movement
+          </button>
+        }
+      />
+      <section className="batch-source">
+        <div>
+          <span>Status</span>
+          <StatusPill tone="green">{batch.status}</StatusPill>
+        </div>
+        <div>
+          <span>Available / initial</span>
+          <strong>
+            {finishedGoodsBalance(batch, d.finishedGoodsMovements)} /{" "}
+            {batch.initialQuantity} {batch.unit}
+          </strong>
+        </div>
+        <div>
+          <span>Production source</span>
+          <strong>
+            <Link to={`/production/${run?.id}`}>
+              {run?.productionRunNumber}
+            </Link>
+          </strong>
+        </div>
+        <div>
+          <span>Formula / Packaging</span>
+          <strong>
+            <Link to={`/formulas/${formula?.id}?version=${version?.id}`}>
+              {formula?.name} {version?.version}
+            </Link>{" "}
+            ·{" "}
+            {packSpec ? (
+              <Link to={`/packaging/specifications/${packSpec.id}`}>
+                {packSpec.name} {packVersion?.version}
+              </Link>
+            ) : (
+              "Not applied"
+            )}
+          </strong>
+        </div>
+      </section>
+      {packVersion && (
+        <section className="panel execution-section">
+          <SectionHeader
+            title="Packaging allocation"
+            detail="One or more physical lots per component; no stock change before explicit commit"
+            action={
+              <button className="button ghost" disabled={d.pendingActions.includes("commitPackagingConsumption")} onClick={commit}>
+                <Scale size={14} />
+                {d.pendingActions.includes("commitPackagingConsumption") ? "Committing…" : "Commit Packaging Consumption"}
+              </button>
+            }
+          />
+          {(message || d.actionError) && (
+            <p
+              className={
+                message.includes("committed") ? "success-message" : "form-error"
+              }
+            >
+              {message || d.actionError}
+            </p>
+          )}
+          <div className="execution-lines">
+            {lines.map((line) => {
+              const component = d.packagingComponents.find(
+                  (c) => c.id === line.packagingComponentId,
+                ),
+                own = allocations.filter(
+                  (a) => a.packagingSpecificationLineId === line.id,
+                ),
+                lots = d.packagingInventoryLots.filter(
+                  (l) =>
+                    l.packagingComponentId === component?.id &&
+                    l.status === "Active",
+                );
+              return (
+                <article key={line.id}>
+                  <div className="execution-plan">
+                    <h3>{component?.name}</h3>
+                    <p>
+                      Required{" "}
+                      <b>
+                        {line.quantityPerUnit * batch.initialQuantity}{" "}
+                        {line.unit}
+                      </b>
+                    </p>
+                  </div>
+                  <div className="allocations">
+                    {own.map((a) => (
+                      <div key={a.id}>
+                        <select
+                          disabled={!!a.packagingInventoryMovementId}
+                          value={a.packagingInventoryLotId ?? ""}
+                          onChange={(e) =>
+                            d.updatePackagingAllocation(a.id, {
+                              packagingInventoryLotId: e.target.value,
+                            })
+                          }
+                        >
+                          <option value="">Select physical lot</option>
+                          {lots.map((l) => (
+                            <option key={l.id} value={l.id}>
+                              {l.internalLotNumber} ·{" "}
+                              {packagingLotBalance(
+                                l,
+                                d.packagingInventoryMovements,
+                              )}{" "}
+                              {l.unit}
+                            </option>
+                          ))}
+                        </select>
+                        <input
+                          disabled={!!a.packagingInventoryMovementId}
+                          type="number"
+                          value={a.quantity}
+                          onChange={(e) =>
+                            d.updatePackagingAllocation(a.id, {
+                              quantity: Number(e.target.value),
+                            })
+                          }
+                        />
+                        <span>{a.unit}</span>
+                        {a.packagingInventoryMovementId && (
+                          <StatusPill tone="green">Committed</StatusPill>
+                        )}
+                      </div>
+                    ))}
+                    <button
+                      className="text-button"
+                      onClick={() =>
+                        d.addPackagingAllocation(batch.id, line.id)
+                      }
+                    >
+                      <Plus size={13} />
+                      Add lot allocation
+                    </button>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        </section>
+      )}
+      <div className="batch-detail-grid">
+        <section className="panel">
+          <SectionHeader
+            title="Finished Goods movement history"
+            detail="ProductionReceipt and explicit manual movements"
+          />
+          <div className="movement-list">
+            {movements.map((m) => (
+              <article key={m.id}>
+                <span className="movement-mark">
+                  {m.type === "ProductionReceipt" || m.type === "Adjustment"
+                    ? "+"
+                    : "−"}
+                </span>
+                <div>
+                  <strong>{m.type}</strong>
+                  <p>{m.reason}</p>
+                  <small>{m.notes || "No notes"}</small>
+                </div>
+                <b>
+                  {m.quantity} {m.unit}
+                </b>
+                <time>{new Date(m.occurredAt).toLocaleString("en-GB")}</time>
+              </article>
+            ))}
+          </div>
+        </section>
+        <section className="panel">
+          <SectionHeader
+            title="Historical cost basis"
+            detail="Actual packaging consumption replaces overlapping manual packaging cost"
+          />
+          <div className="cost-grid compact">
+            <div>
+              <span>Production snapshot</span>
+              <strong>
+                {batch.productionCostPerUnitSnapshot != null
+                  ? `${batch.productionCostPerUnitSnapshot} NOK/unit`
+                  : "Unknown"}
+              </strong>
+            </div>
+            <div>
+              <span>Physical packaging</span>
+              <strong>
+                {allocations.some((a) => a.packagingInventoryMovementId)
+                  ? `${physicalPackagingCost.toFixed(2)} NOK`
+                  : "Not committed"}
+              </strong>
+            </div>
+            <div>
+              <span>Finished Goods / unit</span>
+              <strong>
+                {cost.perUnit != null
+                  ? `${cost.perUnit.toFixed(2)} NOK`
+                  : "Unknown"}
+              </strong>
+            </div>
+          </div>
+          {cost.warning && <p className="form-error">{cost.warning}</p>}
+        </section>
+      </div>
+    </>
+  );
+}

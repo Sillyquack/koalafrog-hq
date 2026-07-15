@@ -3798,14 +3798,46 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      commit_lab_consumption: {
+        Args: { batch_id: string; commits: Json }
+        Returns: Json
+      }
+      commit_packaging_consumption: {
+        Args: {
+          commits: Json
+          receipt: Json
+          target_finished_goods_batch_id: string
+        }
+        Returns: Json
+      }
+      commit_production_consumption: {
+        Args: { commits: Json; run_id: string }
+        Returns: Json
+      }
       complete_v9_reconciliation: {
         Args: { report: Json; run_id: string }
         Returns: undefined
       }
       import_v9_relational: { Args: { payload: Json }; Returns: Json }
+      kf_convert_quantity: {
+        Args: { from_unit: string; q: number; to_unit: string }
+        Returns: number
+      }
+      kf_inventory_balance: {
+        Args: { lot_id: string; wid: string }
+        Returns: number
+      }
+      kf_packaging_balance: {
+        Args: { lot_id: string; wid: string }
+        Returns: number
+      }
       record_v9_migration_failure: {
         Args: { error_message: string }
         Returns: string
+      }
+      register_finished_goods_output: {
+        Args: { batch: Json; receipt?: Json }
+        Returns: Json
       }
     }
     Enums: {

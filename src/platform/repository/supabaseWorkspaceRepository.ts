@@ -33,10 +33,6 @@ const embeddedColumns: Partial<Record<keyof FormulaState, string[]>> = {
   testTemplates:['questions'],testResponses:['answers'],complianceDossiers:['composition_snapshot'],regulatoryReviews:['source_ids'],pifSections:['document_ids'],
 }
 
-const requiresAtomicRpc = new Set([
-  'commitBatchConsumption','commitProductionConsumption','commitPackagingConsumption','createFinishedGoodsBatch',
-])
-
 export class SupabaseWorkspaceRepository implements WorkspaceRepository {
   readonly kind = 'supabase' as const
   async importV9(_ownerId: string, state: FormulaState, onStage?: (stage: string) => void) {
@@ -58,12 +54,12 @@ export class SupabaseWorkspaceRepository implements WorkspaceRepository {
 
   async commit(change: WorkspaceCommit) {
     if (!supabase) throw new Error('Supabase is not configured.')
-    if (requiresAtomicRpc.has(change.action)) throw new Error(`${change.action} requires its dedicated transactional RPC before Supabase runtime selection.`)
     const { data: { user }, error: userError } = await supabase.auth.getUser()
     if (userError || !user) throw new Error('Authenticated owner required.')
     const workspace = await supabase.from('workspaces').select('id').eq('owner_id', user.id).single()
     if (workspace.error) throw workspace.error
     const client: SupabaseClient = supabase
+    if (await this.commitAtomic(change, client)) return
     for (const collection of changedCollections(change)) {
       const table = relationalTableByCollection[collection]
       const previous = change.previous[collection] as Array<{id:string;updatedAt?:string}>
@@ -90,8 +86,59 @@ export class SupabaseWorkspaceRepository implements WorkspaceRepository {
           if (updated.error) throw updated.error
           if (!updated.data?.length) throw new Error(`Conflict updating ${table}.${record.id}; refresh and retry.`)
         }
+        await this.persistEmbedded(collection, record as Record<string, unknown>, workspace.data.id, user.id, client)
       }
     }
+  }
+
+  private async persistEmbedded(collection:keyof FormulaState,record:Record<string,unknown>,workspaceId:string,ownerId:string,client:SupabaseClient) {
+    const replace = async (table:string,parentColumn:string,parentId:string,rows:Record<string,unknown>[]) => {
+      const removed=await client.from(table).delete().eq('workspace_id',workspaceId).eq(parentColumn,parentId)
+      if(removed.error)throw removed.error
+      if(rows.length){const inserted=await client.from(table).insert(rows);if(inserted.error)throw inserted.error}
+    }
+    if(collection==='testTemplates') await replace('test_template_questions','test_template_id',String(record.id),((record.questions??[]) as Array<Record<string,unknown>>).map(question=>({workspace_id:workspaceId,owner_id:ownerId,test_template_id:record.id,...toDatabaseValue(question) as object})))
+    if(collection==='testResponses') await replace('test_response_answers','test_response_id',String(record.id),((record.answers??[]) as Array<Record<string,unknown>>).map(answer=>({workspace_id:workspaceId,owner_id:ownerId,test_response_id:record.id,question_id:answer.questionId,value:answer.value})))
+    if(collection==='complianceDossiers') await replace('compliance_composition_snapshots','compliance_dossier_id',String(record.id),((record.compositionSnapshot??[]) as Array<Record<string,unknown>>).map(snapshot=>({workspace_id:workspaceId,owner_id:ownerId,compliance_dossier_id:record.id,...toDatabaseValue(snapshot) as object})))
+    if(collection==='regulatoryReviews') await replace('regulatory_review_sources','regulatory_review_id',String(record.id),((record.sourceIds??[]) as string[]).map(sourceId=>({workspace_id:workspaceId,owner_id:ownerId,regulatory_review_id:record.id,regulatory_source_id:sourceId})))
+    if(collection==='pifSections') await replace('pif_section_documents','pif_section_id',String(record.id),((record.documentIds??[]) as string[]).map(documentId=>({workspace_id:workspaceId,owner_id:ownerId,pif_section_id:record.id,document_id:documentId})))
+  }
+
+  private async commitAtomic(change: WorkspaceCommit, client: SupabaseClient) {
+    if (change.action === 'commitBatchConsumption') {
+      const movements = change.next.inventoryMovements.filter(item => !change.previous.inventoryMovements.some(previous => previous.id === item.id) && item.referenceType === 'LabBatch')
+      const commits = change.next.labBatchAllocations.filter(item => item.inventoryMovementId && !change.previous.labBatchAllocations.find(previous => previous.id === item.id)?.inventoryMovementId).map(allocation => { const movement=movements.find(item=>item.id===allocation.inventoryMovementId)!;return{allocation_id:allocation.id,movement_id:movement.id,notes:movement.notes,occurred_at:movement.occurredAt,created_at:movement.createdAt} })
+      const batchId = movements[0]?.referenceId
+      const result = await client.rpc('commit_lab_consumption',{batch_id:batchId,commits})
+      if (result.error) throw result.error
+      return true
+    }
+    if (change.action === 'commitProductionConsumption') {
+      const movements = change.next.inventoryMovements.filter(item => !change.previous.inventoryMovements.some(previous => previous.id === item.id) && item.referenceType === 'ProductionRun')
+      const commits = change.next.productionRunAllocations.filter(item => item.inventoryMovementId && !change.previous.productionRunAllocations.find(previous => previous.id === item.id)?.inventoryMovementId).map(allocation => { const movement=movements.find(item=>item.id===allocation.inventoryMovementId)!;return{allocation_id:allocation.id,movement_id:movement.id,notes:movement.notes,occurred_at:movement.occurredAt,created_at:movement.createdAt} })
+      const result = await client.rpc('commit_production_consumption',{run_id:movements[0]?.referenceId,commits})
+      if (result.error) throw result.error
+      return true
+    }
+    if (change.action === 'commitPackagingConsumption') {
+      const movements = change.next.packagingInventoryMovements.filter(item => !change.previous.packagingInventoryMovements.some(previous => previous.id === item.id) && item.referenceType === 'FinishedGoodsBatch')
+      const commits = change.next.packagingAllocations.filter(item => item.packagingInventoryMovementId && !change.previous.packagingAllocations.find(previous => previous.id === item.id)?.packagingInventoryMovementId).map(allocation => { const movement=movements.find(item=>item.id===allocation.packagingInventoryMovementId)!;return{allocation_id:allocation.id,movement_id:movement.id,occurred_at:movement.occurredAt,created_at:movement.createdAt} })
+      const receipt = change.next.finishedGoodsMovements.find(item => !change.previous.finishedGoodsMovements.some(previous => previous.id === item.id) && item.type === 'ProductionReceipt')
+      const result = await client.rpc('commit_packaging_consumption',{target_finished_goods_batch_id:receipt?.finishedGoodsBatchId,commits,receipt:{id:receipt?.id,occurred_at:receipt?.occurredAt,created_at:receipt?.createdAt}})
+      if (result.error) throw result.error
+      return true
+    }
+    if (change.action === 'createFinishedGoodsBatch') {
+      const batch = change.next.finishedGoodsBatches.find(item => !change.previous.finishedGoodsBatches.some(previous => previous.id === item.id))
+      if (!batch) throw new Error('Finished Goods Batch mutation is missing its new record.')
+      const receipt = change.next.finishedGoodsMovements.find(item => !change.previous.finishedGoodsMovements.some(previous => previous.id === item.id) && item.finishedGoodsBatchId === batch.id)
+      const batchRow = toDatabaseValue(batch) as Record<string,unknown>
+      const receiptRow = receipt ? toDatabaseValue(receipt) as Record<string,unknown> : null
+      const result = await client.rpc('register_finished_goods_output',{batch:batchRow,receipt:receiptRow})
+      if (result.error) throw result.error
+      return true
+    }
+    return false
   }
 
   async load(ownerId?: string): Promise<FormulaState> {
@@ -123,11 +170,11 @@ export class SupabaseWorkspaceRepository implements WorkspaceRepository {
     ])
     for (const response of [questions, answers, composition, reviewSources, pifDocuments]) if (response.error) throw response.error
     const templates = state.testTemplates as Array<Record<string, unknown>>
-    for (const template of templates) template.questions = (questions.data ?? []).filter(row => row.test_template_id === template.id).map(row => toDomainValue(row))
+    for (const template of templates) template.questions = (questions.data ?? []).filter(row => row.test_template_id === template.id).map(row => ({id:row.id,prompt:row.prompt,type:row.type,sortOrder:Number(row.sort_order),...(row.choices?{choices:row.choices}:{})}))
     const responses = state.testResponses as Array<Record<string, unknown>>
     for (const response of responses) response.answers = (answers.data ?? []).filter(row => row.test_response_id === response.id).map(row => ({ questionId: row.question_id, value: row.value }))
     const dossiers = state.complianceDossiers as Array<Record<string, unknown>>
-    for (const dossier of dossiers) dossier.compositionSnapshot = (composition.data ?? []).filter(row => row.compliance_dossier_id === dossier.id).map(row => toDomainValue(row))
+    for (const dossier of dossiers) dossier.compositionSnapshot = (composition.data ?? []).filter(row => row.compliance_dossier_id === dossier.id).map(row => ({formulaLineId:row.formula_line_id,ingredientId:row.ingredient_id,ingredientNameSnapshot:row.ingredient_name_snapshot,inciNameSnapshot:row.inci_name_snapshot,concentration:Number(row.concentration)}))
     const reviews = state.regulatoryReviews as Array<Record<string, unknown>>
     for (const review of reviews) review.sourceIds = (reviewSources.data ?? []).filter(row => row.regulatory_review_id === review.id).map(row => row.regulatory_source_id)
     const sections = state.pifSections as Array<Record<string, unknown>>

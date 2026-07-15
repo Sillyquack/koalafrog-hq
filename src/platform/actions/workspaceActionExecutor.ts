@@ -8,20 +8,18 @@ export interface WorkspaceActionHooks {
   pending(action: WorkspaceActionName, pending: boolean): void
 }
 
-export function executeWorkspaceAction(repository: WorkspaceRepository,current: FormulaState,action: WorkspaceActionName,mutation: WorkspaceStateMutation,hooks: WorkspaceActionHooks) {
+export async function executeWorkspaceAction(repository: WorkspaceRepository,current: FormulaState,action: WorkspaceActionName,mutation: WorkspaceStateMutation,hooks: WorkspaceActionHooks) {
   const next = mutation(current)
   if (next === current) return
   hooks.pending(action, true)
   try {
-    const persisted = repository.commit({ action, previous: current, next })
-    if (persisted instanceof Promise) {
-      void persisted.then(() => hooks.committed(next)).catch(error => hooks.failed(action, error instanceof Error ? error : new Error('Persistence failed.'))).finally(() => hooks.pending(action, false))
-    } else {
-      hooks.committed(next)
-      hooks.pending(action, false)
-    }
+    await repository.commit({ action, previous: current, next })
+    hooks.committed(next)
   } catch (error) {
-    hooks.failed(action, error instanceof Error ? error : new Error('Persistence failed.'))
+    const failure=error instanceof Error ? error : new Error('Persistence failed.')
+    hooks.failed(action, failure)
+    throw failure
+  } finally {
     hooks.pending(action, false)
   }
 }

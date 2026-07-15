@@ -14,7 +14,7 @@ The Phase 8B.1 import calls an authenticated, transactional relational RPC. A bl
 
 Run `npx supabase db reset` to recreate and validate all schema migrations. Local destructive integration tests require `VITE_SUPABASE_TEST_URL`, `VITE_SUPABASE_TEST_ANON_KEY`, and `VITE_SUPABASE_TEST_SERVICE_ROLE_KEY` from `npx supabase status`; never point them at production. See `RELATIONAL_SCHEMA.md` for the table graph and embedded-value decisions.
 
-Normal application mutations are separate from migration. Phase 8B.2 adds relational hydration and ordinary entity persistence through `SupabaseWorkspaceRepository`; it never re-runs the v9 import to save changes. The Local repository remains selected until all audit-critical transactional RPCs are implemented and Phase 8B.3 performs the startup cutover.
+Normal application mutations are separate from migration. Phase 8B.2 adds relational hydration, ordinary entity persistence, normalized child persistence, and audit-critical transactional RPCs through `SupabaseWorkspaceRepository`; it never re-runs the v9 import to save changes. The Local repository remains selected until Phase 8B.3 performs the startup cutover.
 
 ## Source of truth
 
