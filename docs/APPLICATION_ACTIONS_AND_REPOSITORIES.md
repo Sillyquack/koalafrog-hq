@@ -1,6 +1,6 @@
 # Application actions and repositories
 
-Phase 8B.2 inventories 64 persistent commands. The provider retains query state, but persistence now flows through `executeWorkspaceAction` and one deterministic session repository. State is committed only after that repository succeeds; rejection preserves the previous state and exposes `actionError`. `pendingActions` provides operation-level pending state.
+The application inventories 66 persistent commands. The provider retains query state, but persistence flows through `executeWorkspaceAction` and one deterministic session repository. State is committed only after that repository succeeds; rejection preserves the previous state and exposes `actionError`. `pendingActions` provides operation-level pending state.
 
 ## Action inventory
 
@@ -12,12 +12,12 @@ Phase 8B.2 inventories 64 persistent commands. The provider retains query state,
 - Production and Costing (10): create/update/transition Run, update Line, add/update Allocation, commit consumption, add/update Process Step, add Cost Line.
 - Packaging (10): create/update Component, save Supplier Product, receive stock, append Movement, create Specification, add/update Line, transition/duplicate Version.
 - Finished Goods (5): create Batch, add/update Packaging Allocation, commit Packaging consumption, append Movement.
-- Compliance (5): create, duplicate, and update Dossier; update Regulatory Review; update PIF Section.
+- Compliance (7): create, duplicate, and update Dossier; update Regulatory Review; update PIF Section; create and update Compliance Document metadata.
 - Launch (2): update Plan and append Decision.
 
 ## Repository selection
 
-`LocalWorkspaceRepository` remains the default for Phase 8B.2 and owns the v9 aggregate read/write plus historical migration chain. `FormulaDataProvider` contains no localStorage call and no save-on-state-change effect. A session receives exactly one repository; there is no dual write.
+`LocalWorkspaceRepository` remains the development default and owns the v9 aggregate read/write plus historical migration chain. `VITE_WORKSPACE_REPOSITORY=supabase` selects the authenticated relational repository once at startup. Supabase mode requires an `active` reconciled workspace, displays loading/error/retry states, and never silently falls back to Local. `FormulaDataProvider` contains no localStorage call and no save-on-state-change effect. A session receives exactly one repository; there is no dual write.
 
 `SupabaseWorkspaceRepository` hydrates all 50 collections and reconstructs normalized Test questions/answers, Compliance composition lines, Regulatory Review sources, and PIF document links. Normal entity mutations use explicit collection-to-table mappings, stable IDs, authenticated workspace ownership, and `updated_at` conflict predicates.
 
@@ -63,4 +63,4 @@ Every row below is exercised through `executeWorkspaceAction` and `SupabaseWorks
 | Regulatory Review Sources | Regulatory Review | Mutable source-link set through `updateRegulatoryReview` | Add/remove replaces the parent join set; no orphan joins; fresh load restores IDs |
 | PIF Document References | PIF Section | Mutable evidence metadata through `updatePifSection` | Add/remove replaces the parent join set; no orphan references; fresh load restores IDs |
 
-Supabase-session tests preserve a sentinel local-v9 value, while a Local action is verified not to alter relational row counts. This proves repository selection does not dual-write.
+Supabase-session tests preserve a sentinel local-v9 value, while a Local action is verified not to alter relational row counts. This proves repository selection does not dual-write. Full-session reload tests hydrate relational state afresh rather than treating React memory as proof of persistence.

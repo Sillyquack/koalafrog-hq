@@ -626,43 +626,58 @@ export type Database = {
         Row: {
           bucket: string
           checksum: string | null
+          compliance_dossier_id: string | null
           document_record_id: string
+          file_version: number
           id: string
           mime_type: string
           object_path: string
           original_file_name: string
           owner_id: string
+          removed_at: string | null
           replaced_by: string | null
           size: number
+          state: string
           uploaded_at: string
+          uploader_id: string | null
           workspace_id: string
         }
         Insert: {
           bucket?: string
           checksum?: string | null
+          compliance_dossier_id?: string | null
           document_record_id: string
+          file_version?: number
           id?: string
           mime_type: string
           object_path: string
           original_file_name: string
           owner_id: string
+          removed_at?: string | null
           replaced_by?: string | null
           size: number
+          state?: string
           uploaded_at?: string
+          uploader_id?: string | null
           workspace_id: string
         }
         Update: {
           bucket?: string
           checksum?: string | null
+          compliance_dossier_id?: string | null
           document_record_id?: string
+          file_version?: number
           id?: string
           mime_type?: string
           object_path?: string
           original_file_name?: string
           owner_id?: string
+          removed_at?: string | null
           replaced_by?: string | null
           size?: number
+          state?: string
           uploaded_at?: string
+          uploader_id?: string | null
           workspace_id?: string
         }
         Relationships: [
@@ -3835,9 +3850,74 @@ export type Database = {
         Args: { error_message: string }
         Returns: string
       }
+      register_document_object: {
+        Args: {
+          byte_size: number
+          content_checksum?: string
+          content_type: string
+          document_id: string
+          dossier_id: string
+          file_name: string
+          object_bucket: string
+          path: string
+        }
+        Returns: {
+          bucket: string
+          checksum: string | null
+          compliance_dossier_id: string | null
+          document_record_id: string
+          file_version: number
+          id: string
+          mime_type: string
+          object_path: string
+          original_file_name: string
+          owner_id: string
+          removed_at: string | null
+          replaced_by: string | null
+          size: number
+          state: string
+          uploaded_at: string
+          uploader_id: string | null
+          workspace_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "document_objects"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       register_finished_goods_output: {
         Args: { batch: Json; receipt?: Json }
         Returns: Json
+      }
+      remove_current_document_object: {
+        Args: { document_id: string }
+        Returns: {
+          bucket: string
+          checksum: string | null
+          compliance_dossier_id: string | null
+          document_record_id: string
+          file_version: number
+          id: string
+          mime_type: string
+          object_path: string
+          original_file_name: string
+          owner_id: string
+          removed_at: string | null
+          replaced_by: string | null
+          size: number
+          state: string
+          uploaded_at: string
+          uploader_id: string | null
+          workspace_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "document_objects"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
     }
     Enums: {

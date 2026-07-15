@@ -8,6 +8,8 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "test": "vitest run",
+    "test:supabase": "node scripts/test-supabase.mjs",
+    "test:secrets": "node scripts/check-secrets.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

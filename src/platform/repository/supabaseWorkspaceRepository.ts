@@ -43,7 +43,7 @@ export class SupabaseWorkspaceRepository implements WorkspaceRepository {
       await supabase.rpc('record_v9_migration_failure', { error_message: result.error.message })
       throw new Error(result.error.message)
     }
-    return result.data as { workspaceId: string; ownerId: string; counts: Record<string, number>; state: string }
+    return result.data as { migrationRunId:string;workspaceId: string; ownerId: string; counts: Record<string, number>; state: string }
   }
 
   async completeReconciliation(migrationRunId: string, report: Json) {

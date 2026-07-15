@@ -1,8 +1,247 @@
-import { ArrowLeft,Copy } from 'lucide-react'
-import { Link,useNavigate,useParams } from 'react-router-dom'
-import { PageHeader } from '../../components/ui/PageHeader'
-import { SectionHeader } from '../../components/ui/SectionHeader'
-import { StatusPill } from '../../components/ui/StatusPill'
-import { useFormulaData } from '../formulas/state/FormulaDataContext'
-import { deriveReadinessIssues,internalReadiness,pifEvidenceSummary } from './domain/complianceLogic'
-export function ComplianceDossierPage(){const {complianceDossierId}=useParams(),d=useFormulaData(),navigate=useNavigate(),x=d.complianceDossiers.find(x=>x.id===complianceDossierId);if(!x)return <div className="empty-state"><h1>Compliance Dossier not found</h1></div>;const product=d.products.find(p=>p.id===x.productId),formula=d.formulas.find(f=>f.id===d.formulaVersions.find(v=>v.id===x.formulaVersionId)?.formulaId),version=d.formulaVersions.find(v=>v.id===x.formulaVersionId),pack=d.packagingSpecificationVersions.find(v=>v.id===x.packagingSpecificationVersionId),pif=d.pifSections.filter(p=>p.complianceDossierId===x.id),cpsr=d.cpsrRecords.find(c=>c.complianceDossierId===x.id),inci=d.inciDrafts.find(i=>i.complianceDossierId===x.id),claims=d.claims.filter(c=>c.complianceDossierId===x.id),cpnp=d.cpnpRecords.find(c=>c.complianceDossierId===x.id),issues=[...deriveReadinessIssues({dossier:x,reviews:d.regulatoryReviews.filter(r=>r.complianceDossierId===x.id),pif,cpsr,cpnp,inci,label:d.labelArtworkVersions.find(l=>l.id===x.labelArtworkVersionId),claimsMissing:claims.filter(c=>c.status==='Evidence Missing').length}),...d.readinessIssues.filter(i=>i.complianceDossierId===x.id)],readiness=internalReadiness(issues,x.status),duplicate=()=>{const created=d.duplicateComplianceDossier(x.id,x.formulaVersionId,x.packagingSpecificationVersionId);if(created)navigate(`/compliance/${created.id}`)};return <><Link className="back-link" to="/compliance"><ArrowLeft size={14}/>Compliance</Link><PageHeader eyebrow={`${product?.name} / ${x.targetMarket} / ${x.targetLanguage}`} title={`${formula?.name} ${version?.version}`} description="Exact-configuration evidence dossier. Internal readiness is not a legal or safety conclusion." action={<button className="button ghost" onClick={duplicate}><Copy size={14}/>Duplicate for New Configuration</button>}/><section className="batch-source"><div><span>Internal readiness</span><StatusPill tone={readiness==='Blocked'?'red':'amber'}>{readiness}</StatusPill></div><div><span>Formula source</span><strong>{formula?.name} · {version?.version} · immutable</strong></div><div><span>Packaging source</span><strong>{pack?`${pack.version} · immutable`:'Not applied'}</strong></div><div><span>Responsible Person record</span><strong>{d.responsiblePersons.find(r=>r.id===x.responsiblePersonId)?.legalName??'Evidence Missing'}</strong></div></section><section className="panel"><SectionHeader title="Readiness Issues" detail="Workflow gaps, not legal conclusions"/><div className="issue-list">{issues.map(i=><article key={i.id}><StatusPill tone={i.severity==='Blocking'?'red':'amber'}>{i.severity}</StatusPill><div><strong>{i.title}</strong><p>{i.description}</p></div><span>{i.status}</span></article>)}</div></section><div className="compliance-grid"><section className="panel"><SectionHeader title="Ingredient Regulatory Review" detail="Exact immutable composition snapshot"/>{x.compositionSnapshot.length?x.compositionSnapshot.map(line=><article className="evidence-row" key={line.formulaLineId}><strong>{line.ingredientNameSnapshot}</strong><span>{line.inciNameSnapshot} · {line.concentration}%</span><StatusPill tone="amber">Needs Review</StatusPill></article>):<p className="empty-copy">Snapshot predates this seed; create a new dossier to capture composition.</p>}</section><section className="panel"><SectionHeader title="CPSR tracking" detail="External qualified safety assessor boundary"/><h3>{cpsr?.status??'Not Started'}</h3><p>{cpsr?.reviewNotes??'No issued report recorded.'}</p><strong>{cpsr?.cpsrDocumentId?'Issued document metadata recorded':'No issued CPSR document'}</strong></section></div><section className="panel"><SectionHeader title="PIF evidence workspace" detail={`${pifEvidenceSummary(pif).complete}/${pif.length} sections meet the internal evidence checklist`}/><div className="pif-grid">{pif.map(p=><article key={p.id}><span className="eyebrow">{p.area}</span><StatusPill tone={p.status==='Evidence Recorded'?'green':'neutral'}>{p.status}</StatusPill><p>{p.missingItemsSummary||p.notes}</p></article>)}</div></section><div className="compliance-grid"><section className="panel"><SectionHeader title="Label checklist & artwork"/>{d.labelReviewItems.filter(i=>i.complianceDossierId===x.id).map(i=><article className="evidence-row" key={i.id}><strong>{i.item}</strong><StatusPill tone="neutral">{i.status}</StatusPill></article>)}</section><section className="panel"><SectionHeader title="INCI Working Draft" detail="Requires regulatory and label review"/><p className="inci-text">{inci?.workingText??'No draft recorded.'}</p>{inci?.unresolvedItems.map(item=><p className="form-error" key={item}>{item}</p>)}</section></div><div className="compliance-grid"><section className="panel"><SectionHeader title="Claims Registry"/>{claims.map(c=><article className="evidence-row" key={c.id}><div><strong>{c.claimText}</strong><small>{c.channel} · {c.evidenceSummary}</small></div><StatusPill tone={c.status==='Evidence Missing'?'red':'amber'}>{c.status}</StatusPill></article>)}</section><section className="panel"><SectionHeader title="CPNP tracking" detail="Metadata only; no portal integration"/><h3>{cpnp?.status??'Not Started'}</h3><p>{cpnp?.externalReference??'No external confirmation reference recorded.'}</p></section></div></>}
+import { ArrowLeft, Copy } from "lucide-react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { PageHeader } from "../../components/ui/PageHeader";
+import { SectionHeader } from "../../components/ui/SectionHeader";
+import { StatusPill } from "../../components/ui/StatusPill";
+import { useFormulaData } from "../formulas/state/FormulaDataContext";
+import { ComplianceDocumentsPanel } from "./components/ComplianceDocumentsPanel";
+import {
+  deriveReadinessIssues,
+  internalReadiness,
+  pifEvidenceSummary,
+} from "./domain/complianceLogic";
+export function ComplianceDossierPage() {
+  const { complianceDossierId } = useParams(),
+    d = useFormulaData(),
+    navigate = useNavigate(),
+    x = d.complianceDossiers.find((x) => x.id === complianceDossierId);
+  if (!x)
+    return (
+      <div className="empty-state">
+        <h1>Compliance Dossier not found</h1>
+      </div>
+    );
+  const product = d.products.find((p) => p.id === x.productId),
+    formula = d.formulas.find(
+      (f) =>
+        f.id ===
+        d.formulaVersions.find((v) => v.id === x.formulaVersionId)?.formulaId,
+    ),
+    version = d.formulaVersions.find((v) => v.id === x.formulaVersionId),
+    pack = d.packagingSpecificationVersions.find(
+      (v) => v.id === x.packagingSpecificationVersionId,
+    ),
+    pif = d.pifSections.filter((p) => p.complianceDossierId === x.id),
+    cpsr = d.cpsrRecords.find((c) => c.complianceDossierId === x.id),
+    inci = d.inciDrafts.find((i) => i.complianceDossierId === x.id),
+    claims = d.claims.filter((c) => c.complianceDossierId === x.id),
+    cpnp = d.cpnpRecords.find((c) => c.complianceDossierId === x.id),
+    issues = [
+      ...deriveReadinessIssues({
+        dossier: x,
+        reviews: d.regulatoryReviews.filter(
+          (r) => r.complianceDossierId === x.id,
+        ),
+        pif,
+        cpsr,
+        cpnp,
+        inci,
+        label: d.labelArtworkVersions.find(
+          (l) => l.id === x.labelArtworkVersionId,
+        ),
+        claimsMissing: claims.filter((c) => c.status === "Evidence Missing")
+          .length,
+      }),
+      ...d.readinessIssues.filter((i) => i.complianceDossierId === x.id),
+    ],
+    readiness = internalReadiness(issues, x.status),
+    duplicate = () => {
+      const created = d.duplicateComplianceDossier(
+        x.id,
+        x.formulaVersionId,
+        x.packagingSpecificationVersionId,
+      );
+      if (created) navigate(`/compliance/${created.id}`);
+    };
+  return (
+    <>
+      <Link className="back-link" to="/compliance">
+        <ArrowLeft size={14} />
+        Compliance
+      </Link>
+      <PageHeader
+        eyebrow={`${product?.name} / ${x.targetMarket} / ${x.targetLanguage}`}
+        title={`${formula?.name} ${version?.version}`}
+        description="Exact-configuration evidence dossier. Internal readiness is not a legal or safety conclusion."
+        action={
+          <button className="button ghost" onClick={duplicate}>
+            <Copy size={14} />
+            Duplicate for New Configuration
+          </button>
+        }
+      />
+      <section className="batch-source">
+        <div>
+          <span>Internal readiness</span>
+          <StatusPill tone={readiness === "Blocked" ? "red" : "amber"}>
+            {readiness}
+          </StatusPill>
+        </div>
+        <div>
+          <span>Formula source</span>
+          <strong>
+            {formula?.name} · {version?.version} · immutable
+          </strong>
+        </div>
+        <div>
+          <span>Packaging source</span>
+          <strong>
+            {pack ? `${pack.version} · immutable` : "Not applied"}
+          </strong>
+        </div>
+        <div>
+          <span>Responsible Person record</span>
+          <strong>
+            {d.responsiblePersons.find((r) => r.id === x.responsiblePersonId)
+              ?.legalName ?? "Evidence Missing"}
+          </strong>
+        </div>
+      </section>
+      <section className="panel">
+        <SectionHeader
+          title="Readiness Issues"
+          detail="Workflow gaps, not legal conclusions"
+        />
+        <div className="issue-list">
+          {issues.map((i) => (
+            <article key={i.id}>
+              <StatusPill tone={i.severity === "Blocking" ? "red" : "amber"}>
+                {i.severity}
+              </StatusPill>
+              <div>
+                <strong>{i.title}</strong>
+                <p>{i.description}</p>
+              </div>
+              <span>{i.status}</span>
+            </article>
+          ))}
+        </div>
+      </section>
+      <ComplianceDocumentsPanel dossierId={x.id} />
+      <div className="compliance-grid">
+        <section className="panel">
+          <SectionHeader
+            title="Ingredient Regulatory Review"
+            detail="Exact immutable composition snapshot"
+          />
+          {x.compositionSnapshot.length ? (
+            x.compositionSnapshot.map((line) => (
+              <article className="evidence-row" key={line.formulaLineId}>
+                <strong>{line.ingredientNameSnapshot}</strong>
+                <span>
+                  {line.inciNameSnapshot} · {line.concentration}%
+                </span>
+                <StatusPill tone="amber">Needs Review</StatusPill>
+              </article>
+            ))
+          ) : (
+            <p className="empty-copy">
+              Snapshot predates this seed; create a new dossier to capture
+              composition.
+            </p>
+          )}
+        </section>
+        <section className="panel">
+          <SectionHeader
+            title="CPSR tracking"
+            detail="External qualified safety assessor boundary"
+          />
+          <h3>{cpsr?.status ?? "Not Started"}</h3>
+          <p>{cpsr?.reviewNotes ?? "No issued report recorded."}</p>
+          <strong>
+            {cpsr?.cpsrDocumentId
+              ? "Issued document metadata recorded"
+              : "No issued CPSR document"}
+          </strong>
+        </section>
+      </div>
+      <section className="panel">
+        <SectionHeader
+          title="PIF evidence workspace"
+          detail={`${pifEvidenceSummary(pif).complete}/${pif.length} sections meet the internal evidence checklist`}
+        />
+        <div className="pif-grid">
+          {pif.map((p) => (
+            <article key={p.id}>
+              <span className="eyebrow">{p.area}</span>
+              <StatusPill
+                tone={p.status === "Evidence Recorded" ? "green" : "neutral"}
+              >
+                {p.status}
+              </StatusPill>
+              <p>{p.missingItemsSummary || p.notes}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+      <div className="compliance-grid">
+        <section className="panel">
+          <SectionHeader title="Label checklist & artwork" />
+          {d.labelReviewItems
+            .filter((i) => i.complianceDossierId === x.id)
+            .map((i) => (
+              <article className="evidence-row" key={i.id}>
+                <strong>{i.item}</strong>
+                <StatusPill tone="neutral">{i.status}</StatusPill>
+              </article>
+            ))}
+        </section>
+        <section className="panel">
+          <SectionHeader
+            title="INCI Working Draft"
+            detail="Requires regulatory and label review"
+          />
+          <p className="inci-text">
+            {inci?.workingText ?? "No draft recorded."}
+          </p>
+          {inci?.unresolvedItems.map((item) => (
+            <p className="form-error" key={item}>
+              {item}
+            </p>
+          ))}
+        </section>
+      </div>
+      <div className="compliance-grid">
+        <section className="panel">
+          <SectionHeader title="Claims Registry" />
+          {claims.map((c) => (
+            <article className="evidence-row" key={c.id}>
+              <div>
+                <strong>{c.claimText}</strong>
+                <small>
+                  {c.channel} · {c.evidenceSummary}
+                </small>
+              </div>
+              <StatusPill
+                tone={c.status === "Evidence Missing" ? "red" : "amber"}
+              >
+                {c.status}
+              </StatusPill>
+            </article>
+          ))}
+        </section>
+        <section className="panel">
+          <SectionHeader
+            title="CPNP tracking"
+            detail="Metadata only; no portal integration"
+          />
+          <h3>{cpnp?.status ?? "Not Started"}</h3>
+          <p>
+            {cpnp?.externalReference ??
+              "No external confirmation reference recorded."}
+          </p>
+        </section>
+      </div>
+    </>
+  );
+}

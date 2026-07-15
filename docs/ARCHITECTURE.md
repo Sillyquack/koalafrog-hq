@@ -29,22 +29,22 @@ Lab execution uses its own immutable snapshots. Creating a batch copies the form
 
 Testing remains batch-linked. Templates hold a focused ordered question set, Sessions reference an exact Lab Batch, and submitted Responses carry tester identity plus answer snapshots. Result summaries are descriptive averages and counts only.
 
-## Intended Supabase integration
+## Supabase integration
 
-When Supabase persistence is introduced, evolve the existing boundary into repositories grouped around domain use cases rather than mirroring database tables. Supabase adapters will map database rows into domain types while the current local adapter can remain useful for isolated development.
+Persistence uses repositories grouped around domain use cases rather than leaking database tables into components. Supabase adapters map relational rows into domain types while the Local adapter remains useful for isolated development and rollback.
 
 The planned boundary is:
 
 `Feature UI → domain hook/use case → repository interface → mock or Supabase adapter`
 
-Supabase will eventually provide:
+Supabase provides:
 
 - PostgreSQL for structured domain records and relationships.
 - Authentication for the single owner account.
 - Storage for batch photos, supplier documents, artwork, and compliance files.
 - Row Level Security so all records and storage references remain private to the owner.
 
-Backend clients, generated database types, and query details should remain in an infrastructure area and should not leak into feature components. Database schema and migration design are deliberately deferred.
+Backend clients, generated database types, and query details remain in the platform infrastructure area and do not leak into feature components.
 
 ## UI approach
 
@@ -75,7 +75,7 @@ A Compliance Dossier binds one exact Product, Formula Version, optional Packagin
 
 Readiness is isolated pure domain logic derived from evidence gaps. Its vocabulary is deliberately internal and can never produce “compliant”, “safe”, certified, or authority-approved states. CPSR metadata records an external assessor workflow only. CPNP metadata records external portal references only. Regulatory Reviews record a human conclusion against dated Source records rather than permanent ingredient legality.
 
-Compliance Documents are metadata records behind a future document-storage boundary. localStorage may contain file names, external URLs, and references, but never binary files or Base64 data. A future storage adapter can provide durable files without changing Compliance components.
+Compliance Documents are relational metadata records. A separate storage adapter puts binaries in the private `compliance-documents` bucket, downloads them through authenticated requests, and retains version/lifecycle metadata without storing Base64 data or public URLs.
 
 Launch Plans consume dossier blockers but remain operational project records. Compliance blockers and commercial milestones are separate. Go/No-Go decisions are append-only internal business records preserving unresolved blockers at decision time. Minimal undesirable-effect records document escalation without automatic medical classification.
 
@@ -91,4 +91,4 @@ Supabase schema history lives in `supabase/migrations`. RLS uses `auth.uid()` ow
 
 Phase 8B.1 adds the final relational destination independently of application cutover. Fifty v9 collections map to explicit domain tables and five normalized child/join tables. An authenticated `security invoker` RPC performs all-or-nothing import, and relational read-back feeds the existing pure reconciliation logic. localStorage intentionally remains runtime-authoritative until the later application-action refactor; the generic compatibility table receives no new relational imports.
 
-Phase 8B.2 routes the 64 provider commands through a persistence-confirmed action executor and a session-selected repository. Five explicit commands were added to close previously implicit Product, Regulatory Review, PIF Section, and Launch Plan persistence gaps. The Local adapter remains the delivered default and is the only code that writes the v9 aggregate. The Supabase adapter provides relational hydration, ordinary entity mutations, stale-write detection, normalized child persistence, and dedicated transactional RPCs for Lab, Production, Packaging, and Finished Goods output commitments. Live isolated-workspace tests prove application-action persistence and fresh hydration for all major domains without dual writes. Phase 8B.3 remains the separate startup-authority and security cutover.
+Phase 8B.2 routes persistent provider commands through a persistence-confirmed action executor and a session-selected repository. Phase 8B.3A expands the inventory to 66 commands with Compliance Document metadata actions, adds private versioned Storage, and makes startup authority explicit. The Local adapter remains the development default. `VITE_WORKSPACE_REPOSITORY=supabase` requires Auth plus an activated workspace and hydrates all relational state before mounting the provider; loading/failure never falls back to Local. RLS is owner-scoped across roots and children, Storage paths begin with `auth.uid()`, and security-definer lifecycle RPCs revalidate ownership and relationships. Live two-user tests prove anonymous/cross-owner denial, legitimate owner workflows, RPC boundaries, and private file isolation.

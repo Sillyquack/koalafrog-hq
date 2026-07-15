@@ -3,9 +3,9 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import { App } from './app/App'
 import './styles/index.css'
-import { FormulaDataProvider } from './features/formulas/state/FormulaDataContext'
 import { AuthGate } from './platform/auth/AuthGate'
+import { WorkspaceRuntime } from './platform/startup/WorkspaceRuntime'
 
 createRoot(document.getElementById('root')!).render(
-  <StrictMode><BrowserRouter><AuthGate><FormulaDataProvider><App /></FormulaDataProvider></AuthGate></BrowserRouter></StrictMode>,
+  <StrictMode><BrowserRouter><AuthGate><WorkspaceRuntime><App /></WorkspaceRuntime></AuthGate></BrowserRouter></StrictMode>,
 )

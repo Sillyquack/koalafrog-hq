@@ -35,3 +35,7 @@ Reconciliation compares every collection count and ID, all three ledgers, Produc
 `workspace_records` remains only for the earlier scaffold and rollback/debug compatibility. Phase 8B.1 no longer imports new domain data into it. Application source-of-truth cutover is intentionally deferred to Phase 8B.2 and Phase 8B.3.
 
 Phase 8B.2 ordinary mutations use the same collection-to-table map and never write `workspace_records`. Mutable rows use their previous `updated_at` value as a conflict predicate. Multi-table Lab, Production, Packaging, and Finished Goods output operations use dedicated authenticated transactional RPCs.
+
+## Document-object lifecycle
+
+`document_objects` links a private Storage object to one Compliance Document and Dossier. Versions are unique per document and exactly one row may be `Current`; registering a new version atomically supersedes the old Current row. Removal marks metadata `Removed` with a timestamp before deleting the binary, preserving who uploaded which version and when. Object paths are owner-prefixed and deterministic by dossier/document/version. The registration/removal RPCs derive the owner from `auth.uid()`, validate relational ownership and the private bucket/path, and cannot be used across owners.

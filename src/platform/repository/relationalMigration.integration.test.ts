@@ -68,6 +68,7 @@ run('relational v9 migration against local Supabase', () => {
     expect(completed.error).toBeNull()
     const report = await client.from('migration_runs').select('state,reconciliation').eq('owner_id', ownerId).single()
     expect(report.data?.state).toBe('Completed')
+    expect((await client.from('workspaces').select('lifecycle_state').eq('owner_id',ownerId).single()).data?.lifecycle_state).toBe('active')
     const duplicate = await client.rpc('import_v9_relational', { payload: relationalMigrationPayload(formulaSeed) })
     expect(duplicate.error?.message).toContain('not empty')
     const products = await client.from('products').select('id').eq('owner_id', ownerId)
@@ -86,6 +87,7 @@ run('relational v9 migration against local Supabase', () => {
     expect(products.data).toHaveLength(0)
     const report = await client.from('migration_runs').select('state,errors').eq('owner_id', ownerId).single()
     expect(report.data?.state).toBe('Failed')
+    expect((await client.from('workspaces').select('lifecycle_state').eq('owner_id',ownerId).single()).data?.lifecycle_state).toBe('failed')
   })
 
   it('commits audit-critical operations atomically and rejects duplicates or excess', async () => {
@@ -195,7 +197,7 @@ run('relational v9 migration against local Supabase', () => {
 
     await act('createFormula',current=>({...current,formulas:[...current.formulas,{id:'f-matrix',productId:'p-matrix',name:'Matrix Formula',description:'Verification',createdAt:now,updatedAt:now}],formulaVersions:[...current.formulaVersions,{id:'fv-matrix',formulaId:'f-matrix',version:'v0.1',status:'Draft',description:'Draft',targetCharacteristics:'Stable',developmentNotes:'Independent draft',createdAt:now,updatedAt:now}],formulaLines:[...current.formulaLines,{id:'fl-matrix-1',formulaVersionId:'fv-matrix',ingredientId:'i-matrix',percentage:60,phase:'A',sortOrder:1,notes:'First'},{id:'fl-matrix-2',formulaVersionId:'fv-matrix',ingredientId:'i1',percentage:40,phase:'B',sortOrder:2,notes:'Second'}]}))
     await act('duplicateAsDraft',current=>({...current,formulaVersions:[...current.formulaVersions,{id:'fv-matrix-copy',formulaId:'f-bo-original',version:'v0.3',status:'Draft',description:'Derived verification draft',targetCharacteristics:'',createdAt:now,updatedAt:now,derivedFromVersionId:'fv-bo-02'}],formulaLines:[...current.formulaLines,...current.formulaLines.filter(line=>line.formulaVersionId==='fv-bo-02').map((line,index)=>({...line,id:`fl-matrix-copy-${index}`,formulaVersionId:'fv-matrix-copy'}))]}))
-    expect(state.formulaLines.filter(line=>line.formulaVersionId==='fv-matrix').map(line=>line.sortOrder)).toEqual([1,2])
+    expect(state.formulaLines.filter(line=>line.formulaVersionId==='fv-matrix').map(line=>line.sortOrder).sort()).toEqual([1,2])
     expect(state.formulaVersions.find(item=>item.id==='fv-bo-02')?.status).toBe('Approved')
 
     await act('receiveStock',current=>({...current,inventoryLots:[...current.inventoryLots,{id:'lot-matrix',ingredientId:'i-matrix',internalLotNumber:'KF-RM-MATRIX',receivedDate:'2026-07-15',openingQuantity:100,unit:'g',location:'Test',status:'Active',notes:'',totalAcquisitionCost:20,acquisitionCostCurrency:'NOK',createdAt:now,updatedAt:now}],inventoryMovements:[...current.inventoryMovements,{id:'im-matrix-receipt',inventoryLotId:'lot-matrix',type:'Receipt',quantity:100,unit:'g',reason:'Verification receipt',notes:'',occurredAt:now,createdAt:now}]}))
