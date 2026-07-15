@@ -6,6 +6,7 @@ import {
   sanitizeProviderDiagnostic,
   type ProviderFailureCategory,
 } from "../_shared/providerDiagnostics.ts";
+import { assertOpenAIStructuredOutputSchema } from "../_shared/structuredOutputSchema.ts";
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
     status,
@@ -70,10 +71,10 @@ const responseSchema = {
     "limitations",
   ],
   properties: {
-    schemaVersion: { const: 1 },
+    schemaVersion: { type: "integer", const: 1 },
     title: { type: "string" },
     summary: { type: "string" },
-    confidence: { enum: ["low", "medium", "high"] },
+    confidence: { type: "string", enum: ["low", "medium", "high"] },
     claims: {
       type: "array",
       items: {
@@ -83,6 +84,7 @@ const responseSchema = {
         properties: {
           id: { type: "string" },
           kind: {
+            type: "string",
             enum: ["fact", "prediction", "observation", "recommendation"],
           },
           text: { type: "string" },
@@ -126,7 +128,12 @@ const responseSchema = {
       items: {
         type: "object",
         additionalProperties: false,
-        required: ["materialName", "predictedRole", "contribution"],
+        required: [
+          "materialName",
+          "materialRef",
+          "predictedRole",
+          "contribution",
+        ],
         properties: {
           materialName: { type: "string" },
           materialRef: {
@@ -134,7 +141,7 @@ const responseSchema = {
             additionalProperties: false,
             required: ["entityType", "entityId"],
             properties: {
-              entityType: { const: "ingredient" },
+              entityType: { type: "string", const: "ingredient" },
               entityId: { type: "string" },
             },
           },
@@ -170,10 +177,10 @@ const responseSchema = {
             items: {
               type: "object",
               additionalProperties: false,
-              required: ["name", "source", "reason"],
+              required: ["name", "source", "ingredientId", "reason"],
               properties: {
                 name: { type: "string" },
-                source: { enum: ["workspace", "concept"] },
+                source: { type: "string", enum: ["workspace", "concept"] },
                 ingredientId: { type: ["string", "null"] },
                 reason: { type: "string" },
               },
@@ -197,12 +204,24 @@ const responseSchema = {
             items: {
               type: "object",
               additionalProperties: false,
-              required: ["materialName", "action", "guidance", "reason"],
+              required: [
+                "materialName",
+                "ingredientId",
+                "action",
+                "guidance",
+                "reason",
+              ],
               properties: {
                 materialName: { type: "string" },
                 ingredientId: { type: ["string", "null"] },
-                action: { enum: ["add", "increase", "decrease", "remove"] },
-                guidance: { enum: ["trace", "low", "moderate", "structural"] },
+                action: {
+                  type: "string",
+                  enum: ["add", "increase", "decrease", "remove"],
+                },
+                guidance: {
+                  type: "string",
+                  enum: ["trace", "low", "moderate", "structural"],
+                },
                 reason: { type: "string" },
               },
             },
@@ -215,6 +234,7 @@ const responseSchema = {
     limitations: { type: "array", items: { type: "string" } },
   },
 };
+assertOpenAIStructuredOutputSchema(responseSchema);
 const system = `KOALAFROG DEVELOPMENT COPILOT — SCENT STUDIO. Prompt version scent-studio-v1. Be a creative, disciplined sparring partner. Never claim to smell an untested composition. Every claim is exactly fact, observation, prediction, or recommendation. Facts require supplied record evidence. Observations require supplied Koalafrog lab/test evidence. General fragrance knowledge is prediction, never fact. Never fabricate evidence or records. Be uncertain and experimentally useful. Never claim safety, compliance, legal approval, IFRA/CPSR/PIF/CPNP completion, or make medical claims. Suggestions remain advisory and require supplier documentation, restrictions, assessment and physical evaluation. Prefer small qualitative experiments over fake precision.`;
 interface IntelligenceModelProvider {
   name: string;
