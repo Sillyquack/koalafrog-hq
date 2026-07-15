@@ -1,6 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@^2/cors";
+import {
+  classifyProviderFailure,
+  sanitizeProviderDiagnostic,
+  type ProviderFailureCategory,
+} from "../_shared/providerDiagnostics.ts";
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
     status,
@@ -216,43 +221,134 @@ interface IntelligenceModelProvider {
   model: string;
   analyze(input: { prompt: string; context: unknown }): Promise<unknown>;
 }
+class ProviderCallError extends Error {
+  constructor(public category: ProviderFailureCategory) {
+    super(category);
+  }
+}
 class OpenAIResponsesProvider implements IntelligenceModelProvider {
   name = "openai";
   constructor(
     private key: string,
     public model: string,
+    private audit: { threadId: string; runId: string },
   ) {}
+  private log(input: Parameters<typeof sanitizeProviderDiagnostic>[0]) {
+    console.error(JSON.stringify(sanitizeProviderDiagnostic(input)));
+  }
   async analyze(input: { prompt: string; context: unknown }) {
-    const response = await fetch("https://api.openai.com/v1/responses", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${this.key}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: this.model,
-        input: [
-          { role: "system", content: system },
-          { role: "user", content: JSON.stringify(input) },
-        ],
-        text: {
-          format: {
-            type: "json_schema",
-            name: "koalafrog_intelligence_response",
-            strict: true,
-            schema: responseSchema,
-          },
+    let response: Response;
+    try {
+      response = await fetch("https://api.openai.com/v1/responses", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${this.key}`,
+          "Content-Type": "application/json",
         },
-      }),
-    });
-    if (!response.ok) throw new Error(`Provider returned ${response.status}`);
-    const raw = await response.json();
+        body: JSON.stringify({
+          model: this.model,
+          input: [
+            { role: "system", content: system },
+            { role: "user", content: JSON.stringify(input) },
+          ],
+          text: {
+            format: {
+              type: "json_schema",
+              name: "koalafrog_intelligence_response",
+              strict: true,
+              schema: responseSchema,
+            },
+          },
+        }),
+      });
+    } catch {
+      const category = "provider_server_failure";
+      this.log({
+        providerName: this.name,
+        modelName: this.model,
+        category,
+        safeMessage: "OpenAI request failed before an HTTP response.",
+        ...this.audit,
+      });
+      throw new ProviderCallError(category);
+    }
+    if (!response.ok) {
+      let providerError: { type?: string; code?: string; message?: string } =
+        {};
+      try {
+        providerError =
+          ((await response.json()) as { error?: typeof providerError }).error ??
+          {};
+      } catch {
+        providerError = {
+          message: "OpenAI returned a non-JSON error response.",
+        };
+      }
+      const category = classifyProviderFailure(
+        response.status,
+        providerError.type,
+        providerError.code,
+      );
+      this.log({
+        providerName: this.name,
+        modelName: this.model,
+        category,
+        httpStatus: response.status,
+        errorType: providerError.type,
+        errorCode: providerError.code,
+        requestId: response.headers.get("x-request-id") ?? undefined,
+        safeMessage: providerError.message,
+        ...this.audit,
+      });
+      throw new ProviderCallError(category);
+    }
+    let raw: any;
+    try {
+      raw = await response.json();
+    } catch {
+      const category = "provider_response_parsing";
+      this.log({
+        providerName: this.name,
+        modelName: this.model,
+        category,
+        httpStatus: response.status,
+        requestId: response.headers.get("x-request-id") ?? undefined,
+        safeMessage: "OpenAI success response was not valid JSON.",
+        ...this.audit,
+      });
+      throw new ProviderCallError(category);
+    }
     const output = raw.output
       ?.flatMap((x: any) => x.content ?? [])
       .find((x: any) => x.type === "output_text")?.text;
-    if (typeof output !== "string")
-      throw new Error("Provider returned no structured output.");
-    return JSON.parse(output);
+    if (typeof output !== "string") {
+      const category = "provider_response_parsing";
+      this.log({
+        providerName: this.name,
+        modelName: this.model,
+        category,
+        httpStatus: response.status,
+        requestId: response.headers.get("x-request-id") ?? undefined,
+        safeMessage: "OpenAI response did not contain structured output.",
+        ...this.audit,
+      });
+      throw new ProviderCallError(category);
+    }
+    try {
+      return JSON.parse(output);
+    } catch {
+      const category = "provider_response_parsing";
+      this.log({
+        providerName: this.name,
+        modelName: this.model,
+        category,
+        httpStatus: response.status,
+        requestId: response.headers.get("x-request-id") ?? undefined,
+        safeMessage: "OpenAI structured output was not valid JSON.",
+        ...this.audit,
+      });
+      throw new ProviderCallError(category);
+    }
   }
 }
 function validateResponse(v: any, universe: Set<string>) {
@@ -590,12 +686,26 @@ Deno.serve(async (req) => {
       const provider: IntelligenceModelProvider = new OpenAIResponsesProvider(
         key,
         model,
+        { threadId, runId },
       );
       const parsed = await provider.analyze({
         prompt: body.userPrompt,
         context,
       });
       if (!validateResponse(parsed, universe)) {
+        console.error(
+          JSON.stringify(
+            sanitizeProviderDiagnostic({
+              providerName: "openai",
+              modelName: model,
+              category: "provider_response_validation",
+              safeMessage:
+                "Koalafrog rejected the structured provider payload.",
+              threadId,
+              runId,
+            }),
+          ),
+        );
         await client
           .from("intelligence_runs")
           .update({
@@ -636,13 +746,25 @@ Deno.serve(async (req) => {
         contextManifest: manifest,
       });
     } catch (error) {
+      if (!(error instanceof ProviderCallError))
+        console.error(
+          JSON.stringify(
+            sanitizeProviderDiagnostic({
+              providerName: "openai",
+              modelName: model,
+              category: "provider_failure",
+              safeMessage: "Unexpected provider boundary failure.",
+              threadId,
+              runId,
+            }),
+          ),
+        );
       await client
         .from("intelligence_runs")
         .update({
           status: "failed",
           error_code: "PROVIDER_FAILURE",
-          error_message:
-            error instanceof Error ? error.message : "Provider failure",
+          error_message: `Provider failure: ${error instanceof ProviderCallError ? error.category : "provider_failure"}`,
           provider_name: "openai",
           model_name: model,
           completed_at: new Date().toISOString(),
