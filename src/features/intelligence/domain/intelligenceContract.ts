@@ -101,6 +101,7 @@ export interface ContextManifest {
   testResponseIds: string[];
 }
 export type IntelligenceErrorCode =
+  | "ACTIVE_WORKSPACE_UNAVAILABLE"
   | "INTELLIGENCE_NOT_CONFIGURED"
   | "AUTHENTICATION_EXPIRED"
   | "UNAUTHORIZED_WORKSPACE"

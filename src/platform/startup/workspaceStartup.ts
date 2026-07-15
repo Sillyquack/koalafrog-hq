@@ -46,14 +46,14 @@ export function selectWorkspaceStartup(
 }
 
 export type WorkspaceLookup = {
-  data: { lifecycle_state: string } | null;
+  data: { id?: string; lifecycle_state: string } | null;
   error: Error | null;
 };
 
 export type WorkspaceStartupResult =
   | { mode: "clean-onboarding" }
   | { mode: "migration-available"; state: FormulaState }
-  | { mode: "remote-authoritative"; state: FormulaState };
+  | { mode: "remote-authoritative"; state: FormulaState; workspaceId?: string };
 
 export async function resolveWorkspaceStartup({
   lookup,
@@ -79,5 +79,5 @@ export async function resolveWorkspaceStartup({
     throw new Error(
       `Remote workspace is ${lookup.data.lifecycle_state}; successful reconciliation and activation are required.`,
     );
-  return { mode: "remote-authoritative", state: await loadRemote() };
+  return { mode: "remote-authoritative", state: await loadRemote(), ...(lookup.data.id?{workspaceId:lookup.data.id}:{}) };
 }

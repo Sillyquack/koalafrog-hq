@@ -12,6 +12,7 @@ import {
   type WorkspaceStartupResult,
 } from "./workspaceStartup";
 import { configuredWorkspaceRuntime as configuredRuntime } from './runtimeMode'
+import {ActiveWorkspaceProvider} from './ActiveWorkspaceContext'
 
 class ReadOnlyMigrationRepository implements WorkspaceRepository {
   readonly kind = "local" as const;
@@ -52,7 +53,7 @@ export function WorkspaceRuntime({ children }: { children: React.ReactNode }) {
           throw authError ?? new Error("Authenticated owner required.");
         const workspace = await supabase!
           .from("workspaces")
-          .select("lifecycle_state")
+          .select("id,lifecycle_state")
           .eq("owner_id", data.user.id)
           .maybeSingle();
         let localV9: FormulaState | undefined;
@@ -183,8 +184,10 @@ export function WorkspaceRuntime({ children }: { children: React.ReactNode }) {
       </main>
     );
   return (
-    <FormulaDataProvider repository={remote} initialState={startup.state}>
-      {children}
-    </FormulaDataProvider>
+    <ActiveWorkspaceProvider value={startup.workspaceId?{workspaceId:startup.workspaceId,repository:'supabase'}:undefined}>
+      <FormulaDataProvider repository={remote} initialState={startup.state}>
+        {children}
+      </FormulaDataProvider>
+    </ActiveWorkspaceProvider>
   );
 }

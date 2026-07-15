@@ -1,0 +1,2 @@
+export const addConceptMaterial=(materials:string[],value:string)=>{const material=value.trim();return material&&!materials.some(item=>item.toLowerCase()===material.toLowerCase())?[...materials,material]:materials}
+export function consumeConceptInput(materials:string[],input:string){const parts=input.split(',');if(parts.length===1)return{materials,draft:input};let next=materials;for(const part of parts.slice(0,-1))next=addConceptMaterial(next,part);return{materials:next,draft:parts.at(-1)??''}}

@@ -96,6 +96,8 @@ describe("Supabase workspace startup policy", () => {
     expect(loadRemote).toHaveBeenCalledOnce();
   });
 
+  it("exposes the canonical hydrated workspace ID",async()=>{const loadRemote=vi.fn().mockResolvedValue(structuredClone(formulaSeed));await expect(resolveWorkspaceStartup({lookup:{data:{id:'workspace-active',lifecycle_state:'active'},error:null},loadRemote})).resolves.toMatchObject({mode:'remote-authoritative',workspaceId:'workspace-active'})})
+
   it("keeps a genuine remote query failure unavailable", async () => {
     const failure = new Error("Hosted query failed");
     await expect(

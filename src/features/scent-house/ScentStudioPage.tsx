@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { ArrowLeft, Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useFormulaData } from "../formulas/state/FormulaDataContext";
@@ -10,6 +10,8 @@ import type {
   ClaimKind,
   IntelligenceResponse,
 } from "../intelligence/domain/intelligenceContract";
+import { useActiveWorkspace } from "../../platform/startup/ActiveWorkspaceContext";
+import { addConceptMaterial, consumeConceptInput } from "./domain/conceptMaterials";
 const claimLabel: Record<ClaimKind, string> = {
   fact: "Fact",
   prediction: "Prediction",
@@ -18,28 +20,19 @@ const claimLabel: Record<ClaimKind, string> = {
 };
 export function ScentStudioPage() {
   const data = useFormulaData();
+  const activeWorkspace = useActiveWorkspace();
   const [prompt, setPrompt] = useState("");
   const [productId, setProductId] = useState("");
   const [versionId, setVersionId] = useState("");
   const [selected, setSelected] = useState<string[]>([]);
-  const [conceptText, setConceptText] = useState("");
+  const [conceptDraft, setConceptDraft] = useState("");
+  const [concepts, setConcepts] = useState<string[]>([]);
   const [threadId, setThreadId] = useState<string>();
   const [report, setReport] = useState<IntelligenceResponse>();
   const [state, setState] = useState<
     "idle" | "gathering" | "analyzing" | "success" | "error"
   >("idle");
   const [error, setError] = useState<{ code: string; message: string }>();
-  const concepts = useMemo(
-    () => [
-      ...new Set(
-        conceptText
-          .split(",")
-          .map((x) => x.trim())
-          .filter(Boolean),
-      ),
-    ],
-    [conceptText],
-  );
   const versions = data.formulaVersions.filter(
     (v) =>
       !productId ||
@@ -65,6 +58,7 @@ export function ScentStudioPage() {
       const result = await runIntelligence({
         schemaVersion: 1,
         mode: "scent_exploration",
+        workspaceId: activeWorkspace?.workspaceId ?? "",
         threadId,
         userPrompt: prompt,
         contextSelection: {
@@ -182,14 +176,16 @@ export function ScentStudioPage() {
           <label>
             Concept Materials
             <input
-              value={conceptText}
-              onChange={(e) => setConceptText(e.target.value)}
-              placeholder="Bergamot, Cardamom, Cedarwood Atlas"
+              value={conceptDraft}
+              onChange={(e) => { const next=consumeConceptInput(concepts,e.target.value); setConcepts(next.materials); setConceptDraft(next.draft) }}
+              onKeyDown={(e) => { if(e.key==='Enter'){e.preventDefault();setConcepts(addConceptMaterial(concepts,conceptDraft));setConceptDraft('')} }}
+              placeholder="Type a material, then press Enter"
             />
             <small>
-              Exploratory names only. They will not create Ingredient records.
+              Press Enter or comma after each material. Multi-word names remain together and never create Ingredient records.
             </small>
           </label>
+          <div className="concept-chips" aria-label="Concept Materials">{concepts.map(material=><span key={material}>{material}<button type="button" aria-label={`Remove ${material}`} onClick={()=>setConcepts(current=>current.filter(item=>item!==material))}>×</button></span>)}</div>
           <aside className="context-receipt">
             <strong>Using</strong>
             <span>{productId ? 1 : 0} Product</span>

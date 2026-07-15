@@ -1,55 +1,9 @@
-import { supabase } from "../../../platform/supabase/client";
-import type {
-  IntelligenceRequest,
-  IntelligenceResponse,
-  ContextManifest,
-  IntelligenceErrorCode,
-} from "../domain/intelligenceContract";
-export class IntelligenceClientError extends Error {
-  constructor(
-    public code: IntelligenceErrorCode,
-    message: string,
-  ) {
-    super(message);
-  }
-}
-export async function runIntelligence(
-  request: Omit<IntelligenceRequest, "workspaceId">,
-) {
-  if (!supabase)
-    throw new IntelligenceClientError(
-      "INTELLIGENCE_NOT_CONFIGURED",
-      "Hosted Intelligence requires the Supabase runtime.",
-    );
-  const workspace = await supabase
-    .from("workspaces")
-    .select("id")
-    .eq("lifecycle_state", "Active")
-    .maybeSingle();
-  if (workspace.error || !workspace.data)
-    throw new IntelligenceClientError(
-      "UNAUTHORIZED_WORKSPACE",
-      "The active hosted workspace is unavailable.",
-    );
-  const result = await supabase.functions.invoke("koalafrog-intelligence", {
-    body: { ...request, workspaceId: workspace.data.id },
-  });
-  if (result.error) {
-    const context = await result.error.context?.json?.().catch(() => undefined);
-    throw new IntelligenceClientError(
-      context?.error?.code ?? "NETWORK_FAILURE",
-      context?.error?.message ?? result.error.message,
-    );
-  }
-  if (result.data?.error)
-    throw new IntelligenceClientError(
-      result.data.error.code,
-      result.data.error.message,
-    );
-  return result.data as {
-    threadId: string;
-    runId: string;
-    response: IntelligenceResponse;
-    contextManifest: ContextManifest;
-  };
-}
+import {supabase} from '../../../platform/supabase/client'
+import type {ContextManifest,IntelligenceErrorCode,IntelligenceRequest,IntelligenceResponse} from '../domain/intelligenceContract'
+export class IntelligenceClientError extends Error{constructor(public code:IntelligenceErrorCode,message:string){super(message)}}
+interface GatewayResult{data?:unknown;error?:{message:string;context?:{json?:()=>Promise<unknown>}}}
+export interface AuthenticatedIntelligenceGateway{auth:{getSession:()=>Promise<{data:{session:unknown|null};error:Error|null}>};functions:{invoke:(name:string,options:{body:IntelligenceRequest})=>Promise<GatewayResult>}}
+type Success={threadId:string;runId:string;response:IntelligenceResponse;contextManifest:ContextManifest}
+const errorPayload=(value:unknown)=>value&&typeof value==='object'&&'error'in value?(value as {error?:{code?:IntelligenceErrorCode;message?:string}}).error:undefined
+export async function invokeIntelligence(gateway:AuthenticatedIntelligenceGateway,request:IntelligenceRequest):Promise<Success>{if(!request.workspaceId)throw new IntelligenceClientError('ACTIVE_WORKSPACE_UNAVAILABLE','The active hosted workspace is unavailable.');const session=await gateway.auth.getSession();if(session.error||!session.data.session)throw new IntelligenceClientError('AUTHENTICATION_EXPIRED','Your authenticated session has expired. Sign in again.');const result=await gateway.functions.invoke('koalafrog-intelligence',{body:request});if(result.error){const payload=result.error.context?.json?await result.error.context.json().catch(()=>undefined):undefined;const controlled=errorPayload(payload);throw new IntelligenceClientError(controlled?.code??'NETWORK_FAILURE',controlled?.message??result.error.message)}const controlled=errorPayload(result.data);if(controlled)throw new IntelligenceClientError(controlled.code??'NETWORK_FAILURE',controlled.message??'Intelligence request failed.');return result.data as Success}
+export async function runIntelligence(request:IntelligenceRequest){if(!supabase)throw new IntelligenceClientError('INTELLIGENCE_NOT_CONFIGURED','Hosted Intelligence requires the Supabase runtime.');return invokeIntelligence(supabase as AuthenticatedIntelligenceGateway,request)}

@@ -1,0 +1,3 @@
+import {describe,expect,it} from 'vitest'
+import {addConceptMaterial,consumeConceptInput} from './conceptMaterials'
+describe('Concept Material tokens',()=>{it('commits three individually entered materials',()=>{let values:string[]=[];for(const name of ['Bergamot','Cardamom','Cedarwood Atlas'])values=addConceptMaterial(values,name);expect(values).toEqual(['Bergamot','Cardamom','Cedarwood Atlas'])});it('keeps multi-word names as one material',()=>expect(addConceptMaterial([],'Leather accord')).toEqual(['Leather accord']));it('commits comma-delimited entries without splitting spaces',()=>expect(consumeConceptInput([], 'Bergamot, Cedarwood Atlas,').materials).toEqual(['Bergamot','Cedarwood Atlas']))})
