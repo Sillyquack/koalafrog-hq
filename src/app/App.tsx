@@ -5,6 +5,7 @@ import { ProductsPage } from '../features/products/ProductsPage'
 import { IngredientsPage } from '../features/ingredients/IngredientsPage'
 import { LabPage } from '../features/lab/LabPage'
 import { ScentHousePage } from '../features/scent-house/ScentHousePage'
+import { ScentStudioPage } from '../features/scent-house/ScentStudioPage'
 import { PlaceholderPage } from '../features/placeholders/PlaceholderPage'
 import { placeholderModules } from '../data/mockData'
 import { ProductDetailPage } from '../features/products/ProductDetailPage'
@@ -59,6 +60,7 @@ export function App() {
         <Route path="launch/:launchPlanId" element={<LaunchPlanPage />} />
         <Route path="platform" element={<PlatformPage />} />
         <Route path="scent-house" element={<ScentHousePage />} />
+        <Route path="scent-house/studio" element={<ScentStudioPage />} />
         {placeholderModules.map((module) => (
           <Route key={module.path} path={module.path} element={<PlaceholderPage module={module} />} />
         ))}

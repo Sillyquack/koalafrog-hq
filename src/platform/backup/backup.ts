@@ -1,6 +1,103 @@
-import type { FormulaState } from '../../types/domain'
-export const BACKUP_FORMAT='koalafrog-backup-v1'
-export interface KoalafrogBackup {format:string;exportedAt:string;applicationVersion:string;workspace:{sourceSchema:string;ownerId?:string};entityCounts:Record<string,number>;records:FormulaState;storageManifest:Array<{documentId:string;bucket:string;objectPath:string;fileName:string;size:number;mimeType?:string;fileVersion?:number;state?:'Current'|'Superseded'|'Removed';checksum?:string;uploadedAt?:string}>}
-export function createBackup(state:FormulaState,storageManifest:KoalafrogBackup['storageManifest']=[],ownerId?:string):KoalafrogBackup{const entityCounts=Object.fromEntries(Object.entries(state).map(([key,value])=>[key,Array.isArray(value)?value.length:0]));return{format:BACKUP_FORMAT,exportedAt:new Date().toISOString(),applicationVersion:'0.1.0',workspace:{sourceSchema:'koalafrog-hq:workspace:v9',ownerId},entityCounts,records:structuredClone(state),storageManifest}}
-export function validateBackup(value:unknown){const errors:string[]=[];if(!value||typeof value!=='object')return{valid:false,errors:['Backup must be an object.']};const backup=value as Partial<KoalafrogBackup>;if(backup.format!==BACKUP_FORMAT)errors.push('Unsupported backup format.');if(!backup.records||typeof backup.records!=='object')errors.push('Backup records are missing.');if(!backup.entityCounts||typeof backup.entityCounts!=='object')errors.push('Entity counts are missing.');if(!Array.isArray(backup.storageManifest))errors.push('Storage manifest is missing.');if(backup.records&&backup.entityCounts){for(const [collection,records] of Object.entries(backup.records)){if(Array.isArray(records)&&backup.entityCounts[collection]!==records.length)errors.push(`Entity count mismatch for ${collection}.`)}}return{valid:errors.length===0,errors,metadata:{format:backup.format,exportedAt:backup.exportedAt,entityCounts:backup.entityCounts,storageObjectCount:backup.storageManifest?.length??0}}}
-export function downloadBackup(backup:KoalafrogBackup){const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`koalafrog-backup-${backup.exportedAt.slice(0,10)}.json`;a.click();URL.revokeObjectURL(url)}
+import type { FormulaState } from "../../types/domain";
+export const BACKUP_FORMAT = "koalafrog-backup-v1";
+type StorageRecord = {
+  documentId: string;
+  bucket: string;
+  objectPath: string;
+  fileName: string;
+  size: number;
+  mimeType?: string;
+  fileVersion?: number;
+  state?: "Current" | "Superseded" | "Removed";
+  checksum?: string;
+  uploadedAt?: string;
+};
+export interface IntelligenceBackup {
+  threads: unknown[];
+  runs: unknown[];
+}
+export interface KoalafrogBackup {
+  format: string;
+  exportedAt: string;
+  applicationVersion: string;
+  workspace: { sourceSchema: string; ownerId?: string };
+  entityCounts: Record<string, number>;
+  records: FormulaState;
+  intelligenceHistory: IntelligenceBackup;
+  storageManifest: StorageRecord[];
+}
+export function createBackup(
+  state: FormulaState,
+  storageManifest: StorageRecord[] = [],
+  ownerId?: string,
+  intelligenceHistory: IntelligenceBackup = { threads: [], runs: [] },
+): KoalafrogBackup {
+  const entityCounts = Object.fromEntries(
+    Object.entries(state).map(([key, value]) => [
+      key,
+      Array.isArray(value) ? value.length : 0,
+    ]),
+  );
+  entityCounts.intelligenceThreads = intelligenceHistory.threads.length;
+  entityCounts.intelligenceRuns = intelligenceHistory.runs.length;
+  return {
+    format: BACKUP_FORMAT,
+    exportedAt: new Date().toISOString(),
+    applicationVersion: "0.1.0",
+    workspace: { sourceSchema: "koalafrog-hq:workspace:v9", ownerId },
+    entityCounts,
+    records: structuredClone(state),
+    intelligenceHistory: structuredClone(intelligenceHistory),
+    storageManifest,
+  };
+}
+export function validateBackup(value: unknown) {
+  const errors: string[] = [];
+  if (!value || typeof value !== "object")
+    return { valid: false, errors: ["Backup must be an object."] };
+  const backup = value as Partial<KoalafrogBackup>;
+  if (backup.format !== BACKUP_FORMAT)
+    errors.push("Unsupported backup format.");
+  if (!backup.records || typeof backup.records !== "object")
+    errors.push("Backup records are missing.");
+  if (!backup.entityCounts || typeof backup.entityCounts !== "object")
+    errors.push("Entity counts are missing.");
+  if (!Array.isArray(backup.storageManifest))
+    errors.push("Storage manifest is missing.");
+  if (
+    !backup.intelligenceHistory ||
+    !Array.isArray(backup.intelligenceHistory.threads) ||
+    !Array.isArray(backup.intelligenceHistory.runs)
+  )
+    errors.push("Intelligence history is missing.");
+  if (backup.records && backup.entityCounts) {
+    for (const [collection, records] of Object.entries(backup.records)) {
+      if (
+        Array.isArray(records) &&
+        backup.entityCounts[collection] !== records.length
+      )
+        errors.push(`Entity count mismatch for ${collection}.`);
+    }
+  }
+  return {
+    valid: errors.length === 0,
+    errors,
+    metadata: {
+      format: backup.format,
+      exportedAt: backup.exportedAt,
+      entityCounts: backup.entityCounts,
+      storageObjectCount: backup.storageManifest?.length ?? 0,
+    },
+  };
+}
+export function downloadBackup(backup: KoalafrogBackup) {
+  const blob = new Blob([JSON.stringify(backup, null, 2)], {
+    type: "application/json",
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `koalafrog-backup-${backup.exportedAt.slice(0, 10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}

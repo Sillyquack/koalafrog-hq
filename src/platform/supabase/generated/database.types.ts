@@ -1154,6 +1154,125 @@ export type Database = {
           },
         ]
       }
+      intelligence_runs: {
+        Row: {
+          completed_at: string | null
+          context_manifest: Json
+          context_selection: Json
+          context_version: number
+          created_at: string
+          error_code: string | null
+          error_message: string | null
+          id: string
+          model_name: string | null
+          owner_user_id: string
+          prompt_version: string
+          provider_name: string | null
+          request_schema_version: number
+          response_payload: Json | null
+          response_schema_version: number | null
+          status: string
+          thread_id: string
+          user_prompt: string
+          workspace_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          context_manifest: Json
+          context_selection: Json
+          context_version: number
+          created_at?: string
+          error_code?: string | null
+          error_message?: string | null
+          id: string
+          model_name?: string | null
+          owner_user_id: string
+          prompt_version: string
+          provider_name?: string | null
+          request_schema_version: number
+          response_payload?: Json | null
+          response_schema_version?: number | null
+          status: string
+          thread_id: string
+          user_prompt: string
+          workspace_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          context_manifest?: Json
+          context_selection?: Json
+          context_version?: number
+          created_at?: string
+          error_code?: string | null
+          error_message?: string | null
+          id?: string
+          model_name?: string | null
+          owner_user_id?: string
+          prompt_version?: string
+          provider_name?: string | null
+          request_schema_version?: number
+          response_payload?: Json | null
+          response_schema_version?: number | null
+          status?: string
+          thread_id?: string
+          user_prompt?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "intelligence_runs_workspace_id_owner_user_id_fkey"
+            columns: ["workspace_id", "owner_user_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id", "owner_id"]
+          },
+          {
+            foreignKeyName: "intelligence_runs_workspace_id_thread_id_fkey"
+            columns: ["workspace_id", "thread_id"]
+            isOneToOne: false
+            referencedRelation: "intelligence_threads"
+            referencedColumns: ["workspace_id", "id"]
+          },
+        ]
+      }
+      intelligence_threads: {
+        Row: {
+          created_at: string
+          id: string
+          mode: string
+          owner_user_id: string
+          title: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          mode: string
+          owner_user_id: string
+          title: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          mode?: string
+          owner_user_id?: string
+          title?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "intelligence_threads_workspace_id_owner_user_id_fkey"
+            columns: ["workspace_id", "owner_user_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id", "owner_id"]
+          },
+        ]
+      }
       inventory_lots: {
         Row: {
           acquisition_cost_currency: string | null

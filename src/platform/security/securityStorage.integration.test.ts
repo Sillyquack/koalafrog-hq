@@ -172,6 +172,20 @@ run("local Supabase Auth, RLS, RPC, Storage, and cutover security", () => {
     ).toBeGreaterThan(0);
   }, 30_000);
 
+  it("enforces intelligence history ownership and cross-workspace integrity", async () => {
+    const threadId=crypto.randomUUID(),runId=crypto.randomUUID(),now=new Date().toISOString();
+    expect((await userA.from('intelligence_threads').insert({id:threadId,workspace_id:workspaceA,owner_user_id:userAId,mode:'scent_exploration',title:'A study',created_at:now,updated_at:now})).error).toBeNull();
+    expect((await userA.from('intelligence_runs').insert({id:runId,workspace_id:workspaceA,owner_user_id:userAId,thread_id:threadId,request_schema_version:1,prompt_version:'scent-studio-v1',context_version:1,user_prompt:'Explore',context_selection:{selectedIngredientIds:[],conceptMaterials:[]},context_manifest:{contextVersion:1},status:'analyzing',created_at:now})).error).toBeNull();
+    expect((await anonymous.from('intelligence_threads').select('id').eq('id',threadId)).error).not.toBeNull();
+    expect((await anonymous.from('intelligence_runs').select('id').eq('id',runId)).error).not.toBeNull();
+    expect((await userB.from('intelligence_threads').select('id').eq('id',threadId)).data).toHaveLength(0);
+    expect((await userB.from('intelligence_runs').select('id').eq('id',runId)).data).toHaveLength(0);
+    expect((await userB.from('intelligence_threads').insert({id:crypto.randomUUID(),workspace_id:workspaceA,owner_user_id:userAId,mode:'scent_exploration',title:'Forged'})).error).not.toBeNull();
+    const ownB=crypto.randomUUID();expect((await userB.from('intelligence_threads').insert({id:ownB,workspace_id:workspaceB,owner_user_id:userBId,mode:'scent_exploration',title:'B study'})).error).toBeNull();
+    expect((await userB.from('intelligence_runs').insert({id:crypto.randomUUID(),workspace_id:workspaceB,owner_user_id:userBId,thread_id:threadId,request_schema_version:1,prompt_version:'scent-studio-v1',context_version:1,user_prompt:'Cross',context_selection:{},context_manifest:{},status:'analyzing'})).error).not.toBeNull();
+    expect((await userA.from('intelligence_threads').select('id').eq('id',threadId)).data).toHaveLength(1);
+  });
+
   it("rejects owner/workspace forging and cross-workspace parent relationships", async () => {
     const timestamp=new Date().toISOString();
     expect((await userA.from("products").insert({id:"p-a-security",workspace_id:workspaceA,owner_id:userAId,name:"A only",category:"Test",status:"Active",development_stage:"Research",description:"",scent_profile:"",target_launch_date:"2027-01-01",created_at:timestamp,updated_at:timestamp})).error).toBeNull();

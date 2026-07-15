@@ -21,6 +21,7 @@ export function PlatformPage() {
     try {
       let ownerId: string | undefined
       let manifest: Parameters<typeof createBackup>[1] = []
+      let intelligenceHistory: Parameters<typeof createBackup>[3] = {threads:[],runs:[]}
       if (supabase) {
         const { data: { user }, error: authError } = await supabase.auth.getUser()
         if (authError) throw authError
@@ -29,9 +30,12 @@ export function PlatformPage() {
           const result = await supabase.from('document_objects').select('document_record_id,bucket,object_path,original_file_name,mime_type,size,file_version,state,checksum,uploaded_at').eq('owner_id', ownerId).order('uploaded_at')
           if (result.error) throw result.error
           manifest = result.data.map(row => ({documentId: row.document_record_id,bucket: row.bucket,objectPath: row.object_path,fileName: row.original_file_name,size: row.size,mimeType: row.mime_type,fileVersion: row.file_version,state: row.state as 'Current'|'Superseded'|'Removed',...(row.checksum ? {checksum: row.checksum} : {}),uploadedAt: row.uploaded_at}))
+          const [threads,runs]=await Promise.all([supabase.from('intelligence_threads').select('*').eq('owner_user_id',ownerId).order('created_at'),supabase.from('intelligence_runs').select('*').eq('owner_user_id',ownerId).order('created_at')])
+          if(threads.error||runs.error)throw threads.error??runs.error
+          intelligenceHistory={threads:threads.data??[],runs:runs.data??[]}
         }
       }
-      downloadBackup(createBackup(collections, manifest, ownerId))
+      downloadBackup(createBackup(collections, manifest, ownerId, intelligenceHistory))
       setMessage(`Backup exported with ${manifest.length} private Storage metadata record${manifest.length === 1 ? '' : 's'}; file binaries are not included.`)
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Backup export failed.')

@@ -47,4 +47,5 @@ Phase 6 now replaces overlapping manual packaging Cost Lines with authoritative 
 - Phase 8B.2: Application Actions + Repository Refactor — Complete
 - Phase 8B.3A: Security + Storage + Cutover Readiness — Complete
 - Phase 8B.3B: Hosted Authoritative Cutover — Next
-- Phase 9: Koalafrog Intelligence Layer — Blocked pending Phase 8
+- Phase 9A: Intelligence Foundation + Scent Studio First Vertical Slice — Implemented locally; hosted deployment and provider configuration pending
+- Phase 9B+: Scent Memory, Operations Copilot, and later Intelligence work — Future
