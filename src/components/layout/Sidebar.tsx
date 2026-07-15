@@ -1,5 +1,6 @@
 import { NavLink } from 'react-router-dom'
 import { Beaker, Blend, BookOpen, Boxes, Calculator, ClipboardCheck, Factory, FileText, FlaskConical, Gauge, Leaf, Package, Rocket, ShoppingBasket, TestTubeDiagonal, Toolbox, X } from 'lucide-react'
+import { configuredWorkspaceRuntime, workspaceRuntimeLabel } from '../../platform/startup/runtimeMode'
 
 const navItems = [
   { to: '/', label: 'Dashboard', icon: Gauge, end: true },
@@ -21,6 +22,7 @@ const navItems = [
 ]
 
 export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const runtime = workspaceRuntimeLabel(configuredWorkspaceRuntime)
   return (
     <aside className={`sidebar ${open ? 'is-open' : ''}`}>
       <div className="brand-lockup">
@@ -36,7 +38,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
           </NavLink>
         ))}
       </nav>
-      <div className="sidebar-footer"><span className="pulse-dot" />Local workspace <small>Foundation v0.1</small></div>
+      <div className="sidebar-footer"><span className="pulse-dot" />{runtime.title} <small>{runtime.detail}</small></div>
     </aside>
   )
 }

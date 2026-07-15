@@ -1,0 +1,4 @@
+export type DashboardAction = 'product' | 'formula' | 'batch' | 'ingredient' | 'test'
+export const dashboardActionTarget = (action: DashboardAction) => ({ product:'/products?create=1', formula:'/formulas?create=1', batch:'/lab?create=1', ingredient:'/ingredients?create=1', test:'/testing?record=1' })[action]
+export type DashboardPrerequisites={products:number;formulaVersions:number;labBatches:number;testTemplates:number;testers:number}
+export const dashboardActionPrerequisite=(action:DashboardAction,state:DashboardPrerequisites)=>action==='formula'&&!state.products?'Create a Product before starting a Formula.':action==='batch'&&!state.formulaVersions?'A Product and Formula Version are required before starting a Lab Batch.':action==='test'&&(!state.labBatches||!state.testTemplates||!state.testers)?'Recording a Test requires a Lab Batch, Test Template, and active Tester.':undefined

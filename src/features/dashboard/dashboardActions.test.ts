@@ -1,0 +1,4 @@
+import { describe, expect, it } from 'vitest'
+import { dashboardActionPrerequisite, dashboardActionTarget } from './dashboardActions'
+describe('dashboard quick actions',()=>{it.each([['product','/products?create=1'],['formula','/formulas?create=1'],['batch','/lab?create=1'],['ingredient','/ingredients?create=1'],['test','/testing?record=1']] as const)('routes %s to the canonical workflow',(action,target)=>expect(dashboardActionTarget(action)).toBe(target))})
+describe('clean workspace prerequisites',()=>{it('explains dependent actions',()=>{const empty={products:0,formulaVersions:0,labBatches:0,testTemplates:0,testers:0};expect(dashboardActionPrerequisite('formula',empty)).toContain('Product');expect(dashboardActionPrerequisite('batch',empty)).toContain('Formula Version');expect(dashboardActionPrerequisite('test',empty)).toContain('Test Template');expect(dashboardActionPrerequisite('product',empty)).toBeUndefined()})})

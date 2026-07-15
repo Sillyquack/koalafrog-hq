@@ -11,13 +11,7 @@ import {
   resolveWorkspaceStartup,
   type WorkspaceStartupResult,
 } from "./workspaceStartup";
-
-const configuredRuntime =
-  (
-    import.meta.env.VITE_WORKSPACE_REPOSITORY as string | undefined
-  )?.toLowerCase() === "supabase"
-    ? "supabase"
-    : "local";
+import { configuredWorkspaceRuntime as configuredRuntime } from './runtimeMode'
 
 class ReadOnlyMigrationRepository implements WorkspaceRepository {
   readonly kind = "local" as const;
