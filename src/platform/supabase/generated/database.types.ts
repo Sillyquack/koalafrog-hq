@@ -3833,6 +3833,7 @@ export type Database = {
         Args: { report: Json; run_id: string }
         Returns: undefined
       }
+      create_clean_workspace: { Args: never; Returns: string }
       import_v9_relational: { Args: { payload: Json }; Returns: Json }
       kf_convert_quantity: {
         Args: { from_unit: string; q: number; to_unit: string }
@@ -4054,4 +4055,3 @@ export const Constants = {
     Enums: {},
   },
 } as const
-

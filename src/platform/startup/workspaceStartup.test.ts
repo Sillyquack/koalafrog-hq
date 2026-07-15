@@ -73,6 +73,16 @@ describe("Supabase workspace startup policy", () => {
     expect(loadRemote).not.toHaveBeenCalled();
   });
 
+  it("offers clean onboarding when zero remote rows and no local v9 exist", async () => {
+    await expect(
+      resolveWorkspaceStartup({
+        lookup: { data: null, error: null },
+        localV9Present: false,
+        loadRemote: vi.fn(),
+      }),
+    ).resolves.toEqual({ mode: "clean-onboarding" });
+  });
+
   it("loads the one active remote workspace as authoritative", async () => {
     const remote = structuredClone(formulaSeed),
       loadRemote = vi.fn().mockResolvedValue(remote);

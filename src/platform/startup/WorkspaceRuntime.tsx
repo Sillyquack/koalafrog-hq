@@ -41,6 +41,7 @@ export function WorkspaceRuntime({ children }: { children: React.ReactNode }) {
   );
   const [startup, setStartup] = useState<WorkspaceStartupResult>(),
     [error, setError] = useState(""),
+    [creatingClean, setCreatingClean] = useState(false),
     [attempt, setAttempt] = useState(0);
   const retry = useCallback(() => {
     setError("");
@@ -77,6 +78,7 @@ export function WorkspaceRuntime({ children }: { children: React.ReactNode }) {
               : null,
           },
           localV9,
+          localV9Present: Boolean(stored),
           loadRemote: () => remote.load(data.user.id),
         });
       })
@@ -95,6 +97,24 @@ export function WorkspaceRuntime({ children }: { children: React.ReactNode }) {
       active = false;
     };
   }, [remote, attempt]);
+  const startClean = async () => {
+    if (!supabase || creatingClean) return;
+    setCreatingClean(true);
+    setError("");
+    try {
+      const created = await supabase.rpc("create_clean_workspace");
+      if (created.error) throw new Error(created.error.message);
+      retry();
+    } catch (failure) {
+      setError(
+        failure instanceof Error
+          ? failure.message
+          : "Clean workspace creation failed.",
+      );
+    } finally {
+      setCreatingClean(false);
+    }
+  };
   if (configuredRuntime === "local")
     return (
       <FormulaDataProvider repository={local}>{children}</FormulaDataProvider>
@@ -146,6 +166,27 @@ export function WorkspaceRuntime({ children }: { children: React.ReactNode }) {
           <PlatformPage />
         </main>
       </FormulaDataProvider>
+    );
+  if (startup.mode === "clean-onboarding")
+    return (
+      <main className="auth-screen">
+        <div>
+          <span className="eyebrow">New hosted Koalafrog workspace</span>
+          <h1>Start with a clean workspace</h1>
+          <p>
+            No hosted workspace or local migration source exists. Start Clean
+            creates an empty private relational workspace for the authenticated
+            owner. It does not insert demo records or write local v9 data.
+          </p>
+          <button
+            className="button primary"
+            disabled={creatingClean}
+            onClick={() => void startClean()}
+          >
+            {creatingClean ? "Creating clean workspace…" : "Start Clean"}
+          </button>
+        </div>
+      </main>
     );
   return (
     <FormulaDataProvider repository={remote} initialState={startup.state}>

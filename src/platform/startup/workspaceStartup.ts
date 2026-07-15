@@ -51,23 +51,27 @@ export type WorkspaceLookup = {
 };
 
 export type WorkspaceStartupResult =
+  | { mode: "clean-onboarding" }
   | { mode: "migration-available"; state: FormulaState }
   | { mode: "remote-authoritative"; state: FormulaState };
 
 export async function resolveWorkspaceStartup({
   lookup,
   localV9,
+  localV9Present = Boolean(localV9),
   loadRemote,
 }: {
   lookup: WorkspaceLookup;
   localV9?: FormulaState;
+  localV9Present?: boolean;
   loadRemote: () => Promise<FormulaState>;
 }): Promise<WorkspaceStartupResult> {
   if (lookup.error) throw lookup.error;
   if (!lookup.data) {
+    if (!localV9Present) return { mode: "clean-onboarding" };
     if (!localV9 || validateV9Workspace(localV9).blockingErrors)
       throw new Error(
-        "No remote workspace exists and no valid local v9 migration source is available.",
+        "A local v9 migration source exists but is not valid for onboarding.",
       );
     return { mode: "migration-available", state: localV9 };
   }
