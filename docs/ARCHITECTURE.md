@@ -88,3 +88,5 @@ Configured deployments use Supabase Auth, owner-scoped Postgres records, and a p
 The migration path is older local workspace → retained local migration chain → normalized v9 → dry run → ordered authenticated import → count, ledger, cost, and release-reference reconciliation. local v9 is never automatically deleted.
 
 Supabase schema history lives in `supabase/migrations`. RLS uses `auth.uid()` ownership on workspaces, records, migration history, document metadata, and Storage paths. Complex workflow immutability remains enforced by tested domain actions; database ownership, uniqueness, and structural checks provide defense in depth.
+
+Phase 8B.1 adds the final relational destination independently of application cutover. Fifty v9 collections map to explicit domain tables and five normalized child/join tables. An authenticated `security invoker` RPC performs all-or-nothing import, and relational read-back feeds the existing pure reconciliation logic. localStorage intentionally remains runtime-authoritative until the later application-action refactor; the generic compatibility table receives no new relational imports.

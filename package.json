@@ -28,6 +28,7 @@
     "eslint-plugin-react-hooks": "latest",
     "eslint-plugin-react-refresh": "latest",
     "globals": "latest",
+    "supabase": "^2.109.1",
     "typescript-eslint": "latest",
     "vitest": "latest"
   }

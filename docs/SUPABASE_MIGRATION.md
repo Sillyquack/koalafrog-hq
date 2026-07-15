@@ -10,7 +10,9 @@ Koalafrog normalizes every older local workspace through the retained local migr
 4. Create the single owner in Supabase Auth. Public registration should remain disabled.
 5. Open `/platform`, validate the local v9 workspace, review counts and findings, export a rollback backup, then explicitly import.
 
-The import writes parent collections before dependants. A blocking dry-run error prevents import. Migration runs and reconciliation reports should be retained. Do not delete local v9 after success; removal is a separate explicit owner decision.
+The Phase 8B.1 import calls an authenticated, transactional relational RPC. A blocking dry-run error prevents import, a populated relational workspace prevents merging, and deferred foreign keys validate the complete graph at commit. Migration and reconciliation reports are retained. Do not delete local v9 after success; removal is a separate explicit owner decision.
+
+Run `npx supabase db reset` to recreate and validate all schema migrations. Local destructive integration tests require `VITE_SUPABASE_TEST_URL`, `VITE_SUPABASE_TEST_ANON_KEY`, and `VITE_SUPABASE_TEST_SERVICE_ROLE_KEY` from `npx supabase status`; never point them at production. See `RELATIONAL_SCHEMA.md` for the table graph and embedded-value decisions.
 
 ## Source of truth
 

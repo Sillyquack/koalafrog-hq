@@ -43,4 +43,7 @@ Phase 6 now replaces overlapping manual packaging Cost Lines with authoritative 
 - Phase 6: Packaging + Finished Goods — Complete
 - Phase 7: Compliance Evidence + Launch Readiness — Complete
 - Phase 8: Platform + Data Foundation — Current
+- Phase 8B.1: Relational Schema + Proven v9 Migration — Complete
+- Phase 8B.2: Repository + Application Action Refactor — Next
+- Phase 8B.3: Authoritative Cutover + Security Verification — Planned
 - Phase 9: Koalafrog Intelligence Layer — Planned
