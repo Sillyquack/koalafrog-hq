@@ -2,6 +2,9 @@ import type { FormulaState } from '../../types/domain'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Json } from '../supabase/generated/database.types'
 import { supabase } from '../supabase/client'
+import type { WorkspaceRepository } from './workspaceRepository'
+import { changedCollections } from './workspaceRepository'
+import type { WorkspaceCommit } from '../actions/workspaceActions'
 
 export const relationalTableByCollection: Record<keyof FormulaState, string> = {
   products:'products',formulas:'formulas',formulaVersions:'formula_versions',formulaLines:'formula_lines',ingredients:'ingredients',supplierProducts:'supplier_products',inventoryLots:'inventory_lots',inventoryMovements:'inventory_movements',labBatches:'lab_batches',labBatchLines:'lab_batch_lines',labBatchAllocations:'lab_lot_allocations',processSteps:'lab_process_steps',labObservations:'lab_observations',testers:'testers',testTemplates:'test_templates',testSessions:'test_sessions',testResponses:'test_responses',productionRuns:'production_runs',productionRunLines:'production_run_lines',productionRunAllocations:'production_lot_allocations',productionProcessSteps:'production_process_steps',costLines:'cost_lines',packagingComponents:'packaging_components',packagingSupplierProducts:'packaging_supplier_products',packagingInventoryLots:'packaging_inventory_lots',packagingInventoryMovements:'packaging_inventory_movements',packagingSpecifications:'packaging_specifications',packagingSpecificationVersions:'packaging_specification_versions',packagingSpecificationLines:'packaging_specification_lines',packagingAllocations:'packaging_allocations',finishedGoodsBatches:'finished_goods_batches',finishedGoodsMovements:'finished_goods_movements',responsiblePersons:'responsible_persons',complianceDossiers:'compliance_dossiers',complianceDocuments:'compliance_documents',regulatorySources:'regulatory_sources',regulatoryReviews:'regulatory_reviews',pifSections:'pif_evidence_sections',cpsrRecords:'cpsr_records',labelArtworkVersions:'label_artwork_versions',labelReviewItems:'label_checklist_items',inciDrafts:'inci_declarations',claims:'claims',claimEvidence:'claim_evidence',cpnpRecords:'cpnp_records',readinessIssues:'readiness_issues',launchPlans:'launch_plans',launchMilestones:'launch_milestones',launchDecisions:'launch_decisions',safetyEffectRecords:'undesirable_effect_records',
@@ -26,7 +29,16 @@ export function relationalMigrationPayload(state: FormulaState) {
   return Object.fromEntries(Object.entries(state).map(([collection, records]) => [collection, toDatabaseValue(records)]))
 }
 
-export class SupabaseWorkspaceRepository {
+const embeddedColumns: Partial<Record<keyof FormulaState, string[]>> = {
+  testTemplates:['questions'],testResponses:['answers'],complianceDossiers:['composition_snapshot'],regulatoryReviews:['source_ids'],pifSections:['document_ids'],
+}
+
+const requiresAtomicRpc = new Set([
+  'commitBatchConsumption','commitProductionConsumption','commitPackagingConsumption','createFinishedGoodsBatch',
+])
+
+export class SupabaseWorkspaceRepository implements WorkspaceRepository {
+  readonly kind = 'supabase' as const
   async importV9(_ownerId: string, state: FormulaState, onStage?: (stage: string) => void) {
     if (!supabase) throw new Error('Supabase is not configured.')
     onStage?.('transactional relational import')
@@ -44,8 +56,51 @@ export class SupabaseWorkspaceRepository {
     if (result.error) throw result.error
   }
 
-  async load(ownerId: string): Promise<FormulaState> {
+  async commit(change: WorkspaceCommit) {
     if (!supabase) throw new Error('Supabase is not configured.')
+    if (requiresAtomicRpc.has(change.action)) throw new Error(`${change.action} requires its dedicated transactional RPC before Supabase runtime selection.`)
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    if (userError || !user) throw new Error('Authenticated owner required.')
+    const workspace = await supabase.from('workspaces').select('id').eq('owner_id', user.id).single()
+    if (workspace.error) throw workspace.error
+    const client: SupabaseClient = supabase
+    for (const collection of changedCollections(change)) {
+      const table = relationalTableByCollection[collection]
+      const previous = change.previous[collection] as Array<{id:string;updatedAt?:string}>
+      const next = change.next[collection] as Array<{id:string;updatedAt?:string}>
+      const nextIds = new Set(next.map(record => record.id))
+      const removed = previous.filter(record => !nextIds.has(record.id)).map(record => record.id)
+      if (removed.length) {
+        const deleted = await client.from(table).delete().eq('workspace_id', workspace.data.id).in('id', removed)
+        if (deleted.error) throw deleted.error
+      }
+      const previousById = new Map(previous.map(record => [record.id, record]))
+      for (const record of next.filter(candidate => previousById.get(candidate.id) !== candidate)) {
+        const row = toDatabaseValue(record) as Record<string, unknown>
+        for (const key of embeddedColumns[collection] ?? []) delete row[key]
+        Object.assign(row,{workspace_id:workspace.data.id,owner_id:user.id})
+        const existing = previousById.get(record.id)
+        if (!existing) {
+          const inserted = await client.from(table).insert(row)
+          if (inserted.error) throw inserted.error
+        } else {
+          let update = client.from(table).update(row).eq('workspace_id',workspace.data.id).eq('id',record.id)
+          if (existing.updatedAt) update = update.eq('updated_at',existing.updatedAt)
+          const updated = await update.select('id')
+          if (updated.error) throw updated.error
+          if (!updated.data?.length) throw new Error(`Conflict updating ${table}.${record.id}; refresh and retry.`)
+        }
+      }
+    }
+  }
+
+  async load(ownerId?: string): Promise<FormulaState> {
+    if (!supabase) throw new Error('Supabase is not configured.')
+    if (!ownerId) {
+      const auth = await supabase.auth.getUser()
+      if (auth.error || !auth.data.user) throw new Error('Authenticated owner required.')
+      ownerId = auth.data.user.id
+    }
     const result: Partial<Record<keyof FormulaState, unknown[]>> = {}
     const client: SupabaseClient = supabase
     for (const [collection, table] of Object.entries(relationalTableByCollection) as Array<[keyof FormulaState, string]>) {

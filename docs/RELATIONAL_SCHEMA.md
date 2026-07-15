@@ -33,3 +33,5 @@ No major domain entity is stored as JSONB. `test_response_answers.value` is JSON
 Reconciliation compares every collection count and ID, all three ledgers, Production and Finished Goods historical costs, exact Compliance configuration references, and Launch history. `complete_v9_reconciliation` records a Completed migration report only for an authenticated complete comparison. Failed imports roll back all domain rows; `record_v9_migration_failure` records the separate failure report afterward.
 
 `workspace_records` remains only for the earlier scaffold and rollback/debug compatibility. Phase 8B.1 no longer imports new domain data into it. Application source-of-truth cutover is intentionally deferred to Phase 8B.2 and Phase 8B.3.
+
+Phase 8B.2 ordinary mutations use the same collection-to-table map and never write `workspace_records`. Mutable rows use their previous `updated_at` value as a conflict predicate. Multi-table consumption and output operations are blocked in the Supabase adapter until dedicated transactional RPCs are added.

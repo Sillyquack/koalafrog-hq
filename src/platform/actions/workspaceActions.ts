@@ -1,0 +1,21 @@
+import type { FormulaState } from '../../types/domain'
+
+export const workspaceActionNames = [
+  'updateLine','addLine','removeLine','moveLine','saveVersion','transitionVersion','duplicateAsDraft','createFormula',
+  'createIngredient','updateIngredient','archiveIngredient','saveSupplierProduct','markSupplierPreferred','receiveStock','addMovement','updateInventoryLot',
+  'createLabBatch','updateBatchLine','addAllocation','updateAllocation','commitBatchConsumption','transitionBatch','updateLabBatch','addProcessStep','updateProcessStep','addObservation',
+  'createTester','createTestTemplate','createTestSession','addTestResponse',
+  'createProductionRun','updateProductionRun','transitionProductionRun','updateProductionLine','addProductionAllocation','updateProductionAllocation','commitProductionConsumption','addProductionStep','updateProductionStep','addCostLine',
+  'createPackagingComponent','updatePackagingComponent','savePackagingSupplierProduct','receivePackagingStock','addPackagingMovement','createPackagingSpecification','updatePackagingLine','addPackagingLine','transitionPackagingVersion','duplicatePackagingVersion',
+  'createFinishedGoodsBatch','addPackagingAllocation','updatePackagingAllocation','commitPackagingConsumption','addFinishedGoodsMovement',
+  'createComplianceDossier','duplicateComplianceDossier','updateComplianceDossier','recordLaunchDecision',
+] as const
+
+export type WorkspaceActionName = typeof workspaceActionNames[number]
+export type WorkspaceStateMutation = (current: FormulaState) => FormulaState
+
+export interface WorkspaceCommit {
+  action: WorkspaceActionName
+  previous: FormulaState
+  next: FormulaState
+}
