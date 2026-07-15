@@ -16,6 +16,7 @@ Koalafrog HQ is a private, single-user product development and operations system
 - Finished Goods are explicit Production output registrations with their own movement ledger. Packaged batches remain quarantined until Packaging Consumption is committed; never infer legal sale readiness from Finished Goods status.
 - Compliance Dossiers bind an exact Formula, Packaging, Label, market, and language configuration. Internal readiness and launch decisions are workflow records, never legal compliance, safety assessment, or authority approval.
 - Store compliance document metadata and external references locally, never binary files or Base64 blobs. CPSR conclusions and CPNP confirmation require real external evidence metadata.
+- Supabase is the durable platform target. Browser code may use only the anon key with Auth and RLS; service-role credentials never enter the frontend. Preserve the v9 local migration source until reconciliation succeeds.
 - Completed Lab Batch execution and submitted Test Responses are historical records. Preserve them; add observations or explicit corrections instead of silent rewrites.
 - Keep mock data outside UI components and easy to replace with repository/service implementations.
 - Prefer small, legible components and explicit data flow over broad abstractions.

@@ -116,3 +116,9 @@ A dossier owns or links composition snapshots, Ingredient Regulatory Reviews, PI
 `ComplianceDossier → LaunchPlan → LaunchMilestone / LaunchDecision`
 
 Launch decisions are historical records rather than mutable plan fields. SafetyEffectRecord provides minimal post-market documentation linked to Product and optionally Finished Goods Batch without diagnosing seriousness.
+
+## Phase 8 persistence envelope
+
+Every remote record belongs to exactly one authenticated owner workspace. Stable v9 application IDs are retained during migration. `workspaces` establishes ownership, `migration_runs` preserves migration state and reconciliation evidence, and `document_objects` links Compliance Document metadata to private Storage objects without placing binary data in Postgres or browser storage.
+
+The initial compatibility importer stores one JSON object per domain record in `workspace_records`; it does not serialize the entire workspace into a single value. This table is a migration staging format, not the finished relational domain schema. Supabase must not be declared the application source of truth until the major domain entities have dedicated relational tables, foreign keys, repository mappings, and a successful reconciliation report.

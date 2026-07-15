@@ -27,6 +27,7 @@ import { CompliancePage } from '../features/compliance/CompliancePage'
 import { ComplianceDossierPage } from '../features/compliance/ComplianceDossierPage'
 import { LaunchPage } from '../features/launch/LaunchPage'
 import { LaunchPlanPage } from '../features/launch/LaunchPlanPage'
+import { PlatformPage } from '../platform/PlatformPage'
 
 export function App() {
   return (
@@ -56,6 +57,7 @@ export function App() {
         <Route path="compliance/:complianceDossierId" element={<ComplianceDossierPage />} />
         <Route path="launch" element={<LaunchPage />} />
         <Route path="launch/:launchPlanId" element={<LaunchPlanPage />} />
+        <Route path="platform" element={<PlatformPage />} />
         <Route path="scent-house" element={<ScentHousePage />} />
         {placeholderModules.map((module) => (
           <Route key={module.path} path={module.path} element={<PlaceholderPage module={module} />} />

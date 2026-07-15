@@ -80,3 +80,11 @@ Compliance Documents are metadata records behind a future document-storage bound
 Launch Plans consume dossier blockers but remain operational project records. Compliance blockers and commercial milestones are separate. Go/No-Go decisions are append-only internal business records preserving unresolved blockers at decision time. Minimal undesirable-effect records document escalation without automatic medical classification.
 
 Persistence advances from workspace v8 to v9. The explicit Phase 6 migration preserves all earlier collections and adds empty Compliance and Launch collections without seeding existing user workspaces.
+
+## Phase 8 — Platform and Data Foundation
+
+Configured deployments use Supabase Auth, owner-scoped Postgres records, and a private Storage bucket. UI components depend on repository and storage boundaries rather than low-level Supabase calls. Auth session resolution gates the application shell; public registration is intentionally absent.
+
+The migration path is older local workspace → retained local migration chain → normalized v9 → dry run → ordered authenticated import → count, ledger, cost, and release-reference reconciliation. local v9 is never automatically deleted.
+
+Supabase schema history lives in `supabase/migrations`. RLS uses `auth.uid()` ownership on workspaces, records, migration history, document metadata, and Storage paths. Complex workflow immutability remains enforced by tested domain actions; database ownership, uniqueness, and structural checks provide defense in depth.

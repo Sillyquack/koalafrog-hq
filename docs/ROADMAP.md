@@ -41,5 +41,6 @@ Phase 6 now replaces overlapping manual packaging Cost Lines with authoritative 
 - Phase 4: Lab + Testing — Complete
 - Phase 5: Production + Costing — Complete
 - Phase 6: Packaging + Finished Goods — Complete
-- Phase 7: Compliance Evidence + Launch Readiness — Current
-- Phase 8: Koalafrog Intelligence Layer — Planned
+- Phase 7: Compliance Evidence + Launch Readiness — Complete
+- Phase 8: Platform + Data Foundation — Current
+- Phase 9: Koalafrog Intelligence Layer — Planned

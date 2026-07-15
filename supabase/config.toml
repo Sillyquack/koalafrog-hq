@@ -1,0 +1,7 @@
+project_id = "koalafrog-hq"
+[api]
+enabled = true
+[db]
+major_version = 15
+[storage]
+enabled = true
