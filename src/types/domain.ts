@@ -11,7 +11,7 @@ export interface Product {
   currentDevelopmentFormulaVersionId?: string
   currentApprovedFormulaVersionId?: string
   scentProfile: string
-  targetLaunchDate: string
+  targetLaunchDate?: string
   createdAt: string
   updatedAt: string
 }

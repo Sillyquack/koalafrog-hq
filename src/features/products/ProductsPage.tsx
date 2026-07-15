@@ -6,6 +6,7 @@ import { StatusPill } from '../../components/ui/StatusPill'
 import { formatDate, initials } from '../../utils/format'
 import { useFormulaData } from '../formulas/state/FormulaDataContext'
 import { ProductForm } from './components/ProductForm'
+import { productTargetDateLabel } from './domain/productDates'
 
 const stageTone = (stage: string) => stage === 'Testing' ? 'blue' : stage === 'Formulation' ? 'amber' : stage === 'Research' ? 'green' : 'neutral'
 
@@ -25,7 +26,7 @@ export function ProductsPage() {
         <div className="product-card-top"><div className={`product-monogram category-${product.category.toLowerCase().replace(' ', '-')}`}>{initials(product.name)}</div><ArrowUpRight size={19} /></div>
         <div className="product-meta"><span>{product.category}</span><StatusPill tone={stageTone(product.developmentStage)}>{product.developmentStage}</StatusPill></div>
         <h2>{product.name}</h2><p>{product.description}</p>
-        <dl className="product-specs"><div><dt>Development</dt><dd>{development?.version ?? 'Not assigned'}</dd></div><div><dt>Scent</dt><dd>{product.scentProfile}</dd></div><div><dt>Target</dt><dd>{formatDate(product.targetLaunchDate)}</dd></div></dl>
+        <dl className="product-specs"><div><dt>Development</dt><dd>{development?.version ?? 'Not assigned'}</dd></div><div><dt>Scent</dt><dd>{product.scentProfile}</dd></div><div><dt>Target</dt><dd>{productTargetDateLabel(product.targetLaunchDate)}</dd></div></dl>
         <footer><span>Updated {formatDate(product.updatedAt)}</span><span className={`status-text ${product.status === 'Active' ? 'live' : ''}`}>{product.status}</span></footer>
       </Link>})}
     </div>

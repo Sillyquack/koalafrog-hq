@@ -25,6 +25,13 @@ export function toDomainValue(value: unknown): unknown {
   return Object.fromEntries(Object.entries(value).filter(([key]) => !['workspace_id','owner_id'].includes(key)).map(([key, child]) => [camel(key), toDomainValue(child)]))
 }
 
+export function normalizeProductRow(value: unknown) {
+  const product = toDomainValue(value) as Record<string, unknown>
+  const target = product.targetLaunchDate
+  if (target == null || target === '') delete product.targetLaunchDate
+  return product
+}
+
 export function relationalMigrationPayload(state: FormulaState) {
   return Object.fromEntries(Object.entries(state).map(([collection, records]) => [collection, toDatabaseValue(records)]))
 }
@@ -153,7 +160,9 @@ export class SupabaseWorkspaceRepository implements WorkspaceRepository {
     for (const [collection, table] of Object.entries(relationalTableByCollection) as Array<[keyof FormulaState, string]>) {
       const response = await client.from(table).select('*').eq('owner_id', ownerId)
       if (response.error) throw new Error(`${table}: ${response.error.message}`)
-      result[collection] = toDomainValue(response.data) as unknown[]
+      result[collection] = collection === 'products'
+        ? (response.data ?? []).map(normalizeProductRow)
+        : toDomainValue(response.data) as unknown[]
     }
     await this.loadEmbeddedChildren(result, ownerId)
     return result as FormulaState

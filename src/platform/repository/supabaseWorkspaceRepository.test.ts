@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { formulaSeed } from '../../data/formulaSeed'
-import { relationalMigrationPayload, relationalTableByCollection, toDatabaseValue, toDomainValue } from './supabaseWorkspaceRepository'
+import { normalizeProductRow, relationalMigrationPayload, relationalTableByCollection, toDatabaseValue, toDomainValue } from './supabaseWorkspaceRepository'
 
 describe('relational workspace mapping', () => {
   it('maps every v9 collection to an explicit table', () => {
@@ -22,5 +22,16 @@ describe('relational workspace mapping', () => {
     const payload = relationalMigrationPayload(formulaSeed)
     expect((payload.formulaVersions as Array<Record<string, unknown>>)[0].formula_id).toBe(formulaSeed.formulaVersions[0].formulaId)
     expect(formulaSeed).toEqual(before)
+  })
+
+  it('hydrates a nullable Product launch date as absent', () => {
+    expect(normalizeProductRow({id:'product',target_launch_date:null})).toEqual({id:'product'})
+    expect(normalizeProductRow({id:'product',target_launch_date:''})).toEqual({id:'product'})
+  })
+
+  it('does not serialize an absent Product launch date as an empty string', () => {
+    const row = toDatabaseValue({ id:'product', targetLaunchDate:undefined }) as Record<string, unknown>
+    expect(row.target_launch_date).toBeUndefined()
+    expect(row.target_launch_date).not.toBe('')
   })
 })

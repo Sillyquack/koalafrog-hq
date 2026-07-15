@@ -2983,7 +2983,7 @@ export type Database = {
           owner_id: string
           scent_profile: string
           status: string
-          target_launch_date: string
+          target_launch_date: string | null
           updated_at: string
           workspace_id: string
         }
@@ -2999,7 +2999,7 @@ export type Database = {
           owner_id: string
           scent_profile: string
           status: string
-          target_launch_date: string
+          target_launch_date?: string | null
           updated_at: string
           workspace_id: string
         }
@@ -3015,7 +3015,7 @@ export type Database = {
           owner_id?: string
           scent_profile?: string
           status?: string
-          target_launch_date?: string
+          target_launch_date?: string | null
           updated_at?: string
           workspace_id?: string
         }
