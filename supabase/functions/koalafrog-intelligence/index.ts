@@ -7,6 +7,8 @@ import {
   type ProviderFailureCategory,
 } from "../_shared/providerDiagnostics.ts";
 import { assertOpenAIStructuredOutputSchema } from "../_shared/structuredOutputSchema.ts";
+import { validateIntelligenceProviderResponse } from "../_shared/intelligenceResponseValidation.ts";
+import { createValidationDiagnostic } from "../_shared/validationDiagnostics.ts";
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
     status,
@@ -235,7 +237,7 @@ const responseSchema = {
   },
 };
 assertOpenAIStructuredOutputSchema(responseSchema);
-const system = `KOALAFROG DEVELOPMENT COPILOT — SCENT STUDIO. Prompt version scent-studio-v1. Be a creative, disciplined sparring partner. Never claim to smell an untested composition. Every claim is exactly fact, observation, prediction, or recommendation. Facts require supplied record evidence. Observations require supplied Koalafrog lab/test evidence. General fragrance knowledge is prediction, never fact. Never fabricate evidence or records. Be uncertain and experimentally useful. Never claim safety, compliance, legal approval, IFRA/CPSR/PIF/CPNP completion, or make medical claims. Suggestions remain advisory and require supplier documentation, restrictions, assessment and physical evaluation. Prefer small qualitative experiments over fake precision.`;
+const system = `KOALAFROG DEVELOPMENT COPILOT — SCENT STUDIO. Prompt version scent-studio-v1. Be a creative, disciplined sparring partner. Never claim to smell an untested composition. Every claim is exactly fact, observation, prediction, or recommendation. Before assigning a claim kind, apply this rule: a statement directly grounded in a loaded Koalafrog workspace record is FACT and must cite valid evidenceRefs; a statement directly grounded in a loaded Koalafrog lab, test, or user observation is OBSERVATION and must cite valid empirical evidenceRefs; a hypothesis about likely sensory or material behavior is PREDICTION; a proposed next action is RECOMMENDATION. General fragrance or material knowledge is always PREDICTION, never FACT. Concept Materials are exploratory user text, not stored Ingredients or evidence records: they may be named in analysis and experiments, but must never receive fabricated evidenceRefs. When the context manifest has no eligible factual or observational evidence, output zero unsupported FACT claims and zero unsupported OBSERVATION claims. Never fabricate evidence or records. Be uncertain and experimentally useful. Never claim safety, compliance, legal approval, IFRA/CPSR/PIF/CPNP completion, or make medical claims. Suggestions remain advisory and require supplier documentation, restrictions, assessment and physical evaluation. Prefer small qualitative experiments over fake precision.`;
 interface IntelligenceModelProvider {
   name: string;
   model: string;
@@ -370,62 +372,6 @@ class OpenAIResponsesProvider implements IntelligenceModelProvider {
       throw new ProviderCallError(category);
     }
   }
-}
-function validateResponse(v: any, universe: Set<string>) {
-  const required = [
-    "title",
-    "summary",
-    "confidence",
-    "claims",
-    "scentProfile",
-    "ingredientRoles",
-    "strengths",
-    "tensions",
-    "missingDimensions",
-    "directions",
-    "experiments",
-    "questions",
-    "limitations",
-  ];
-  if (
-    !v ||
-    v.schemaVersion !== 1 ||
-    required.some((key) => v[key] == null) ||
-    !v.scentProfile?.axes ||
-    !Array.isArray(v.claims)
-  )
-    return false;
-  for (const a of axes)
-    if (
-      typeof v.scentProfile.axes[a] !== "number" ||
-      v.scentProfile.axes[a] < 0 ||
-      v.scentProfile.axes[a] > 100
-    )
-      return false;
-  for (const c of v.claims) {
-    if (
-      !["fact", "prediction", "observation", "recommendation"].includes(c.kind)
-    )
-      return false;
-    if (["fact", "observation"].includes(c.kind) && !c.evidenceRefs?.length)
-      return false;
-    for (const e of c.evidenceRefs ?? [])
-      if (!universe.has(`${e.entityType}:${e.entityId}`)) return false;
-    if (
-      c.kind === "observation" &&
-      c.evidenceRefs.some(
-        (e: any) =>
-          ![
-            "labObservation",
-            "testResponse",
-            "testSession",
-            "labBatch",
-          ].includes(e.entityType),
-      )
-    )
-      return false;
-  }
-  return true;
 }
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS")
@@ -712,15 +658,17 @@ Deno.serve(async (req) => {
         prompt: body.userPrompt,
         context,
       });
-      if (!validateResponse(parsed, universe)) {
+      const validation = validateIntelligenceProviderResponse(parsed, universe);
+      if (!validation.valid) {
         console.error(
           JSON.stringify(
-            sanitizeProviderDiagnostic({
-              providerName: "openai",
-              modelName: model,
-              category: "provider_response_validation",
-              safeMessage:
-                "Koalafrog rejected the structured provider payload.",
+            createValidationDiagnostic({
+              result: validation,
+              responseSchemaVersion:
+                typeof (parsed as any)?.schemaVersion === "number"
+                  ? (parsed as any).schemaVersion
+                  : undefined,
+              contextVersion: manifest.contextVersion,
               threadId,
               runId,
             }),
