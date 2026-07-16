@@ -32,6 +32,9 @@ import { PlatformPage } from '../platform/PlatformPage'
 import { KnowledgePage } from '../features/knowledge/KnowledgePage'
 import { IntelligenceThreadPage } from '../features/knowledge/IntelligenceThreadPage'
 import { ScentMemoryDetailPage } from '../features/knowledge/ScentMemoryDetailPage'
+import { DevelopmentPage } from '../features/development/DevelopmentPage'
+import { ExperimentReviewPage } from '../features/development/ExperimentReviewPage'
+import { DevelopmentExperimentPage } from '../features/development/DevelopmentExperimentPage'
 
 export function App() {
   return (
@@ -67,6 +70,9 @@ export function App() {
         <Route path="knowledge" element={<KnowledgePage />} />
         <Route path="knowledge/intelligence/:threadId" element={<IntelligenceThreadPage />} />
         <Route path="knowledge/scent-memory/:sessionId" element={<ScentMemoryDetailPage />} />
+        <Route path="development" element={<DevelopmentPage />} />
+        <Route path="development/new" element={<ExperimentReviewPage />} />
+        <Route path="development/:id" element={<DevelopmentExperimentPage />} />
         {placeholderModules.map((module) => (
           <Route key={module.path} path={module.path} element={<PlaceholderPage module={module} />} />
         ))}

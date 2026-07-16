@@ -622,6 +622,495 @@ export type Database = {
           },
         ]
       }
+      development_experiment_changes: {
+        Row: {
+          change_type: string
+          concept_material_name: string | null
+          created_at: string
+          current_value: number | null
+          display_order: number
+          experiment_id: string
+          id: string
+          ingredient_id: string | null
+          owner_user_id: string
+          proposed_value: number | null
+          qualitative_guidance: string | null
+          rationale: string
+          unit: string | null
+          updated_at: string
+          variant_id: string
+          workspace_id: string
+        }
+        Insert: {
+          change_type: string
+          concept_material_name?: string | null
+          created_at?: string
+          current_value?: number | null
+          display_order: number
+          experiment_id: string
+          id?: string
+          ingredient_id?: string | null
+          owner_user_id: string
+          proposed_value?: number | null
+          qualitative_guidance?: string | null
+          rationale?: string
+          unit?: string | null
+          updated_at?: string
+          variant_id: string
+          workspace_id: string
+        }
+        Update: {
+          change_type?: string
+          concept_material_name?: string | null
+          created_at?: string
+          current_value?: number | null
+          display_order?: number
+          experiment_id?: string
+          id?: string
+          ingredient_id?: string | null
+          owner_user_id?: string
+          proposed_value?: number | null
+          qualitative_guidance?: string | null
+          rationale?: string
+          unit?: string | null
+          updated_at?: string
+          variant_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "development_experiment_changes_workspace_id_experiment_id_fkey"
+            columns: ["workspace_id", "experiment_id"]
+            isOneToOne: false
+            referencedRelation: "development_experiments"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "development_experiment_changes_workspace_id_ingredient_id_fkey"
+            columns: ["workspace_id", "ingredient_id"]
+            isOneToOne: false
+            referencedRelation: "ingredients"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "development_experiment_changes_workspace_id_owner_user_id_fkey"
+            columns: ["workspace_id", "owner_user_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id", "owner_id"]
+          },
+          {
+            foreignKeyName: "development_experiment_changes_workspace_id_variant_id_fkey"
+            columns: ["workspace_id", "variant_id"]
+            isOneToOne: false
+            referencedRelation: "development_experiment_variants"
+            referencedColumns: ["workspace_id", "id"]
+          },
+        ]
+      }
+      development_experiment_handoffs: {
+        Row: {
+          created_at: string
+          experiment_id: string
+          formula_version_id: string | null
+          handoff_type: string
+          id: string
+          idempotency_key: string
+          lab_batch_id: string | null
+          owner_user_id: string
+          variant_id: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          experiment_id: string
+          formula_version_id?: string | null
+          handoff_type: string
+          id?: string
+          idempotency_key: string
+          lab_batch_id?: string | null
+          owner_user_id: string
+          variant_id: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          experiment_id?: string
+          formula_version_id?: string | null
+          handoff_type?: string
+          id?: string
+          idempotency_key?: string
+          lab_batch_id?: string | null
+          owner_user_id?: string
+          variant_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "development_experiment_handof_workspace_id_formula_version_fkey"
+            columns: ["workspace_id", "formula_version_id"]
+            isOneToOne: false
+            referencedRelation: "formula_versions"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "development_experiment_handoffs_workspace_id_experiment_id_fkey"
+            columns: ["workspace_id", "experiment_id"]
+            isOneToOne: false
+            referencedRelation: "development_experiments"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "development_experiment_handoffs_workspace_id_lab_batch_id_fkey"
+            columns: ["workspace_id", "lab_batch_id"]
+            isOneToOne: false
+            referencedRelation: "lab_batches"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "development_experiment_handoffs_workspace_id_owner_user_id_fkey"
+            columns: ["workspace_id", "owner_user_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id", "owner_id"]
+          },
+          {
+            foreignKeyName: "development_experiment_handoffs_workspace_id_variant_id_fkey"
+            columns: ["workspace_id", "variant_id"]
+            isOneToOne: false
+            referencedRelation: "development_experiment_variants"
+            referencedColumns: ["workspace_id", "id"]
+          },
+        ]
+      }
+      development_experiment_observation_prompts: {
+        Row: {
+          category: string
+          checkpoint_type: string | null
+          created_at: string
+          display_order: number
+          experiment_id: string
+          id: string
+          is_required: boolean
+          owner_user_id: string
+          prompt: string
+          variant_id: string | null
+          workspace_id: string
+        }
+        Insert: {
+          category: string
+          checkpoint_type?: string | null
+          created_at?: string
+          display_order: number
+          experiment_id: string
+          id?: string
+          is_required?: boolean
+          owner_user_id: string
+          prompt: string
+          variant_id?: string | null
+          workspace_id: string
+        }
+        Update: {
+          category?: string
+          checkpoint_type?: string | null
+          created_at?: string
+          display_order?: number
+          experiment_id?: string
+          id?: string
+          is_required?: boolean
+          owner_user_id?: string
+          prompt?: string
+          variant_id?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "development_experiment_observat_workspace_id_experiment_id_fkey"
+            columns: ["workspace_id", "experiment_id"]
+            isOneToOne: false
+            referencedRelation: "development_experiments"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "development_experiment_observat_workspace_id_owner_user_id_fkey"
+            columns: ["workspace_id", "owner_user_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id", "owner_id"]
+          },
+          {
+            foreignKeyName: "development_experiment_observation_workspace_id_variant_id_fkey"
+            columns: ["workspace_id", "variant_id"]
+            isOneToOne: false
+            referencedRelation: "development_experiment_variants"
+            referencedColumns: ["workspace_id", "id"]
+          },
+        ]
+      }
+      development_experiment_status_events: {
+        Row: {
+          created_at: string
+          experiment_id: string
+          from_status: string | null
+          id: string
+          note: string | null
+          owner_user_id: string
+          to_status: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          experiment_id: string
+          from_status?: string | null
+          id?: string
+          note?: string | null
+          owner_user_id: string
+          to_status: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          experiment_id?: string
+          from_status?: string | null
+          id?: string
+          note?: string | null
+          owner_user_id?: string
+          to_status?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "development_experiment_status_e_workspace_id_experiment_id_fkey"
+            columns: ["workspace_id", "experiment_id"]
+            isOneToOne: false
+            referencedRelation: "development_experiments"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "development_experiment_status_e_workspace_id_owner_user_id_fkey"
+            columns: ["workspace_id", "owner_user_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id", "owner_id"]
+          },
+        ]
+      }
+      development_experiment_variants: {
+        Row: {
+          created_at: string
+          display_order: number
+          experiment_id: string
+          id: string
+          is_control: boolean
+          linked_formula_version_id: string | null
+          linked_lab_batch_id: string | null
+          name: string
+          owner_user_id: string
+          purpose: string
+          status: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          display_order: number
+          experiment_id: string
+          id?: string
+          is_control?: boolean
+          linked_formula_version_id?: string | null
+          linked_lab_batch_id?: string | null
+          name: string
+          owner_user_id: string
+          purpose?: string
+          status?: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          display_order?: number
+          experiment_id?: string
+          id?: string
+          is_control?: boolean
+          linked_formula_version_id?: string | null
+          linked_lab_batch_id?: string | null
+          name?: string
+          owner_user_id?: string
+          purpose?: string
+          status?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "development_experiment_varian_workspace_id_linked_formula__fkey"
+            columns: ["workspace_id", "linked_formula_version_id"]
+            isOneToOne: false
+            referencedRelation: "formula_versions"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "development_experiment_varian_workspace_id_linked_lab_batc_fkey"
+            columns: ["workspace_id", "linked_lab_batch_id"]
+            isOneToOne: false
+            referencedRelation: "lab_batches"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "development_experiment_variants_workspace_id_experiment_id_fkey"
+            columns: ["workspace_id", "experiment_id"]
+            isOneToOne: false
+            referencedRelation: "development_experiments"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "development_experiment_variants_workspace_id_owner_user_id_fkey"
+            columns: ["workspace_id", "owner_user_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id", "owner_id"]
+          },
+        ]
+      }
+      development_experiments: {
+        Row: {
+          acceptance_criteria: string | null
+          approved_at: string | null
+          archived_at: string | null
+          base_formula_version_id: string | null
+          completed_at: string | null
+          conclusion: string | null
+          created_at: string
+          creation_idempotency_key: string
+          experiment_type: string
+          hypothesis: string
+          hypothesis_outcome: string | null
+          id: string
+          next_step: string | null
+          notes: string | null
+          objective: string
+          outcome_summary: string | null
+          owner_user_id: string
+          preferred_variant_id: string | null
+          product_id: string | null
+          revision: number
+          source_intelligence_run_id: string | null
+          source_intelligence_thread_id: string | null
+          source_response_item_id: string | null
+          source_response_item_type: string | null
+          status: string
+          title: string
+          updated_at: string
+          user_rationale: string | null
+          workspace_id: string
+        }
+        Insert: {
+          acceptance_criteria?: string | null
+          approved_at?: string | null
+          archived_at?: string | null
+          base_formula_version_id?: string | null
+          completed_at?: string | null
+          conclusion?: string | null
+          created_at?: string
+          creation_idempotency_key: string
+          experiment_type: string
+          hypothesis: string
+          hypothesis_outcome?: string | null
+          id?: string
+          next_step?: string | null
+          notes?: string | null
+          objective: string
+          outcome_summary?: string | null
+          owner_user_id: string
+          preferred_variant_id?: string | null
+          product_id?: string | null
+          revision?: number
+          source_intelligence_run_id?: string | null
+          source_intelligence_thread_id?: string | null
+          source_response_item_id?: string | null
+          source_response_item_type?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+          user_rationale?: string | null
+          workspace_id: string
+        }
+        Update: {
+          acceptance_criteria?: string | null
+          approved_at?: string | null
+          archived_at?: string | null
+          base_formula_version_id?: string | null
+          completed_at?: string | null
+          conclusion?: string | null
+          created_at?: string
+          creation_idempotency_key?: string
+          experiment_type?: string
+          hypothesis?: string
+          hypothesis_outcome?: string | null
+          id?: string
+          next_step?: string | null
+          notes?: string | null
+          objective?: string
+          outcome_summary?: string | null
+          owner_user_id?: string
+          preferred_variant_id?: string | null
+          product_id?: string | null
+          revision?: number
+          source_intelligence_run_id?: string | null
+          source_intelligence_thread_id?: string | null
+          source_response_item_id?: string | null
+          source_response_item_type?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+          user_rationale?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "development_experiments_preferred_variant_fk"
+            columns: ["workspace_id", "preferred_variant_id"]
+            isOneToOne: false
+            referencedRelation: "development_experiment_variants"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "development_experiments_workspace_id_base_formula_version__fkey"
+            columns: ["workspace_id", "base_formula_version_id"]
+            isOneToOne: false
+            referencedRelation: "formula_versions"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "development_experiments_workspace_id_owner_user_id_fkey"
+            columns: ["workspace_id", "owner_user_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id", "owner_id"]
+          },
+          {
+            foreignKeyName: "development_experiments_workspace_id_product_id_fkey"
+            columns: ["workspace_id", "product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "development_experiments_workspace_id_source_intelligence_r_fkey"
+            columns: ["workspace_id", "source_intelligence_run_id"]
+            isOneToOne: false
+            referencedRelation: "intelligence_runs"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "development_experiments_workspace_id_source_intelligence_t_fkey"
+            columns: ["workspace_id", "source_intelligence_thread_id"]
+            isOneToOne: false
+            referencedRelation: "intelligence_threads"
+            referencedColumns: ["workspace_id", "id"]
+          },
+        ]
+      }
       document_objects: {
         Row: {
           bucket: string
@@ -923,6 +1412,8 @@ export type Database = {
           created_at: string
           derived_from_version_id: string | null
           description: string
+          development_experiment_id: string | null
+          development_experiment_variant_id: string | null
           development_notes: string | null
           formula_id: string
           id: string
@@ -939,6 +1430,8 @@ export type Database = {
           created_at: string
           derived_from_version_id?: string | null
           description: string
+          development_experiment_id?: string | null
+          development_experiment_variant_id?: string | null
           development_notes?: string | null
           formula_id: string
           id: string
@@ -955,6 +1448,8 @@ export type Database = {
           created_at?: string
           derived_from_version_id?: string | null
           description?: string
+          development_experiment_id?: string | null
+          development_experiment_variant_id?: string | null
           development_notes?: string | null
           formula_id?: string
           id?: string
@@ -967,6 +1462,20 @@ export type Database = {
           workspace_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "formula_versions_experiment_fk"
+            columns: ["workspace_id", "development_experiment_id"]
+            isOneToOne: false
+            referencedRelation: "development_experiments"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "formula_versions_experiment_variant_fk"
+            columns: ["workspace_id", "development_experiment_variant_id"]
+            isOneToOne: false
+            referencedRelation: "development_experiment_variants"
+            referencedColumns: ["workspace_id", "id"]
+          },
           {
             foreignKeyName: "formula_versions_workspace_id_derived_from_version_id_fkey"
             columns: ["workspace_id", "derived_from_version_id"]
@@ -1603,6 +2112,8 @@ export type Database = {
           batch_number: string
           completed_at: string | null
           created_at: string
+          development_experiment_id: string | null
+          development_experiment_variant_id: string | null
           formula_id: string
           formula_version_id: string
           id: string
@@ -1625,6 +2136,8 @@ export type Database = {
           batch_number: string
           completed_at?: string | null
           created_at: string
+          development_experiment_id?: string | null
+          development_experiment_variant_id?: string | null
           formula_id: string
           formula_version_id: string
           id: string
@@ -1647,6 +2160,8 @@ export type Database = {
           batch_number?: string
           completed_at?: string | null
           created_at?: string
+          development_experiment_id?: string | null
+          development_experiment_variant_id?: string | null
           formula_id?: string
           formula_version_id?: string
           id?: string
@@ -1665,6 +2180,20 @@ export type Database = {
           yield_unit?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "lab_batches_experiment_fk"
+            columns: ["workspace_id", "development_experiment_id"]
+            isOneToOne: false
+            referencedRelation: "development_experiments"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "lab_batches_experiment_variant_fk"
+            columns: ["workspace_id", "development_experiment_variant_id"]
+            isOneToOne: false
+            referencedRelation: "development_experiment_variants"
+            referencedColumns: ["workspace_id", "id"]
+          },
           {
             foreignKeyName: "lab_batches_workspace_id_fkey"
             columns: ["workspace_id"]
@@ -3646,6 +4175,8 @@ export type Database = {
           archived_at: string | null
           change_next: string | null
           created_at: string
+          development_experiment_id: string | null
+          development_experiment_variant_id: string | null
           final_conclusion: string | null
           formula_version_id: string | null
           id: string
@@ -3670,6 +4201,8 @@ export type Database = {
           archived_at?: string | null
           change_next?: string | null
           created_at?: string
+          development_experiment_id?: string | null
+          development_experiment_variant_id?: string | null
           final_conclusion?: string | null
           formula_version_id?: string | null
           id?: string
@@ -3694,6 +4227,8 @@ export type Database = {
           archived_at?: string | null
           change_next?: string | null
           created_at?: string
+          development_experiment_id?: string | null
+          development_experiment_variant_id?: string | null
           final_conclusion?: string | null
           formula_version_id?: string | null
           id?: string
@@ -3715,6 +4250,20 @@ export type Database = {
           workspace_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "scent_memory_experiment_fk"
+            columns: ["workspace_id", "development_experiment_id"]
+            isOneToOne: false
+            referencedRelation: "development_experiments"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "scent_memory_experiment_variant_fk"
+            columns: ["workspace_id", "development_experiment_variant_id"]
+            isOneToOne: false
+            referencedRelation: "development_experiment_variants"
+            referencedColumns: ["workspace_id", "id"]
+          },
           {
             foreignKeyName: "scent_memory_sessions_workspace_id_formula_version_id_fkey"
             columns: ["workspace_id", "formula_version_id"]
@@ -4270,6 +4819,26 @@ export type Database = {
         Returns: undefined
       }
       create_clean_workspace: { Args: never; Returns: string }
+      create_development_experiment: { Args: { plan: Json }; Returns: string }
+      create_formula_branch_from_experiment: {
+        Args: {
+          idempotency: string
+          target_experiment: string
+          target_variant: string
+        }
+        Returns: string
+      }
+      create_lab_batch_from_experiment: {
+        Args: {
+          batch_size: number
+          batch_unit: string
+          formula_version: string
+          idempotency: string
+          target_experiment: string
+          target_variant: string
+        }
+        Returns: string
+      }
       import_v9_relational: { Args: { payload: Json }; Returns: Json }
       kf_convert_quantity: {
         Args: { from_unit: string; q: number; to_unit: string }
@@ -4363,6 +4932,15 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      transition_development_experiment: {
+        Args: {
+          expected_revision: number
+          note?: string
+          target_id: string
+          target_status: string
+        }
+        Returns: number
       }
     }
     Enums: {

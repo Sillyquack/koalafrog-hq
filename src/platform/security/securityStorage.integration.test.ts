@@ -325,6 +325,19 @@ run("local Supabase Auth, RLS, RPC, Storage, and cutover security", () => {
     }
   });
 
+  it("isolates Development Experiments and enforces lifecycle provenance", async () => {
+    const variantId=crypto.randomUUID(),created=await userA.rpc('create_development_experiment',{plan:{title:'Private experiment',experimentType:'general_development',objective:'Compare deliberately',hypothesis:'Variant A may improve the result',idempotencyKey:crypto.randomUUID(),variants:[{id:variantId,name:'Variant A',purpose:'Trial',isControl:false,displayOrder:0,changes:[]}],observationPrompts:[{prompt:'Record the immediate result',category:'other',displayOrder:0,isRequired:true}]}});
+    expect(created.error).toBeNull();const experimentId=created.data!;
+    expect((await userB.from('development_experiments').select('id').eq('id',experimentId)).data).toHaveLength(0);
+    expect((await anonymous.from('development_experiments').select('id')).error).not.toBeNull();
+    expect((await userB.from('development_experiment_variants').select('id').eq('experiment_id',experimentId)).data).toHaveLength(0);
+    expect((await userA.from('development_experiments').update({status:'approved'}).eq('id',experimentId)).error).not.toBeNull();
+    expect((await userA.rpc('transition_development_experiment',{target_id:experimentId,target_status:'ready_for_review',expected_revision:1})).error).toBeNull();
+    expect((await userA.rpc('transition_development_experiment',{target_id:experimentId,target_status:'approved',expected_revision:2})).error).toBeNull();
+    expect((await userB.rpc('transition_development_experiment',{target_id:experimentId,target_status:'cancelled',expected_revision:3})).error).not.toBeNull();
+    expect((await userA.from('formula_versions').update({development_experiment_id:experimentId,development_experiment_variant_id:variantId}).eq('id','fv-bo-02')).error).not.toBeNull();
+  });
+
   it("keeps private Storage owner-isolated and preserves explicit file versions", async () => {
     const document = (
       await userA.from("compliance_documents").select("id").limit(1).single()

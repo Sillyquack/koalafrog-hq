@@ -7,6 +7,7 @@ import { createBackup, downloadBackup, validateBackup } from './backup/backup'
 import { isSupabaseConfigured, supabase } from './supabase/client'
 import { compareReconciliation, migrationCollectionOrder, reconciliationSnapshot, validateV9Workspace } from './migration/v9Migration'
 import { SupabaseWorkspaceRepository } from './repository/supabaseWorkspaceRepository'
+import { loadDevelopmentBackup } from '../features/development/data/developmentExperimentRepository'
 
 export function PlatformPage() {
   const data = useFormulaData()
@@ -33,7 +34,7 @@ export function PlatformPage() {
           const [threads,runs,references,scentSessions,scentCheckpoints]=await Promise.all([supabase.from('intelligence_threads').select('*').eq('owner_user_id',ownerId).order('created_at'),supabase.from('intelligence_runs').select('*').eq('owner_user_id',ownerId).order('created_at'),supabase.from('knowledge_references').select('*').eq('owner_user_id',ownerId).order('created_at'),supabase.from('scent_memory_sessions').select('*').eq('owner_user_id',ownerId).order('created_at'),supabase.from('scent_memory_checkpoints').select('*').eq('owner_user_id',ownerId).order('created_at')])
           const historyError=threads.error??runs.error??references.error??scentSessions.error??scentCheckpoints.error
           if(historyError)throw historyError
-          intelligenceHistory={threads:threads.data??[],runs:runs.data??[],knowledgeReferences:references.data??[],scentMemorySessions:scentSessions.data??[],scentMemoryCheckpoints:scentCheckpoints.data??[]}
+          intelligenceHistory={threads:threads.data??[],runs:runs.data??[],knowledgeReferences:references.data??[],scentMemorySessions:scentSessions.data??[],scentMemoryCheckpoints:scentCheckpoints.data??[],...await loadDevelopmentBackup(ownerId)}
         }
       }
       downloadBackup(createBackup(collections, manifest, ownerId, intelligenceHistory))

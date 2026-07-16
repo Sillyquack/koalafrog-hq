@@ -118,6 +118,8 @@ export async function createScentMemorySession(input: {
   labBatchId?: string;
   ingredientId?: string;
   testSessionId?: string;
+  developmentExperimentId?: string;
+  developmentExperimentVariantId?: string;
 }) {
   const ownerId = await owner();
   const result = await client()
@@ -131,6 +133,8 @@ export async function createScentMemorySession(input: {
       lab_batch_id: input.labBatchId || null,
       ingredient_id: input.ingredientId || null,
       test_session_id: input.testSessionId || null,
+      development_experiment_id: input.developmentExperimentId || null,
+      development_experiment_variant_id: input.developmentExperimentVariantId || null,
     })
     .select()
     .single();

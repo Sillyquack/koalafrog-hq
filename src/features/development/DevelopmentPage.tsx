@@ -1,0 +1,15 @@
+/* eslint-disable react-hooks/set-state-in-effect -- repository hydration synchronizes external records */
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { FlaskConical, Plus, Sparkles } from 'lucide-react'
+import { useActiveWorkspace } from '../../platform/startup/ActiveWorkspaceContext'
+import { developmentActions } from './actions/developmentExperimentActions'
+import { copilotItems, type DevelopmentExperiment } from './domain/developmentExperiment'
+
+export function DevelopmentPage() {
+  const workspace = useActiveWorkspace(), [items, setItems] = useState<DevelopmentExperiment[]>(), [error, setError] = useState(''), [status, setStatus] = useState('active')
+  const load = useCallback(async () => { if (!workspace) return; try { setItems(await developmentActions.load(workspace.workspaceId)); setError('') } catch (e) { setError(e instanceof Error ? e.message : 'Development unavailable.') } }, [workspace])
+  useEffect(() => void load(), [load])
+  const shown = useMemo(() => items?.filter(e => status === 'all' || (status === 'archived' ? e.status === 'archived' : !['archived', 'cancelled', 'completed'].includes(e.status))), [items, status])
+  return <div className="development-page"><header className="page-header"><div><span className="eyebrow">Private workshop / deliberate experiments</span><h1>Development</h1><p>Turn reviewed Intelligence into traceable plans, then hand them off explicitly.</p></div><Link className="button primary" to="/development/new"><Plus size={15} />New Experiment</Link></header>{error ? <section className="panel" role="alert"><h2>Development unavailable</h2><p>{error}</p><button className="button ghost" onClick={load}>Retry</button></section> : !items ? <section className="panel"><p>Loading Development…</p></section> : <><section className="panel copilot-panel"><h2><Sparkles size={18} />Development Copilot</h2>{copilotItems(items).length ? copilotItems(items).slice(0, 4).map(x => <Link key={`${x.experimentId}-${x.variantId}`} to={`/development/${x.experimentId}`}><strong>{x.title} · {x.variant}</strong><span>{x.next}</span></Link>) : <p>No active experiment work. Create a plan yourself or review an Intelligence suggestion.</p>}</section><div className="filter-row"><label>Status <select value={status} onChange={e => setStatus(e.target.value)}><option value="active">Active</option><option value="archived">Archived</option><option value="all">All</option></select></label></div><section className="development-grid">{shown?.length ? shown.map(e => <Link className="panel development-card" key={e.id} to={`/development/${e.id}`}><span className="status-badge">{e.status.replaceAll('_', ' ')}</span><FlaskConical /><h2>{e.title}</h2><p>{e.objective || e.hypothesis}</p><small>{e.variants.length} variant{e.variants.length === 1 ? '' : 's'} · updated {new Date(e.updated_at).toLocaleDateString()}</small></Link>) : <article className="panel"><h2>No experiments here</h2><p>Nothing has been saved in this view.</p></article>}</section></>}</div>
+}

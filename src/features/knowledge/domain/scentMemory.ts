@@ -14,6 +14,8 @@ export interface ScentMemorySession {
   lab_batch_id: string | null;
   ingredient_id: string | null;
   test_session_id: string | null;
+  development_experiment_id: string | null;
+  development_experiment_variant_id: string | null;
   overall_score: number | null;
   archived_at: string | null;
   revision: number;

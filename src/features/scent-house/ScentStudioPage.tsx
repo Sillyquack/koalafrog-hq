@@ -30,6 +30,7 @@ export function ScentStudioPage() {
   const [concepts, setConcepts] = useState<string[]>(() => searchParams.get("concepts")?.split(",").filter(Boolean) ?? []);
   const [threadId, setThreadId] = useState<string | undefined>(() => searchParams.get("threadId") ?? undefined);
   const [report, setReport] = useState<IntelligenceResponse>();
+  const [runId, setRunId] = useState<string | undefined>();
   const [state, setState] = useState<
     "idle" | "gathering" | "analyzing" | "success" | "error"
   >("idle");
@@ -70,6 +71,7 @@ export function ScentStudioPage() {
         },
       });
       setThreadId(result.threadId);
+      setRunId(result.runId);
       setReport(result.response);
       setPrompt("");
       setState("success");
@@ -229,7 +231,7 @@ export function ScentStudioPage() {
           )}
         </section>
         {report ? (
-          <IntelligenceReport report={report} />
+          <IntelligenceReport report={report} threadId={threadId} runId={runId} productId={productId} formulaVersionId={versionId} />
         ) : (
           <section className="panel studio-empty">
             <Sparkles />
@@ -244,7 +246,8 @@ export function ScentStudioPage() {
     </div>
   );
 }
-export function IntelligenceReport({ report }: { report: IntelligenceResponse }) {
+export function IntelligenceReport({ report,threadId,runId,productId,formulaVersionId }: { report: IntelligenceResponse;threadId?:string;runId?:string;productId?:string;formulaVersionId?:string }) {
+  const reviewLink=(item:{id:string;name:string},kind:'direction'|'experiment',extra:Record<string,unknown>={})=>{const q=new URLSearchParams({sourceItemType:kind,sourceItemId:item.id,name:item.name,threadId:threadId??'',runId:runId??'',productId:productId??'',formulaVersionId:formulaVersionId??''});Object.entries(extra).forEach(([key,value])=>{if(Array.isArray(value))value.forEach(x=>q.append(key,String(x)));else q.set(key,typeof value==='string'?value:JSON.stringify(value))});return `/development/new?${q}`}
   return (
     <section className="intelligence-report">
       <header className="panel">
@@ -292,6 +295,7 @@ export function IntelligenceReport({ report }: { report: IntelligenceResponse })
               <strong>{d.intent}</strong>
               <p>{d.predictedEffect}</p>
               <small>{d.tradeoffs.join(" · ")}</small>
+              {threadId&&runId&&<Link className="button ghost" to={reviewLink(d,'direction',{objective:d.intent,hypothesis:d.predictedEffect})}>Review as Experiment</Link>}
             </article>
           ))}
         </div>
@@ -311,6 +315,7 @@ export function IntelligenceReport({ report }: { report: IntelligenceResponse })
               </span>
             ))}
             <small>Observe: {e.observe.join(" · ")}</small>
+            {threadId&&runId&&<Link className="button ghost" to={reviewLink(e,'experiment',{hypothesis:e.hypothesis,changes:e.changes,observe:e.observe})}>Review as Experiment</Link>}
           </article>
         ))}
       </section>

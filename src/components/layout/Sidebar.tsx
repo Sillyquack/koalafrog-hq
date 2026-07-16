@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { Beaker, Blend, BookOpen, Boxes, Calculator, ClipboardCheck, Factory, FileText, FlaskConical, Gauge, Leaf, Package, Rocket, ShoppingBasket, TestTubeDiagonal, Toolbox, X } from 'lucide-react'
+import { Beaker, Blend, BookOpen, Boxes, Calculator, ClipboardCheck, Factory, FileText, FlaskConical, Gauge, Leaf, Package, Rocket, ShoppingBasket, Sparkles, TestTubeDiagonal, Toolbox, X } from 'lucide-react'
 import { configuredWorkspaceRuntime, workspaceRuntimeLabel } from '../../platform/startup/runtimeMode'
 
 const navItems = [
@@ -19,6 +19,7 @@ const navItems = [
   { to: '/packaging', label: 'Packaging', icon: Beaker },
   { to: '/launch', label: 'Launch', icon: Rocket },
   { to: '/knowledge', label: 'Knowledge', icon: BookOpen },
+  { to: '/development', label: 'Development', icon: Sparkles },
 ]
 
 export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {

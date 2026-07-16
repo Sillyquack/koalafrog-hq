@@ -14,8 +14,9 @@ import { useFormulaData } from './state/FormulaDataContext'
 export function FormulaDetailPage() {
   const { formulaId } = useParams(); const [params, setParams] = useSearchParams()
   const { formulas, formulaVersions, formulaLines, products, labBatches, productionRuns, saveVersion, transitionVersion, duplicateAsDraft } = useFormulaData()
-  const formula = formulas.find((item) => item.id === formulaId); const versions = formulaVersions.filter((item) => item.formulaId === formulaId).sort((a,b) => b.createdAt.localeCompare(a.createdAt))
-  const selected = versions.find((item) => item.id === params.get('version')) ?? versions[0]; const lines = formulaLines.filter((line) => line.formulaVersionId === selected?.id)
+  const directVersion=formulaVersions.find(item=>item.id===formulaId);const resolvedFormulaId=directVersion?.formulaId??formulaId
+  const formula = formulas.find((item) => item.id === resolvedFormulaId); const versions = formulaVersions.filter((item) => item.formulaId === resolvedFormulaId).sort((a,b) => b.createdAt.localeCompare(a.createdAt))
+  const selected = directVersion??versions.find((item) => item.id === params.get('version')) ?? versions[0]; const lines = formulaLines.filter((line) => line.formulaVersionId === selected?.id)
   const versionBatches = labBatches.filter((batch) => batch.formulaVersionId === selected?.id)
   const versionRuns=productionRuns.filter(run=>run.formulaVersionId===selected?.id)
   const [description, setDescription] = useState(selected?.description ?? ''); const [characteristics, setCharacteristics] = useState(selected?.targetCharacteristics ?? '')

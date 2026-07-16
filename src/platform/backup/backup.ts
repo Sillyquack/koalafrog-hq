@@ -18,6 +18,12 @@ export interface IntelligenceBackup {
   knowledgeReferences: unknown[];
   scentMemorySessions: unknown[];
   scentMemoryCheckpoints: unknown[];
+  developmentExperiments?: unknown[];
+  developmentExperimentVariants?: unknown[];
+  developmentExperimentChanges?: unknown[];
+  developmentObservationPrompts?: unknown[];
+  developmentStatusEvents?: unknown[];
+  developmentHandoffs?: unknown[];
 }
 export interface KoalafrogBackup {
   format: string;
@@ -39,6 +45,12 @@ export function createBackup(
     knowledgeReferences: [],
     scentMemorySessions: [],
     scentMemoryCheckpoints: [],
+    developmentExperiments: [],
+    developmentExperimentVariants: [],
+    developmentExperimentChanges: [],
+    developmentObservationPrompts: [],
+    developmentStatusEvents: [],
+    developmentHandoffs: [],
   },
 ): KoalafrogBackup {
   const entityCounts = Object.fromEntries(
@@ -52,6 +64,12 @@ export function createBackup(
   entityCounts.knowledgeReferences = intelligenceHistory.knowledgeReferences.length;
   entityCounts.scentMemorySessions = intelligenceHistory.scentMemorySessions.length;
   entityCounts.scentMemoryCheckpoints = intelligenceHistory.scentMemoryCheckpoints.length;
+  entityCounts.developmentExperiments = intelligenceHistory.developmentExperiments?.length ?? 0;
+  entityCounts.developmentExperimentVariants = intelligenceHistory.developmentExperimentVariants?.length ?? 0;
+  entityCounts.developmentExperimentChanges = intelligenceHistory.developmentExperimentChanges?.length ?? 0;
+  entityCounts.developmentObservationPrompts = intelligenceHistory.developmentObservationPrompts?.length ?? 0;
+  entityCounts.developmentStatusEvents = intelligenceHistory.developmentStatusEvents?.length ?? 0;
+  entityCounts.developmentHandoffs = intelligenceHistory.developmentHandoffs?.length ?? 0;
   return {
     format: BACKUP_FORMAT,
     exportedAt: new Date().toISOString(),
@@ -79,7 +97,8 @@ export function validateBackup(value: unknown) {
   if (
     !backup.intelligenceHistory ||
     !Array.isArray(backup.intelligenceHistory.threads) ||
-    !Array.isArray(backup.intelligenceHistory.runs)
+    !Array.isArray(backup.intelligenceHistory.runs) ||
+    !Array.isArray(backup.intelligenceHistory.developmentExperiments)
   )
     errors.push("Intelligence history is missing.");
   if (backup.records && backup.entityCounts) {
