@@ -50,3 +50,6 @@ Operations Copilot remains separately scoped and is not implemented. Phase 9B ad
 ## Local and hosted setup
 
 Apply migrations locally, serve the function, and leave provider secrets unset to verify the controlled configuration state. A developer may set local function secrets for an optional paid smoke test. Hosted promotion is explicit: review and push the migration, set the two function secrets, deploy the function, deploy the frontend, then run authenticated/RLS acceptance checks. Never run security fixtures against the real Bobby workspace.
+# Bible documentation contract
+
+Koalafrog Bible articles document the implemented Intelligence boundary: workspace records may support Fact, empirical records may support Observation, general model knowledge is normally Prediction, and proposed actions are Recommendation. Concept Materials are not evidence. Intelligence cannot smell, approve compliance, or write autonomous domain changes. The Bible is static repository content and makes no model call.

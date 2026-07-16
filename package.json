@@ -8,6 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "test": "vitest run",
+    "test:bible": "vitest run src/features/knowledge/bible/bibleContent.test.ts",
     "test:supabase": "node scripts/test-supabase.mjs",
     "test:secrets": "node scripts/check-secrets.mjs",
     "preview": "vite preview"

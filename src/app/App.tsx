@@ -35,6 +35,7 @@ import { ScentMemoryDetailPage } from '../features/knowledge/ScentMemoryDetailPa
 import { DevelopmentPage } from '../features/development/DevelopmentPage'
 import { ExperimentReviewPage } from '../features/development/ExperimentReviewPage'
 import { DevelopmentExperimentPage } from '../features/development/DevelopmentExperimentPage'
+import { BiblePage } from '../features/knowledge/BiblePage'
 
 export function App() {
   return (
@@ -70,6 +71,8 @@ export function App() {
         <Route path="knowledge" element={<KnowledgePage />} />
         <Route path="knowledge/intelligence/:threadId" element={<IntelligenceThreadPage />} />
         <Route path="knowledge/scent-memory/:sessionId" element={<ScentMemoryDetailPage />} />
+        <Route path="knowledge/bible" element={<BiblePage />} />
+        <Route path="knowledge/bible/:articleId" element={<BiblePage />} />
         <Route path="development" element={<DevelopmentPage />} />
         <Route path="development/new" element={<ExperimentReviewPage />} />
         <Route path="development/:id" element={<DevelopmentExperimentPage />} />

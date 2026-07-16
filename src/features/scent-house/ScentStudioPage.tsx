@@ -12,6 +12,7 @@ import type {
 } from "../intelligence/domain/intelligenceContract";
 import { useActiveWorkspace } from "../../platform/startup/ActiveWorkspaceContext";
 import { addConceptMaterial, consumeConceptInput } from "./domain/conceptMaterials";
+import { IntelligenceHandoffControl, type IntelligenceHandoffContext } from "../development/intelligenceExperimentHandoff";
 const claimLabel: Record<ClaimKind, string> = {
   fact: "Fact",
   prediction: "Prediction",
@@ -231,7 +232,7 @@ export function ScentStudioPage() {
           )}
         </section>
         {report ? (
-          <IntelligenceReport report={report} threadId={threadId} runId={runId} productId={productId} formulaVersionId={versionId} />
+          <IntelligenceReport report={report} handoff={{workspaceId:activeWorkspace?.workspaceId,threadId,runId,productId:productId||undefined,formulaVersionId:versionId||undefined}} />
         ) : (
           <section className="panel studio-empty">
             <Sparkles />
@@ -246,8 +247,7 @@ export function ScentStudioPage() {
     </div>
   );
 }
-export function IntelligenceReport({ report,threadId,runId,productId,formulaVersionId }: { report: IntelligenceResponse;threadId?:string;runId?:string;productId?:string;formulaVersionId?:string }) {
-  const reviewLink=(item:{id:string;name:string},kind:'direction'|'experiment',extra:Record<string,unknown>={})=>{const q=new URLSearchParams({sourceItemType:kind,sourceItemId:item.id,name:item.name,threadId:threadId??'',runId:runId??'',productId:productId??'',formulaVersionId:formulaVersionId??''});Object.entries(extra).forEach(([key,value])=>{if(Array.isArray(value))value.forEach(x=>q.append(key,String(x)));else q.set(key,typeof value==='string'?value:JSON.stringify(value))});return `/development/new?${q}`}
+export function IntelligenceReport({ report,handoff }: { report: IntelligenceResponse;handoff?:IntelligenceHandoffContext }) {
   return (
     <section className="intelligence-report">
       <header className="panel">
@@ -289,21 +289,21 @@ export function IntelligenceReport({ report,threadId,runId,productId,formulaVers
       <section className="panel">
         <h3>Directions</h3>
         <div className="direction-grid">
-          {report.directions.map((d) => (
-            <article key={d.id}>
+          {report.directions.map((d,index) => (
+            <article key={d.id||`historical-direction-${index}`}>
               <h4>{d.name}</h4>
               <strong>{d.intent}</strong>
               <p>{d.predictedEffect}</p>
               <small>{d.tradeoffs.join(" · ")}</small>
-              {threadId&&runId&&<Link className="button ghost" to={reviewLink(d,'direction',{objective:d.intent,hypothesis:d.predictedEffect})}>Review as Experiment</Link>}
+              <IntelligenceHandoffControl context={handoff} itemType="direction" itemId={d.id}/>
             </article>
           ))}
         </div>
       </section>
       <section className="panel">
         <h3>Suggested experiments</h3>
-        {report.experiments.map((e) => (
-          <article className="experiment" key={e.id}>
+        {report.experiments.map((e,index) => (
+          <article className="experiment" key={e.id||`historical-experiment-${index}`}>
             <h4>{e.name}</h4>
             <p>{e.hypothesis}</p>
             {e.changes.map((c) => (
@@ -315,7 +315,7 @@ export function IntelligenceReport({ report,threadId,runId,productId,formulaVers
               </span>
             ))}
             <small>Observe: {e.observe.join(" · ")}</small>
-            {threadId&&runId&&<Link className="button ghost" to={reviewLink(e,'experiment',{hypothesis:e.hypothesis,changes:e.changes,observe:e.observe})}>Review as Experiment</Link>}
+            <IntelligenceHandoffControl context={handoff} itemType="experiment" itemId={e.id}/>
           </article>
         ))}
       </section>

@@ -1,6 +1,6 @@
 /* eslint-disable react-hooks/set-state-in-effect -- authenticated repository hydration is an external synchronization */
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { BookOpen, Brain, Plus, Search } from "lucide-react";
+import { BookMarked, BookOpen, Brain, Plus, Search } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { useFormulaData } from "../formulas/state/FormulaDataContext";
@@ -80,6 +80,7 @@ export function KnowledgePage() {
       <nav className="knowledge-tabs" aria-label="Knowledge sections">
         <button className={tab === "library" ? "selected" : ""} onClick={() => setParams({})}><Brain size={14} />Intelligence Library</button>
         <button className={tab === "scent-memory" ? "selected" : ""} onClick={() => setParams({ tab: "scent-memory" })}><BookOpen size={14} />Scent Memory</button>
+        <Link className="knowledge-tab-link" to="/knowledge/bible"><BookMarked size={14}/>Koalafrog Bible</Link>
       </nav>
       {error ? <section className="panel knowledge-state" role="alert"><h2>Knowledge unavailable</h2><p>{error}</p><button className="button ghost" onClick={refresh}>Retry</button></section> : !loaded ? <section className="panel knowledge-state"><p>Loading private Knowledge…</p></section> : tab === "library" ? (
         <>

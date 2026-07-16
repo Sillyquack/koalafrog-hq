@@ -9,3 +9,6 @@ A JSON/database export is not a complete backup. Export the authenticated privat
 Import tooling validates format, metadata, counts, and malformed JSON. It does not casually overwrite a live workspace. Full destructive restore remains an administrative procedure: validate into an empty local Supabase project, reconcile, then promote through an explicitly reviewed deployment process.
 
 Restore order is Auth owner → empty workspace/schema → relational JSON/import → reconciliation → private binaries at their manifest paths → authenticated sample downloads → activation. Never activate when counts, IDs, ledger/cost reconciliation, or required binaries disagree.
+# Bible operational note
+
+The in-app Koalafrog Bible links here conceptually from Platform and Compliance. JSON backup contains relational/domain records and document metadata; private Storage binaries require the separate manifest/binary procedure below. Never describe a JSON-only export as a complete binary-document backup.

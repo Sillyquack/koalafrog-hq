@@ -50,3 +50,6 @@ Phase 6 now replaces overlapping manual packaging Cost Lines with authoritative 
 - Phase 9A: Intelligence Foundation + Scent Studio First Vertical Slice — Implemented locally; hosted deployment and provider configuration pending
 - Phase 9B: Intelligence Memory, Knowledge Library, usage visibility, and Scent Memory — Complete locally; hosted deployment pending
 - Phase 9C+: Operations Copilot and later Intelligence work — Future
+# Documentation phase — Koalafrog Bible (implemented locally)
+
+The repository now contains a typed, searchable, cross-linked in-app operations manual under Knowledge → Koalafrog Bible, contextual route help, a verified limitations register, playbooks, glossary, and governance tests. This phase changes no hosted data and requires no runtime AI call. Suppliers and Equipment remain explicitly documented placeholder modules.
