@@ -28,13 +28,15 @@ describe('batch scaling', () => {
 describe('immutable version creation', () => {
   it('copies lines with new identities and leaves the source untouched', () => {
     const ids = ['new-version', 'new-line-1', 'new-line-2']; let index = 0
-    const sourceLines = [line('1', 60), line('2', 40)]
+    const sourceLines = [{...line('1', 60),formulationRole:'Adds controlled viscosity and gloss'}, line('2', 40)]
     const result = duplicateVersion(version, sourceLines, [version], () => ids[index++], '2026-07-14')
     expect(result.version).toMatchObject({ id: 'new-version', version: 'v0.3', status: 'Draft', derivedFromVersionId: 'version-1' })
     expect(result.lines.map((item) => item.id)).toEqual(['new-line-1', 'new-line-2'])
     expect(result.lines.every((item) => item.formulaVersionId === 'new-version')).toBe(true)
     expect(version.status).toBe('Candidate')
     expect(sourceLines[0].formulaVersionId).toBe('version-1')
+    expect(result.lines[0].formulationRole).toBe('Adds controlled viscosity and gloss')
+    expect(calculatePercentageTotal(result.lines)).toBe(100)
   })
   it('increments the highest human-readable version predictably', () => expect(nextVersionNumber([{ version: 'v0.3' }, { version: 'v1.0' }])).toBe('v1.1'))
 })

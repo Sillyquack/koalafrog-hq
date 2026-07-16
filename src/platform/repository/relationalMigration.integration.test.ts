@@ -163,11 +163,17 @@ run('relational v9 migration against local Supabase', () => {
     const refreshed=await repository.load(ownerId)
     expect(refreshed.testTemplates.find(item=>item.id==='tt-rpc')?.questions).toEqual(template.questions)
     expect(refreshed.testResponses.find(item=>item.id==='tr-rpc')?.answers).toEqual(response.answers)
+    const movementsBeforeRole=refreshed.inventoryMovements.length
+    const roleLineId=refreshed.formulaLines[0].id
+    await applicationAction(repository,refreshed,'updateLine',current=>({...current,formulaLines:current.formulaLines.map(line=>line.id===roleLineId?{...line,formulationRole:'Primary lightweight carrier'}:line)}))
+    const withRole=await repository.load(ownerId)
+    expect(withRole.formulaLines.find(line=>line.id===roleLineId)?.formulationRole).toBe('Primary lightweight carrier')
+    expect(withRole.inventoryMovements).toHaveLength(movementsBeforeRole)
 
-    const stale=refreshed.ingredients.find(item=>item.id==='i1')!
+    const stale=withRole.ingredients.find(item=>item.id==='i1')!
     expect((await client.from('ingredients').update({notes:'Other tab',updated_at:'2026-07-15T12:00:00Z'}).eq('id',stale.id)).error).toBeNull()
-    const intended={...refreshed,ingredients:refreshed.ingredients.map(item=>item.id===stale.id?{...item,notes:'Stale edit',updatedAt:'2026-07-15T13:00:00Z'}:item)}
-    await expect(repository.commit({action:'updateIngredient',previous:refreshed,next:intended})).rejects.toThrow('refresh and retry')
+    const intended={...withRole,ingredients:withRole.ingredients.map(item=>item.id===stale.id?{...item,notes:'Stale edit',updatedAt:'2026-07-15T13:00:00Z'}:item)}
+    await expect(repository.commit({action:'updateIngredient',previous:withRole,next:intended})).rejects.toThrow('refresh and retry')
     expect((await client.from('ingredients').select('notes').eq('id',stale.id).single()).data?.notes).toBe('Other tab')
     await supabase!.auth.signOut()
   })

@@ -1685,6 +1685,7 @@ export type Database = {
       formula_lines: {
         Row: {
           formula_version_id: string
+          formulation_role: string | null
           id: string
           ingredient_id: string
           notes: string
@@ -1696,6 +1697,7 @@ export type Database = {
         }
         Insert: {
           formula_version_id: string
+          formulation_role?: string | null
           id: string
           ingredient_id: string
           notes: string
@@ -1707,6 +1709,7 @@ export type Database = {
         }
         Update: {
           formula_version_id?: string
+          formulation_role?: string | null
           id?: string
           ingredient_id?: string
           notes?: string
@@ -1942,6 +1945,10 @@ export type Database = {
         Row: {
           category: string
           common_name: string
+          cosing_functions: string[] | null
+          cosing_source_reference: string | null
+          cosing_verification_status: string | null
+          cosing_verified_at: string | null
           created_at: string
           default_unit: string
           description: string
@@ -1958,6 +1965,10 @@ export type Database = {
         Insert: {
           category: string
           common_name: string
+          cosing_functions?: string[] | null
+          cosing_source_reference?: string | null
+          cosing_verification_status?: string | null
+          cosing_verified_at?: string | null
           created_at: string
           default_unit: string
           description: string
@@ -1974,6 +1985,10 @@ export type Database = {
         Update: {
           category?: string
           common_name?: string
+          cosing_functions?: string[] | null
+          cosing_source_reference?: string | null
+          cosing_verification_status?: string | null
+          cosing_verified_at?: string | null
           created_at?: string
           default_unit?: string
           description?: string
@@ -6072,9 +6087,17 @@ export type Database = {
         Args: { lot_id: string; wid: string }
         Returns: number
       }
+      mark_packaging_supplier_product_preferred: {
+        Args: { p_expected_updated_at: string; p_product_id: string }
+        Returns: undefined
+      }
       mark_purchase_plan_external_order: {
         Args: { idempotency: string; plan_id: string }
         Returns: string
+      }
+      mark_supplier_product_preferred: {
+        Args: { p_expected_updated_at: string; p_product_id: string }
+        Returns: undefined
       }
       record_scent_memory_checkpoint: {
         Args: {

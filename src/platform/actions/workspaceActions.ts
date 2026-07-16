@@ -16,6 +16,7 @@ export const workspaceActionNames = [
   "archiveIngredient",
   "saveSupplierProduct",
   "markSupplierPreferred",
+  "markPackagingSupplierPreferred",
   "receiveStock",
   "addMovement",
   "updateInventoryLot",

@@ -25,6 +25,9 @@ describe("Scent context builder", () => {
     );
     expect(context.conceptMaterials).toEqual(["Bergamot", "Leather"]);
     expect(context.products).toHaveLength(1);
+    expect(context.evidenceBoundaries.cosingFunctions).toContain('Informational');
+    expect(context.ingredientMetadata[0]).toHaveProperty('technicalDescription');
+    expect(context.formulaLineRoles.every(item=>item.formulaVersionId===version.id)).toBe(true);
   });
   it("keeps an empty material workspace usable", () => {
     const empty = {

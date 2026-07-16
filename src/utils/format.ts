@@ -5,5 +5,5 @@ export const formatDate = (value: string | null | undefined, missing = 'Not set'
   if (!Number.isFinite(date.getTime())) return 'Invalid date'
   return new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).format(date)
 }
-export const formatMoney = (value: number) => new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'NOK', minimumFractionDigits: 2 }).format(value)
+export const formatMoney = (value: number, currency = 'NOK') => new Intl.NumberFormat('en-GB', { style: 'currency', currency, minimumFractionDigits: 2 }).format(value)
 export const initials = (value: string) => value.split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase()

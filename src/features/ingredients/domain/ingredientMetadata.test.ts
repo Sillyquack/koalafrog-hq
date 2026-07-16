@@ -1,0 +1,5 @@
+import{describe,expect,it}from'vitest'
+import type{Ingredient}from'../../../types/domain'
+import{cosingStatus,normalizeCosingFunctions}from'./ingredientMetadata'
+const ingredient={id:'i',commonName:'Castor Oil',inciName:'RICINUS COMMUNIS SEED OIL',category:'Oil',functions:['Emollient'],description:'Thick',defaultUnit:'g',notes:'',status:'Active',createdAt:'',updatedAt:''}as Ingredient
+describe('Ingredient metadata clarity',()=>{it('normalizes empty and duplicate CosIng tags',()=>expect(normalizeCosingFunctions(' fragrance, SKIN CONDITIONING, fragrance, , perfuming ')).toEqual(['FRAGRANCE','SKIN CONDITIONING','PERFUMING']));it('preserves legacy functions as needing review',()=>expect(cosingStatus(ingredient)).toBe('needs_review'));it('allows no CosIng functions without verification',()=>expect(cosingStatus({...ingredient,functions:[],cosingFunctions:[]})).toBe('unverified'));it('keeps explicit verification metadata',()=>expect(cosingStatus({...ingredient,cosingFunctions:['PERFUMING'],cosingVerificationStatus:'verified_from_cosing',cosingVerifiedAt:'2026-07-16'})).toBe('verified_from_cosing'))})

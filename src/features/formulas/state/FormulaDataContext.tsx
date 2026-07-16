@@ -119,7 +119,8 @@ interface FormulaDataValue extends FormulaState {
       id?: string;
     },
   ): SupplierProduct;
-  markSupplierPreferred(id: string): void;
+  markSupplierPreferred(id: string): Promise<void>;
+  markPackagingSupplierPreferred(id: string): Promise<void>;
   receiveStock(
     input: Omit<
       InventoryLot,
@@ -355,7 +356,7 @@ export function FormulaDataProvider({
         commitState("updateLine", (current) => ({
           ...current,
           formulaLines: current.formulaLines.map((line) =>
-            line.formulaVersionId === versionId && line.id === lineId
+            current.formulaVersions.find(version=>version.id===versionId)?.status==='Draft' && line.formulaVersionId === versionId && line.id === lineId
               ? { ...line, ...patch }
               : line,
           ),
@@ -382,6 +383,7 @@ export function FormulaDataProvider({
                   (line) => line.formulaVersionId === versionId,
                 ).length + 1,
               notes: "",
+              formulationRole: "",
             },
           ],
         }));
@@ -572,7 +574,7 @@ export function FormulaDataProvider({
         return product;
       },
       markSupplierPreferred(id) {
-        commitState("markSupplierPreferred", (current) => {
+        return commitState("markSupplierPreferred", (current) => {
           const selected = current.supplierProducts.find(
             (item) => item.id === id,
           );
@@ -589,6 +591,13 @@ export function FormulaDataProvider({
                 : item,
             ),
           };
+        });
+      },
+      markPackagingSupplierPreferred(id) {
+        return commitState("markPackagingSupplierPreferred", (current) => {
+          const selected=current.packagingSupplierProducts.find(item=>item.id===id);
+          if(!selected)return current;
+          return {...current,packagingSupplierProducts:current.packagingSupplierProducts.map(item=>item.packagingComponentId===selected.packagingComponentId?{...item,isPreferred:item.id===id,updatedAt:new Date().toISOString()}:item)};
         });
       },
       receiveStock(input) {

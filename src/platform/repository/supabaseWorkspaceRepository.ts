@@ -112,6 +112,22 @@ export class SupabaseWorkspaceRepository implements WorkspaceRepository {
   }
 
   private async commitAtomic(change: WorkspaceCommit, client: SupabaseClient) {
+    if(change.action==='markSupplierPreferred'){
+      const selected=change.next.supplierProducts.find(item=>item.isPreferred&&!change.previous.supplierProducts.find(previous=>previous.id===item.id)?.isPreferred)
+      if(!selected)return true
+      const previous=change.previous.supplierProducts.find(item=>item.id===selected.id)!
+      const result=await client.rpc('mark_supplier_product_preferred',{p_product_id:selected.id,p_expected_updated_at:previous.updatedAt})
+      if(result.error)throw new Error(result.error.message)
+      return true
+    }
+    if(change.action==='markPackagingSupplierPreferred'){
+      const selected=change.next.packagingSupplierProducts.find(item=>item.isPreferred&&!change.previous.packagingSupplierProducts.find(previous=>previous.id===item.id)?.isPreferred)
+      if(!selected)return true
+      const previous=change.previous.packagingSupplierProducts.find(item=>item.id===selected.id)!
+      const result=await client.rpc('mark_packaging_supplier_product_preferred',{p_product_id:selected.id,p_expected_updated_at:previous.updatedAt})
+      if(result.error)throw new Error(result.error.message)
+      return true
+    }
     if (change.action === 'commitBatchConsumption') {
       const movements = change.next.inventoryMovements.filter(item => !change.previous.inventoryMovements.some(previous => previous.id === item.id) && item.referenceType === 'LabBatch')
       const commits = change.next.labBatchAllocations.filter(item => item.inventoryMovementId && !change.previous.labBatchAllocations.find(previous => previous.id === item.id)?.inventoryMovementId).map(allocation => { const movement=movements.find(item=>item.id===allocation.inventoryMovementId)!;return{allocation_id:allocation.id,movement_id:movement.id,notes:movement.notes,occurred_at:movement.occurredAt,created_at:movement.createdAt} })
