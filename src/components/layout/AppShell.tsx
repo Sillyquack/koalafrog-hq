@@ -2,11 +2,13 @@ import { useState } from 'react'
 import { Outlet } from 'react-router-dom'
 import { Menu, Search } from 'lucide-react'
 import { Sidebar } from './Sidebar'
+import { RouteScrollRestoration } from './RouteScrollRestoration'
 
 export function AppShell() {
   const [menuOpen, setMenuOpen] = useState(false)
   return (
     <div className="app-shell">
+      <RouteScrollRestoration />
       <Sidebar open={menuOpen} onClose={() => setMenuOpen(false)} />
       {menuOpen && <button className="nav-scrim" aria-label="Close navigation" onClick={() => setMenuOpen(false)} />}
       <div className="app-column">
