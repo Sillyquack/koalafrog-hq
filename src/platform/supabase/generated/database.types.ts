@@ -5247,6 +5247,7 @@ export type Database = {
       }
       supplier_quote_lines: {
         Row: {
+          created_at: string
           description: string
           display_order: number
           equipment_item_id: string | null
@@ -5267,6 +5268,7 @@ export type Database = {
           workspace_id: string
         }
         Insert: {
+          created_at?: string
           description: string
           display_order?: number
           equipment_item_id?: string | null
@@ -5287,6 +5289,7 @@ export type Database = {
           workspace_id: string
         }
         Update: {
+          created_at?: string
           description?: string
           display_order?: number
           equipment_item_id?: string | null
