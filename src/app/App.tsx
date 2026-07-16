@@ -36,6 +36,10 @@ import { DevelopmentPage } from '../features/development/DevelopmentPage'
 import { ExperimentReviewPage } from '../features/development/ExperimentReviewPage'
 import { DevelopmentExperimentPage } from '../features/development/DevelopmentExperimentPage'
 import { BiblePage } from '../features/knowledge/BiblePage'
+import { SuppliersPage } from '../features/procurement/SuppliersPage'
+import { SupplierDetailPage } from '../features/procurement/SupplierDetailPage'
+import { EquipmentPage } from '../features/procurement/EquipmentPage'
+import { EquipmentDetailPage } from '../features/procurement/EquipmentDetailPage'
 
 export function App() {
   return (
@@ -76,6 +80,10 @@ export function App() {
         <Route path="development" element={<DevelopmentPage />} />
         <Route path="development/new" element={<ExperimentReviewPage />} />
         <Route path="development/:id" element={<DevelopmentExperimentPage />} />
+        <Route path="suppliers" element={<SuppliersPage />} />
+        <Route path="suppliers/:id" element={<SupplierDetailPage />} />
+        <Route path="equipment" element={<EquipmentPage />} />
+        <Route path="equipment/:id" element={<EquipmentDetailPage />} />
         {placeholderModules.map((module) => (
           <Route key={module.path} path={module.path} element={<PlaceholderPage module={module} />} />
         ))}

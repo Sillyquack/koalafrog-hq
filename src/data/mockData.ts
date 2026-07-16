@@ -57,7 +57,5 @@ export const testingActivities: TestingActivity[] = [
 ]
 
 export const placeholderModules: ModuleDefinition[] = [
-  { path: 'suppliers', name: 'Suppliers', eyebrow: 'Source intelligence', description: 'Keep contacts, samples, quotes and material relationships in one considered record.', capabilities: ['Supplier profiles', 'Quotes and lead times', 'Sample history'] },
-  { path: 'equipment', name: 'Equipment', eyebrow: 'Workshop readiness', description: 'Catalogue tools, calibration needs, maintenance and working procedures.', capabilities: ['Equipment register', 'Maintenance log', 'Calibration reminders'] },
   { path: 'knowledge', name: 'Knowledge', eyebrow: 'Koalafrog memory', description: 'A durable home for research, methods, decisions and hard-won workshop knowledge.', capabilities: ['Linked notes', 'Methods library', 'Decision records'] },
 ]

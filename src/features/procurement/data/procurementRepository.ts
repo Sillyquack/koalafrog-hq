@@ -1,0 +1,18 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- Phase 10A tables are accessed through this adapter until generated types refresh */
+import { supabase } from '../../../platform/supabase/client'
+import { emptyProcurementData, type ProcurementData } from '../domain/procurement'
+const client=()=>{if(!supabase)throw new Error('Hosted procurement requires Supabase.');return supabase as any}
+const tableMap={suppliers:'suppliers',contacts:'supplier_contacts',candidates:'supplier_research_candidates',quotes:'supplier_quotes',quoteLines:'supplier_quote_lines',stockPolicies:'stock_policies',purchasePlans:'purchase_plans',purchasePlanLines:'purchase_plan_lines',equipment:'equipment_items',capabilities:'equipment_capabilities',equipmentPolicies:'equipment_policies',serviceEvents:'equipment_service_events',processRequirements:'process_equipment_requirements'} as const
+export async function loadProcurement(workspaceId:string){const entries=await Promise.all(Object.entries(tableMap).map(async([key,table])=>{const result=await client().from(table).select('*').eq('workspace_id',workspaceId).order('created_at',{ascending:false});if(result.error)throw new Error(result.error.message);return[key,result.data??[]]}));return Object.assign(emptyProcurementData(),Object.fromEntries(entries)) as ProcurementData}
+const owner=async()=>{const result=await client().auth.getUser();if(result.error||!result.data.user)throw new Error('Authenticated owner required.');return result.data.user.id}
+async function insert(table:string,workspaceId:string,values:Record<string,unknown>){const result=await client().from(table).insert({workspace_id:workspaceId,owner_id:await owner(),...values}).select().single();if(result.error)throw new Error(result.error.message);return result.data}
+export const createSupplier=(workspaceId:string,values:Record<string,unknown>)=>insert('suppliers',workspaceId,values)
+export const createCandidate=(workspaceId:string,values:Record<string,unknown>)=>insert('supplier_research_candidates',workspaceId,values)
+export const createQuote=(workspaceId:string,values:Record<string,unknown>)=>insert('supplier_quotes',workspaceId,values)
+export const createStockPolicy=(workspaceId:string,values:Record<string,unknown>)=>insert('stock_policies',workspaceId,values)
+export const createPurchasePlan=(workspaceId:string,values:Record<string,unknown>)=>insert('purchase_plans',workspaceId,{creation_key:crypto.randomUUID(),...values})
+export const createEquipment=(workspaceId:string,values:Record<string,unknown>)=>insert('equipment_items',workspaceId,values)
+export const recordService=(workspaceId:string,values:Record<string,unknown>)=>insert('equipment_service_events',workspaceId,values)
+export async function markExternalOrder(id:string){const result=await client().rpc('mark_purchase_plan_external_order',{plan_id:id,idempotency:crypto.randomUUID()});if(result.error)throw new Error(result.error.message);return result.data}
+export async function updateRecord(table:string,id:string,revision:number,values:Record<string,unknown>){const result=await client().from(table).update({...values,revision:revision+1,updated_at:new Date().toISOString()}).eq('id',id).eq('revision',revision).select().maybeSingle();if(result.error)throw new Error(result.error.message);if(!result.data)throw new Error('This record changed. Reload and retry.');return result.data}
+export async function loadProcurementBackup(ownerId:string){const entries=await Promise.all(Object.entries(tableMap).map(async([key,table])=>{const result=await client().from(table).select('*').eq('owner_id',ownerId);if(result.error)throw new Error(result.error.message);return[key,result.data??[]]}));return Object.fromEntries(entries)}

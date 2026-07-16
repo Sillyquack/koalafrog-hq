@@ -153,6 +153,21 @@ run("local Supabase Auth, RLS, RPC, Storage, and cutover security", () => {
       "readiness_issues",
       "launch_plans",
       "launch_decisions",
+      "suppliers",
+      "supplier_contacts",
+      "supplier_research_candidates",
+      "supplier_documents",
+      "supplier_quotes",
+      "supplier_quote_lines",
+      "currency_comparison_rates",
+      "stock_policies",
+      "purchase_plans",
+      "purchase_plan_lines",
+      "equipment_items",
+      "equipment_capabilities",
+      "equipment_policies",
+      "equipment_service_events",
+      "process_equipment_requirements",
     ];
     for (const table of tables) {
       const anon = await anonymous
@@ -171,6 +186,36 @@ run("local Supabase Auth, RLS, RPC, Storage, and cutover security", () => {
         .data?.length,
     ).toBeGreaterThan(0);
   }, 30_000);
+
+  it("isolates procurement, converts candidates idempotently, and records no stock on planning", async () => {
+    const candidateId = crypto.randomUUID(), creationKey = crypto.randomUUID();
+    expect((await userA.from("supplier_research_candidates").insert({
+      id: candidateId, workspace_id: workspaceA, owner_id: userAId,
+      candidate_name: "Evidence candidate", candidate_type: "raw_material",
+      status: "shortlisted", claimed_capabilities: ["Claim only"], creation_key: creationKey,
+    })).error).toBeNull();
+    expect((await userB.from("supplier_research_candidates").select("id").eq("id", candidateId)).data).toEqual([]);
+    expect((await userB.rpc("convert_supplier_candidate", { candidate_id: candidateId, idempotency: creationKey })).error).not.toBeNull();
+    const first = await userA.rpc("convert_supplier_candidate", { candidate_id: candidateId, idempotency: creationKey });
+    const retry = await userA.rpc("convert_supplier_candidate", { candidate_id: candidateId, idempotency: creationKey });
+    expect(first.error).toBeNull();
+    expect(retry.data).toBe(first.data);
+
+    const beforeRaw = (await userA.from("inventory_movements").select("id", { count: "exact", head: true })).count;
+    const beforePackaging = (await userA.from("packaging_inventory_movements").select("id", { count: "exact", head: true })).count;
+    const plan = await userA.from("purchase_plans").insert({
+      workspace_id: workspaceA, owner_id: userAId, title: "Controlled plan",
+      status: "approved_internal", purpose: "Test", creation_key: crypto.randomUUID(),
+    }).select("id").single();
+    expect(plan.error).toBeNull();
+    const orderKey = crypto.randomUUID();
+    const ordered = await userA.rpc("mark_purchase_plan_external_order", { plan_id: plan.data!.id, idempotency: orderKey });
+    const orderedRetry = await userA.rpc("mark_purchase_plan_external_order", { plan_id: plan.data!.id, idempotency: orderKey });
+    expect(ordered.error).toBeNull();
+    expect(orderedRetry.data).toBe(ordered.data);
+    expect((await userA.from("inventory_movements").select("id", { count: "exact", head: true })).count).toBe(beforeRaw);
+    expect((await userA.from("packaging_inventory_movements").select("id", { count: "exact", head: true })).count).toBe(beforePackaging);
+  });
 
   it("enforces intelligence history ownership and cross-workspace integrity", async () => {
     const threadId=crypto.randomUUID(),runId=crypto.randomUUID(),now=new Date().toISOString();

@@ -622,6 +622,50 @@ export type Database = {
           },
         ]
       }
+      currency_comparison_rates: {
+        Row: {
+          created_at: string
+          effective_at: string
+          from_currency: string
+          id: string
+          owner_id: string
+          rate: number
+          source_label: string
+          to_currency: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          effective_at: string
+          from_currency: string
+          id?: string
+          owner_id: string
+          rate: number
+          source_label: string
+          to_currency: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          effective_at?: string
+          from_currency?: string
+          id?: string
+          owner_id?: string
+          rate?: number
+          source_label?: string
+          to_currency?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "currency_comparison_rates_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       development_experiment_changes: {
         Row: {
           change_type: string
@@ -1183,6 +1227,296 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "workspaces"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      equipment_capabilities: {
+        Row: {
+          capability_type: string
+          created_at: string
+          equipment_item_id: string
+          id: string
+          maximum_value: number | null
+          minimum_value: number | null
+          notes: string
+          owner_id: string
+          precision: number | null
+          unit: string | null
+          workspace_id: string
+        }
+        Insert: {
+          capability_type: string
+          created_at?: string
+          equipment_item_id: string
+          id?: string
+          maximum_value?: number | null
+          minimum_value?: number | null
+          notes?: string
+          owner_id: string
+          precision?: number | null
+          unit?: string | null
+          workspace_id: string
+        }
+        Update: {
+          capability_type?: string
+          created_at?: string
+          equipment_item_id?: string
+          id?: string
+          maximum_value?: number | null
+          minimum_value?: number | null
+          notes?: string
+          owner_id?: string
+          precision?: number | null
+          unit?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "equipment_capabilities_workspace_id_equipment_item_id_fkey"
+            columns: ["workspace_id", "equipment_item_id"]
+            isOneToOne: false
+            referencedRelation: "equipment_items"
+            referencedColumns: ["workspace_id", "id"]
+          },
+        ]
+      }
+      equipment_items: {
+        Row: {
+          archived_at: string | null
+          capacity_unit: string | null
+          capacity_value: number | null
+          created_at: string
+          equipment_type: string
+          food_cosmetic_contact: boolean | null
+          id: string
+          internal_notes: string
+          location: string | null
+          manufacturer: string | null
+          maximum_value: number | null
+          minimum_value: number | null
+          model: string | null
+          name: string
+          owner_id: string
+          power_requirement: string | null
+          precision_unit: string | null
+          precision_value: number | null
+          purchase_cost: number | null
+          purchase_currency: string | null
+          purchase_date: string | null
+          revision: number
+          serial_number: string | null
+          status: string
+          supplier_id: string | null
+          supplier_product_id: string | null
+          updated_at: string
+          warranty_until: string | null
+          workspace_id: string
+        }
+        Insert: {
+          archived_at?: string | null
+          capacity_unit?: string | null
+          capacity_value?: number | null
+          created_at?: string
+          equipment_type: string
+          food_cosmetic_contact?: boolean | null
+          id?: string
+          internal_notes?: string
+          location?: string | null
+          manufacturer?: string | null
+          maximum_value?: number | null
+          minimum_value?: number | null
+          model?: string | null
+          name: string
+          owner_id: string
+          power_requirement?: string | null
+          precision_unit?: string | null
+          precision_value?: number | null
+          purchase_cost?: number | null
+          purchase_currency?: string | null
+          purchase_date?: string | null
+          revision?: number
+          serial_number?: string | null
+          status?: string
+          supplier_id?: string | null
+          supplier_product_id?: string | null
+          updated_at?: string
+          warranty_until?: string | null
+          workspace_id: string
+        }
+        Update: {
+          archived_at?: string | null
+          capacity_unit?: string | null
+          capacity_value?: number | null
+          created_at?: string
+          equipment_type?: string
+          food_cosmetic_contact?: boolean | null
+          id?: string
+          internal_notes?: string
+          location?: string | null
+          manufacturer?: string | null
+          maximum_value?: number | null
+          minimum_value?: number | null
+          model?: string | null
+          name?: string
+          owner_id?: string
+          power_requirement?: string | null
+          precision_unit?: string | null
+          precision_value?: number | null
+          purchase_cost?: number | null
+          purchase_currency?: string | null
+          purchase_date?: string | null
+          revision?: number
+          serial_number?: string | null
+          status?: string
+          supplier_id?: string | null
+          supplier_product_id?: string | null
+          updated_at?: string
+          warranty_until?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "equipment_items_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "equipment_items_workspace_id_supplier_id_fkey"
+            columns: ["workspace_id", "supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["workspace_id", "id"]
+          },
+        ]
+      }
+      equipment_policies: {
+        Row: {
+          calibration_interval_days: number | null
+          cleaning_required_after_use: boolean
+          cleaning_required_before_use: boolean
+          created_at: string
+          equipment_item_id: string
+          id: string
+          inspection_interval_days: number | null
+          maintenance_interval_days: number | null
+          owner_id: string
+          revision: number
+          status: string
+          updated_at: string
+          verification_notes: string
+          workspace_id: string
+        }
+        Insert: {
+          calibration_interval_days?: number | null
+          cleaning_required_after_use?: boolean
+          cleaning_required_before_use?: boolean
+          created_at?: string
+          equipment_item_id: string
+          id?: string
+          inspection_interval_days?: number | null
+          maintenance_interval_days?: number | null
+          owner_id: string
+          revision?: number
+          status?: string
+          updated_at?: string
+          verification_notes?: string
+          workspace_id: string
+        }
+        Update: {
+          calibration_interval_days?: number | null
+          cleaning_required_after_use?: boolean
+          cleaning_required_before_use?: boolean
+          created_at?: string
+          equipment_item_id?: string
+          id?: string
+          inspection_interval_days?: number | null
+          maintenance_interval_days?: number | null
+          owner_id?: string
+          revision?: number
+          status?: string
+          updated_at?: string
+          verification_notes?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "equipment_policies_workspace_id_equipment_item_id_fkey"
+            columns: ["workspace_id", "equipment_item_id"]
+            isOneToOne: false
+            referencedRelation: "equipment_items"
+            referencedColumns: ["workspace_id", "id"]
+          },
+        ]
+      }
+      equipment_service_events: {
+        Row: {
+          created_at: string
+          equipment_item_id: string
+          event_type: string
+          id: string
+          next_due_at: string | null
+          notes: string
+          owner_id: string
+          performed_at: string
+          performed_by: string | null
+          result_status: string
+          source_document_id: string | null
+          supersedes_event_id: string | null
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          equipment_item_id: string
+          event_type: string
+          id?: string
+          next_due_at?: string | null
+          notes?: string
+          owner_id: string
+          performed_at: string
+          performed_by?: string | null
+          result_status: string
+          source_document_id?: string | null
+          supersedes_event_id?: string | null
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          equipment_item_id?: string
+          event_type?: string
+          id?: string
+          next_due_at?: string | null
+          notes?: string
+          owner_id?: string
+          performed_at?: string
+          performed_by?: string | null
+          result_status?: string
+          source_document_id?: string | null
+          supersedes_event_id?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "equipment_service_events_source_document_id_fkey"
+            columns: ["source_document_id"]
+            isOneToOne: false
+            referencedRelation: "supplier_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "equipment_service_events_supersedes_event_id_fkey"
+            columns: ["supersedes_event_id"]
+            isOneToOne: false
+            referencedRelation: "equipment_service_events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "equipment_service_events_workspace_id_equipment_item_id_fkey"
+            columns: ["workspace_id", "equipment_item_id"]
+            isOneToOne: false
+            referencedRelation: "equipment_items"
+            referencedColumns: ["workspace_id", "id"]
           },
         ]
       }
@@ -3242,11 +3576,17 @@ export type Database = {
       }
       packaging_supplier_products: {
         Row: {
+          availability_status: string | null
           created_at: string
           currency: string
+          discontinued: boolean
           id: string
           is_preferred: boolean
+          last_verified_date: string | null
+          lead_time_days: number | null
+          moq: number | null
           notes: string
+          order_multiple: number | null
           owner_id: string
           package_quantity: number
           package_unit: string
@@ -3254,17 +3594,25 @@ export type Database = {
           price: number
           product_name: string
           product_url: string | null
+          sample_available: boolean | null
+          supplier_id: string | null
           supplier_name: string
           supplier_sku: string | null
           updated_at: string
           workspace_id: string
         }
         Insert: {
+          availability_status?: string | null
           created_at: string
           currency: string
+          discontinued?: boolean
           id: string
           is_preferred: boolean
+          last_verified_date?: string | null
+          lead_time_days?: number | null
+          moq?: number | null
           notes: string
+          order_multiple?: number | null
           owner_id: string
           package_quantity: number
           package_unit: string
@@ -3272,17 +3620,25 @@ export type Database = {
           price: number
           product_name: string
           product_url?: string | null
+          sample_available?: boolean | null
+          supplier_id?: string | null
           supplier_name: string
           supplier_sku?: string | null
           updated_at: string
           workspace_id: string
         }
         Update: {
+          availability_status?: string | null
           created_at?: string
           currency?: string
+          discontinued?: boolean
           id?: string
           is_preferred?: boolean
+          last_verified_date?: string | null
+          lead_time_days?: number | null
+          moq?: number | null
           notes?: string
+          order_multiple?: number | null
           owner_id?: string
           package_quantity?: number
           package_unit?: string
@@ -3290,12 +3646,21 @@ export type Database = {
           price?: number
           product_name?: string
           product_url?: string | null
+          sample_available?: boolean | null
+          supplier_id?: string | null
           supplier_name?: string
           supplier_sku?: string | null
           updated_at?: string
           workspace_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "packaging_supplier_products_supplier_fk"
+            columns: ["workspace_id", "supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["workspace_id", "id"]
+          },
           {
             foreignKeyName: "packaging_supplier_products_workspace_id_fkey"
             columns: ["workspace_id"]
@@ -3399,6 +3764,65 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "pif_evidence_sections"
             referencedColumns: ["workspace_id", "id"]
+          },
+        ]
+      }
+      process_equipment_requirements: {
+        Row: {
+          created_at: string
+          id: string
+          minimum_capacity: number | null
+          notes: string
+          owner_id: string
+          quantity_required: number
+          required_capability: string | null
+          required_equipment_type: string | null
+          required_precision: number | null
+          requirement_level: string
+          source_id: string
+          source_type: string
+          unit: string | null
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          minimum_capacity?: number | null
+          notes?: string
+          owner_id: string
+          quantity_required?: number
+          required_capability?: string | null
+          required_equipment_type?: string | null
+          required_precision?: number | null
+          requirement_level: string
+          source_id: string
+          source_type: string
+          unit?: string | null
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          minimum_capacity?: number | null
+          notes?: string
+          owner_id?: string
+          quantity_required?: number
+          required_capability?: string | null
+          required_equipment_type?: string | null
+          required_precision?: number | null
+          requirement_level?: string
+          source_id?: string
+          source_type?: string
+          unit?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "process_equipment_requirements_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -3775,6 +4199,186 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "workspaces"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      purchase_plan_lines: {
+        Row: {
+          created_at: string
+          currency: string | null
+          description: string
+          display_order: number
+          estimated_line_total: number | null
+          estimated_unit_price: number | null
+          id: string
+          inventory_domain: string
+          owner_id: string
+          pack_count: number | null
+          pack_size: number | null
+          planned_quantity: number
+          purchase_plan_id: string
+          received_quantity: number
+          requirement_basis: Json
+          requirement_reason: string | null
+          source_quote_line_id: string | null
+          supplier_product_id: string | null
+          unit: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          currency?: string | null
+          description: string
+          display_order?: number
+          estimated_line_total?: number | null
+          estimated_unit_price?: number | null
+          id?: string
+          inventory_domain: string
+          owner_id: string
+          pack_count?: number | null
+          pack_size?: number | null
+          planned_quantity: number
+          purchase_plan_id: string
+          received_quantity?: number
+          requirement_basis?: Json
+          requirement_reason?: string | null
+          source_quote_line_id?: string | null
+          supplier_product_id?: string | null
+          unit: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          currency?: string | null
+          description?: string
+          display_order?: number
+          estimated_line_total?: number | null
+          estimated_unit_price?: number | null
+          id?: string
+          inventory_domain?: string
+          owner_id?: string
+          pack_count?: number | null
+          pack_size?: number | null
+          planned_quantity?: number
+          purchase_plan_id?: string
+          received_quantity?: number
+          requirement_basis?: Json
+          requirement_reason?: string | null
+          source_quote_line_id?: string | null
+          supplier_product_id?: string | null
+          unit?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_plan_lines_source_quote_line_id_fkey"
+            columns: ["source_quote_line_id"]
+            isOneToOne: false
+            referencedRelation: "supplier_quote_lines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_plan_lines_workspace_id_purchase_plan_id_fkey"
+            columns: ["workspace_id", "purchase_plan_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_plans"
+            referencedColumns: ["workspace_id", "id"]
+          },
+        ]
+      }
+      purchase_plans: {
+        Row: {
+          approved_at: string | null
+          archived_at: string | null
+          cancelled_at: string | null
+          created_at: string
+          creation_key: string
+          currency: string | null
+          estimated_landed_total: number | null
+          estimated_merchandise_total: number | null
+          external_order_key: string | null
+          id: string
+          internal_notes: string
+          ordered_at: string | null
+          owner_id: string
+          purpose: string
+          revision: number
+          source_id: string | null
+          source_type: string | null
+          status: string
+          supplier_id: string | null
+          target_date: string | null
+          title: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          approved_at?: string | null
+          archived_at?: string | null
+          cancelled_at?: string | null
+          created_at?: string
+          creation_key?: string
+          currency?: string | null
+          estimated_landed_total?: number | null
+          estimated_merchandise_total?: number | null
+          external_order_key?: string | null
+          id?: string
+          internal_notes?: string
+          ordered_at?: string | null
+          owner_id: string
+          purpose?: string
+          revision?: number
+          source_id?: string | null
+          source_type?: string | null
+          status?: string
+          supplier_id?: string | null
+          target_date?: string | null
+          title: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          approved_at?: string | null
+          archived_at?: string | null
+          cancelled_at?: string | null
+          created_at?: string
+          creation_key?: string
+          currency?: string | null
+          estimated_landed_total?: number | null
+          estimated_merchandise_total?: number | null
+          external_order_key?: string | null
+          id?: string
+          internal_notes?: string
+          ordered_at?: string | null
+          owner_id?: string
+          purpose?: string
+          revision?: number
+          source_id?: string | null
+          source_type?: string | null
+          status?: string
+          supplier_id?: string | null
+          target_date?: string | null
+          title?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_plans_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_plans_workspace_id_supplier_id_fkey"
+            columns: ["workspace_id", "supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["workspace_id", "id"]
           },
         ]
       }
@@ -4308,62 +4912,323 @@ export type Database = {
           },
         ]
       }
-      supplier_products: {
+      stock_policies: {
+        Row: {
+          archived_at: string | null
+          created_at: string
+          expected_lead_time_days: number | null
+          id: string
+          ingredient_id: string | null
+          inventory_domain: string
+          is_basis_item: boolean
+          minimum_on_hand: number
+          owner_id: string
+          packaging_component_id: string | null
+          packaging_supplier_product_id: string | null
+          policy_status: string
+          preferred_order_quantity: number | null
+          rationale: string
+          reorder_point: number | null
+          review_frequency: string | null
+          revision: number
+          safety_stock: number | null
+          supplier_product_id: string | null
+          target_on_hand: number
+          unit: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          archived_at?: string | null
+          created_at?: string
+          expected_lead_time_days?: number | null
+          id?: string
+          ingredient_id?: string | null
+          inventory_domain: string
+          is_basis_item?: boolean
+          minimum_on_hand: number
+          owner_id: string
+          packaging_component_id?: string | null
+          packaging_supplier_product_id?: string | null
+          policy_status?: string
+          preferred_order_quantity?: number | null
+          rationale?: string
+          reorder_point?: number | null
+          review_frequency?: string | null
+          revision?: number
+          safety_stock?: number | null
+          supplier_product_id?: string | null
+          target_on_hand: number
+          unit: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          archived_at?: string | null
+          created_at?: string
+          expected_lead_time_days?: number | null
+          id?: string
+          ingredient_id?: string | null
+          inventory_domain?: string
+          is_basis_item?: boolean
+          minimum_on_hand?: number
+          owner_id?: string
+          packaging_component_id?: string | null
+          packaging_supplier_product_id?: string | null
+          policy_status?: string
+          preferred_order_quantity?: number | null
+          rationale?: string
+          reorder_point?: number | null
+          review_frequency?: string | null
+          revision?: number
+          safety_stock?: number | null
+          supplier_product_id?: string | null
+          target_on_hand?: number
+          unit?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_policies_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      supplier_contacts: {
+        Row: {
+          archived_at: string | null
+          created_at: string
+          email: string | null
+          id: string
+          is_primary: boolean
+          name: string
+          notes: string
+          owner_id: string
+          phone: string | null
+          preferred_contact_method: string | null
+          role: string | null
+          supplier_id: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          archived_at?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          is_primary?: boolean
+          name: string
+          notes?: string
+          owner_id: string
+          phone?: string | null
+          preferred_contact_method?: string | null
+          role?: string | null
+          supplier_id: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          archived_at?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          is_primary?: boolean
+          name?: string
+          notes?: string
+          owner_id?: string
+          phone?: string | null
+          preferred_contact_method?: string | null
+          role?: string | null
+          supplier_id?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_contacts_workspace_id_supplier_id_fkey"
+            columns: ["workspace_id", "supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["workspace_id", "id"]
+          },
+        ]
+      }
+      supplier_documents: {
         Row: {
           created_at: string
+          document_type: string
+          equipment_item_id: string | null
+          id: string
+          issue_date: string | null
+          owner_id: string
+          review_date: string | null
+          source: string | null
+          status: string
+          storage_object_path: string | null
+          supplier_id: string
+          supplier_product_domain: string | null
+          supplier_product_id: string | null
+          title: string
+          updated_at: string
+          verification_status: string
+          version: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          document_type: string
+          equipment_item_id?: string | null
+          id?: string
+          issue_date?: string | null
+          owner_id: string
+          review_date?: string | null
+          source?: string | null
+          status?: string
+          storage_object_path?: string | null
+          supplier_id: string
+          supplier_product_domain?: string | null
+          supplier_product_id?: string | null
+          title: string
+          updated_at?: string
+          verification_status?: string
+          version?: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          document_type?: string
+          equipment_item_id?: string | null
+          id?: string
+          issue_date?: string | null
+          owner_id?: string
+          review_date?: string | null
+          source?: string | null
+          status?: string
+          storage_object_path?: string | null
+          supplier_id?: string
+          supplier_product_domain?: string | null
+          supplier_product_id?: string | null
+          title?: string
+          updated_at?: string
+          verification_status?: string
+          version?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_documents_equipment_fk"
+            columns: ["workspace_id", "equipment_item_id"]
+            isOneToOne: false
+            referencedRelation: "equipment_items"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "supplier_documents_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplier_documents_workspace_id_supplier_id_fkey"
+            columns: ["workspace_id", "supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["workspace_id", "id"]
+          },
+        ]
+      }
+      supplier_products: {
+        Row: {
+          availability_status: string | null
+          created_at: string
           currency: string
+          discontinued: boolean
           id: string
           ingredient_id: string
           is_preferred: boolean
+          last_verified_date: string | null
+          lead_time_days: number | null
+          moq: number | null
           notes: string
+          order_multiple: number | null
           owner_id: string
           package_quantity: number
           package_unit: string
           price: number
           product_name: string
           product_url: string | null
+          sample_available: boolean | null
+          supplier_id: string | null
           supplier_name: string
           supplier_sku: string | null
           updated_at: string
           workspace_id: string
         }
         Insert: {
+          availability_status?: string | null
           created_at: string
           currency: string
+          discontinued?: boolean
           id: string
           ingredient_id: string
           is_preferred: boolean
+          last_verified_date?: string | null
+          lead_time_days?: number | null
+          moq?: number | null
           notes: string
+          order_multiple?: number | null
           owner_id: string
           package_quantity: number
           package_unit: string
           price: number
           product_name: string
           product_url?: string | null
+          sample_available?: boolean | null
+          supplier_id?: string | null
           supplier_name: string
           supplier_sku?: string | null
           updated_at: string
           workspace_id: string
         }
         Update: {
+          availability_status?: string | null
           created_at?: string
           currency?: string
+          discontinued?: boolean
           id?: string
           ingredient_id?: string
           is_preferred?: boolean
+          last_verified_date?: string | null
+          lead_time_days?: number | null
+          moq?: number | null
           notes?: string
+          order_multiple?: number | null
           owner_id?: string
           package_quantity?: number
           package_unit?: string
           price?: number
           product_name?: string
           product_url?: string | null
+          sample_available?: boolean | null
+          supplier_id?: string | null
           supplier_name?: string
           supplier_sku?: string | null
           updated_at?: string
           workspace_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "supplier_products_supplier_fk"
+            columns: ["workspace_id", "supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["workspace_id", "id"]
+          },
           {
             foreignKeyName: "supplier_products_workspace_id_fkey"
             columns: ["workspace_id"]
@@ -4377,6 +5242,354 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "ingredients"
             referencedColumns: ["workspace_id", "id"]
+          },
+        ]
+      }
+      supplier_quote_lines: {
+        Row: {
+          description: string
+          display_order: number
+          equipment_item_id: string | null
+          id: string
+          lead_time_days: number | null
+          line_discount: number
+          line_total: number | null
+          moq: number | null
+          notes: string
+          order_multiple: number | null
+          owner_id: string
+          quantity: number
+          quote_id: string
+          supplier_product_domain: string | null
+          supplier_product_id: string | null
+          unit: string
+          unit_price: number
+          workspace_id: string
+        }
+        Insert: {
+          description: string
+          display_order?: number
+          equipment_item_id?: string | null
+          id?: string
+          lead_time_days?: number | null
+          line_discount?: number
+          line_total?: number | null
+          moq?: number | null
+          notes?: string
+          order_multiple?: number | null
+          owner_id: string
+          quantity: number
+          quote_id: string
+          supplier_product_domain?: string | null
+          supplier_product_id?: string | null
+          unit: string
+          unit_price: number
+          workspace_id: string
+        }
+        Update: {
+          description?: string
+          display_order?: number
+          equipment_item_id?: string | null
+          id?: string
+          lead_time_days?: number | null
+          line_discount?: number
+          line_total?: number | null
+          moq?: number | null
+          notes?: string
+          order_multiple?: number | null
+          owner_id?: string
+          quantity?: number
+          quote_id?: string
+          supplier_product_domain?: string | null
+          supplier_product_id?: string | null
+          unit?: string
+          unit_price?: number
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "quote_lines_equipment_fk"
+            columns: ["workspace_id", "equipment_item_id"]
+            isOneToOne: false
+            referencedRelation: "equipment_items"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "supplier_quote_lines_workspace_id_quote_id_fkey"
+            columns: ["workspace_id", "quote_id"]
+            isOneToOne: false
+            referencedRelation: "supplier_quotes"
+            referencedColumns: ["workspace_id", "id"]
+          },
+        ]
+      }
+      supplier_quotes: {
+        Row: {
+          additional_cost: number | null
+          archived_at: string | null
+          created_at: string
+          creation_key: string
+          currency: string
+          duties_estimate: number | null
+          id: string
+          incoterm: string | null
+          internal_notes: string
+          lead_time_days: number | null
+          owner_id: string
+          payment_fee: number | null
+          payment_terms: string | null
+          quote_date: string
+          quote_reference: string | null
+          revision: number
+          shipping_cost: number | null
+          source_document_id: string | null
+          status: string
+          supplier_id: string
+          tax_estimate: number | null
+          updated_at: string
+          valid_until: string | null
+          workspace_id: string
+        }
+        Insert: {
+          additional_cost?: number | null
+          archived_at?: string | null
+          created_at?: string
+          creation_key?: string
+          currency: string
+          duties_estimate?: number | null
+          id?: string
+          incoterm?: string | null
+          internal_notes?: string
+          lead_time_days?: number | null
+          owner_id: string
+          payment_fee?: number | null
+          payment_terms?: string | null
+          quote_date: string
+          quote_reference?: string | null
+          revision?: number
+          shipping_cost?: number | null
+          source_document_id?: string | null
+          status?: string
+          supplier_id: string
+          tax_estimate?: number | null
+          updated_at?: string
+          valid_until?: string | null
+          workspace_id: string
+        }
+        Update: {
+          additional_cost?: number | null
+          archived_at?: string | null
+          created_at?: string
+          creation_key?: string
+          currency?: string
+          duties_estimate?: number | null
+          id?: string
+          incoterm?: string | null
+          internal_notes?: string
+          lead_time_days?: number | null
+          owner_id?: string
+          payment_fee?: number | null
+          payment_terms?: string | null
+          quote_date?: string
+          quote_reference?: string | null
+          revision?: number
+          shipping_cost?: number | null
+          source_document_id?: string | null
+          status?: string
+          supplier_id?: string
+          tax_estimate?: number | null
+          updated_at?: string
+          valid_until?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_quotes_source_document_id_fkey"
+            columns: ["source_document_id"]
+            isOneToOne: false
+            referencedRelation: "supplier_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplier_quotes_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplier_quotes_workspace_id_supplier_id_fkey"
+            columns: ["workspace_id", "supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["workspace_id", "id"]
+          },
+        ]
+      }
+      supplier_research_candidates: {
+        Row: {
+          candidate_name: string
+          candidate_summary: string | null
+          candidate_type: string
+          claimed_capabilities: string[]
+          converted_supplier_id: string | null
+          country_code: string | null
+          created_at: string
+          creation_key: string
+          currency: string | null
+          evidence_notes: string | null
+          id: string
+          owner_id: string
+          rejection_reason: string | null
+          reviewed_at: string | null
+          revision: number
+          source_captured_at: string | null
+          source_title: string | null
+          source_url: string | null
+          status: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          candidate_name: string
+          candidate_summary?: string | null
+          candidate_type: string
+          claimed_capabilities?: string[]
+          converted_supplier_id?: string | null
+          country_code?: string | null
+          created_at?: string
+          creation_key?: string
+          currency?: string | null
+          evidence_notes?: string | null
+          id?: string
+          owner_id: string
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          revision?: number
+          source_captured_at?: string | null
+          source_title?: string | null
+          source_url?: string | null
+          status?: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          candidate_name?: string
+          candidate_summary?: string | null
+          candidate_type?: string
+          claimed_capabilities?: string[]
+          converted_supplier_id?: string | null
+          country_code?: string | null
+          created_at?: string
+          creation_key?: string
+          currency?: string | null
+          evidence_notes?: string | null
+          id?: string
+          owner_id?: string
+          rejection_reason?: string | null
+          reviewed_at?: string | null
+          revision?: number
+          source_captured_at?: string | null
+          source_title?: string | null
+          source_url?: string | null
+          status?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_research_candidates_workspace_id_converted_suppli_fkey"
+            columns: ["workspace_id", "converted_supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "supplier_research_candidates_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      suppliers: {
+        Row: {
+          archived_at: string | null
+          country_code: string | null
+          created_at: string
+          default_currency: string | null
+          default_incoterm: string | null
+          default_lead_time_days: number | null
+          default_payment_terms: string | null
+          id: string
+          internal_notes: string
+          internal_rating: number | null
+          is_preferred: boolean
+          legal_name: string
+          minimum_order_value: number | null
+          owner_id: string
+          revision: number
+          status: string
+          supplier_type: string
+          trading_name: string | null
+          updated_at: string
+          website_url: string | null
+          workspace_id: string
+        }
+        Insert: {
+          archived_at?: string | null
+          country_code?: string | null
+          created_at?: string
+          default_currency?: string | null
+          default_incoterm?: string | null
+          default_lead_time_days?: number | null
+          default_payment_terms?: string | null
+          id?: string
+          internal_notes?: string
+          internal_rating?: number | null
+          is_preferred?: boolean
+          legal_name: string
+          minimum_order_value?: number | null
+          owner_id: string
+          revision?: number
+          status?: string
+          supplier_type: string
+          trading_name?: string | null
+          updated_at?: string
+          website_url?: string | null
+          workspace_id: string
+        }
+        Update: {
+          archived_at?: string | null
+          country_code?: string | null
+          created_at?: string
+          default_currency?: string | null
+          default_incoterm?: string | null
+          default_lead_time_days?: number | null
+          default_payment_terms?: string | null
+          id?: string
+          internal_notes?: string
+          internal_rating?: number | null
+          is_preferred?: boolean
+          legal_name?: string
+          minimum_order_value?: number | null
+          owner_id?: string
+          revision?: number
+          status?: string
+          supplier_type?: string
+          trading_name?: string | null
+          updated_at?: string
+          website_url?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "suppliers_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -4818,6 +6031,10 @@ export type Database = {
         Args: { report: Json; run_id: string }
         Returns: undefined
       }
+      convert_supplier_candidate: {
+        Args: { candidate_id: string; idempotency: string }
+        Returns: string
+      }
       create_clean_workspace: { Args: never; Returns: string }
       create_development_experiment: { Args: { plan: Json }; Returns: string }
       create_formula_branch_from_experiment: {
@@ -4851,6 +6068,10 @@ export type Database = {
       kf_packaging_balance: {
         Args: { lot_id: string; wid: string }
         Returns: number
+      }
+      mark_purchase_plan_external_order: {
+        Args: { idempotency: string; plan_id: string }
+        Returns: string
       }
       record_scent_memory_checkpoint: {
         Args: {

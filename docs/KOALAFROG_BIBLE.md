@@ -12,9 +12,9 @@ The manifest is the executable content source because Vite does not currently pr
 
 Content was checked against application routes, `src/types/domain.ts`, feature domain logic/tests, repository boundaries, Supabase migrations/RPC/RLS, platform backup code, and the existing architecture documents on 2026-07-16. Implementation wins when an older planning document disagrees.
 
-Known mismatches found during audit:
+Known boundaries found during audit:
 
-- Suppliers and Equipment are visible navigation modules but remain placeholder pages. Supplier Products are currently managed through Ingredient and Packaging flows.
+- Phase 10A implements Suppliers, procurement planning, and Equipment. Existing raw-material and packaging Supplier Products remain in their owning domains and link to normalized Suppliers.
 - Finished Goods and Platform are implemented routes but are not primary sidebar items.
 - Local remains the development default in startup configuration; a controlled hosted deployment must explicitly select Supabase. There is no runtime fallback or dual write.
 - Historical Intelligence runs can legitimately lack usage/cost metadata.

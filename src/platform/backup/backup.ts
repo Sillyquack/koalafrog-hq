@@ -24,6 +24,7 @@ export interface IntelligenceBackup {
   developmentObservationPrompts?: unknown[];
   developmentStatusEvents?: unknown[];
   developmentHandoffs?: unknown[];
+  procurement?: Record<string, unknown[]>;
 }
 export interface KoalafrogBackup {
   format: string;
@@ -70,6 +71,8 @@ export function createBackup(
   entityCounts.developmentObservationPrompts = intelligenceHistory.developmentObservationPrompts?.length ?? 0;
   entityCounts.developmentStatusEvents = intelligenceHistory.developmentStatusEvents?.length ?? 0;
   entityCounts.developmentHandoffs = intelligenceHistory.developmentHandoffs?.length ?? 0;
+  for (const [collection, records] of Object.entries(intelligenceHistory.procurement ?? {}))
+    entityCounts[collection] = records.length;
   return {
     format: BACKUP_FORMAT,
     exportedAt: new Date().toISOString(),

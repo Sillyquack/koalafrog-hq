@@ -1,0 +1,2 @@
+import * as repository from '../data/procurementRepository'
+export const procurementActions={load:repository.loadProcurement,createSupplier:repository.createSupplier,createCandidate:repository.createCandidate,createQuote:repository.createQuote,createStockPolicy:repository.createStockPolicy,createPurchasePlan:repository.createPurchasePlan,createEquipment:repository.createEquipment,recordService:repository.recordService,markExternalOrder:repository.markExternalOrder,update:repository.updateRecord}
