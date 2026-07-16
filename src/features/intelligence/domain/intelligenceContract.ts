@@ -91,7 +91,7 @@ export interface IntelligenceResponse {
   limitations: string[];
 }
 export interface ContextManifest {
-  contextVersion: 1;
+  contextVersion: 1 | 2;
   productIds: string[];
   formulaVersionIds: string[];
   ingredientIds: string[];
@@ -99,6 +99,7 @@ export interface ContextManifest {
   labObservationIds: string[];
   testSessionIds: string[];
   testResponseIds: string[];
+  scentMemoryCheckpointIds?: string[];
 }
 export type IntelligenceErrorCode =
   | "ACTIVE_WORKSPACE_UNAVAILABLE"
@@ -139,6 +140,9 @@ export function evidenceUniverse(manifest: ContextManifest) {
     ...manifest.labObservationIds.map((id) => `labObservation:${id}`),
     ...manifest.testSessionIds.map((id) => `testSession:${id}`),
     ...manifest.testResponseIds.map((id) => `testResponse:${id}`),
+    ...(manifest.scentMemoryCheckpointIds ?? []).map(
+      (id) => `scentMemoryCheckpoint:${id}`,
+    ),
   ]);
 }
 export function validateIntelligenceResponse(
@@ -195,6 +199,7 @@ export function validateIntelligenceResponse(
               "testResponse",
               "testSession",
               "labBatch",
+              "scentMemoryCheckpoint",
             ].includes(ref.entityType),
         )
       )

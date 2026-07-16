@@ -88,6 +88,7 @@ describe("intelligence response contract", () => {
         manifest,
       ).valid,
     ).toBe(true));
+  it("accepts a current Scent Memory checkpoint as empirical observation evidence",()=>expect(validateIntelligenceResponse({...response,claims:[{id:"memory",kind:"observation",text:"Recorded checkpoint",evidenceRefs:[{entityType:"scentMemoryCheckpoint",entityId:"sm-1",label:"One-hour checkpoint"}]}]},{...manifest,contextVersion:2,scentMemoryCheckpointIds:["sm-1"]}).valid).toBe(true));
   it("accepts labelled predictions and recommendations without evidence", () =>
     expect(
       validateIntelligenceResponse(

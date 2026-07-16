@@ -9,6 +9,11 @@ import {
 import { assertOpenAIStructuredOutputSchema } from "../_shared/structuredOutputSchema.ts";
 import { validateIntelligenceProviderResponse } from "../_shared/intelligenceResponseValidation.ts";
 import { createValidationDiagnostic } from "../_shared/validationDiagnostics.ts";
+import {
+  normalizeOpenAIUsage,
+  type NormalizedProviderUsage,
+} from "../_shared/intelligenceUsage.ts";
+import { relevantScentMemorySessions } from "../_shared/scentMemoryContext.ts";
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
     status,
@@ -241,7 +246,10 @@ const system = `KOALAFROG DEVELOPMENT COPILOT — SCENT STUDIO. Prompt version s
 interface IntelligenceModelProvider {
   name: string;
   model: string;
-  analyze(input: { prompt: string; context: unknown }): Promise<unknown>;
+  analyze(input: { prompt: string; context: unknown }): Promise<{
+    response: unknown;
+    usage?: NormalizedProviderUsage;
+  }>;
 }
 class ProviderCallError extends Error {
   constructor(public category: ProviderFailureCategory) {
@@ -357,7 +365,21 @@ class OpenAIResponsesProvider implements IntelligenceModelProvider {
       throw new ProviderCallError(category);
     }
     try {
-      return JSON.parse(output);
+      return {
+        response: JSON.parse(output),
+        usage: normalizeOpenAIUsage(raw.usage, {
+          inputUsdPerMillion: Deno.env.get(
+            "OPENAI_INPUT_USD_PER_MILLION_TOKENS",
+          ),
+          cachedInputUsdPerMillion: Deno.env.get(
+            "OPENAI_CACHED_INPUT_USD_PER_MILLION_TOKENS",
+          ),
+          outputUsdPerMillion: Deno.env.get(
+            "OPENAI_OUTPUT_USD_PER_MILLION_TOKENS",
+          ),
+          snapshotVersion: Deno.env.get("OPENAI_PRICING_SNAPSHOT_VERSION"),
+        }),
+      };
     } catch {
       const category = "provider_response_parsing";
       this.log({
@@ -531,8 +553,52 @@ Deno.serve(async (req) => {
             .limit(20)
         ).data ?? [])
       : [];
+    const scentSessionResult = await client
+      .from("scent_memory_sessions")
+      .select(
+        "id,title,product_id,formula_version_id,lab_batch_id,ingredient_id,test_session_id",
+      )
+      .eq("workspace_id", body.workspaceId)
+      .is("archived_at", null)
+      .order("updated_at", { ascending: false })
+      .limit(20);
+    if (scentSessionResult.error)
+      return json(
+        {
+          error: {
+            code: "PROVIDER_FAILURE",
+            message: "Context could not be loaded.",
+          },
+        },
+        502,
+      );
+    const relevantScentSessions = relevantScentMemorySessions(
+      scentSessionResult.data ?? [],
+      s,
+      batchIds,
+    );
+    const scentCheckpointResult = relevantScentSessions.length
+      ? await client
+            .from("scent_memory_checkpoints")
+            .select("*")
+            .eq("workspace_id", body.workspaceId)
+            .in(
+              "session_id",
+              relevantScentSessions.map((memory: any) => memory.id),
+            )
+            .eq("is_current", true)
+            .is("archived_at", null)
+            .order("observed_at", { ascending: false })
+            .limit(30)
+      : { data: [], error: null };
+    if (scentCheckpointResult.error)
+      return json(
+        { error: { code: "PROVIDER_FAILURE", message: "Context could not be loaded." } },
+        502,
+      );
+    const scentMemoryCheckpoints = scentCheckpointResult.data ?? [];
     const manifest = {
-      contextVersion: 1,
+      contextVersion: 2,
       productIds: (products.data ?? []).map((x: any) => x.id),
       formulaVersionIds: (versions.data ?? []).map((x: any) => x.id),
       ingredientIds: (ingredients.data ?? []).map((x: any) => x.id),
@@ -540,13 +606,14 @@ Deno.serve(async (req) => {
       labObservationIds: observations.map((x) => x.id),
       testSessionIds: sessionIds,
       testResponseIds: responses.map((x) => x.id),
+      scentMemoryCheckpointIds: scentMemoryCheckpoints.map((x) => x.id),
     };
     const universe = new Set(
       Object.entries(manifest).flatMap(([k, ids]) =>
         Array.isArray(ids)
           ? ids.map(
               (id) =>
-                `${({ productIds: "product", formulaVersionIds: "formulaVersion", ingredientIds: "ingredient", labBatchIds: "labBatch", labObservationIds: "labObservation", testSessionIds: "testSession", testResponseIds: "testResponse" } as any)[k]}:${id}`,
+                `${({ productIds: "product", formulaVersionIds: "formulaVersion", ingredientIds: "ingredient", labBatchIds: "labBatch", labObservationIds: "labObservation", testSessionIds: "testSession", testResponseIds: "testResponse", scentMemoryCheckpointIds: "scentMemoryCheckpoint" } as any)[k]}:${id}`,
             )
           : [],
       ),
@@ -604,7 +671,7 @@ Deno.serve(async (req) => {
       thread_id: threadId,
       request_schema_version: 1,
       prompt_version: "scent-studio-v1",
-      context_version: 1,
+      context_version: 2,
       user_prompt: body.userPrompt,
       context_selection: s,
       context_manifest: manifest,
@@ -644,6 +711,8 @@ Deno.serve(async (req) => {
         labObservations: observations,
         testSessions: sessions,
         testResponses: responses,
+        scentMemorySessions: relevantScentSessions,
+        scentMemoryCheckpoints,
       },
       conceptMaterials: [...s.conceptMaterials].sort(),
       boundedPreviousTurns: (previous.data ?? []).reverse(),
@@ -654,10 +723,11 @@ Deno.serve(async (req) => {
         model,
         { threadId, runId },
       );
-      const parsed = await provider.analyze({
+      const analysis = await provider.analyze({
         prompt: body.userPrompt,
         context,
       });
+      const parsed = analysis.response;
       const validation = validateIntelligenceProviderResponse(parsed, universe);
       if (!validation.valid) {
         console.error(
@@ -682,6 +752,14 @@ Deno.serve(async (req) => {
             error_message: "Structured response validation failed.",
             provider_name: "openai",
             model_name: model,
+            input_tokens: analysis.usage?.inputTokens,
+            output_tokens: analysis.usage?.outputTokens,
+            total_tokens: analysis.usage?.totalTokens,
+            cached_input_tokens: analysis.usage?.cachedInputTokens,
+            reasoning_tokens: analysis.usage?.reasoningTokens,
+            provider_usage_version: analysis.usage?.providerUsageVersion,
+            estimated_cost_usd: analysis.usage?.estimatedCostUsd,
+            pricing_snapshot_version: analysis.usage?.pricingSnapshotVersion,
             completed_at: new Date().toISOString(),
           })
           .eq("id", runId);
@@ -704,9 +782,21 @@ Deno.serve(async (req) => {
           response_payload: parsed,
           provider_name: "openai",
           model_name: model,
+          input_tokens: analysis.usage?.inputTokens,
+          output_tokens: analysis.usage?.outputTokens,
+          total_tokens: analysis.usage?.totalTokens,
+          cached_input_tokens: analysis.usage?.cachedInputTokens,
+          reasoning_tokens: analysis.usage?.reasoningTokens,
+          provider_usage_version: analysis.usage?.providerUsageVersion,
+          estimated_cost_usd: analysis.usage?.estimatedCostUsd,
+          pricing_snapshot_version: analysis.usage?.pricingSnapshotVersion,
           completed_at: new Date().toISOString(),
         })
         .eq("id", runId);
+      await client
+        .from("intelligence_threads")
+        .update({ updated_at: new Date().toISOString() })
+        .eq("id", threadId);
       return json({
         threadId,
         runId,

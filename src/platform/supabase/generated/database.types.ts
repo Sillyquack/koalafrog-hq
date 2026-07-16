@@ -1156,6 +1156,7 @@ export type Database = {
       }
       intelligence_runs: {
         Row: {
+          cached_input_tokens: number | null
           completed_at: string | null
           context_manifest: Json
           context_selection: Json
@@ -1163,20 +1164,28 @@ export type Database = {
           created_at: string
           error_code: string | null
           error_message: string | null
+          estimated_cost_usd: number | null
           id: string
+          input_tokens: number | null
           model_name: string | null
+          output_tokens: number | null
           owner_user_id: string
+          pricing_snapshot_version: string | null
           prompt_version: string
           provider_name: string | null
+          provider_usage_version: string | null
+          reasoning_tokens: number | null
           request_schema_version: number
           response_payload: Json | null
           response_schema_version: number | null
           status: string
           thread_id: string
+          total_tokens: number | null
           user_prompt: string
           workspace_id: string
         }
         Insert: {
+          cached_input_tokens?: number | null
           completed_at?: string | null
           context_manifest: Json
           context_selection: Json
@@ -1184,20 +1193,28 @@ export type Database = {
           created_at?: string
           error_code?: string | null
           error_message?: string | null
+          estimated_cost_usd?: number | null
           id: string
+          input_tokens?: number | null
           model_name?: string | null
+          output_tokens?: number | null
           owner_user_id: string
+          pricing_snapshot_version?: string | null
           prompt_version: string
           provider_name?: string | null
+          provider_usage_version?: string | null
+          reasoning_tokens?: number | null
           request_schema_version: number
           response_payload?: Json | null
           response_schema_version?: number | null
           status: string
           thread_id: string
+          total_tokens?: number | null
           user_prompt: string
           workspace_id: string
         }
         Update: {
+          cached_input_tokens?: number | null
           completed_at?: string | null
           context_manifest?: Json
           context_selection?: Json
@@ -1205,16 +1222,23 @@ export type Database = {
           created_at?: string
           error_code?: string | null
           error_message?: string | null
+          estimated_cost_usd?: number | null
           id?: string
+          input_tokens?: number | null
           model_name?: string | null
+          output_tokens?: number | null
           owner_user_id?: string
+          pricing_snapshot_version?: string | null
           prompt_version?: string
           provider_name?: string | null
+          provider_usage_version?: string | null
+          reasoning_tokens?: number | null
           request_schema_version?: number
           response_payload?: Json | null
           response_schema_version?: number | null
           status?: string
           thread_id?: string
+          total_tokens?: number | null
           user_prompt?: string
           workspace_id?: string
         }
@@ -1423,6 +1447,69 @@ export type Database = {
             columns: ["workspace_id", "inventory_lot_id"]
             isOneToOne: false
             referencedRelation: "inventory_lots"
+            referencedColumns: ["workspace_id", "id"]
+          },
+        ]
+      }
+      knowledge_references: {
+        Row: {
+          archived_at: string | null
+          created_at: string
+          id: string
+          is_pinned: boolean
+          owner_user_id: string
+          revision: number
+          source_intelligence_thread_id: string
+          source_type: string
+          tags: string[]
+          title: string | null
+          updated_at: string
+          user_note: string | null
+          workspace_id: string
+        }
+        Insert: {
+          archived_at?: string | null
+          created_at?: string
+          id?: string
+          is_pinned?: boolean
+          owner_user_id: string
+          revision?: number
+          source_intelligence_thread_id: string
+          source_type: string
+          tags?: string[]
+          title?: string | null
+          updated_at?: string
+          user_note?: string | null
+          workspace_id: string
+        }
+        Update: {
+          archived_at?: string | null
+          created_at?: string
+          id?: string
+          is_pinned?: boolean
+          owner_user_id?: string
+          revision?: number
+          source_intelligence_thread_id?: string
+          source_type?: string
+          tags?: string[]
+          title?: string | null
+          updated_at?: string
+          user_note?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "knowledge_references_workspace_id_owner_user_id_fkey"
+            columns: ["workspace_id", "owner_user_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id", "owner_id"]
+          },
+          {
+            foreignKeyName: "knowledge_references_workspace_id_source_intelligence_thre_fkey"
+            columns: ["workspace_id", "source_intelligence_thread_id"]
+            isOneToOne: true
+            referencedRelation: "intelligence_threads"
             referencedColumns: ["workspace_id", "id"]
           },
         ]
@@ -3442,6 +3529,236 @@ export type Database = {
           },
         ]
       }
+      scent_memory_checkpoints: {
+        Row: {
+          archived_at: string | null
+          balance: number | null
+          checkpoint_kind: string
+          created_at: string
+          custom_minutes: number | null
+          darkness: number | null
+          descriptors: string[]
+          diffusion: number | null
+          dryness: number | null
+          freshness: number | null
+          id: string
+          intensity: number | null
+          is_current: boolean
+          logical_id: string
+          notes: string | null
+          observed_at: string
+          overall_impression: string | null
+          owner_user_id: string
+          persistence: number | null
+          revision: number
+          session_id: string
+          spice: number | null
+          supersedes_id: string | null
+          sweetness: number | null
+          warmth: number | null
+          woodiness: number | null
+          workspace_id: string
+        }
+        Insert: {
+          archived_at?: string | null
+          balance?: number | null
+          checkpoint_kind: string
+          created_at?: string
+          custom_minutes?: number | null
+          darkness?: number | null
+          descriptors?: string[]
+          diffusion?: number | null
+          dryness?: number | null
+          freshness?: number | null
+          id?: string
+          intensity?: number | null
+          is_current?: boolean
+          logical_id: string
+          notes?: string | null
+          observed_at: string
+          overall_impression?: string | null
+          owner_user_id: string
+          persistence?: number | null
+          revision: number
+          session_id: string
+          spice?: number | null
+          supersedes_id?: string | null
+          sweetness?: number | null
+          warmth?: number | null
+          woodiness?: number | null
+          workspace_id: string
+        }
+        Update: {
+          archived_at?: string | null
+          balance?: number | null
+          checkpoint_kind?: string
+          created_at?: string
+          custom_minutes?: number | null
+          darkness?: number | null
+          descriptors?: string[]
+          diffusion?: number | null
+          dryness?: number | null
+          freshness?: number | null
+          id?: string
+          intensity?: number | null
+          is_current?: boolean
+          logical_id?: string
+          notes?: string | null
+          observed_at?: string
+          overall_impression?: string | null
+          owner_user_id?: string
+          persistence?: number | null
+          revision?: number
+          session_id?: string
+          spice?: number | null
+          supersedes_id?: string | null
+          sweetness?: number | null
+          warmth?: number | null
+          woodiness?: number | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scent_memory_checkpoints_workspace_id_owner_user_id_fkey"
+            columns: ["workspace_id", "owner_user_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id", "owner_id"]
+          },
+          {
+            foreignKeyName: "scent_memory_checkpoints_workspace_id_session_id_fkey"
+            columns: ["workspace_id", "session_id"]
+            isOneToOne: false
+            referencedRelation: "scent_memory_sessions"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "scent_memory_checkpoints_workspace_id_supersedes_id_fkey"
+            columns: ["workspace_id", "supersedes_id"]
+            isOneToOne: false
+            referencedRelation: "scent_memory_checkpoints"
+            referencedColumns: ["workspace_id", "id"]
+          },
+        ]
+      }
+      scent_memory_sessions: {
+        Row: {
+          archived_at: string | null
+          change_next: string | null
+          created_at: string
+          final_conclusion: string | null
+          formula_version_id: string | null
+          id: string
+          ingredient_id: string | null
+          lab_batch_id: string | null
+          overall_score: number | null
+          owner_user_id: string
+          product_id: string | null
+          revision: number
+          status: string
+          test_session_id: string | null
+          title: string
+          updated_at: string
+          what_disappeared: string | null
+          what_felt_dominant: string | null
+          what_surprised_me: string | null
+          what_was_missing: string | null
+          what_worked: string | null
+          workspace_id: string
+        }
+        Insert: {
+          archived_at?: string | null
+          change_next?: string | null
+          created_at?: string
+          final_conclusion?: string | null
+          formula_version_id?: string | null
+          id?: string
+          ingredient_id?: string | null
+          lab_batch_id?: string | null
+          overall_score?: number | null
+          owner_user_id: string
+          product_id?: string | null
+          revision?: number
+          status?: string
+          test_session_id?: string | null
+          title: string
+          updated_at?: string
+          what_disappeared?: string | null
+          what_felt_dominant?: string | null
+          what_surprised_me?: string | null
+          what_was_missing?: string | null
+          what_worked?: string | null
+          workspace_id: string
+        }
+        Update: {
+          archived_at?: string | null
+          change_next?: string | null
+          created_at?: string
+          final_conclusion?: string | null
+          formula_version_id?: string | null
+          id?: string
+          ingredient_id?: string | null
+          lab_batch_id?: string | null
+          overall_score?: number | null
+          owner_user_id?: string
+          product_id?: string | null
+          revision?: number
+          status?: string
+          test_session_id?: string | null
+          title?: string
+          updated_at?: string
+          what_disappeared?: string | null
+          what_felt_dominant?: string | null
+          what_surprised_me?: string | null
+          what_was_missing?: string | null
+          what_worked?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scent_memory_sessions_workspace_id_formula_version_id_fkey"
+            columns: ["workspace_id", "formula_version_id"]
+            isOneToOne: false
+            referencedRelation: "formula_versions"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "scent_memory_sessions_workspace_id_ingredient_id_fkey"
+            columns: ["workspace_id", "ingredient_id"]
+            isOneToOne: false
+            referencedRelation: "ingredients"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "scent_memory_sessions_workspace_id_lab_batch_id_fkey"
+            columns: ["workspace_id", "lab_batch_id"]
+            isOneToOne: false
+            referencedRelation: "lab_batches"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "scent_memory_sessions_workspace_id_owner_user_id_fkey"
+            columns: ["workspace_id", "owner_user_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id", "owner_id"]
+          },
+          {
+            foreignKeyName: "scent_memory_sessions_workspace_id_product_id_fkey"
+            columns: ["workspace_id", "product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "scent_memory_sessions_workspace_id_test_session_id_fkey"
+            columns: ["workspace_id", "test_session_id"]
+            isOneToOne: false
+            referencedRelation: "test_sessions"
+            referencedColumns: ["workspace_id", "id"]
+          },
+        ]
+      }
       supplier_products: {
         Row: {
           created_at: string
@@ -3965,6 +4282,14 @@ export type Database = {
       kf_packaging_balance: {
         Args: { lot_id: string; wid: string }
         Returns: number
+      }
+      record_scent_memory_checkpoint: {
+        Args: {
+          checkpoint: Json
+          correction_of?: string
+          target_session_id: string
+        }
+        Returns: string
       }
       record_v9_migration_failure: {
         Args: { error_message: string }

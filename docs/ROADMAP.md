@@ -48,4 +48,5 @@ Phase 6 now replaces overlapping manual packaging Cost Lines with authoritative 
 - Phase 8B.3A: Security + Storage + Cutover Readiness — Complete
 - Phase 8B.3B: Hosted Authoritative Cutover — Next
 - Phase 9A: Intelligence Foundation + Scent Studio First Vertical Slice — Implemented locally; hosted deployment and provider configuration pending
-- Phase 9B+: Scent Memory, Operations Copilot, and later Intelligence work — Future
+- Phase 9B: Intelligence Memory, Knowledge Library, usage visibility, and Scent Memory — Complete locally; hosted deployment pending
+- Phase 9C+: Operations Copilot and later Intelligence work — Future

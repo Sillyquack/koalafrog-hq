@@ -1,3 +1,54 @@
-import {ArrowRight,Sparkles} from 'lucide-react'
-import {Link} from 'react-router-dom'
-export function ScentHousePage(){return <div className="scent-page"><header className="scent-header"><div><span className="eyebrow light">Olfactive workshop / Evidence-aware exploration</span><h1>Scent House</h1><p>Explore scent directions against real Koalafrog context while keeping predictions separate from physical observations.</p></div></header><section className="signature-card"><div className="signature-orbit"><Sparkles/><span>KF</span></div><div className="signature-copy"><span className="eyebrow">Development Copilot / First vertical slice</span><h2>Scent Studio</h2><blockquote>“A creative sparring partner that never pretends it can smell.”</blockquote><p>Combine an idea, hosted workspace materials, concept materials, and optional Product or Formula context.</p></div><div className="signature-aside"><small>Start here</small><strong>What are you trying to create?</strong><Link className="button primary" to="/scent-house/studio">Open Scent Studio <ArrowRight size={15}/></Link></div></section><p className="scent-footnote">Intelligence is advisory. Suggestions do not change Products, Formulas, Inventory, Lab, Testing, or Compliance records.</p></div>}
+import { ArrowRight, Sparkles } from "lucide-react";
+import { Link } from "react-router-dom";
+
+export function ScentHousePage() {
+  return (
+    <div className="scent-page">
+      <header className="scent-header">
+        <div>
+          <span className="eyebrow light">
+            Olfactive workshop / Evidence-aware exploration
+          </span>
+          <h1>Scent House</h1>
+          <p>
+            Explore scent directions against real Koalafrog context while
+            keeping predictions separate from physical observations.
+          </p>
+        </div>
+        <Link className="button ghost" to="/knowledge?tab=scent-memory">
+          Open Scent Memory
+        </Link>
+      </header>
+      <section className="signature-card">
+        <div className="signature-orbit">
+          <Sparkles />
+          <span>KF</span>
+        </div>
+        <div className="signature-copy">
+          <span className="eyebrow">
+            Development Copilot / First vertical slice
+          </span>
+          <h2>Scent Studio</h2>
+          <blockquote>
+            “A creative sparring partner that never pretends it can smell.”
+          </blockquote>
+          <p>
+            Combine an idea, hosted workspace materials, concept materials,
+            and optional Product or Formula context.
+          </p>
+        </div>
+        <div className="signature-aside">
+          <small>Start here</small>
+          <strong>What are you trying to create?</strong>
+          <Link className="button primary" to="/scent-house/studio">
+            Open Scent Studio <ArrowRight size={15} />
+          </Link>
+        </div>
+      </section>
+      <p className="scent-footnote">
+        Intelligence is advisory. Suggestions do not change Products,
+        Formulas, Inventory, Lab, Testing, or Compliance records.
+      </p>
+    </div>
+  );
+}

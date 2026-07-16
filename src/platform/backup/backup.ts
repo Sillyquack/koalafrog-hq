@@ -15,6 +15,9 @@ type StorageRecord = {
 export interface IntelligenceBackup {
   threads: unknown[];
   runs: unknown[];
+  knowledgeReferences: unknown[];
+  scentMemorySessions: unknown[];
+  scentMemoryCheckpoints: unknown[];
 }
 export interface KoalafrogBackup {
   format: string;
@@ -30,7 +33,13 @@ export function createBackup(
   state: FormulaState,
   storageManifest: StorageRecord[] = [],
   ownerId?: string,
-  intelligenceHistory: IntelligenceBackup = { threads: [], runs: [] },
+  intelligenceHistory: IntelligenceBackup = {
+    threads: [],
+    runs: [],
+    knowledgeReferences: [],
+    scentMemorySessions: [],
+    scentMemoryCheckpoints: [],
+  },
 ): KoalafrogBackup {
   const entityCounts = Object.fromEntries(
     Object.entries(state).map(([key, value]) => [
@@ -40,6 +49,9 @@ export function createBackup(
   );
   entityCounts.intelligenceThreads = intelligenceHistory.threads.length;
   entityCounts.intelligenceRuns = intelligenceHistory.runs.length;
+  entityCounts.knowledgeReferences = intelligenceHistory.knowledgeReferences.length;
+  entityCounts.scentMemorySessions = intelligenceHistory.scentMemorySessions.length;
+  entityCounts.scentMemoryCheckpoints = intelligenceHistory.scentMemoryCheckpoints.length;
   return {
     format: BACKUP_FORMAT,
     exportedAt: new Date().toISOString(),

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { ArrowLeft, Sparkles } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useFormulaData } from "../formulas/state/FormulaDataContext";
 import {
   IntelligenceClientError,
@@ -21,13 +21,14 @@ const claimLabel: Record<ClaimKind, string> = {
 export function ScentStudioPage() {
   const data = useFormulaData();
   const activeWorkspace = useActiveWorkspace();
+  const [searchParams] = useSearchParams();
   const [prompt, setPrompt] = useState("");
-  const [productId, setProductId] = useState("");
-  const [versionId, setVersionId] = useState("");
-  const [selected, setSelected] = useState<string[]>([]);
+  const [productId, setProductId] = useState(() => searchParams.get("productId") ?? "");
+  const [versionId, setVersionId] = useState(() => searchParams.get("formulaVersionId") ?? "");
+  const [selected, setSelected] = useState<string[]>(() => searchParams.get("ingredients")?.split(",").filter(Boolean) ?? []);
   const [conceptDraft, setConceptDraft] = useState("");
-  const [concepts, setConcepts] = useState<string[]>([]);
-  const [threadId, setThreadId] = useState<string>();
+  const [concepts, setConcepts] = useState<string[]>(() => searchParams.get("concepts")?.split(",").filter(Boolean) ?? []);
+  const [threadId, setThreadId] = useState<string | undefined>(() => searchParams.get("threadId") ?? undefined);
   const [report, setReport] = useState<IntelligenceResponse>();
   const [state, setState] = useState<
     "idle" | "gathering" | "analyzing" | "success" | "error"
@@ -243,7 +244,7 @@ export function ScentStudioPage() {
     </div>
   );
 }
-function IntelligenceReport({ report }: { report: IntelligenceResponse }) {
+export function IntelligenceReport({ report }: { report: IntelligenceResponse }) {
   return (
     <section className="intelligence-report">
       <header className="panel">

@@ -29,6 +29,9 @@ import { ComplianceDossierPage } from '../features/compliance/ComplianceDossierP
 import { LaunchPage } from '../features/launch/LaunchPage'
 import { LaunchPlanPage } from '../features/launch/LaunchPlanPage'
 import { PlatformPage } from '../platform/PlatformPage'
+import { KnowledgePage } from '../features/knowledge/KnowledgePage'
+import { IntelligenceThreadPage } from '../features/knowledge/IntelligenceThreadPage'
+import { ScentMemoryDetailPage } from '../features/knowledge/ScentMemoryDetailPage'
 
 export function App() {
   return (
@@ -61,6 +64,9 @@ export function App() {
         <Route path="platform" element={<PlatformPage />} />
         <Route path="scent-house" element={<ScentHousePage />} />
         <Route path="scent-house/studio" element={<ScentStudioPage />} />
+        <Route path="knowledge" element={<KnowledgePage />} />
+        <Route path="knowledge/intelligence/:threadId" element={<IntelligenceThreadPage />} />
+        <Route path="knowledge/scent-memory/:sessionId" element={<ScentMemoryDetailPage />} />
         {placeholderModules.map((module) => (
           <Route key={module.path} path={module.path} element={<PlaceholderPage module={module} />} />
         ))}

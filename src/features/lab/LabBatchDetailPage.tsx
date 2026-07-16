@@ -87,6 +87,12 @@ export function LabBatchDetailPage() {
         description={batch.purpose}
         action={
           <div className="action-row">
+            <Link
+              className="button ghost"
+              to={`/knowledge?tab=scent-memory&labBatchId=${batch.id}`}
+            >
+              Record Scent Memory
+            </Link>
             {batch.status === "Planned" && (
               <button
                 className="button primary"

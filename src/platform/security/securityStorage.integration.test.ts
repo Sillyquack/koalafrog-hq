@@ -176,6 +176,8 @@ run("local Supabase Auth, RLS, RPC, Storage, and cutover security", () => {
     const threadId=crypto.randomUUID(),runId=crypto.randomUUID(),now=new Date().toISOString();
     expect((await userA.from('intelligence_threads').insert({id:threadId,workspace_id:workspaceA,owner_user_id:userAId,mode:'scent_exploration',title:'A study',created_at:now,updated_at:now})).error).toBeNull();
     expect((await userA.from('intelligence_runs').insert({id:runId,workspace_id:workspaceA,owner_user_id:userAId,thread_id:threadId,request_schema_version:1,prompt_version:'scent-studio-v1',context_version:1,user_prompt:'Explore',context_selection:{selectedIngredientIds:[],conceptMaterials:[]},context_manifest:{contextVersion:1},status:'analyzing',created_at:now})).error).toBeNull();
+    expect((await userA.from('intelligence_runs').update({status:'completed',input_tokens:100,output_tokens:50,total_tokens:150,cached_input_tokens:10,reasoning_tokens:5,provider_usage_version:'openai-responses-v1',estimated_cost_usd:.001,pricing_snapshot_version:'test-v1'}).eq('id',runId)).error).toBeNull();
+    expect((await userA.from('intelligence_runs').select('total_tokens,estimated_cost_usd').eq('id',runId).single()).data).toMatchObject({total_tokens:150,estimated_cost_usd:.001});
     expect((await anonymous.from('intelligence_threads').select('id').eq('id',threadId)).error).not.toBeNull();
     expect((await anonymous.from('intelligence_runs').select('id').eq('id',runId)).error).not.toBeNull();
     expect((await userB.from('intelligence_threads').select('id').eq('id',threadId)).data).toHaveLength(0);
@@ -184,6 +186,36 @@ run("local Supabase Auth, RLS, RPC, Storage, and cutover security", () => {
     const ownB=crypto.randomUUID();expect((await userB.from('intelligence_threads').insert({id:ownB,workspace_id:workspaceB,owner_user_id:userBId,mode:'scent_exploration',title:'B study'})).error).toBeNull();
     expect((await userB.from('intelligence_runs').insert({id:crypto.randomUUID(),workspace_id:workspaceB,owner_user_id:userBId,thread_id:threadId,request_schema_version:1,prompt_version:'scent-studio-v1',context_version:1,user_prompt:'Cross',context_selection:{},context_manifest:{},status:'analyzing'})).error).not.toBeNull();
     expect((await userA.from('intelligence_threads').select('id').eq('id',threadId)).data).toHaveLength(1);
+  });
+
+  it("isolates Knowledge and revisioned Scent Memory with cross-workspace integrity", async () => {
+    const now=new Date().toISOString(),threadId=crypto.randomUUID();
+    expect((await userA.from('intelligence_threads').insert({id:threadId,workspace_id:workspaceA,owner_user_id:userAId,mode:'scent_exploration',title:'Knowledge source'})).error).toBeNull();
+    const reference=await userA.from('knowledge_references').insert({workspace_id:workspaceA,owner_user_id:userAId,source_type:'intelligence_thread',source_intelligence_thread_id:threadId,title:'Private title',tags:['woods']}).select().single();
+    expect(reference.error).toBeNull();
+    expect((await anonymous.from('knowledge_references').select('id')).error).not.toBeNull();
+    expect((await userB.from('knowledge_references').select('id').eq('id',reference.data!.id)).data).toHaveLength(0);
+    expect((await userB.from('knowledge_references').insert({workspace_id:workspaceA,owner_user_id:userAId,source_type:'intelligence_thread',source_intelligence_thread_id:threadId})).error).not.toBeNull();
+    expect((await userB.from('knowledge_references').insert({workspace_id:workspaceB,owner_user_id:userBId,source_type:'intelligence_thread',source_intelligence_thread_id:threadId})).error).not.toBeNull();
+
+    const productId=`scent-a-${crypto.randomUUID()}`;
+    expect((await userA.from('products').insert({id:productId,workspace_id:workspaceA,owner_id:userAId,name:'Private scent sample',category:'Test',status:'Active',development_stage:'Research',description:'',scent_profile:'',target_launch_date:null,created_at:now,updated_at:now})).error).toBeNull();
+    expect((await userA.from('scent_memory_sessions').insert({workspace_id:workspaceA,owner_user_id:userAId,title:'Contradictory context',product_id:productId,formula_version_id:'fv-bo-02'})).error).not.toBeNull();
+    const memory=await userA.from('scent_memory_sessions').insert({workspace_id:workspaceA,owner_user_id:userAId,title:'First smell',product_id:productId}).select().single();
+    expect(memory.error).toBeNull();
+    expect((await anonymous.from('scent_memory_sessions').select('id')).error).not.toBeNull();
+    expect((await userB.from('scent_memory_sessions').select('id').eq('id',memory.data!.id)).data).toHaveLength(0);
+    expect((await userB.from('scent_memory_sessions').insert({workspace_id:workspaceA,owner_user_id:userAId,title:'Forged',product_id:productId})).error).not.toBeNull();
+    expect((await userB.from('scent_memory_sessions').insert({workspace_id:workspaceB,owner_user_id:userBId,title:'Cross context',product_id:productId})).error).not.toBeNull();
+    const first=await userA.rpc('record_scent_memory_checkpoint',{target_session_id:memory.data!.id,checkpoint:{checkpointKind:'immediate',observedAt:now,descriptors:['dry'],notes:'Private observation'}});
+    expect(first.error).toBeNull();
+    const correction=await userA.rpc('record_scent_memory_checkpoint',{target_session_id:memory.data!.id,correction_of:first.data!,checkpoint:{checkpointKind:'immediate',observedAt:now,descriptors:['dry','woody'],notes:'Corrected observation'}});
+    expect(correction.error).toBeNull();
+    const history=await userA.from('scent_memory_checkpoints').select('id,is_current,revision').eq('session_id',memory.data!.id).order('revision');
+    expect(history.data).toEqual([expect.objectContaining({is_current:false,revision:1}),expect.objectContaining({is_current:true,revision:2})]);
+    expect((await anonymous.from('scent_memory_checkpoints').select('id')).error).not.toBeNull();
+    expect((await userB.from('scent_memory_checkpoints').select('id').eq('session_id',memory.data!.id)).data).toHaveLength(0);
+    expect((await userB.rpc('record_scent_memory_checkpoint',{target_session_id:memory.data!.id,checkpoint:{checkpointKind:'immediate',observedAt:now,descriptors:[]}})).error).not.toBeNull();
   });
 
   it("rejects owner/workspace forging and cross-workspace parent relationships", async () => {

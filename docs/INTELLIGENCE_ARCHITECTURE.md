@@ -1,6 +1,6 @@
 # Koalafrog Intelligence Architecture
 
-## Mission and Phase 9A scope
+## Mission and Phase 9A–9B scope
 
 Koalafrog Intelligence is an evidence-aware development copilot, not a generic chatbot. Phase 9A establishes the authenticated server-side gateway and proves it through Scent Studio. It offers creative hypotheses and controlled experiments without claiming to smell a composition or changing Product, Formula, Ingredient, Inventory, Lab, Testing, Production, Packaging, Compliance, or Launch records.
 
@@ -31,6 +31,12 @@ Provider Structured Output is validated again by Koalafrog. Unknown evidence, mi
 
 `intelligence_threads` owns a Scent Studio conversation. `intelligence_runs` records schema/prompt/context versions, selection, manifest, validated response or controlled error, provider/model metadata, and timestamps. Composite foreign keys prevent cross-workspace relationships. RLS restricts all access to the authenticated workspace owner; anonymous access is revoked. API keys, authorization headers, and system-prompt text are never persisted. Both tables are included in hosted backup export without changing legacy v9 migration semantics or creating localStorage intelligence authority.
 
+## Phase 9B memory layers
+
+The Intelligence Library reads `intelligence_threads` and `intelligence_runs` directly. Optional `knowledge_references` contain only owner-controlled title, note, tags, pin, archive, and source linkage; prompts and reports are never copied. Provider usage is normalized on the Edge Function, and cost exists only when a versioned server-side pricing snapshot is configured.
+
+Scent Memory is separate empirical data in `scent_memory_sessions` and immutable, revisioned `scent_memory_checkpoints`. Only bounded current checkpoints relevant to the selected Product, Formula Version, Lab Batch, or Ingredient enter context manifest v2. Their evidence type is `scentMemoryCheckpoint`. AI output never creates these records.
+
 ## Multi-turn strategy
 
 The UI retains the thread ID and current selection. Each call reloads current hosted domain context. The function includes at most four prior completed runs, preserving their structured semantic labels rather than promoting them to workspace truth.
@@ -39,7 +45,7 @@ The UI retains the thread ID and current selection. Each call reloads current ho
 
 Intelligence is advisory and cannot establish safety, legal compliance, authority approval, CPSR/PIF/CPNP/IFRA completion, or market readiness. Supplier documentation, restrictions, external assessment, compliance evidence, and physical evaluation remain necessary. There are no autonomous agents, web research, background jobs, or AI domain writes in Phase 9A.
 
-Future work may add Scent Memory from real time-series observations and a separately scoped Operations Copilot. Neither is implemented here.
+Operations Copilot remains separately scoped and is not implemented. Phase 9B adds no autonomous agents or background AI activity.
 
 ## Local and hosted setup
 

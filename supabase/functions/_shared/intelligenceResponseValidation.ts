@@ -45,12 +45,14 @@ const evidenceEntityTypes = [
   "labObservation",
   "testSession",
   "testResponse",
+  "scentMemoryCheckpoint",
 ];
 const empiricalEntityTypes = [
   "labObservation",
   "testResponse",
   "testSession",
   "labBatch",
+  "scentMemoryCheckpoint",
 ];
 const required = [
   "title",
