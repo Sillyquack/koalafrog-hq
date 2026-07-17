@@ -14,6 +14,7 @@ import { FormulaDetailPage } from '../features/formulas/FormulaDetailPage'
 import { IngredientDetailPage } from '../features/ingredients/IngredientDetailPage'
 import { ReferenceLibraryPage } from '../features/ingredients/reference/ReferenceLibraryPage'
 import { ReferenceEntryPage } from '../features/ingredients/reference/ReferenceEntryPage'
+import { SmartStartPage } from '../features/ingredients/smart-start/SmartStartPage'
 import { InventoryPage } from '../features/inventory/InventoryPage'
 import { LotDetailPage } from '../features/inventory/LotDetailPage'
 import { LabBatchDetailPage } from '../features/lab/LabBatchDetailPage'
@@ -55,6 +56,7 @@ export function App() {
         <Route path="ingredients" element={<IngredientsPage />} />
         <Route path="ingredients/reference" element={<ReferenceLibraryPage />} />
         <Route path="ingredients/reference/:entryId" element={<ReferenceEntryPage />} />
+        <Route path="ingredients/smart-start" element={<SmartStartPage />} />
         <Route path="ingredients/:ingredientId" element={<IngredientDetailPage />} />
         <Route path="inventory" element={<InventoryPage />} />
         <Route path="inventory/lots/:lotId" element={<LotDetailPage />} />

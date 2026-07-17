@@ -1,0 +1,42 @@
+import type { FormulaState } from '../../../types/domain'
+import { ingredientReferenceCatalog } from '../reference/catalog'
+
+export type SmartStartTier='Core / buy larger'|'Useful / buy medium'|'Specialty / buy small'|'Defer'
+export type SmartStartStatus='needs_review'
+export interface SmartStartLine {id:string;referenceEntryId?:string;conceptMaterial?:string;category:string;tier:SmartStartTier;minimum?:number;maximum?:number;unit?:'g'|'ml'|'L';rationale:string;productTypes:string[];prerequisites:string[];uncertainty:string;reviewStatus:SmartStartStatus;displayOrder:number}
+export interface PackagingGuidance {id:string;name:string;minimum:number;maximum?:number;unit:'items';rationale:string;displayOrder:number}
+const line=(id:string,referenceEntryId:string,tier:SmartStartTier,minimum:number|undefined,maximum:number|undefined,unit:SmartStartLine['unit'],rationale:string,productTypes:string[],displayOrder:number):SmartStartLine=>({id,referenceEntryId,category:'Ingredient',tier,minimum,maximum,unit,rationale,productTypes,prerequisites:['Select an exact Supplier Product and review its documentation and pack size.'],uncertainty:'Final quantity depends on approved test formulas, shelf life, landed cost and storage capacity.',reviewStatus:'needs_review',displayOrder})
+export const smartStartLines:SmartStartLine[]=[
+ line('ss-cct','caprylic-capric-triglyceride','Core / buy larger',1,1,'L','Reusable light carrier across several anhydrous formats.',['Beard oil','Beard butter','Oil perfume'],10),
+ line('ss-jojoba','simmondsia-chinensis-seed-oil','Core / buy larger',1,1,'L','Versatile, stable-feeling liquid wax carrier.',['Beard oil','Beard butter','Oil perfume'],20),
+ line('ss-mango','mangifera-indica-seed-butter','Core / buy larger',500,1000,'g','Primary butter candidate for structured anhydrous trials.',['Beard butter','Beard balm'],30),
+ line('ss-shea','butyrospermum-parkii-butter','Core / buy larger',500,500,'g','Rich secondary butter for texture comparison.',['Beard butter','Beard balm'],40),
+ line('ss-beeswax','cera-alba','Core / buy larger',500,500,'g','Broadly useful balm structurant.',['Beard balm','Solid perfume'],50),
+ line('ss-cetyl','cetyl-alcohol','Core / buy larger',250,500,'g','Texture modifier for structured trials.',['Beard butter','Beard balm','Deodorant'],60),
+ line('ss-castor','ricinus-communis-seed-oil','Useful / buy medium',250,500,'ml','Adds body and gloss; a medium quantity supports comparison.',['Beard oil','Beard balm','Oil perfume'],70),
+ line('ss-magnesium','magnesium-hydroxide','Useful / buy medium',250,500,'g','Candidate deodorant material requiring controlled tests.',['Deodorant'],80),
+ line('ss-arrowroot','maranta-arundinacea-root-powder','Useful / buy medium',500,500,'g','Choose one starter starch initially; identities remain distinct.',['Deodorant'],90),
+ line('ss-tapioca','tapioca-starch','Useful / buy medium',500,500,'g','Alternative starter starch; do not buy all three by default.',['Deodorant'],100),
+ line('ss-rice','oryza-sativa-starch','Useful / buy medium',500,500,'g','Alternative starter starch; do not buy all three by default.',['Deodorant'],110),
+ line('ss-kaolin','kaolin','Useful / buy medium',250,500,'g','Useful absorbent for comparative deodorant texture trials.',['Deodorant'],120),
+ line('ss-stearic','stearic-acid','Useful / buy medium',250,250,'g','Firmness modifier best trialled at moderate scale.',['Beard balm','Deodorant'],130),
+ line('ss-candelilla','candelilla-cera','Useful / buy medium',100,250,'g','Hard wax used at lower levels than the main wax.',['Beard balm','Deodorant','Solid perfume'],140),
+ line('ss-tocopherol','tocopherol','Specialty / buy small',50,100,'ml','Small quantity supports oxidation-management trials; exact grade matters.',['Beard oil','Beard butter','Beard balm'],150),
+ line('ss-zinc','zinc-ricinoleate','Specialty / buy small',50,100,'g','Specialised deodorant active with processing uncertainty.',['Deodorant'],160),
+ line('ss-tec','triethyl-citrate','Specialty / buy small',100,100,'ml','Speciality liquid for deodorant and fragrance trials.',['Deodorant','Fragrance trials'],170),
+ ...[['bergamot','citrus-aurantium-bergamia-peel-oil',10,30],['cardamom','elettaria-cardamomum-seed-oil',10,10],['juniper','juniperus-communis-fruit-oil',10,10],['vetiver','vetiveria-zizanoides-root-oil',10,10],['patchouli','pogostemon-cablin-leaf-oil',10,10],['lavender','lavandula-angustifolia-oil',30,50],['cedarwood','cedrus-atlantica-bark-oil',30,50],['amyris','amyris-balsamifera-bark-oil',30,50]].map(([id,ref,min,max],index)=>line(`ss-${id}`,String(ref),'Specialty / buy small',Number(min),Number(max),'ml','Keep fragrance experiments deliberately small.',['Fragrance trials','Oil perfume','Solid perfume'],180+index*10)),
+ line('ss-argan','argania-spinosa-kernel-oil','Defer',undefined,undefined,undefined,'Review only after a formula demonstrates a specific need.',['Beard oil','Beard butter'],300),
+ line('ss-squalane','squalane','Defer',undefined,undefined,undefined,'Avoid a large purchase until formula demand is known.',['Beard oil','Oil perfume'],310),
+ {id:'ss-proprietary-fragrance',conceptMaterial:'Proprietary fragrance blend',category:'Supplier-specific blend',tier:'Defer',rationale:'Remain a Concept Material until a real purchasable product is selected.',productTypes:['Fragrance trials'],prerequisites:['Declared INCI/composition','SDS','Allergen information','IFRA certificate or conformity documentation','Intended-category usage restrictions'],uncertainty:'Identity and restrictions are product-specific.',reviewStatus:'needs_review',displayOrder:320},
+]
+export const packagingGuidance:PackagingGuidance[]=[
+ {id:'pkg-30ml-amber',name:'30 ml amber bottles',minimum:24,maximum:24,unit:'items',rationale:'Planning target for beard-oil trials.',displayOrder:10},
+ {id:'pkg-50ml-tin',name:'50/60 ml tins or jars',minimum:24,maximum:24,unit:'items',rationale:'Planning target for butter and balm trials.',displayOrder:20},
+ {id:'pkg-roll-on',name:'10 ml roll-ons or tester containers',minimum:30,maximum:50,unit:'items',rationale:'Planning range for oil perfume and testers.',displayOrder:30},
+ {id:'pkg-vials',name:'2–5 ml fragrance sample vials',minimum:30,maximum:50,unit:'items',rationale:'Planning range for fragrance trials.',displayOrder:40},
+ {id:'pkg-labels',name:'Labels',minimum:100,unit:'items',rationale:'Flexible testing consumable; final specification remains separate.',displayOrder:50},
+]
+export const skippedCatalogDuplicates=['Caprylic/Capric Triglyceride','Ricinus Communis Seed Oil','Simmondsia Chinensis Seed Oil','Squalane','Tocopherol','Tocopheryl Acetate','Mangifera Indica Seed Butter','Butyrospermum Parkii Butter','Theobroma Cacao Seed Butter','Cera Alba','Citrus Aurantium Bergamia Peel Oil','Cedrus Atlantica Bark Oil','Amyris Balsamifera Bark Oil','Elettaria Cardamomum Seed Oil','Juniperus Communis Fruit Oil','Pinus Sylvestris Leaf Oil','Lavandula Angustifolia Oil']
+export function validateSmartStart(){const ids=new Set(ingredientReferenceCatalog.map(x=>x.id));return smartStartLines.flatMap(x=>x.referenceEntryId&&!ids.has(x.referenceEntryId)?[`${x.id}: missing reference ${x.referenceEntryId}`]:[])}
+export function quantityRange(line:Pick<SmartStartLine,'minimum'|'maximum'|'unit'>){if(line.minimum==null)return'Review before buying';return line.maximum!=null&&line.maximum!==line.minimum?`${line.minimum}–${line.maximum} ${line.unit}`:`${line.minimum} ${line.unit}`}
+export function smartStartState(line:SmartStartLine,state:Pick<FormulaState,'ingredients'|'supplierProducts'|'inventoryLots'|'inventoryMovements'>){if(!line.referenceEntryId)return'Not in workspace';const ingredient=state.ingredients.find(x=>x.referenceEntryId===line.referenceEntryId||x.inciName.toLowerCase()===ingredientReferenceCatalog.find(e=>e.id===line.referenceEntryId)?.inciName.toLowerCase());if(!ingredient)return'Not in workspace';const products=state.supplierProducts.filter(x=>x.ingredientId===ingredient.id);if(!products.length)return'Supplier Product missing';const preferred=products.find(x=>x.isPreferred);if(!preferred)return'Supplier Product linked';const received=state.inventoryLots.some(x=>x.ingredientId===ingredient.id&&x.status==='Active'&&x.openingQuantity+state.inventoryMovements.filter(m=>m.inventoryLotId===x.id).reduce((sum,m)=>sum+(m.type==='Receipt'||m.type==='Adjustment'?m.quantity:-m.quantity),0)>0);return received?'Received stock available':'Preferred option selected'}
