@@ -5172,9 +5172,16 @@ export type Database = {
       supplier_products: {
         Row: {
           availability_status: string | null
+          category_snapshot: string | null
+          cosing_functions_snapshot: string[] | null
+          country_code: string | null
           created_at: string
           currency: string
+          declared_inci: string | null
+          default_inventory_unit: string | null
           discontinued: boolean
+          extraction_method: string | null
+          grade: string | null
           id: string
           ingredient_id: string
           is_preferred: boolean
@@ -5182,25 +5189,43 @@ export type Database = {
           lead_time_days: number | null
           moq: number | null
           notes: string
+          operational_notes: string | null
           order_multiple: number | null
+          origin: string | null
           owner_id: string
           package_quantity: number
           package_unit: string
           price: number
+          processing_method: string | null
           product_name: string
+          product_status: string | null
           product_url: string | null
+          reference_entry_id: string | null
+          research_profile_snapshot: string | null
           sample_available: boolean | null
+          shelf_life_months: number | null
+          storage_requirements: string | null
+          supplier_grade: string | null
           supplier_id: string | null
           supplier_name: string
           supplier_sku: string | null
           updated_at: string
+          verification: Json | null
+          verification_notes: string | null
           workspace_id: string
         }
         Insert: {
           availability_status?: string | null
+          category_snapshot?: string | null
+          cosing_functions_snapshot?: string[] | null
+          country_code?: string | null
           created_at: string
           currency: string
+          declared_inci?: string | null
+          default_inventory_unit?: string | null
           discontinued?: boolean
+          extraction_method?: string | null
+          grade?: string | null
           id: string
           ingredient_id: string
           is_preferred: boolean
@@ -5208,25 +5233,43 @@ export type Database = {
           lead_time_days?: number | null
           moq?: number | null
           notes: string
+          operational_notes?: string | null
           order_multiple?: number | null
+          origin?: string | null
           owner_id: string
           package_quantity: number
           package_unit: string
           price: number
+          processing_method?: string | null
           product_name: string
+          product_status?: string | null
           product_url?: string | null
+          reference_entry_id?: string | null
+          research_profile_snapshot?: string | null
           sample_available?: boolean | null
+          shelf_life_months?: number | null
+          storage_requirements?: string | null
+          supplier_grade?: string | null
           supplier_id?: string | null
           supplier_name: string
           supplier_sku?: string | null
           updated_at: string
+          verification?: Json | null
+          verification_notes?: string | null
           workspace_id: string
         }
         Update: {
           availability_status?: string | null
+          category_snapshot?: string | null
+          cosing_functions_snapshot?: string[] | null
+          country_code?: string | null
           created_at?: string
           currency?: string
+          declared_inci?: string | null
+          default_inventory_unit?: string | null
           discontinued?: boolean
+          extraction_method?: string | null
+          grade?: string | null
           id?: string
           ingredient_id?: string
           is_preferred?: boolean
@@ -5234,18 +5277,29 @@ export type Database = {
           lead_time_days?: number | null
           moq?: number | null
           notes?: string
+          operational_notes?: string | null
           order_multiple?: number | null
+          origin?: string | null
           owner_id?: string
           package_quantity?: number
           package_unit?: string
           price?: number
+          processing_method?: string | null
           product_name?: string
+          product_status?: string | null
           product_url?: string | null
+          reference_entry_id?: string | null
+          research_profile_snapshot?: string | null
           sample_available?: boolean | null
+          shelf_life_months?: number | null
+          storage_requirements?: string | null
+          supplier_grade?: string | null
           supplier_id?: string | null
           supplier_name?: string
           supplier_sku?: string | null
           updated_at?: string
+          verification?: Json | null
+          verification_notes?: string | null
           workspace_id?: string
         }
         Relationships: [
@@ -5564,6 +5618,7 @@ export type Database = {
           supplier_type: string
           trading_name: string | null
           updated_at: string
+          verification_state: string
           website_url: string | null
           workspace_id: string
         }
@@ -5587,6 +5642,7 @@ export type Database = {
           supplier_type: string
           trading_name?: string | null
           updated_at?: string
+          verification_state?: string
           website_url?: string | null
           workspace_id: string
         }
@@ -5610,6 +5666,7 @@ export type Database = {
           supplier_type?: string
           trading_name?: string | null
           updated_at?: string
+          verification_state?: string
           website_url?: string | null
           workspace_id?: string
         }
@@ -6099,18 +6156,36 @@ export type Database = {
         Args: { lot_id: string; wid: string }
         Returns: number
       }
-      mark_packaging_supplier_product_preferred: {
-        Args: { p_expected_updated_at: string; p_product_id: string }
-        Returns: undefined
-      }
+      mark_packaging_supplier_product_preferred:
+        | {
+            Args: { p_expected_updated_at: string; p_product_id: string }
+            Returns: undefined
+          }
+        | {
+            Args: {
+              p_expected_updated_at: string
+              p_new_updated_at: string
+              p_product_id: string
+            }
+            Returns: undefined
+          }
       mark_purchase_plan_external_order: {
         Args: { idempotency: string; plan_id: string }
         Returns: string
       }
-      mark_supplier_product_preferred: {
-        Args: { p_expected_updated_at: string; p_product_id: string }
-        Returns: undefined
-      }
+      mark_supplier_product_preferred:
+        | {
+            Args: { p_expected_updated_at: string; p_product_id: string }
+            Returns: undefined
+          }
+        | {
+            Args: {
+              p_expected_updated_at: string
+              p_new_updated_at: string
+              p_product_id: string
+            }
+            Returns: undefined
+          }
       record_scent_memory_checkpoint: {
         Args: {
           checkpoint: Json

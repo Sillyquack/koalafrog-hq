@@ -7,6 +7,8 @@ const movement=(id:string,type:InventoryMovement['type'],quantity:number,unit:In
 const ingredient:Ingredient={id:'ingredient',commonName:'Test Oil',inciName:'Testus Oil',category:'Oil',functions:['Emollient'],description:'',defaultUnit:'g',reorderThreshold:300,notes:'',status:'Active',createdAt:'',updatedAt:''}
 
 describe('inventory units',()=>{
+  it('converts milligrams exactly within the mass family',()=>{expect(convertUnit(1000,'mg','g')).toBe(1);expect(convertUnit(1_000_000,'mg','kg')).toBe(1);expect(convertUnit(250,'mg','g')).toBe(.25);expect(convertUnit(.5,'g','mg')).toBe(500);expect(convertUnit(.001,'kg','mg')).toBe(1000)})
+  it('never converts milligrams to volume and preserves small values',()=>{expect(areUnitsCompatible('mg','ml')).toBe(false);expect(()=>convertUnit(1,'mg','ml')).toThrow('Cannot convert mg to ml');expect(convertUnit(.001,'mg','g')).toBe(.000001)})
   it('converts kg and g',()=>{expect(convertUnit(1,'kg','g')).toBe(1000);expect(convertUnit(500,'g','kg')).toBe(.5)})
   it('converts L and ml',()=>{expect(convertUnit(1.5,'L','ml')).toBe(1500);expect(convertUnit(250,'ml','L')).toBe(.25)})
   it('rejects mass to volume',()=>{expect(areUnitsCompatible('g','ml')).toBe(false);expect(()=>convertUnit(1,'g','ml')).toThrow()})

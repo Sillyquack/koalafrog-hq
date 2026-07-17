@@ -4,7 +4,7 @@ import { formulaSeed } from '../../data/formulaSeed'
 import { compareReconciliation, reconciliationSnapshot, validateV9Workspace } from '../migration/v9Migration'
 import { relationalMigrationPayload, relationalTableByCollection, SupabaseWorkspaceRepository, toDomainValue } from './supabaseWorkspaceRepository'
 import { supabase } from '../supabase/client'
-import type { FormulaState } from '../../types/domain'
+import type { FormulaState, SupplierProductVerification } from '../../types/domain'
 import { executeWorkspaceAction } from '../actions/workspaceActionExecutor'
 import type { WorkspaceActionName, WorkspaceStateMutation } from '../actions/workspaceActions'
 import { lotBalance } from '../../features/inventory/domain/inventoryLogic'
@@ -47,6 +47,8 @@ run('relational v9 migration against local Supabase', () => {
     expect(Object.values(formulaSeed).reduce((sum, records) => sum + records.length, 0)).toBe(134)
   })
   afterAll(async () => { for (const id of createdUsers) await admin.auth.admin.deleteUser(id) })
+
+  it('replays milligram conversion support without permitting mass-volume conversion',async()=>{const{client}=await ownerClient('milligram');const gram=await client.rpc('kf_convert_quantity',{q:1000,from_unit:'mg',to_unit:'g'}),kg=await client.rpc('kf_convert_quantity',{q:1_000_000,from_unit:'mg',to_unit:'kg'}),volume=await client.rpc('kf_convert_quantity',{q:1,from_unit:'mg',to_unit:'ml'});expect(gram.error).toBeNull();expect(Number(gram.data)).toBe(1);expect(Number(kg.data)).toBe(1);expect(volume.data).toBeNull()})
 
   it('imports all collections, preserves IDs, rejects duplicates, and reconciles ledgers', async () => {
     const { client, ownerId } = await ownerClient('valid')
@@ -275,6 +277,39 @@ run('relational v9 migration against local Supabase', () => {
     await applicationAction(localRepository,localState,'updateProduct',current=>({...current,products:current.products.map(item=>item.id==='p1'?{...item,description:'Local-only verification'}:item)}))
     expect(localState.products.find(item=>item.id==='p1')?.description).toBe('Local-only verification')
     expect((await supabase!.from('products').select('*',{count:'exact',head:true}).eq('owner_id',ownerId)).count).toBe(relationalProductsBefore.count)
+    await supabase!.auth.signOut()
+  },30_000)
+
+  it('preserves the complete Reference Ingredient to received-lot workflow across refresh',async()=>{
+    const{client,ownerId,email,password}=await ownerClient('ingredient-workflow')
+    const imported=await client.rpc('import_v9_relational',{payload:relationalMigrationPayload(structuredClone(formulaSeed))})
+    expect(imported.error).toBeNull()
+    const reconciliation=reconciliationSnapshot(formulaSeed)
+    expect((await client.rpc('complete_v9_reconciliation',{run_id:(imported.data as {migrationRunId:string}).migrationRunId,report:compareReconciliation(reconciliation,reconciliation)})).error).toBeNull()
+    const workspace=await client.from('workspaces').select('id').eq('owner_id',ownerId).single()
+    const supplier=await client.from('suppliers').insert({workspace_id:workspace.data!.id,owner_id:ownerId,legal_name:'Workflow Supplier AS',supplier_type:'raw_material',status:'research',internal_notes:'',is_preferred:false}).select('id').single()
+    expect(supplier.error).toBeNull()
+    expect((await supabase!.auth.signInWithPassword({email,password})).error).toBeNull()
+    const repository=new SupabaseWorkspaceRepository()
+    let state=await repository.load(ownerId)
+    const act=async(action:WorkspaceActionName,mutation:WorkspaceStateMutation)=>{state=await applicationAction(repository,state,action,mutation)}
+    const now='2026-07-17T12:00:00.000Z',verification={inci:'reviewed',supplierSpecification:'reviewed',sds:'reviewed',coa:'needs_review',allergenInformation:'not_applicable',shelfLife:'reviewed',origin:'reviewed',extractionMethod:'reviewed',processingMethod:'reviewed',ifra:'not_applicable',cosing:'reviewed'} satisfies SupplierProductVerification
+    await act('adoptReferenceIngredient',current=>({...current,ingredients:[...current.ingredients,{id:'i-workflow',commonName:'Workflow Powder',inciName:'Workflow Powder INCI',category:'Active',functions:[],cosingFunctions:['ABSORBENT'],cosingVerificationStatus:'needs_review',referenceEntryId:'workflow-reference',adoptedReferenceVersion:2,adoptedReferenceSnapshot:{id:'workflow-reference'},referenceAdoptionKey:crypto.randomUUID(),description:'Reference research profile',defaultUnit:'mg',notes:'',status:'Research',createdAt:now,updatedAt:now}]}))
+    const product=(id:string,size:number,preferred=false)=>({id,ingredientId:'i-workflow',supplierId:supplier.data!.id,supplierName:'Workflow Supplier AS',productName:`Workflow Powder ${size} g`,packageQuantity:size,packageUnit:'g' as const,price:size,currency:'NOK',notes:'Legacy/general note preserved',operationalNotes:'Order in dry season',verificationNotes:'CoA pending',isPreferred:preferred,grade:'Cosmetic Grade',supplierGrade:`WP-${size}`,declaredInci:'Supplier Workflow INCI',categorySnapshot:'Active',defaultInventoryUnit:'mg' as const,cosingFunctionsSnapshot:['ABSORBENT'],researchProfileSnapshot:'Reference research profile',referenceEntryId:'workflow-reference',origin:'Norway',processingMethod:'Milled',productStatus:'reviewing' as const,verification,createdAt:now,updatedAt:now})
+    const movementsBefore=state.inventoryMovements.length
+    await act('saveSupplierProduct',current=>({...current,supplierProducts:[...current.supplierProducts,product('sp-workflow-100',100)]}))
+    await act('saveSupplierProduct',current=>({...current,supplierProducts:[...current.supplierProducts,product('sp-workflow-500',500)]}))
+    expect(state.inventoryMovements).toHaveLength(movementsBefore)
+    await act('markSupplierPreferred',current=>({...current,supplierProducts:current.supplierProducts.map(item=>item.ingredientId==='i-workflow'?{...item,isPreferred:item.id==='sp-workflow-100',updatedAt:now}:item)}))
+    await act('markSupplierPreferred',current=>({...current,supplierProducts:current.supplierProducts.map(item=>item.ingredientId==='i-workflow'?{...item,isPreferred:item.id==='sp-workflow-500',updatedAt:'2026-07-17T12:01:00.000Z'}:item)}))
+    expect(state.supplierProducts.filter(item=>item.ingredientId==='i-workflow'&&item.isPreferred).map(item=>item.id)).toEqual(['sp-workflow-500'])
+    await act('receiveStock',current=>({...current,inventoryLots:[...current.inventoryLots,{id:'lot-workflow',ingredientId:'i-workflow',supplierProductId:'sp-workflow-500',internalLotNumber:'KF-ING-260717-001',supplierLotNumber:'SUP-LOT-1',receivedDate:'2026-07-17',openingQuantity:500000,unit:'mg',location:'Raw Materials',status:'Active',notes:'Physical batch',createdAt:now,updatedAt:now}],inventoryMovements:[...current.inventoryMovements,{id:'movement-workflow-receipt',inventoryLotId:'lot-workflow',type:'Receipt',quantity:500000,unit:'mg',reason:'Stock received',notes:'',occurredAt:now,createdAt:now}]}))
+    const hydrated=await new SupabaseWorkspaceRepository().load(ownerId),hydratedProduct=hydrated.supplierProducts.find(item=>item.id==='sp-workflow-500')
+    expect(hydrated.ingredients.find(item=>item.id==='i-workflow')).toMatchObject({status:'Research',referenceEntryId:'workflow-reference'})
+    expect(hydratedProduct).toMatchObject({supplierId:supplier.data!.id,grade:'Cosmetic Grade',supplierGrade:'WP-500',processingMethod:'Milled',operationalNotes:'Order in dry season',verificationNotes:'CoA pending',notes:'Legacy/general note preserved',isPreferred:true})
+    expect(hydratedProduct?.verification).toEqual(verification)
+    expect(hydrated.inventoryLots.find(item=>item.id==='lot-workflow')).toMatchObject({supplierProductId:'sp-workflow-500',openingQuantity:500000,unit:'mg'})
+    expect(hydrated.inventoryMovements.filter(item=>item.inventoryLotId==='lot-workflow')).toEqual([expect.objectContaining({id:'movement-workflow-receipt',type:'Receipt',quantity:500000,unit:'mg'})])
     await supabase!.auth.signOut()
   },30_000)
 })

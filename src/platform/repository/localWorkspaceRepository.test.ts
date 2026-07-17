@@ -14,4 +14,5 @@ describe('LocalWorkspaceRepository', () => {
     expect(saves).toBe(1)
     expect(repository.load().ingredients.some(item=>item.id==='local-new')).toBe(true)
   })
+  it('hydrates milligram units without conversion',()=>{let stored=structuredClone(formulaSeed);stored.ingredients[0].defaultUnit='mg';stored.supplierProducts[0].packageUnit='mg';const storage:FormulaRepository={load:()=>stored,save:state=>{stored=state}};const hydrated=new LocalWorkspaceRepository(storage).load();expect(hydrated.ingredients[0].defaultUnit).toBe('mg');expect(hydrated.supplierProducts[0].packageUnit).toBe('mg')})
 })

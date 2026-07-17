@@ -207,7 +207,7 @@ export function LabBatchDetailPage() {
                   <input
                     disabled={readOnly || batch.status !== "In Progress"}
                     type="number"
-                    step="0.01"
+                    step="any"
                     value={line.actualQuantity ?? ""}
                     onChange={(e) =>
                       data.updateBatchLine(line.id, {
@@ -258,7 +258,7 @@ export function LabBatchDetailPage() {
                         aria-label={`Allocation for ${line.ingredientNameSnapshot}`}
                         disabled={!!allocation.inventoryMovementId || readOnly}
                         type="number"
-                        step="0.01"
+                        step="any"
                         value={allocation.quantity || ""}
                         onChange={(e) =>
                           data.updateAllocation(allocation.id, {

@@ -116,7 +116,7 @@ export class SupabaseWorkspaceRepository implements WorkspaceRepository {
       const selected=change.next.supplierProducts.find(item=>item.isPreferred&&!change.previous.supplierProducts.find(previous=>previous.id===item.id)?.isPreferred)
       if(!selected)return true
       const previous=change.previous.supplierProducts.find(item=>item.id===selected.id)!
-      const result=await client.rpc('mark_supplier_product_preferred',{p_product_id:selected.id,p_expected_updated_at:previous.updatedAt})
+      const result=await client.rpc('mark_supplier_product_preferred',{p_product_id:selected.id,p_expected_updated_at:previous.updatedAt,p_new_updated_at:selected.updatedAt})
       if(result.error)throw new Error(result.error.message)
       return true
     }
@@ -124,7 +124,7 @@ export class SupabaseWorkspaceRepository implements WorkspaceRepository {
       const selected=change.next.packagingSupplierProducts.find(item=>item.isPreferred&&!change.previous.packagingSupplierProducts.find(previous=>previous.id===item.id)?.isPreferred)
       if(!selected)return true
       const previous=change.previous.packagingSupplierProducts.find(item=>item.id===selected.id)!
-      const result=await client.rpc('mark_packaging_supplier_product_preferred',{p_product_id:selected.id,p_expected_updated_at:previous.updatedAt})
+      const result=await client.rpc('mark_packaging_supplier_product_preferred',{p_product_id:selected.id,p_expected_updated_at:previous.updatedAt,p_new_updated_at:selected.updatedAt})
       if(result.error)throw new Error(result.error.message)
       return true
     }

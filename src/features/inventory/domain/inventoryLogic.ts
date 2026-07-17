@@ -1,12 +1,16 @@
 import type { Ingredient, InventoryLot, InventoryMovement, InventoryMovementType, InventoryUnit } from '../../../types/domain'
 
-const baseFactor: Record<InventoryUnit, number> = { g: 1, kg: 1000, ml: 1, L: 1000, pcs: 1 }
-const family = (unit: InventoryUnit) => unit === 'g' || unit === 'kg' ? 'mass' : unit === 'ml' || unit === 'L' ? 'volume' : 'count'
+export const inventoryUnits:readonly InventoryUnit[]=['mg','g','kg','ml','L','pcs']
+export const weightUnits:readonly InventoryUnit[]=['mg','g','kg']
+export const volumeUnits:readonly InventoryUnit[]=['ml','L']
+export const countUnits:readonly InventoryUnit[]=['pcs']
+const baseFactor: Record<InventoryUnit, number> = { mg: .001, g: 1, kg: 1000, ml: 1, L: 1000, pcs: 1 }
+const family = (unit: InventoryUnit) => unit === 'mg' || unit === 'g' || unit === 'kg' ? 'mass' : unit === 'ml' || unit === 'L' ? 'volume' : 'count'
 export const areUnitsCompatible = (a: InventoryUnit, b: InventoryUnit) => family(a) === family(b)
-export function convertUnit(value: number, from: InventoryUnit, to: InventoryUnit) { if (!areUnitsCompatible(from, to)) throw new Error(`Cannot convert ${from} to ${to}`); return Math.round(value * baseFactor[from] / baseFactor[to] * 10000) / 10000 }
+export function convertUnit(value: number, from: InventoryUnit, to: InventoryUnit) { if (!areUnitsCompatible(from, to)) throw new Error(`Cannot convert ${from} to ${to}`); return value * baseFactor[from] / baseFactor[to] }
 export const movementDirection = (type: InventoryMovementType) => type === 'Receipt' ? 1 : type === 'Adjustment' ? 1 : -1
 export function signedMovementQuantity(movement: Pick<InventoryMovement, 'type' | 'quantity'>) { return movement.type === 'Adjustment' ? movement.quantity : Math.abs(movement.quantity) * movementDirection(movement.type) }
-export function lotBalance(lot: InventoryLot, movements: InventoryMovement[]) { return Math.round(movements.filter((m) => m.inventoryLotId === lot.id).reduce((sum, movement) => sum + convertUnit(signedMovementQuantity(movement), movement.unit, lot.unit), 0) * 10000) / 10000 }
+export function lotBalance(lot: InventoryLot, movements: InventoryMovement[]) { return movements.filter((m) => m.inventoryLotId === lot.id).reduce((sum, movement) => sum + convertUnit(signedMovementQuantity(movement), movement.unit, lot.unit), 0) }
 
 export function validateMovement(lot: InventoryLot, movements: InventoryMovement[], input: Pick<InventoryMovement, 'type' | 'quantity' | 'unit'>) {
   if (!Number.isFinite(input.quantity) || input.quantity === 0) return 'Quantity must be a non-zero number.'

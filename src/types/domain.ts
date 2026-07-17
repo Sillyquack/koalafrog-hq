@@ -106,7 +106,7 @@ export interface FormulaState {
 }
 
 export type IngredientStatus = 'Active' | 'Research' | 'Archived'
-export type InventoryUnit = 'g' | 'kg' | 'ml' | 'L' | 'pcs'
+export type InventoryUnit = 'mg' | 'g' | 'kg' | 'ml' | 'L' | 'pcs'
 export interface Ingredient {
   id: string
   commonName: string
@@ -133,8 +133,16 @@ export interface Ingredient {
 export interface SupplierProduct {
   id: string; ingredientId: string; supplierName: string; productName: string; supplierSku?: string
   packageQuantity: number; packageUnit: InventoryUnit; price: number; currency: string; productUrl?: string
-  notes: string; isPreferred: boolean; supplierId?:string; createdAt: string; updatedAt: string
+  notes: string; operationalNotes?:string; verificationNotes?:string; isPreferred: boolean; supplierId?:string
+  grade?:string; supplierGrade?:string; declaredInci?:string; categorySnapshot?:string; defaultInventoryUnit?:InventoryUnit
+  cosingFunctionsSnapshot?:string[]; researchProfileSnapshot?:string; referenceEntryId?:string
+  countryCode?:string; origin?:string; extractionMethod?:string; processingMethod?:string
+  shelfLifeMonths?:number; storageRequirements?:string; productStatus?:'research'|'reviewing'|'verified_operational'|'inactive'|'discontinued'
+  verification?:SupplierProductVerification
+  createdAt: string; updatedAt: string
 }
+export type OperationalReviewState='unknown'|'needs_review'|'reviewed'|'not_applicable'
+export interface SupplierProductVerification {inci:OperationalReviewState;supplierSpecification:OperationalReviewState;sds:OperationalReviewState;coa:OperationalReviewState;allergenInformation:OperationalReviewState;shelfLife:OperationalReviewState;origin:OperationalReviewState;extractionMethod:OperationalReviewState;processingMethod:OperationalReviewState;ifra:OperationalReviewState;cosing:OperationalReviewState}
 export type InventoryLotStatus = 'Active' | 'Quarantined' | 'Exhausted' | 'Expired' | 'Disposed'
 export interface InventoryLot {
   id: string; ingredientId: string; supplierProductId?: string; internalLotNumber: string; supplierLotNumber?: string
