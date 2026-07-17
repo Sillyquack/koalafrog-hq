@@ -117,6 +117,10 @@ export interface Ingredient {
   cosingVerificationStatus?: 'unverified'|'verified_from_cosing'|'needs_review'
   cosingVerifiedAt?: string
   cosingSourceReference?: string
+  referenceEntryId?: string
+  adoptedReferenceVersion?: number
+  adoptedReferenceSnapshot?: Record<string,unknown>
+  referenceAdoptionKey?: string
   description: string
   defaultUnit: InventoryUnit
   reorderThreshold?: number

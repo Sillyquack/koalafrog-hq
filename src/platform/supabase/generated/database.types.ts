@@ -1943,6 +1943,8 @@ export type Database = {
       }
       ingredients: {
         Row: {
+          adopted_reference_snapshot: Json | null
+          adopted_reference_version: number | null
           category: string
           common_name: string
           cosing_functions: string[] | null
@@ -1957,12 +1959,16 @@ export type Database = {
           inci_name: string
           notes: string
           owner_id: string
+          reference_adoption_key: string | null
+          reference_entry_id: string | null
           reorder_threshold: number | null
           status: string
           updated_at: string
           workspace_id: string
         }
         Insert: {
+          adopted_reference_snapshot?: Json | null
+          adopted_reference_version?: number | null
           category: string
           common_name: string
           cosing_functions?: string[] | null
@@ -1977,12 +1983,16 @@ export type Database = {
           inci_name: string
           notes: string
           owner_id: string
+          reference_adoption_key?: string | null
+          reference_entry_id?: string | null
           reorder_threshold?: number | null
           status: string
           updated_at: string
           workspace_id: string
         }
         Update: {
+          adopted_reference_snapshot?: Json | null
+          adopted_reference_version?: number | null
           category?: string
           common_name?: string
           cosing_functions?: string[] | null
@@ -1997,6 +2007,8 @@ export type Database = {
           inci_name?: string
           notes?: string
           owner_id?: string
+          reference_adoption_key?: string | null
+          reference_entry_id?: string | null
           reorder_threshold?: number | null
           status?: string
           updated_at?: string

@@ -12,6 +12,7 @@ export const workspaceActionNames = [
   "duplicateAsDraft",
   "createFormula",
   "createIngredient",
+  "adoptReferenceIngredient",
   "updateIngredient",
   "archiveIngredient",
   "saveSupplierProduct",

@@ -11,6 +11,8 @@
     "test:bible": "vitest run src/features/knowledge/bible/bibleContent.test.ts",
     "test:supabase": "node scripts/test-supabase.mjs",
     "test:secrets": "node scripts/check-secrets.mjs",
+    "library:validate": "node scripts/ingredient-library.mjs",
+    "library:report": "node scripts/ingredient-library.mjs --report",
     "preview": "vite preview"
   },
   "dependencies": {

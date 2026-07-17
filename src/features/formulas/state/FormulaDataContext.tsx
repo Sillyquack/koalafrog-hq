@@ -112,6 +112,7 @@ interface FormulaDataValue extends FormulaState {
   createIngredient(
     input: Omit<Ingredient, "id" | "createdAt" | "updatedAt">,
   ): Ingredient;
+  adoptReferenceIngredient(input:Omit<Ingredient,"id"|"createdAt"|"updatedAt">):Promise<Ingredient>;
   updateIngredient(id: string, patch: Partial<Ingredient>): void;
   archiveIngredient(id: string): void;
   saveSupplierProduct(
@@ -527,6 +528,11 @@ export function FormulaDataProvider({
           ...current,
           ingredients: [...current.ingredients, ingredient],
         }));
+        return ingredient;
+      },
+      async adoptReferenceIngredient(input) {
+        const now=new Date().toISOString(),ingredient:Ingredient={...input,id:uid(),createdAt:now,updatedAt:now};
+        await commitState("adoptReferenceIngredient",current=>({...current,ingredients:[...current.ingredients,ingredient]}));
         return ingredient;
       },
       updateIngredient(id, patch) {
