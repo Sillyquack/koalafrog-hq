@@ -46,6 +46,8 @@ Supabase provides:
 
 Backend clients, generated database types, and query details remain in the platform infrastructure area and do not leak into feature components.
 
+Product Studio Formula handoffs may attach optional ordered phase definitions and a structured manufacturing-process draft to an existing Formula Version. Formula Lines remain the canonical percentage composition and carry their phase association. Lab Batch creation snapshots those lines and process steps for execution; the Formula Version remains unchanged, and planning never creates Inventory Movements.
+
 ## UI approach
 
 The visual system uses shared CSS tokens and purposeful components rather than a third-party component kit. The dense sidebar supports the breadth of the operating system; content remains calm and tactile. Scent House intentionally shifts into a darker, more atmospheric workspace while retaining shared navigation and interaction conventions.

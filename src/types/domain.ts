@@ -26,6 +26,8 @@ export interface Formula {
 }
 
 export type FormulaVersionStatus = 'Draft' | 'Candidate' | 'Approved' | 'Retired'
+export interface FormulaPhaseDefinition {code:string;name:string;order:number;targetTemperature?:number;minimumTemperature?:number;maximumTemperature?:number;instructions?:string;notes?:string}
+export interface FormulaProcessStep {order:number;title:string;instruction:string;phaseCode?:string;targetTemperature?:number;minimumTemperature?:number;maximumTemperature?:number;durationMinutes?:number;mixingMethod?:string;mixingIntensity?:string;completionCriteria?:string;critical:boolean;operatorNote?:string}
 export interface FormulaVersion {
   id: string
   formulaId: string
@@ -39,6 +41,8 @@ export interface FormulaVersion {
   createdAt: string
   updatedAt: string
   derivedFromVersionId?: string
+  phaseDefinitions?: FormulaPhaseDefinition[]
+  manufacturingProcess?: FormulaProcessStep[]
 }
 
 export interface FormulaLine {
@@ -52,7 +56,7 @@ export interface FormulaLine {
   formulationRole?: string
 }
 
-export type ProductStudioType='beard_oil'
+export type ProductStudioType='beard_oil'|'beard_butter'
 export type ProductStudioIntent='make_today'|'design'
 export interface ProductStudioSelection {ingredientId:string;role:string;essential:boolean}
 export interface ProductStudioConcept {
@@ -167,12 +171,12 @@ export interface InventoryMovement {
 }
 
 export type LabBatchStatus = 'Planned' | 'In Progress' | 'Completed' | 'Aborted' | 'Archived'
-export interface LabBatch { id:string; batchNumber:string; productId:string; formulaId:string; formulaVersionId:string; status:LabBatchStatus; plannedBatchSize:number; plannedBatchUnit:InventoryUnit; startedAt?:string; completedAt?:string; actualYield?:number; yieldUnit?:InventoryUnit; createdAt:string; updatedAt:string; purpose:string; notes:string; summary:string; targetCharacteristics:string }
+export interface LabBatch { id:string; batchNumber:string; productId:string; formulaId:string; formulaVersionId:string; status:LabBatchStatus; plannedBatchSize:number; plannedBatchUnit:InventoryUnit; startedAt?:string; completedAt?:string; actualYield?:number; yieldUnit?:InventoryUnit; fillCount?:number;packagingUsed?:string;deviations?:string;finalTextureObservations?:string;createdAt:string; updatedAt:string; purpose:string; notes:string; summary:string; targetCharacteristics:string }
 export type LabBatchLineStatus = 'Pending' | 'Weighed' | 'Skipped'
 export interface LabBatchLine { id:string; labBatchId:string; formulaLineId:string; ingredientId:string; ingredientNameSnapshot:string; phase:string; plannedPercentage:number; plannedQuantity:number; actualQuantity?:number; unit:InventoryUnit; variance?:number; notes:string; status:LabBatchLineStatus }
 export interface LabBatchAllocation { id:string; labBatchLineId:string; inventoryLotId?:string; quantity:number; unit:InventoryUnit; inventoryMovementId?:string }
 export type ProcessStepStatus = 'Pending' | 'Completed' | 'Skipped'
-export interface BatchProcessStep { id:string; labBatchId:string; stepNumber:number; instruction:string; status:ProcessStepStatus; completedAt?:string; notes:string }
+export interface BatchProcessStep {id:string;labBatchId:string;stepNumber:number;title?:string;instruction:string;phaseCode?:string;targetTemperature?:number;minimumTemperature?:number;maximumTemperature?:number;actualTemperature?:number;durationMinutes?:number;mixingMethod?:string;mixingIntensity?:string;completionCriteria?:string;critical?:boolean;operatorNote?:string;status:ProcessStepStatus;completedAt?:string;notes:string}
 export interface LabObservation { id:string; labBatchId:string; observationType:string; targetDate?:string; observedAt?:string; appearance:string; texture:string; scent:string; stability:string; packaging:string; notes:string; rating?:number; createdAt:string }
 export type TesterStatus = 'Active' | 'Inactive'
 export interface Tester { id:string; displayName:string; notes:string; status:TesterStatus; createdAt:string; updatedAt:string }

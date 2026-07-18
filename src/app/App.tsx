@@ -46,6 +46,7 @@ import { EquipmentPage } from '../features/procurement/EquipmentPage'
 import { EquipmentDetailPage } from '../features/procurement/EquipmentDetailPage'
 import { ProductStudioPage } from '../features/product-studio/ProductStudioPage'
 import { BeardOilStudioPage } from '../features/product-studio/BeardOilStudioPage'
+import { BeardButterStudioPage } from '../features/product-studio/BeardButterStudioPage'
 
 export function App() {
   return (
@@ -54,6 +55,7 @@ export function App() {
         <Route index element={<DashboardPage />} />
         <Route path="product-studio" element={<ProductStudioPage />} />
         <Route path="product-studio/beard-oil" element={<BeardOilStudioPage />} />
+        <Route path="product-studio/beard-butter" element={<BeardButterStudioPage />} />
         <Route path="products" element={<ProductsPage />} />
         <Route path="products/:productId" element={<ProductDetailPage />} />
         <Route path="formulas" element={<FormulaLibraryPage />} />
