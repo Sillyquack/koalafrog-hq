@@ -19,6 +19,7 @@ const baseLines: readonly SeedLine[] = [
 const linesFor = (versionId: string, percentages: readonly SeedLine[] = baseLines) => percentages.map(([ingredientId, percentage, phase, notes], index) => ({ id: `fl-${versionId}-${index + 1}`, formulaVersionId: versionId, ingredientId, percentage, phase, sortOrder: index + 1, notes }))
 
 export const formulaSeed: FormulaState = {
+  productStudioConcepts:[],
   products,
   formulas: [
     { id: 'f-bo-original', productId: 'p1', name: 'Original Formula', description: 'Core dry-touch beard oil development formula.', createdAt: '2026-03-02', updatedAt: '2026-07-14' },

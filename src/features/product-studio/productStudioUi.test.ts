@@ -1,0 +1,11 @@
+import{describe,expect,it}from'vitest'
+import{readFileSync}from'node:fs'
+const entry=readFileSync(new URL('ProductStudioPage.tsx',import.meta.url),'utf8'),studio=readFileSync(new URL('BeardOilStudioPage.tsx',import.meta.url),'utf8'),css=readFileSync(new URL('../../styles/index.css',import.meta.url),'utf8'),context=readFileSync(new URL('../formulas/state/FormulaDataContext.tsx',import.meta.url),'utf8')
+describe('Product Studio UI contracts',()=>{
+ it('provides the four intent-first entry actions',()=>['Make Something Today','Design a Product','Explore Ingredients','Follow a Proven Formula'].forEach(label=>expect(entry).toContain(label)))
+ it('contains Make Today, basket, immediate analysis and inventory comparison',()=>{expect(studio).toContain("mode==='make_today'");expect(studio).toContain('Live composition board');expect(studio).toContain('aria-live="polite"');expect(studio).toContain('Inventory, equipment and packaging')})
+ it('persists drafts through FormulaDataContext rather than component localStorage',()=>{expect(studio).toContain('saveProductStudioConcept');expect(context).toContain('commitState("saveProductStudioConcept"');expect(studio).not.toContain('localStorage')})
+ it('hands off through existing Formula and Procurement domains',()=>{expect(studio).toContain('createFormulaFromStudio');expect(studio).toContain('createProductStudioPurchasePlan');expect(studio).toContain('/formulas/');expect(studio).toContain('/suppliers?tab=plans')})
+ it('hides advanced finding evidence by default',()=>{expect(studio).toContain('useState(false)');expect(studio).toContain('aria-expanded={details}');expect(studio).toContain('{details&&<>')})
+ it('keeps the 390px composition, comparison and actions usable without card scrolling',()=>{expect(css).toContain('@media(max-width:480px)');expect(css).toContain('.studio-entry-actions,.studio-ready-grid,.studio-concepts,.studio-ingredient-grid,.finding-list,.predicted-observed,.scent-builder{grid-template-columns:1fr}');expect(css).toContain('.composition-board{position:static');expect(css).toContain('.studio-handoff>div:last-of-type{position:sticky')})
+})

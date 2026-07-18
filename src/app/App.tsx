@@ -18,6 +18,7 @@ import { SmartStartPage } from '../features/ingredients/smart-start/SmartStartPa
 import { InventoryPage } from '../features/inventory/InventoryPage'
 import { LotDetailPage } from '../features/inventory/LotDetailPage'
 import { LabBatchDetailPage } from '../features/lab/LabBatchDetailPage'
+import { StartBatchHandoffPage, StudioLabHandoff } from '../features/lab/components/StartBatchForm'
 import { TestingPage } from '../features/testing/TestingPage'
 import { ProductionPage } from '../features/production/ProductionPage'
 import { ProductionRunDetailPage } from '../features/production/ProductionRunDetailPage'
@@ -43,12 +44,16 @@ import { SuppliersPage } from '../features/procurement/SuppliersPage'
 import { SupplierDetailPage } from '../features/procurement/SupplierDetailPage'
 import { EquipmentPage } from '../features/procurement/EquipmentPage'
 import { EquipmentDetailPage } from '../features/procurement/EquipmentDetailPage'
+import { ProductStudioPage } from '../features/product-studio/ProductStudioPage'
+import { BeardOilStudioPage } from '../features/product-studio/BeardOilStudioPage'
 
 export function App() {
   return (
     <Routes>
       <Route element={<AppShell />}>
         <Route index element={<DashboardPage />} />
+        <Route path="product-studio" element={<ProductStudioPage />} />
+        <Route path="product-studio/beard-oil" element={<BeardOilStudioPage />} />
         <Route path="products" element={<ProductsPage />} />
         <Route path="products/:productId" element={<ProductDetailPage />} />
         <Route path="formulas" element={<FormulaLibraryPage />} />
@@ -60,7 +65,8 @@ export function App() {
         <Route path="ingredients/:ingredientId" element={<IngredientDetailPage />} />
         <Route path="inventory" element={<InventoryPage />} />
         <Route path="inventory/lots/:lotId" element={<LotDetailPage />} />
-        <Route path="lab" element={<LabPage />} />
+        <Route path="lab" element={<StudioLabHandoff fallback={<LabPage />}/>} />
+        <Route path="lab/start/:formulaId" element={<StartBatchHandoffPage />} />
         <Route path="lab/:labBatchId" element={<LabBatchDetailPage />} />
         <Route path="testing" element={<TestingPage />} />
         <Route path="production" element={<ProductionPage />} />

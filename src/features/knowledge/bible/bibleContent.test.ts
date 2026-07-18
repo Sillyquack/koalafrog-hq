@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { bibleArticles, bibleById, majorRouteBibleMap, searchBible } from './bibleContent'
 
 const required=['id','title','section','order','summary','audience','status','lastVerified','relatedRoutes','entities','workflows','relatedArticles','keywords','sourceFiles','limitationStatus','content'] as const
-const navigation=['/','/products','/formulas','/ingredients','/lab','/scent-house','/inventory','/production','/testing','/suppliers','/equipment','/costing','/compliance','/packaging','/launch','/knowledge','/development']
+const navigation=['/','/product-studio','/products','/formulas','/ingredients','/lab','/scent-house','/inventory','/production','/testing','/suppliers','/equipment','/costing','/compliance','/packaging','/launch','/knowledge','/development']
 
 describe('Koalafrog Bible content contract',()=>{
  it('maps every major navigation module to a real article',()=>navigation.forEach(route=>expect(bibleById.has(majorRouteBibleMap[route])).toBe(true)))

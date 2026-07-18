@@ -52,7 +52,18 @@ export interface FormulaLine {
   formulationRole?: string
 }
 
+export type ProductStudioType='beard_oil'
+export type ProductStudioIntent='make_today'|'design'
+export interface ProductStudioSelection {ingredientId:string;role:string;essential:boolean}
+export interface ProductStudioConcept {
+  id:string;name:string;productType:ProductStudioType;intentMode:ProductStudioIntent;desiredProperties:string[]
+  selectedIngredients:ProductStudioSelection[];scentDirections:string[];candidateSubstitutes:Record<string,string[]>
+  notes:string;analysis:Record<string,unknown>;generatedProductId?:string;generatedFormulaId?:string
+  generatedFormulaVersionId?:string;procurementPlanId?:string;createdAt:string;updatedAt:string
+}
+
 export interface FormulaState {
+  productStudioConcepts:ProductStudioConcept[]
   products: Product[]
   formulas: Formula[]
   formulaVersions: FormulaVersion[]

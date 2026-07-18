@@ -37,6 +37,7 @@ import type {
   PackagingSupplierProduct,
   PifSection,
   Product,
+  ProductStudioConcept,
   ProductionRun,
   ProductionRunAllocation,
   ProductionRunLine,
@@ -96,6 +97,8 @@ interface FormulaDataValue extends FormulaState {
   createProduct(
     input: Omit<Product, "id" | "createdAt" | "updatedAt">,
   ): Product;
+  saveProductStudioConcept(input:Omit<ProductStudioConcept,"id"|"createdAt"|"updatedAt">&{id?:string}):ProductStudioConcept;
+  createFormulaFromStudio(conceptId:string,input:{productName:string;formulaName:string;description:string;lines:Array<{ingredientId:string;percentage:number;role:string;phase:string}>}):{productId:string;formulaId:string;formulaVersionId:string};
   updateProduct(id: string, patch: Partial<Product>): void;
   updateLine(
     versionId: string,
@@ -515,6 +518,21 @@ export function FormulaDataProvider({
           formulaVersions: [...current.formulaVersions, version],
         }));
         return formula;
+      },
+      saveProductStudioConcept(input) {
+        const now=new Date().toISOString(),existing=state.productStudioConcepts.find(item=>item.id===input.id)
+        const concept:ProductStudioConcept={...input,id:input.id??uid(),createdAt:existing?.createdAt??now,updatedAt:now}
+        commitState("saveProductStudioConcept",current=>({...current,productStudioConcepts:existing?current.productStudioConcepts.map(item=>item.id===concept.id?concept:item):[...current.productStudioConcepts,concept]}))
+        return concept
+      },
+      createFormulaFromStudio(conceptId,input) {
+        const now=new Date().toISOString(),productId=uid(),formulaId=uid(),formulaVersionId=uid()
+        const product:Product={id:productId,name:input.productName,category:'Beard Care',status:'Active',developmentStage:'Formulation',description:input.description,currentDevelopmentFormulaVersionId:formulaVersionId,scentProfile:'Product Studio concept',createdAt:now,updatedAt:now}
+        const formula:Formula={id:formulaId,productId,name:input.formulaName,description:input.description,createdAt:now,updatedAt:now}
+        const version:FormulaVersion={id:formulaVersionId,formulaId,version:'v0.1',status:'Draft',description:'Rule-based Product Studio starting point.',targetCharacteristics:'Predicted direction; physical testing required.',processInstructions:'Use the Beard Oil Product Studio procedure as preparation guidance, then execute through a Lab Batch.',developmentNotes:'Percentages are explainable starting points from curated rules, not supplier-specific limits or safety approval.',createdAt:now,updatedAt:now}
+        const lines:FormulaLine[]=input.lines.map((line,index)=>({id:uid(),formulaVersionId,ingredientId:line.ingredientId,percentage:line.percentage,phase:line.phase,sortOrder:index+1,notes:'Product Studio starting recommendation; editable in Draft.',formulationRole:line.role}))
+        commitState("createFormulaFromStudio",current=>({...current,products:[...current.products,product],formulas:[...current.formulas,formula],formulaVersions:[...current.formulaVersions,version],formulaLines:[...current.formulaLines,...lines],productStudioConcepts:current.productStudioConcepts.map(concept=>concept.id===conceptId?{...concept,generatedProductId:productId,generatedFormulaId:formulaId,generatedFormulaVersionId:formulaVersionId,updatedAt:now}:concept)}))
+        return{productId,formulaId,formulaVersionId}
       },
       createIngredient(input) {
         const now = new Date().toISOString();

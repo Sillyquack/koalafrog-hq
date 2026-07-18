@@ -15,7 +15,7 @@ export function reconciliationSnapshot(state:FormulaState){const byId=<T extends
 const canonicalJson=(value:unknown):string=>JSON.stringify(value,(_key,item)=>item&&typeof item==='object'&&!Array.isArray(item)?Object.fromEntries(Object.entries(item).sort(([a],[b])=>a.localeCompare(b))):item)
 export function compareReconciliation(local:ReturnType<typeof reconciliationSnapshot>,remote:ReturnType<typeof reconciliationSnapshot>){const sections=Object.keys(local) as Array<keyof typeof local>;const results=sections.map(section=>({section,matched:canonicalJson(local[section])===canonicalJson(remote[section])}));return{results,complete:results.every(x=>x.matched)}}
 export const migrationCollectionOrder: (keyof FormulaState)[] = [
-  'products', 'ingredients', 'formulas', 'formulaVersions', 'formulaLines',
+  'productStudioConcepts','products', 'ingredients', 'formulas', 'formulaVersions', 'formulaLines',
   'supplierProducts', 'inventoryLots', 'inventoryMovements',
   'labBatches', 'labBatchLines', 'labBatchAllocations', 'processSteps', 'labObservations',
   'testers', 'testTemplates', 'testSessions', 'testResponses',

@@ -12,6 +12,7 @@ export const createCandidate=(workspaceId:string,values:Record<string,unknown>)=
 export const createQuote=(workspaceId:string,values:Record<string,unknown>)=>insert('supplier_quotes',workspaceId,values)
 export const createStockPolicy=(workspaceId:string,values:Record<string,unknown>)=>insert('stock_policies',workspaceId,values)
 export const createPurchasePlan=(workspaceId:string,values:Record<string,unknown>)=>insert('purchase_plans',workspaceId,{creation_key:crypto.randomUUID(),...values})
+export async function createProductStudioPurchasePlan(conceptId:string,lines:Record<string,unknown>[]){const result=await client().rpc('create_product_studio_purchase_plan',{concept_id:conceptId,lines});if(result.error)throw new Error(result.error.message);return result.data as string}
 export const createEquipment=(workspaceId:string,values:Record<string,unknown>)=>insert('equipment_items',workspaceId,values)
 export const recordService=(workspaceId:string,values:Record<string,unknown>)=>insert('equipment_service_events',workspaceId,values)
 export async function linkSupplierProduct(table:'supplier_products'|'packaging_supplier_products',id:string,supplierId:string,updatedAt:string){const result=await client().from(table).update({supplier_id:supplierId,updated_at:new Date().toISOString()}).eq('id',id).eq('updated_at',updatedAt).select('id').maybeSingle();if(result.error)throw new Error(result.error.message);if(!result.data)throw new Error('This Supplier Product changed. Refresh and retry.');return result.data}

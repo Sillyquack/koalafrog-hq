@@ -1,9 +1,10 @@
 import { NavLink } from 'react-router-dom'
-import { Beaker, Blend, BookOpen, Boxes, Calculator, ClipboardCheck, Factory, FileText, FlaskConical, Gauge, Leaf, Package, Rocket, ShoppingBasket, Sparkles, TestTubeDiagonal, Toolbox, X } from 'lucide-react'
+import { Beaker, Blend, BookOpen, Boxes, Calculator, ClipboardCheck, Factory, FileText, FlaskConical, Gauge, Leaf, Package, Rocket, ShoppingBasket, Sparkles, TestTubeDiagonal, Toolbox, WandSparkles, X } from 'lucide-react'
 import { configuredWorkspaceRuntime, workspaceRuntimeLabel } from '../../platform/startup/runtimeMode'
 
 const navItems = [
   { to: '/', label: 'Dashboard', icon: Gauge, end: true },
+  { to: '/product-studio', label: 'Product Studio', icon: WandSparkles },
   { to: '/products', label: 'Products', icon: Boxes },
   { to: '/formulas', label: 'Formulas', icon: FileText },
   { to: '/ingredients', label: 'Ingredients', icon: Leaf },

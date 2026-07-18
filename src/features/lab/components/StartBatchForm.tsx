@@ -1,12 +1,13 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import type { InventoryUnit } from '../../../types/domain'
 import { useFormulaData } from '../../formulas/state/FormulaDataContext'
 
-export function StartBatchForm({ onClose }: { onClose: () => void }) {
+export function StartBatchForm({ onClose, initialFormulaId }: { onClose: () => void; initialFormulaId?: string }) {
   const data = useFormulaData(); const navigate = useNavigate()
-  const [productId, setProductId] = useState<string | undefined>(data.products[0]?.id)
-  const [formulaId, setFormulaId] = useState<string | undefined>(data.formulas.find((formula) => formula.productId === productId)?.id)
+  const initialFormula = data.formulas.find((formula) => formula.id === initialFormulaId)
+  const [productId, setProductId] = useState<string | undefined>(initialFormula?.productId ?? data.products[0]?.id)
+  const [formulaId, setFormulaId] = useState<string | undefined>(initialFormula?.id ?? data.formulas.find((formula) => formula.productId === productId)?.id)
   const [error, setError] = useState('')
   const formulas = data.formulas.filter((formula) => formula.productId === productId)
   const effectiveFormula = formulas.some((formula) => formula.id === formulaId) ? formulaId : formulas[0]?.id
@@ -19,3 +20,6 @@ export function StartBatchForm({ onClose }: { onClose: () => void }) {
     <label>Planned size<input name="size" type="number" min="0.000001" step="any" required /></label><label>Unit<select name="unit" defaultValue="g"><option>mg</option><option>g</option><option>kg</option></select></label><label className="span-2">Purpose<input name="purpose" required /></label><label className="span-2">Notes<textarea name="notes" /></label>
   </div><p className="modal-intro">Creating the batch copies execution lines. It does not consume inventory.</p>{error && <p className="form-error">{error}</p>}<footer><button type="button" className="button ghost" onClick={onClose}>Cancel</button><button className="button primary">Create planned batch</button></footer></form></div>
 }
+
+export function StartBatchHandoffPage(){const{formulaId}=useParams(),navigate=useNavigate();return <StartBatchForm initialFormulaId={formulaId} onClose={()=>navigate('/lab')}/>}
+export function StudioLabHandoff({fallback}:{fallback:React.ReactNode}){const[params]=useSearchParams(),formulaId=params.get('formula'),navigate=useNavigate();return formulaId?<StartBatchForm initialFormulaId={formulaId} onClose={()=>navigate('/lab')}/>:fallback}

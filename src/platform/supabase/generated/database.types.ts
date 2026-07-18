@@ -3853,6 +3853,105 @@ export type Database = {
           },
         ]
       }
+      product_studio_concepts: {
+        Row: {
+          analysis: Json
+          candidate_substitutes: Json
+          created_at: string
+          desired_properties: string[]
+          generated_formula_id: string | null
+          generated_formula_version_id: string | null
+          generated_product_id: string | null
+          id: string
+          intent_mode: string
+          name: string
+          notes: string
+          owner_id: string
+          procurement_plan_id: string | null
+          product_type: string
+          scent_directions: string[]
+          selected_ingredients: Json
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          analysis?: Json
+          candidate_substitutes?: Json
+          created_at?: string
+          desired_properties?: string[]
+          generated_formula_id?: string | null
+          generated_formula_version_id?: string | null
+          generated_product_id?: string | null
+          id: string
+          intent_mode: string
+          name: string
+          notes?: string
+          owner_id: string
+          procurement_plan_id?: string | null
+          product_type: string
+          scent_directions?: string[]
+          selected_ingredients?: Json
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          analysis?: Json
+          candidate_substitutes?: Json
+          created_at?: string
+          desired_properties?: string[]
+          generated_formula_id?: string | null
+          generated_formula_version_id?: string | null
+          generated_product_id?: string | null
+          id?: string
+          intent_mode?: string
+          name?: string
+          notes?: string
+          owner_id?: string
+          procurement_plan_id?: string | null
+          product_type?: string
+          scent_directions?: string[]
+          selected_ingredients?: Json
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_studio_concepts_workspace_id_generated_formula_id_fkey"
+            columns: ["workspace_id", "generated_formula_id"]
+            isOneToOne: false
+            referencedRelation: "formulas"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "product_studio_concepts_workspace_id_generated_formula_ver_fkey"
+            columns: ["workspace_id", "generated_formula_version_id"]
+            isOneToOne: false
+            referencedRelation: "formula_versions"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "product_studio_concepts_workspace_id_generated_product_id_fkey"
+            columns: ["workspace_id", "generated_product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "product_studio_concepts_workspace_id_owner_id_fkey"
+            columns: ["workspace_id", "owner_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id", "owner_id"]
+          },
+          {
+            foreignKeyName: "product_studio_concepts_workspace_id_procurement_plan_id_fkey"
+            columns: ["workspace_id", "procurement_plan_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_plans"
+            referencedColumns: ["workspace_id", "id"]
+          },
+        ]
+      }
       production_lot_allocations: {
         Row: {
           cost_currency_snapshot: string | null
@@ -6141,6 +6240,10 @@ export type Database = {
           target_experiment: string
           target_variant: string
         }
+        Returns: string
+      }
+      create_product_studio_purchase_plan: {
+        Args: { concept_id: string; lines: Json }
         Returns: string
       }
       import_v9_relational: { Args: { payload: Json }; Returns: Json }
