@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { formulaSeed } from '../../data/formulaSeed'
 import { BACKUP_FORMAT, createBackup, validateBackup } from './backup'
+import { APPLICATION_VERSION, WORKSPACE_SCHEMA } from '../version'
 describe('Koalafrog backup', () => {
+  it('exports the build-time application version without changing schema or format versions',()=>{const backup=createBackup(formulaSeed);expect(backup.applicationVersion).toBe(APPLICATION_VERSION);expect(backup.workspace.sourceSchema).toBe(WORKSPACE_SCHEMA);expect(backup.format).toBe(BACKUP_FORMAT)})
+  it('accepts older application-version metadata without using it as a schema compatibility gate',()=>{const backup=createBackup(formulaSeed);backup.applicationVersion='0.1.0';expect(validateBackup(backup).valid).toBe(true);expect(backup.workspace.sourceSchema).toBe('koalafrog-hq:workspace:v9')})
   it('exports version, counts, records, Storage, and Development history', () => { const backup = createBackup(formulaSeed, [{ documentId: 'd', bucket: 'b', objectPath: 'o', fileName: 'f.pdf', size: 10 }], 'owner', { threads: [], runs: [], knowledgeReferences: [], scentMemorySessions: [], scentMemoryCheckpoints: [], developmentExperiments: [{ id: 'e' }], developmentExperimentVariants: [], developmentExperimentChanges: [], developmentObservationPrompts: [], developmentStatusEvents: [], developmentHandoffs: [] }); expect(backup.format).toBe(BACKUP_FORMAT); expect(backup.entityCounts.products).toBe(formulaSeed.products.length); expect(backup.entityCounts.developmentExperiments).toBe(1); expect(backup.storageManifest).toHaveLength(1); expect(backup).not.toHaveProperty('password') })
   it('validates portable backups and rejects malformed input', () => { expect(validateBackup(createBackup(formulaSeed)).valid).toBe(true); expect(validateBackup({ format: 'wrong' }).valid).toBe(false); expect(validateBackup(null).valid).toBe(false) })
   it('rejects record/count disagreement', () => { const backup = createBackup(formulaSeed); backup.entityCounts.products += 1; expect(validateBackup(backup)).toMatchObject({ valid: false, errors: ['Entity count mismatch for products.'] }) })

@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom'
-import { Beaker, Blend, BookOpen, Boxes, Calculator, ClipboardCheck, Factory, FileText, FlaskConical, Gauge, Leaf, Package, Rocket, ShoppingBasket, Sparkles, TestTubeDiagonal, Toolbox, WandSparkles, X } from 'lucide-react'
+import { Beaker, Blend, BookOpen, Boxes, Calculator, ClipboardCheck, Factory, FileText, FlaskConical, Gauge, Leaf, Package, Rocket, Settings, ShoppingBasket, Sparkles, TestTubeDiagonal, Toolbox, WandSparkles, X } from 'lucide-react'
 import { configuredWorkspaceRuntime, workspaceRuntimeLabel } from '../../platform/startup/runtimeMode'
 
 const navItems = [
@@ -23,6 +23,18 @@ const navItems = [
   { to: '/development', label: 'Development', icon: Sparkles },
 ]
 
+const systemNavItems = [
+  { to: '/platform', label: 'Platform', icon: Settings },
+]
+
+function NavigationItems({items,onClose}:{items:typeof navItems;onClose:()=>void}) {
+  return items.map(({ to, label, icon: Icon, end }) => (
+    <NavLink key={to} to={to} end={end} onClick={onClose} className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}>
+      <Icon size={17} strokeWidth={1.7} /><span>{label}</span>
+    </NavLink>
+  ))
+}
+
 export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
   const runtime = workspaceRuntimeLabel(configuredWorkspaceRuntime)
   return (
@@ -34,11 +46,11 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
       </div>
       <nav className="primary-nav" aria-label="Primary navigation">
         <p className="nav-label">Workshop</p>
-        {navItems.map(({ to, label, icon: Icon, end }) => (
-          <NavLink key={to} to={to} end={end} onClick={onClose} className={({ isActive }) => isActive ? 'nav-item active' : 'nav-item'}>
-            <Icon size={17} strokeWidth={1.7} /><span>{label}</span>
-          </NavLink>
-        ))}
+        <NavigationItems items={navItems} onClose={onClose} />
+        <div className="system-nav">
+          <p className="nav-label">System</p>
+          <NavigationItems items={systemNavItems} onClose={onClose} />
+        </div>
       </nav>
       <div className="sidebar-footer"><span className="pulse-dot" />{runtime.title} <small>{runtime.detail}</small></div>
     </aside>

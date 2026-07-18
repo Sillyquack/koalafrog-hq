@@ -9,6 +9,7 @@ import { compareReconciliation, migrationCollectionOrder, reconciliationSnapshot
 import { SupabaseWorkspaceRepository } from './repository/supabaseWorkspaceRepository'
 import { loadDevelopmentBackup } from '../features/development/data/developmentExperimentRepository'
 import { loadProcurementBackup } from '../features/procurement/data/procurementRepository'
+import { platformVersionInfo } from './version'
 
 export function PlatformPage() {
   const data = useFormulaData()
@@ -81,6 +82,9 @@ export function PlatformPage() {
 
   return <>
     <PageHeader eyebrow="Durability, migration, and recovery" title="Platform Foundation" description="Supabase becomes authoritative only after authenticated import and successful reconciliation. Local v9 remains an untouched rollback source." />
+    <section className="platform-version-info" aria-label="Application information">
+      {platformVersionInfo.map(item=><span key={item.label}><strong>{item.label}:</strong> {item.value}</span>)}
+    </section>
     <div className="compliance-notice"><ShieldCheck /><div><strong>{isSupabaseConfigured ? 'Supabase client configured' : 'Supabase setup required'}</strong><p>Browser-safe anon credentials only. Service-role secrets never belong in the frontend.</p></div></div>
     <div className="compliance-grid">
       <section className="panel"><SectionHeader title="Local v9 migration" detail="Explicit dry run before any remote write" /><button className="button ghost" onClick={() => setReport(validateV9Workspace(collections))}>Validate local workspace</button>{report && <><h3>{report.state}</h3><p>{report.recordsReady} records ready · {report.blockingErrors} blocking errors · {report.warnings} warnings</p><button className="button primary" disabled={!!report.blockingErrors || !isSupabaseConfigured} onClick={migrate}>Import to Supabase</button></>}{message && <p className="form-error">{message}</p>}</section>
