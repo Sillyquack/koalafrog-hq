@@ -315,20 +315,34 @@ run('relational v9 migration against local Supabase', () => {
 
   it('persists a Product Studio concept and creates a Draft procurement plan without stock writes',async()=>{
     const{client,ownerId,email,password}=await ownerClient('product-studio')
+    const conceptId=`studio-${crypto.randomUUID()}`
     const imported=await client.rpc('import_v9_relational',{payload:relationalMigrationPayload(structuredClone(formulaSeed))})
     expect(imported.error).toBeNull()
     const snapshot=reconciliationSnapshot(formulaSeed)
     expect((await client.rpc('complete_v9_reconciliation',{run_id:(imported.data as {migrationRunId:string}).migrationRunId,report:compareReconciliation(snapshot,snapshot)})).error).toBeNull()
     expect((await supabase!.auth.signInWithPassword({email,password})).error).toBeNull()
     const repository=new SupabaseWorkspaceRepository(),state=await repository.load(ownerId),beforeMovements=state.inventoryMovements.length,now='2026-07-18T09:00:00.000Z'
-    const saved=await applicationAction(repository,state,'saveProductStudioConcept',current=>({...current,productStudioConcepts:[...current.productStudioConcepts,{id:'studio-integration',name:'Hosted Beard Oil',productType:'beard_oil',intentMode:'design',desiredProperties:['Lightweight'],selectedIngredients:[{ingredientId:'i1',role:'liquid_base',essential:true}],scentDirections:['Scent-free'],candidateSubstitutes:{},notes:'Persistent concept',analysis:{profile:'predicted'},createdAt:now,updatedAt:now}]}))
+    const beforeLots=state.inventoryLots.length
+    const beforeStockPolicies=(await client.from('stock_policies').select('*',{count:'exact',head:true}).eq('owner_id',ownerId)).count
+    const saved=await applicationAction(repository,state,'saveProductStudioConcept',current=>({...current,productStudioConcepts:[...current.productStudioConcepts,{id:conceptId,name:'Hosted Beard Oil',productType:'beard_oil',intentMode:'design',desiredProperties:['Lightweight'],selectedIngredients:[{ingredientId:'i1',role:'liquid_base',essential:true}],scentDirections:['Scent-free'],candidateSubstitutes:{},notes:'Persistent concept',analysis:{profile:'predicted'},createdAt:now,updatedAt:now}]}))
     expect(saved.inventoryMovements).toHaveLength(beforeMovements)
-    expect((await repository.load(ownerId)).productStudioConcepts[0]).toMatchObject({id:'studio-integration',selectedIngredients:[{ingredientId:'i1',role:'liquid_base',essential:true}],analysis:{profile:'predicted'}})
-    const plan=await client.rpc('create_product_studio_purchase_plan',{concept_id:'studio-integration',lines:[{inventoryDomain:'raw_material',supplierProductId:'sp1',description:'Jojoba top-up',quantity:100,unit:'g',reason:'Below target',basis:{ruleId:'studio.inventory'},displayOrder:0}]})
+    const hydrated=await new SupabaseWorkspaceRepository().load(ownerId)
+    expect(hydrated.productStudioConcepts.find(item=>item.id===conceptId)).toMatchObject({id:conceptId,selectedIngredients:[{ingredientId:'i1',role:'liquid_base',essential:true}],analysis:{profile:'predicted'}})
+    const lines=[{inventoryDomain:'raw_material',supplierProductId:'sp1',description:'Jojoba top-up',quantity:100,unit:'g',reason:'Below target',basis:{ruleId:'studio.inventory'},displayOrder:0}]
+    const plan=await client.rpc('create_product_studio_purchase_plan',{concept_id:conceptId,lines})
     expect(plan.error).toBeNull()
-    expect((await client.from('purchase_plans').select('status,source_type,source_id').eq('id',plan.data!).single()).data).toEqual({status:'draft',source_type:'product_studio_concept',source_id:'studio-integration'})
-    expect((await client.from('purchase_plan_lines').select('description,inventory_domain,supplier_product_id').eq('purchase_plan_id',plan.data!).single()).data).toEqual({description:'Jojoba top-up',inventory_domain:'raw_material',supplier_product_id:'sp1'})
-    expect((await repository.load(ownerId)).inventoryMovements).toHaveLength(beforeMovements)
+    expect((await client.from('purchase_plans').select('status,source_type,source_id').eq('owner_id',ownerId).eq('source_type','product_studio_concept').eq('source_id',conceptId)).data).toEqual([{status:'draft',source_type:'product_studio_concept',source_id:conceptId}])
+    expect((await client.from('purchase_plan_lines').select('description,inventory_domain,supplier_product_id,planned_quantity,unit,requirement_reason,requirement_basis,display_order').eq('purchase_plan_id',plan.data!).single()).data).toEqual({description:'Jojoba top-up',inventory_domain:'raw_material',supplier_product_id:'sp1',planned_quantity:100,unit:'g',requirement_reason:'Below target',requirement_basis:{ruleId:'studio.inventory'},display_order:0})
+    expect((await client.from('product_studio_concepts').select('procurement_plan_id').eq('owner_id',ownerId).eq('id',conceptId).single()).data?.procurement_plan_id).toBe(plan.data)
+    const repeated=await client.rpc('create_product_studio_purchase_plan',{concept_id:conceptId,lines})
+    expect(repeated.error).toBeNull()
+    expect(repeated.data).toBe(plan.data)
+    expect((await client.from('purchase_plans').select('*',{count:'exact',head:true}).eq('owner_id',ownerId).eq('source_type','product_studio_concept').eq('source_id',conceptId)).count).toBe(1)
+    const after=await new SupabaseWorkspaceRepository().load(ownerId)
+    expect(after.inventoryLots).toHaveLength(beforeLots)
+    expect(after.inventoryMovements).toHaveLength(beforeMovements)
+    expect((await client.from('inventory_movements').select('*',{count:'exact',head:true}).eq('owner_id',ownerId).in('type',['Receipt','Consumption'])).count).toBe(state.inventoryMovements.filter(item=>item.type==='Receipt'||item.type==='Consumption').length)
+    expect((await client.from('stock_policies').select('*',{count:'exact',head:true}).eq('owner_id',ownerId)).count).toBe(beforeStockPolicies)
     await supabase!.auth.signOut()
   },30_000)
 })

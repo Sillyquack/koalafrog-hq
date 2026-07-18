@@ -8,6 +8,14 @@ export interface WorkspaceActionHooks {
   pending(action: WorkspaceActionName, pending: boolean): void
 }
 
+function persistenceError(error: unknown) {
+  if (error instanceof Error) return error
+  const message = typeof error === 'object' && error !== null && 'message' in error && typeof error.message === 'string'
+    ? error.message
+    : 'Persistence failed.'
+  return new Error(message, { cause: error })
+}
+
 export async function executeWorkspaceAction(repository: WorkspaceRepository,current: FormulaState,action: WorkspaceActionName,mutation: WorkspaceStateMutation,hooks: WorkspaceActionHooks) {
   const next = mutation(current)
   if (next === current) return
@@ -16,7 +24,7 @@ export async function executeWorkspaceAction(repository: WorkspaceRepository,cur
     await repository.commit({ action, previous: current, next })
     hooks.committed(next)
   } catch (error) {
-    const failure=error instanceof Error ? error : new Error('Persistence failed.')
+    const failure=persistenceError(error)
     hooks.failed(action, failure)
     throw failure
   } finally {
