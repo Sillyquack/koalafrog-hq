@@ -540,7 +540,7 @@ export function FormulaDataProvider({
         const issues=formulationIssues(resolved.value.archetype.capabilities,input.phaseDefinitions??[],input.lines,input.manufacturingProcess)
         if(issues.length)throw new Error(issues.join(' '))
         const now=new Date().toISOString(),productId=uid(),formulaId=uid(),formulaVersionId=uid()
-        const product:Product={id:productId,name:input.productName,category:'Beard Care',status:'Active',developmentStage:'Formulation',description:input.description,currentDevelopmentFormulaVersionId:formulaVersionId,scentProfile:'Product Studio concept',createdAt:now,updatedAt:now}
+        const product:Product={id:productId,name:input.productName,category:resolved.value.template.productCategory,status:'Active',developmentStage:'Formulation',description:input.description,currentDevelopmentFormulaVersionId:formulaVersionId,scentProfile:'Product Studio concept',createdAt:now,updatedAt:now}
         const formula:Formula={id:formulaId,productId,name:input.formulaName,description:input.description,createdAt:now,updatedAt:now}
         const version:FormulaVersion={id:formulaVersionId,formulaId,version:'v0.1',status:'Draft',description:'Rule-based Product Studio starting point.',targetCharacteristics:'Predicted direction; physical testing required.',processInstructions:input.manufacturingProcess?.map(step=>`${step.order}. ${step.title}: ${step.instruction}`).join('\n')??'Use the Product Studio template procedure as preparation guidance, then execute through a Lab Batch.',developmentNotes:'Percentages are explainable starting points from curated rules, not supplier-specific limits or safety approval.',phaseDefinitions:input.phaseDefinitions,manufacturingProcess:input.manufacturingProcess,createdAt:now,updatedAt:now}
         const lines:FormulaLine[]=input.lines.map((line,index)=>({id:uid(),formulaVersionId,ingredientId:line.ingredientId,percentage:line.percentage,phase:line.phase,sortOrder:index+1,notes:'Product Studio starting recommendation; editable in Draft.',formulationRole:line.role}))
@@ -755,6 +755,11 @@ export function FormulaDataProvider({
           )
             return current;
           const next = { ...line, ...patch };
+          if (
+            patch.actualQuantity !== undefined &&
+            (!Number.isFinite(patch.actualQuantity) || patch.actualQuantity < 0)
+          )
+            return current;
           if (patch.actualQuantity !== undefined)
             next.variance = quantityVariance(
               patch.actualQuantity,
@@ -883,6 +888,15 @@ export function FormulaDataProvider({
         });
       },
       updateLabBatch(id, patch) {
+        if (
+          (patch.actualYield !== undefined &&
+            (!Number.isFinite(patch.actualYield) || patch.actualYield < 0)) ||
+          (patch.fillCount !== undefined &&
+            (!Number.isFinite(patch.fillCount) ||
+              patch.fillCount < 0 ||
+              !Number.isInteger(patch.fillCount)))
+        )
+          return;
         commitState("updateLabBatch", (current) => ({
           ...current,
           labBatches: current.labBatches.map((b) =>
@@ -911,6 +925,11 @@ export function FormulaDataProvider({
         }));
       },
       updateProcessStep(id, patch) {
+        if (
+          patch.actualTemperature !== undefined &&
+          !Number.isFinite(patch.actualTemperature)
+        )
+          return;
         commitState("updateProcessStep", (current) => ({
           ...current,
           processSteps: current.processSteps.map((s) =>

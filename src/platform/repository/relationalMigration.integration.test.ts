@@ -365,6 +365,35 @@ run('relational v9 migration against local Supabase', () => {
     await supabase!.auth.signOut()
   },30_000)
 
+  it('round-trips Natural Deodorant intent and atomically hydrates its phase-aware Draft without stock writes',async()=>{
+    const{client,ownerId,email,password}=await ownerClient('natural-deodorant')
+    const imported=await client.rpc('import_v9_relational',{payload:relationalMigrationPayload(structuredClone(formulaSeed))})
+    expect(imported.error).toBeNull()
+    const snapshot=reconciliationSnapshot(formulaSeed)
+    expect((await client.rpc('complete_v9_reconciliation',{run_id:(imported.data as {migrationRunId:string}).migrationRunId,report:compareReconciliation(snapshot,snapshot)})).error).toBeNull()
+    expect((await supabase!.auth.signInWithPassword({email,password})).error).toBeNull()
+    const repository=new SupabaseWorkspaceRepository(),state=await repository.load(ownerId),now='2026-07-20T09:00:00.000Z',conceptId=`deodorant-${crypto.randomUUID()}`
+    const inventoryBefore={lots:state.inventoryLots.length,movements:state.inventoryMovements.length,packagingLots:state.packagingInventoryLots.length,packagingMovements:state.packagingInventoryMovements.length}
+    const conceptProcess=[{order:1,title:'Review',instruction:'Review evidence.',critical:false,completionCriteria:'Reviewed.'}]
+    const saved:FormulaState={...state,productStudioConcepts:[...state.productStudioConcepts,{id:conceptId,name:'Natural Deodorant integration fixture',productType:'natural_deodorant',intentMode:'design',desiredProperties:['Bicarbonate-free intent','Jar'],selectedIngredients:[{ingredientId:'i1',role:'liquid_emollient',essential:true}],scentDirections:['Fragrance-free'],candidateSubstitutes:{},notes:'Percent-looking context 25% remains notes only.',analysis:{packagingIntent:'Jar',physicalForms:{i1:'liquid'},phases:{i1:'A'},percentages:{i1:100},manufacturingProcess:conceptProcess},createdAt:now,updatedAt:now}]}
+    await repository.commit({action:'saveProductStudioConcept',previous:state,next:saved})
+    const conceptHydrated=await new SupabaseWorkspaceRepository().load(ownerId)
+    expect(conceptHydrated.productStudioConcepts.find(item=>item.id===conceptId)).toMatchObject({productType:'natural_deodorant',notes:'Percent-looking context 25% remains notes only.',analysis:{packagingIntent:'Jar',physicalForms:{i1:'liquid'},manufacturingProcess:conceptProcess}})
+    const productId=`deodorant-product-${crypto.randomUUID()}`,formulaId=`deodorant-formula-${crypto.randomUUID()}`,versionId=`deodorant-version-${crypto.randomUUID()}`,lineId=`deodorant-line-${crypto.randomUUID()}`
+    const phases=[{code:'A',name:'Structuring and melt phase',order:1,instructions:'Supported conditions only.'},{code:'B',name:'Powder dispersion',order:2,instructions:'Disperse rather than assume dissolved.'},{code:'C',name:'Cool-down',order:3,instructions:'Heat-sensitive additions.'}]
+    const process=[{order:1,title:'Review source',instruction:'Review documentation.',critical:true,completionCriteria:'Reviewed.'},{order:2,title:'Disperse',instruction:'Record actual mixing.',phaseCode:'B',mixingMethod:'Recorded in Lab',mixingIntensity:'Recorded in Lab',critical:true,completionCriteria:'No dry pockets.'}]
+    const handedOff:FormulaState={...conceptHydrated,products:[...conceptHydrated.products,{id:productId,name:'Natural Deodorant integration fixture',category:'Personal Care',status:'Active',developmentStage:'Formulation',description:'Development fixture',currentDevelopmentFormulaVersionId:versionId,scentProfile:'Product Studio concept',createdAt:now,updatedAt:now}],formulas:[...conceptHydrated.formulas,{id:formulaId,productId,name:'Natural Deodorant — Studio Draft',description:'Physical testing required.',createdAt:now,updatedAt:now}],formulaVersions:[...conceptHydrated.formulaVersions,{id:versionId,formulaId,version:'v0.1',status:'Draft',description:'Solid/stick draft.',targetCharacteristics:'Jar intent',phaseDefinitions:phases,manufacturingProcess:process,createdAt:now,updatedAt:now}],formulaLines:[...conceptHydrated.formulaLines,{id:lineId,formulaVersionId:versionId,ingredientId:'i1',percentage:100,phase:'A',sortOrder:1,notes:'Structured composition only.',formulationRole:'liquid_emollient'}],productStudioConcepts:conceptHydrated.productStudioConcepts.map(item=>item.id===conceptId?{...item,generatedProductId:productId,generatedFormulaId:formulaId,generatedFormulaVersionId:versionId,updatedAt:now}:item)}
+    await repository.commit({action:'createFormulaFromStudio',previous:conceptHydrated,next:handedOff})
+    await repository.commit({action:'createFormulaFromStudio',previous:conceptHydrated,next:handedOff})
+    const hydrated=await new SupabaseWorkspaceRepository().load(ownerId)
+    expect(hydrated.formulas.filter(item=>item.id===formulaId)).toEqual([expect.objectContaining({productId})])
+    expect(hydrated.formulaVersions.find(item=>item.id===versionId)).toMatchObject({status:'Draft',phaseDefinitions:phases,manufacturingProcess:process})
+    expect(hydrated.formulaLines.filter(item=>item.formulaVersionId===versionId)).toEqual([expect.objectContaining({ingredientId:'i1',percentage:100,phase:'A',formulationRole:'liquid_emollient'})])
+    expect(hydrated.productStudioConcepts.find(item=>item.id===conceptId)).toMatchObject({generatedFormulaId:formulaId,generatedFormulaVersionId:versionId})
+    expect({lots:hydrated.inventoryLots.length,movements:hydrated.inventoryMovements.length,packagingLots:hydrated.packagingInventoryLots.length,packagingMovements:hydrated.packagingInventoryMovements.length}).toEqual(inventoryBefore)
+    await supabase!.auth.signOut()
+  },30_000)
+
   it('round-trips Beard Butter phase and Lab process metadata without planning inventory writes',async()=>{
     const{client,ownerId,email,password}=await ownerClient('beard-butter')
     const imported=await client.rpc('import_v9_relational',{payload:relationalMigrationPayload(structuredClone(formulaSeed))})

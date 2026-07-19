@@ -56,7 +56,7 @@ export interface FormulaLine {
   formulationRole?: string
 }
 
-export type ProductStudioType='beard_oil'|'beard_butter'
+export type ProductStudioType='beard_oil'|'beard_butter'|'natural_deodorant'
 export type ProductStudioIntent='make_today'|'design'
 export interface ProductStudioSelection {ingredientId:string;role:string;essential:boolean}
 export interface ProductStudioConcept {

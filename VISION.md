@@ -41,6 +41,8 @@ Beard Butter er den første varmeprosesserte flerfasemodellen i Product Studio. 
 
 Beard Oil og Beard Butter er produktsjablonger over en felles formuleringsmotor. Motoren beskriver gjenbrukbare arketyper og prosessegenskaper, mens sjablongen beholder produktmål, veiledning og evalueringskriterier. Planlagte arketyper skal være ærlig merket som utilgjengelige til regler og sikkerhetsgrenser faktisk er implementert.
 
+Fra v0.12.0 er `solid_or_stick` en operativ arketype. Natural Deodorant er den første produktsjablongen og gjenbruker samme Formula-, Development-, Lab-, Testing-, emballasje- og lagergrenser som resten av systemet. Den støtter strukturerende materialer, væsker, pulverdispersjon, kontrollert fylling og fysisk evaluering uten å anta universelle temperaturer, effekt, sikkerhet eller regulatorisk status.
+
 ## Release-regel
 
 Ingen ny stor fase starter før den forrige er verdt å beholde.

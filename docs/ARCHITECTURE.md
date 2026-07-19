@@ -50,6 +50,8 @@ Product Studio Formula handoffs may attach optional ordered phase definitions an
 
 The Core Formulation Engine separates reusable formulation archetypes from familiar Product Studio templates. The typed registry owns capability maturity and template-to-archetype mapping; shared handoff validation resolves capabilities from the saved concept type rather than product-name conditionals. See [FORMULATION_ENGINE.md](FORMULATION_ENGINE.md).
 
+v0.12.0 makes `solid_or_stick` operational and registers Natural Deodorant as its first template. The template persists choices in existing Product Studio concept JSON, while phase definitions and draft processes use existing Formula Version JSON metadata. Development Experiments, Lab snapshots, observations, packaging intent, and inventory boundaries remain shared. A forward-only database constraint migration adds `natural_deodorant` as an allowed concept type; workspace schema v9 and backup v1 remain unchanged.
+
 ## UI approach
 
 The visual system uses shared CSS tokens and purposeful components rather than a third-party component kit. The dense sidebar supports the breadth of the operating system; content remains calm and tactile. Scent House intentionally shifts into a darker, more atmospheric workspace while retaining shared navigation and interaction conventions.

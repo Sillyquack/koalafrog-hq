@@ -1,0 +1,34 @@
+import type{Ingredient}from'../../../types/domain'
+import{productTemplates}from'./formulationEngine'
+import{formulaPercentageTotal,orderedPhases}from'../../formulas/domain/multiPhaseLogic'
+
+export const naturalDeodorantPhases=[...productTemplates.natural_deodorant.defaultPhases]
+export const naturalDeodorantProcess=[...productTemplates.natural_deodorant.draftProcess]
+export const deodorantRoles=['structuring_wax','soft_structurant','liquid_emollient','absorbent_powder','deodorant_active','slip_modifier','antioxidant','fragrance','preservative','other']as const
+export type DeodorantRole=typeof deodorantRoles[number]
+export type PhysicalForm='solid'|'liquid'|'powder'|'unknown'
+export const deodorantEvaluationFields=['firmness','releaseBehavior','scoopability','glide','drag','payoff','spreadability','powderiness','residue','greasiness','dryDown','visibleWhitening','crumbling','cracking','sweatingOrOilBleed','shrinkageOrSinkhole','graininess','odourControlObservation','skinComfort','fragranceStrength','packagingCompatibility','warmTemperatureBehavior','coolTemperatureBehavior','appearance','overallResult']as const
+export interface DeodorantVariant{id:string;name:string;changes:string[];evaluation?:Partial<Record<typeof deodorantEvaluationFields[number],number>>}
+
+const text=(ingredient:Ingredient)=>`${ingredient.commonName} ${ingredient.inciName} ${ingredient.category} ${ingredient.functions.join(' ')}`.toLowerCase()
+export function classifyDeodorantIngredient(ingredient:Ingredient):{role:DeodorantRole;phase:string;physicalForm:PhysicalForm;guidance:string[]}{
+ const value=text(ingredient),category=ingredient.category.trim().toLowerCase(),functions=ingredient.functions.map(item=>item.trim().toLowerCase()),fragrance=/\b(parfum|essential oil)\b/.test(value)||category==='fragrance'||functions.some(item=>item==='perfuming'||item==='fragrance material'),antioxidant=/\b(tocopherol|tocopheryl|antioxidant)\b/.test(value),bicarbonate=/\b(sodium bicarbonate|bicarbonate of soda|nahco3)\b/.test(value),magnesium=/\bmagnesium (hydroxide|carbonate)\b/.test(value),zinc=/\bzinc ricinoleate\b/.test(value),powder=category==='powder'||/\b(starch|arrowroot|tapioca|kaolin|sodium bicarbonate|magnesium hydroxide|magnesium carbonate|zinc ricinoleate)\b/.test(value),liquidWax=/\b(liquid wax ester|jojoba|simmondsia)\b/.test(value),wax=!liquidWax&&(category==='wax'||/\b(beeswax|candelilla wax|carnauba wax|cera alba)\b/.test(value)),butter=category==='butter'||/\b(shea butter|mango butter|cocoa butter)\b/.test(value),liquid=liquidWax||category==='carrier oil'||/\b(squalane|triglyceride|liquid oil)\b/.test(value)
+ const role:DeodorantRole=fragrance?'fragrance':antioxidant?'antioxidant':bicarbonate||magnesium||zinc?'deodorant_active':powder?'absorbent_powder':wax?'structuring_wax':butter?'soft_structurant':liquid?'liquid_emollient':'other'
+ const physicalForm:PhysicalForm=powder?'powder':wax||butter?'solid':liquid?'liquid':'unknown'
+ const guidance=[physicalForm==='powder'?'Disperse as an insoluble material unless supported documentation establishes otherwise; dispersion method remains material-specific.':'',bicarbonate?'Bicarbonate may conflict with bicarbonate-free intent; irritation and suitability require review.':'',magnesium||zinc?'This metadata supports a deodorant-intent role only; it does not establish efficacy or regulatory status.':'',physicalForm==='unknown'?'Physical form is unsupported; review required.':''].filter(Boolean)
+ return{role,phase:fragrance||antioxidant?'C':powder||bicarbonate||magnesium||zinc?'B':'A',physicalForm,guidance}
+}
+export function bicarbonateFreeGuidance(enabled:boolean,ingredients:Ingredient[]){if(!enabled)return[];return ingredients.some(item=>/bicarbonate|sodium bicarbonate/.test(text(item)))?['Bicarbonate-free intent conflicts with a selected bicarbonate material. Remove it or change the intent.']:['Bicarbonate-free is a development intent and does not imply hypoallergenic or irritation-free.']}
+export function compareDeodorantVariants(variants:DeodorantVariant[]){return[...variants].sort((a,b)=>(b.evaluation?.overallResult??0)-(a.evaluation?.overallResult??0))}
+export function validDeodorantScore(value:number){return Number.isFinite(value)&&value>=1&&value<=5}
+export function rolePhysicalFormIssues(lines:Array<{ingredientId:string;role:string}>,ingredients:Ingredient[]){
+ const issues:string[]=[]
+ for(const line of lines){const ingredient=ingredients.find(item=>item.id===line.ingredientId);if(!ingredient){issues.push(`Ingredient ${line.ingredientId} is unavailable.`);continue}const form=classifyDeodorantIngredient(ingredient).physicalForm
+  if(form==='powder'&&!['absorbent_powder','deodorant_active','other'].includes(line.role))issues.push(`${ingredient.commonName} is recorded as a powder and needs a dispersion-appropriate role.`)
+  if(form==='liquid'&&['structuring_wax','soft_structurant','absorbent_powder'].includes(line.role))issues.push(`${ingredient.commonName} is recorded as a liquid and cannot use the ${line.role.replaceAll('_',' ')} role.`)
+  if(form==='solid'&&['liquid_emollient','absorbent_powder'].includes(line.role))issues.push(`${ingredient.commonName} is recorded as a solid and cannot use the ${line.role.replaceAll('_',' ')} role.`)
+ }
+ return issues
+}
+export function evaluationFieldsForPackaging(intent:string){return deodorantEvaluationFields.filter(field=>intent==='Jar'?field!=='releaseBehavior':['Twist-up stick','Push-up tube'].includes(intent)?field!=='scoopability':true)}
+export{formulaPercentageTotal,orderedPhases}
