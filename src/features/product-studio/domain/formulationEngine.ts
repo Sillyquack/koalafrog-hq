@@ -53,6 +53,19 @@ export interface ProductTemplate {
   guidance:readonly string[]
 }
 
+export interface ArchetypeCompositionLine {
+  ingredientName:string
+  percentage:number
+  role:string
+  physicalForm:'solid'|'liquid'|'powder'|'unknown'
+}
+
+export interface ArchetypeCompositionResult {
+  compatible:boolean
+  blockingIssues:string[]
+  reviewIssues:string[]
+}
+
 const noCapabilities:FormulationCapabilities={phases:false,heating:false,cooling:false,aqueousPhase:false,oilPhase:false,emulsification:false,coolDownAdditions:false,powderDispersion:false,controlledFilling:false,setting:false,structuredPhysicalTesting:false}
 
 export const formulationArchetypes={
@@ -129,4 +142,17 @@ export function resolveTemplateArchetype(id:string):RegistryResult<{template:Pro
   if(!template.ok)return template
   const archetype=resolveArchetype(template.value.archetypeId)
   return archetype.ok?{ok:true,value:{template:template.value,archetype:archetype.value}}:archetype
+}
+
+export function validateArchetypeComposition(archetypeId:FormulationArchetypeId,packagingIntent:string,lines:ArchetypeCompositionLine[]):ArchetypeCompositionResult{
+  if(archetypeId!=='solid_or_stick')return{compatible:true,blockingIssues:[],reviewIssues:[]}
+  const supportedStructurant=lines.some(line=>line.physicalForm==='solid'&&['structuring_wax','soft_structurant'].includes(line.role))
+  const blockingIssues:string[]=[]
+  if(!supportedStructurant)blockingIssues.push(
+    ['Twist-up stick','Push-up tube'].includes(packagingIntent)
+      ?`${packagingIntent} intent requires a supported solid structuring material.`
+      :'A solid or balm-like jar system requires at least one supported solid or semi-solid structuring material.'
+  )
+  const reviewIssues=lines.filter(line=>line.physicalForm==='unknown').map(line=>`${line.ingredientName}: physical form is unknown. Review supplier documentation.`)
+  return{compatible:blockingIssues.length===0,blockingIssues,reviewIssues}
 }

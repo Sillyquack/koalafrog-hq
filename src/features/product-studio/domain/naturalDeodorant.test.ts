@@ -3,7 +3,7 @@ import type{FormulaVersion,Ingredient}from'../../../types/domain'
 import{createBatchLines,createBatchProcessSteps}from'../../lab/domain/labLogic'
 import{formulationIssues}from'../../formulas/domain/multiPhaseLogic'
 import{productTemplates,formulationArchetypes}from'./formulationEngine'
-import{bicarbonateFreeGuidance,classifyDeodorantIngredient,compareDeodorantVariants,evaluationFieldsForPackaging,naturalDeodorantPhases,naturalDeodorantProcess,orderedPhases,rolePhysicalFormIssues}from'./naturalDeodorant'
+import{bicarbonateFreeGuidance,classifyDeodorantIngredient,compareDeodorantVariants,evaluationFieldsForPackaging,formulaPercentageTotal,naturalDeodorantCompatibility,naturalDeodorantPhases,naturalDeodorantProcess,orderedPhases,rolePhysicalFormIssues}from'./naturalDeodorant'
 
 const ingredient=(id:string,name:string,category:string):Ingredient=>({id,commonName:name,inciName:name,category,functions:[],description:'',defaultUnit:'g',notes:'',status:'Research',createdAt:'',updatedAt:''})
 
@@ -42,6 +42,13 @@ describe('Natural Deodorant solid or stick workflow',()=>{
   expect(evaluationFieldsForPackaging('Jar')).not.toContain('releaseBehavior')
   expect(evaluationFieldsForPackaging('Twist-up stick')).toContain('releaseBehavior')
   expect(evaluationFieldsForPackaging('Twist-up stick')).not.toContain('scoopability')
+ })
+ it('keeps numerical validity separate from template physical and documentation compatibility',()=>{
+  const liquidOnly=[{ingredientName:'Coconut Fractionated Carrier Oil',percentage:60,role:'liquid_emollient',physicalForm:'liquid' as const,phase:'A'},{ingredientName:'Bergamot Oil',percentage:40,role:'fragrance',physicalForm:'liquid' as const,phase:'C'}]
+  expect(formulaPercentageTotal(liquidOnly)).toBe(100)
+  expect(naturalDeodorantCompatibility('Twist-up stick',liquidOnly)).toMatchObject({compatible:false,blockingIssues:expect.arrayContaining(['Twist-up stick intent requires a supported solid structuring material.','Natural Deodorant requires at least one supported deodorant-intent material; efficacy remains unverified.',expect.stringContaining('Bergamot Oil is assigned as fragrance at 40%')])})
+  const compatible=[{ingredientName:'Beeswax',percentage:30,role:'structuring_wax',physicalForm:'solid' as const,phase:'A'},{ingredientName:'Arrowroot',percentage:70,role:'absorbent_powder',physicalForm:'powder' as const,phase:'B'}]
+  expect(naturalDeodorantCompatibility('Twist-up stick',compatible)).toMatchObject({compatible:true,blockingIssues:[]})
  })
  it('makes bicarbonate-free guidance honest and never implies irritation-free positioning',()=>{
   const baking=ingredient('bicarb','Sodium Bicarbonate','Powder')

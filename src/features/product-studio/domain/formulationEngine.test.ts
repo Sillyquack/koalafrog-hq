@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { formulationIssues } from '../../formulas/domain/multiPhaseLogic'
-import { formulationArchetypes, productTemplates, resolveArchetype, resolveProductTemplate, resolveTemplateArchetype } from './formulationEngine'
+import { formulationArchetypes, productTemplates, resolveArchetype, resolveProductTemplate, resolveTemplateArchetype, validateArchetypeComposition } from './formulationEngine'
 
 describe('Core Formulation Engine registry',()=>{
   it('maps existing product templates to operational archetypes',()=>{
@@ -19,6 +19,16 @@ describe('Core Formulation Engine registry',()=>{
     expect(resolveArchetype('unknown')).toEqual({ok:false,error:'Unknown formulation archetype: unknown'})
     expect(resolveProductTemplate('unknown')).toEqual({ok:false,error:'Unknown Product Studio template: unknown'})
     expect(resolveTemplateArchetype('unknown')).toEqual({ok:false,error:'Unknown Product Studio template: unknown'})
+  })
+
+  it('separates solid-or-stick physical compatibility from numerical validity',()=>{
+    const liquid={ingredientName:'Jojoba Oil',percentage:100,role:'liquid_emollient',physicalForm:'liquid' as const}
+    expect(validateArchetypeComposition('solid_or_stick','Twist-up stick',[liquid])).toMatchObject({compatible:false,blockingIssues:['Twist-up stick intent requires a supported solid structuring material.']})
+    expect(validateArchetypeComposition('solid_or_stick','Jar',[liquid]).blockingIssues[0]).toContain('solid or balm-like jar system')
+    expect(validateArchetypeComposition('solid_or_stick','Twist-up stick',[{...liquid,ingredientName:'Beeswax',role:'structuring_wax',physicalForm:'solid'}])).toMatchObject({compatible:true,blockingIssues:[]})
+    expect(validateArchetypeComposition('solid_or_stick','Jar',[{...liquid,ingredientName:'Shea Butter',role:'soft_structurant',physicalForm:'solid'}])).toMatchObject({compatible:true,blockingIssues:[]})
+    expect(validateArchetypeComposition('solid_or_stick','Jar',[{...liquid,ingredientName:'Unknown material',role:'soft_structurant',physicalForm:'unknown'}])).toMatchObject({compatible:false,reviewIssues:[expect.stringContaining('physical form is unknown')]})
+    expect(validateArchetypeComposition('simple_liquid','Bottle',[liquid])).toMatchObject({compatible:true,blockingIssues:[],reviewIssues:[]})
   })
 
   it('uses shared composition validation for simple liquids',()=>{

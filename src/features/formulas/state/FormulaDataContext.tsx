@@ -53,8 +53,11 @@ import type {
 } from "../../../types/domain";
 import { duplicateDossier as duplicateComplianceDossierDomain } from "../../compliance/domain/complianceLogic";
 import { canTransition, duplicateVersion } from "../domain/formulaLogic";
-import { formulationIssues } from "../domain/multiPhaseLogic";
+import { formulaTotalsExactly100, formulationIssues } from "../domain/multiPhaseLogic";
 import { resolveTemplateArchetype } from "../../product-studio/domain/formulationEngine";
+import {
+  naturalDeodorantFormulaCompatibility,
+} from "../../product-studio/domain/naturalDeodorant";
 import {
   generateLotNumber,
   validateMovement,
@@ -442,6 +445,16 @@ export function FormulaDataProvider({
             (item) => item.id === versionId,
           );
           if (!source || !canTransition(source.status, status)) return current;
+          if (status === "Candidate") {
+            const candidateLines=current.formulaLines.filter(item=>item.formulaVersionId===versionId);
+            if(!formulaTotalsExactly100(candidateLines))return current;
+            const formula=current.formulas.find(item=>item.id===source.formulaId);
+            const concept=current.productStudioConcepts.find(item=>item.generatedFormulaId===formula?.id);
+            if(concept?.productType==="natural_deodorant"){
+              const compatibility=naturalDeodorantFormulaCompatibility(String(concept.analysis.packagingIntent??"Unknown"),candidateLines,current.ingredients);
+              if(!compatibility.compatible)return current;
+            }
+          }
           const version = {
             ...source,
             status,
@@ -700,6 +713,11 @@ export function FormulaDataProvider({
         );
         if (!product || !version || version.formulaId !== input.formulaId)
           throw new Error("Select a valid product, formula, and version.");
+        const concept=state.productStudioConcepts.find(item=>item.generatedFormulaId===input.formulaId);
+        if(concept?.productType==="natural_deodorant"){
+          const compatibility=naturalDeodorantFormulaCompatibility(String(concept.analysis.packagingIntent??"Unknown"),state.formulaLines.filter(line=>line.formulaVersionId===version.id),state.ingredients);
+          if(!compatibility.compatible)throw new Error(compatibility.blockingIssues.join(" "));
+        }
         if (version.status === "Retired")
           throw new Error(
             "Retired versions require a deliberate historical workflow.",

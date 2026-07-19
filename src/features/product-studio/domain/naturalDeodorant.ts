@@ -1,5 +1,5 @@
-import type{Ingredient}from'../../../types/domain'
-import{productTemplates}from'./formulationEngine'
+import type{FormulaLine,Ingredient}from'../../../types/domain'
+import{productTemplates,validateArchetypeComposition,type ArchetypeCompositionLine}from'./formulationEngine'
 import{formulaPercentageTotal,orderedPhases}from'../../formulas/domain/multiPhaseLogic'
 
 export const naturalDeodorantPhases=[...productTemplates.natural_deodorant.defaultPhases]
@@ -31,4 +31,12 @@ export function rolePhysicalFormIssues(lines:Array<{ingredientId:string;role:str
  return issues
 }
 export function evaluationFieldsForPackaging(intent:string){return deodorantEvaluationFields.filter(field=>intent==='Jar'?field!=='releaseBehavior':['Twist-up stick','Push-up tube'].includes(intent)?field!=='scoopability':true)}
+export function naturalDeodorantCompatibility(packagingIntent:string,lines:Array<ArchetypeCompositionLine&{phase:string}>){
+ const archetype=validateArchetypeComposition('solid_or_stick',packagingIntent,lines),blockingIssues=[...archetype.blockingIssues],reviewIssues=[...archetype.reviewIssues]
+ if(!lines.some(line=>['deodorant_active','absorbent_powder'].includes(line.role)))blockingIssues.push('Natural Deodorant requires at least one supported deodorant-intent material; efficacy remains unverified.')
+ if(!lines.some(line=>line.phase==='B'&&['deodorant_active','absorbent_powder'].includes(line.role)))blockingIssues.push('Phase B needs a supported powder or deodorant-intent material for this template.')
+ for(const line of lines.filter(line=>line.role==='fragrance'&&line.percentage>0))blockingIssues.push(`${line.ingredientName} is assigned as fragrance at ${line.percentage}%. Supported supplier and safety documentation is required; the usage limit is unknown, so this Formula is not Lab-ready or Candidate-ready.`)
+ return{compatible:blockingIssues.length===0,blockingIssues:[...new Set(blockingIssues)],reviewIssues:[...new Set(reviewIssues)]}
+}
+export function naturalDeodorantFormulaCompatibility(packagingIntent:string,lines:FormulaLine[],ingredients:Ingredient[]){return naturalDeodorantCompatibility(packagingIntent,lines.map(line=>{const ingredient=ingredients.find(item=>item.id===line.ingredientId),classification=ingredient&&classifyDeodorantIngredient(ingredient);return{ingredientName:ingredient?.commonName??line.ingredientId,percentage:line.percentage,role:line.formulationRole??'other',phase:line.phase,physicalForm:classification?.physicalForm??'unknown'}}))}
 export{formulaPercentageTotal,orderedPhases}
