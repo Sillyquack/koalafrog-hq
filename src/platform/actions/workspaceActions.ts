@@ -17,6 +17,7 @@ export const workspaceActionNames = [
   "adoptReferenceIngredient",
   "updateIngredient",
   "archiveIngredient",
+  "saveIngredientKnowledge",
   "saveSupplierProduct",
   "markSupplierPreferred",
   "markPackagingSupplierPreferred",

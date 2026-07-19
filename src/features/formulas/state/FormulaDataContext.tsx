@@ -20,6 +20,10 @@ import type {
   FormulaVersion,
   FormulaVersionStatus,
   Ingredient,
+  IngredientKnowledgeCompatibility,
+  IngredientKnowledgeEvidence,
+  IngredientKnowledgeProfile,
+  IngredientKnowledgeRole,
   InventoryLot,
   InventoryMovement,
   InventoryUnit,
@@ -58,6 +62,7 @@ import { resolveTemplateArchetype } from "../../product-studio/domain/formulatio
 import {
   naturalDeodorantFormulaCompatibility,
 } from "../../product-studio/domain/naturalDeodorant";
+import { validateIngredientKnowledgeAggregate } from "../../ingredients/domain/ingredientKnowledge";
 import {
   generateLotNumber,
   validateMovement,
@@ -126,6 +131,7 @@ interface FormulaDataValue extends FormulaState {
   adoptReferenceIngredient(input:Omit<Ingredient,"id"|"createdAt"|"updatedAt">):Promise<Ingredient>;
   updateIngredient(id: string, patch: Partial<Ingredient>): void;
   archiveIngredient(id: string): void;
+  saveIngredientKnowledge(input:{profile:IngredientKnowledgeProfile;roles:IngredientKnowledgeRole[];compatibility:IngredientKnowledgeCompatibility[];evidence:IngredientKnowledgeEvidence[]}):Promise<void>|void;
   saveSupplierProduct(
     input: Omit<SupplierProduct, "id" | "createdAt" | "updatedAt"> & {
       id?: string;
@@ -603,6 +609,22 @@ export function FormulaDataProvider({
               : item,
           ),
         }));
+      },
+      saveIngredientKnowledge(input) {
+        const now=input.profile.updatedAt,previousRoles=new Map(stateRef.current.ingredientKnowledgeRoles.map(item=>[item.id,item])),previousCompatibility=new Map(stateRef.current.ingredientKnowledgeCompatibility.map(item=>[item.id,item])),previousEvidence=new Map(stateRef.current.ingredientKnowledgeEvidence.map(item=>[item.id,item]))
+        const aggregate={...input,
+          roles:input.roles.map(item=>({...item,createdAt:previousRoles.get(item.id)?.createdAt??item.createdAt,updatedAt:now})),
+          compatibility:input.compatibility.map(item=>({...item,createdAt:previousCompatibility.get(item.id)?.createdAt??item.createdAt,updatedAt:now})),
+          evidence:input.evidence.map(item=>({...item,createdAt:previousEvidence.get(item.id)?.createdAt??item.createdAt,updatedAt:now})),
+        }
+        const errors=validateIngredientKnowledgeAggregate(aggregate,stateRef.current.ingredients.map(item=>item.id))
+        if(errors.length)throw new Error(errors.join(' '))
+        const result=commitState('saveIngredientKnowledge',current=>({...current,
+          ingredientKnowledgeProfiles:[...current.ingredientKnowledgeProfiles.filter(item=>item.ingredientId!==aggregate.profile.ingredientId),aggregate.profile],
+          ingredientKnowledgeRoles:[...current.ingredientKnowledgeRoles.filter(item=>item.ingredientKnowledgeProfileId!==aggregate.profile.id),...aggregate.roles],
+          ingredientKnowledgeCompatibility:[...current.ingredientKnowledgeCompatibility.filter(item=>item.ingredientKnowledgeProfileId!==aggregate.profile.id),...aggregate.compatibility],
+          ingredientKnowledgeEvidence:[...current.ingredientKnowledgeEvidence.filter(item=>item.ingredientKnowledgeProfileId!==aggregate.profile.id),...aggregate.evidence],
+        }));return result instanceof Promise?result.then(()=>undefined):undefined
       },
       saveSupplierProduct(input) {
         const now = new Date().toISOString();

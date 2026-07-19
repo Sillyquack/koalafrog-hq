@@ -1,5 +1,11 @@
 # Architecture
 
+## Ingredient Knowledge boundary
+
+`Reference Ingredient → Workspace Ingredient → Ingredient Knowledge → Product Studio / Formula / Lab / Testing`. Profiles remain subordinate to canonical Workspace Ingredients. Repeatable roles, compatibility, and evidence are relational and owner-isolated. Downstream workflows consume known values and preserve weak fallback semantics. See [INGREDIENT_KNOWLEDGE.md](INGREDIENT_KNOWLEDGE.md).
+
+Authenticated browser QA uses an ephemeral owner in local Supabase. Production authentication and route protection are unchanged; no unauthenticated or test-owner bypass exists.
+
 ## Current foundation
 
 Koalafrog HQ is a client-only React and TypeScript application built with Vite. React Router owns top-level navigation. `AppShell` provides the persistent responsive navigation, top bar, and page outlet.
@@ -98,3 +104,6 @@ Supabase schema history lives in `supabase/migrations`. RLS uses `auth.uid()` ow
 Phase 8B.1 adds the final relational destination independently of application cutover. Fifty v9 collections map to explicit domain tables and five normalized child/join tables. An authenticated `security invoker` RPC performs all-or-nothing import, and relational read-back feeds the existing pure reconciliation logic. localStorage intentionally remains runtime-authoritative until the later application-action refactor; the generic compatibility table receives no new relational imports.
 
 Phase 8B.2 routes persistent provider commands through a persistence-confirmed action executor and a session-selected repository. Phase 8B.3A expands the inventory to 66 commands with Compliance Document metadata actions, adds private versioned Storage, and makes startup authority explicit. The Local adapter remains the development default. `VITE_WORKSPACE_REPOSITORY=supabase` requires Auth plus an activated workspace and hydrates all relational state before mounting the provider; loading/failure never falls back to Local. RLS is owner-scoped across roots and children, Storage paths begin with `auth.uid()`, and security-definer lifecycle RPCs revalidate ownership and relationships. Live two-user tests prove anonymous/cross-owner denial, legitimate owner workflows, RPC boundaries, and private file isolation.
+# Ingredient Knowledge editor reliability
+
+Ingredient Knowledge uses semantic aggregate normalization for dirty-state detection and an explicitly updated post-transaction baseline. The application’s data-router boundary enables supported navigation blocking without replacing the existing route table. Browser unload protection exists only while dirty. Legacy Evidence identifiers are sanitized for presentation without view-time persistence changes. Ingredient Knowledge timestamps provide stale-write detection, not complete revision history.

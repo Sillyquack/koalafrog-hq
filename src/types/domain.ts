@@ -67,6 +67,10 @@ export interface ProductStudioConcept {
 }
 
 export interface FormulaState {
+  ingredientKnowledgeProfiles: IngredientKnowledgeProfile[]
+  ingredientKnowledgeRoles: IngredientKnowledgeRole[]
+  ingredientKnowledgeCompatibility: IngredientKnowledgeCompatibility[]
+  ingredientKnowledgeEvidence: IngredientKnowledgeEvidence[]
   productStudioConcepts:ProductStudioConcept[]
   products: Product[]
   formulas: Formula[]
@@ -119,6 +123,28 @@ export interface FormulaState {
   launchDecisions: LaunchDecision[]
   safetyEffectRecords: SafetyEffectRecord[]
 }
+
+export type KnowledgeState = 'known'|'unknown'|'not_applicable'|'review_required'
+export type KnowledgeConfidence = 'verified'|'supported'|'observed'|'assumed'|'unknown'|'conflicting'
+export type EvidenceSourceType = 'supplier_document'|'scientific_literature'|'patent'|'regulatory_document'|'internal_lab'|'internal_observation'|'external_observation'|'user_note'|'unknown'
+export type KnowledgeProvenance = 'reference'|'supplier_specific'|'internal'|'user'
+export interface KnowledgeValue<T>{state:KnowledgeState;value?:T;sourceReference?:string;confidence:KnowledgeConfidence;notes?:string;unit?:string;lowerBound?:number;upperBound?:number}
+export interface MeasuredKnowledgeValue extends KnowledgeValue<number>{unit?:string;lowerBound?:number;upperBound?:number}
+export type IngredientPhysicalForm='liquid'|'semi_solid'|'solid'|'powder'|'wax'|'paste'|'granules'|'unknown'
+export type IngredientKnowledgeRoleName='structuring_wax'|'soft_structurant'|'liquid_emollient'|'occlusive'|'absorbent_powder'|'deodorant_active'|'slip_modifier'|'texture_modifier'|'film_former'|'antioxidant'|'fragrance'|'preservative'|'solvent'|'humectant'|'surfactant'|'emulsifier'|'active'|'colourant'|'other'
+export type IngredientKnowledgeRoleLevel='primary'|'secondary'|'optional'|'context_dependent'
+export type CompatibilityRating='excellent'|'good'|'acceptable'|'avoid'|'unknown'|'review_required'
+export type CompatibilityTargetType='ingredient'|'formulation_archetype'|'product_template'|'packaging_material'
+export type SensoryDimension='slip'|'drag'|'grip'|'greasy_feel'|'powder_feel'|'gloss'|'dryness'|'richness'|'spreadability'|'absorption'|'occlusion'|'film_forming'|'payoff'|'tackiness'|'residue'
+export type PredictionInputName='hardness_contribution'|'slip_contribution'|'gloss_contribution'|'powder_contribution'|'cooling_contribution'|'payoff_contribution'|'residue_contribution'|'oxidation_contribution'|'drag_contribution'|'structure_contribution'
+export interface IngredientKnowledgeIdentity {commercialName:KnowledgeValue<string>;inci:KnowledgeValue<string>;casNumber:KnowledgeValue<string>;ecNumber:KnowledgeValue<string>;botanicalSource:KnowledgeValue<string>;plantPart:KnowledgeValue<string>;extractionMethod:KnowledgeValue<string>;processingStatus:KnowledgeValue<string>;origin:KnowledgeValue<string>;supplier:KnowledgeValue<string>;supplierSku:KnowledgeValue<string>;supplierProductRevision:KnowledgeValue<string>;documentRevision:KnowledgeValue<string>;documentationStatus:KnowledgeValue<string>;veganStatus:KnowledgeValue<boolean>;organicStatus:KnowledgeValue<boolean>;cosmosStatus:KnowledgeValue<string>;rspoStatus:KnowledgeValue<string>}
+export interface IngredientKnowledgePhysicalProperties {physicalForm:KnowledgeValue<IngredientPhysicalForm>;density:MeasuredKnowledgeValue;meltingRange:MeasuredKnowledgeValue;softeningRange:MeasuredKnowledgeValue;flashPoint:MeasuredKnowledgeValue;heatSensitivity:KnowledgeValue<string>;oxidationSensitivity:KnowledgeValue<string>;volatility:KnowledgeValue<string>;waterSolubility:KnowledgeValue<string>;oilSolubility:KnowledgeValue<string>;alcoholSolubility:KnowledgeValue<string>;colour:KnowledgeValue<string>;odour:KnowledgeValue<string>;particleForm:KnowledgeValue<string>;hygroscopicity:KnowledgeValue<string>}
+export type IngredientKnowledgeSensory=Record<SensoryDimension,KnowledgeValue<number>>
+export type IngredientKnowledgePredictionInputs=Record<PredictionInputName,KnowledgeValue<number>>
+export interface IngredientKnowledgeProfile {id:string;ingredientId:string;identity:IngredientKnowledgeIdentity;physicalProperties:IngredientKnowledgePhysicalProperties;sensoryProfile:IngredientKnowledgeSensory;predictionInputs:IngredientKnowledgePredictionInputs;createdAt:string;updatedAt:string;lastEditedSource?:KnowledgeProvenance}
+export interface IngredientKnowledgeRole {id:string;ingredientKnowledgeProfileId:string;role:IngredientKnowledgeRoleName;level:IngredientKnowledgeRoleLevel;context:string;evidenceIds:string[];confidence:KnowledgeConfidence;notes:string;createdAt:string;updatedAt:string}
+export interface IngredientKnowledgeCompatibility {id:string;ingredientKnowledgeProfileId:string;targetType:CompatibilityTargetType;targetId?:string;targetLabel:string;context:string;rating:CompatibilityRating;evidenceIds:string[];confidence:KnowledgeConfidence;notes:string;createdAt:string;updatedAt:string}
+export interface IngredientKnowledgeEvidence {id:string;ingredientKnowledgeProfileId:string;sourceType:EvidenceSourceType;provenance:KnowledgeProvenance;title:string;documentId?:string;documentRevision?:string;externalUrl?:string;evidenceDate?:string;authorOrOrganisation?:string;summary:string;notes:string;confidence:KnowledgeConfidence;createdAt:string;updatedAt:string}
 
 export type IngredientStatus = 'Active' | 'Research' | 'Archived'
 export type InventoryUnit = 'mg' | 'g' | 'kg' | 'ml' | 'L' | 'pcs'

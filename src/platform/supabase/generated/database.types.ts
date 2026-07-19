@@ -1947,6 +1947,264 @@ export type Database = {
           },
         ]
       }
+      ingredient_knowledge_compatibility: {
+        Row: {
+          confidence: string
+          context: string
+          created_at: string
+          evidence_ids: Json
+          id: string
+          ingredient_knowledge_profile_id: string
+          notes: string
+          owner_id: string
+          rating: string
+          target_id: string | null
+          target_label: string
+          target_type: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          confidence: string
+          context?: string
+          created_at: string
+          evidence_ids?: Json
+          id: string
+          ingredient_knowledge_profile_id: string
+          notes?: string
+          owner_id: string
+          rating: string
+          target_id?: string | null
+          target_label: string
+          target_type: string
+          updated_at: string
+          workspace_id: string
+        }
+        Update: {
+          confidence?: string
+          context?: string
+          created_at?: string
+          evidence_ids?: Json
+          id?: string
+          ingredient_knowledge_profile_id?: string
+          notes?: string
+          owner_id?: string
+          rating?: string
+          target_id?: string | null
+          target_label?: string
+          target_type?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ingredient_knowledge_compatib_workspace_id_ingredient_know_fkey"
+            columns: ["workspace_id", "ingredient_knowledge_profile_id"]
+            isOneToOne: false
+            referencedRelation: "ingredient_knowledge_profiles"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "ingredient_knowledge_compatibility_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ingredient_knowledge_evidence: {
+        Row: {
+          author_or_organisation: string | null
+          confidence: string
+          created_at: string
+          document_id: string | null
+          document_revision: string | null
+          evidence_date: string | null
+          external_url: string | null
+          id: string
+          ingredient_knowledge_profile_id: string
+          notes: string
+          owner_id: string
+          provenance: string
+          source_type: string
+          summary: string
+          title: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          author_or_organisation?: string | null
+          confidence: string
+          created_at: string
+          document_id?: string | null
+          document_revision?: string | null
+          evidence_date?: string | null
+          external_url?: string | null
+          id: string
+          ingredient_knowledge_profile_id: string
+          notes?: string
+          owner_id: string
+          provenance: string
+          source_type: string
+          summary?: string
+          title: string
+          updated_at: string
+          workspace_id: string
+        }
+        Update: {
+          author_or_organisation?: string | null
+          confidence?: string
+          created_at?: string
+          document_id?: string | null
+          document_revision?: string | null
+          evidence_date?: string | null
+          external_url?: string | null
+          id?: string
+          ingredient_knowledge_profile_id?: string
+          notes?: string
+          owner_id?: string
+          provenance?: string
+          source_type?: string
+          summary?: string
+          title?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ingredient_knowledge_evidence_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ingredient_knowledge_evidence_workspace_id_ingredient_know_fkey"
+            columns: ["workspace_id", "ingredient_knowledge_profile_id"]
+            isOneToOne: false
+            referencedRelation: "ingredient_knowledge_profiles"
+            referencedColumns: ["workspace_id", "id"]
+          },
+        ]
+      }
+      ingredient_knowledge_profiles: {
+        Row: {
+          created_at: string
+          id: string
+          identity: Json
+          ingredient_id: string
+          last_edited_source: string | null
+          owner_id: string
+          physical_properties: Json
+          prediction_inputs: Json
+          sensory_profile: Json
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at: string
+          id: string
+          identity?: Json
+          ingredient_id: string
+          last_edited_source?: string | null
+          owner_id: string
+          physical_properties?: Json
+          prediction_inputs?: Json
+          sensory_profile?: Json
+          updated_at: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          identity?: Json
+          ingredient_id?: string
+          last_edited_source?: string | null
+          owner_id?: string
+          physical_properties?: Json
+          prediction_inputs?: Json
+          sensory_profile?: Json
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ingredient_knowledge_profiles_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ingredient_knowledge_profiles_workspace_id_ingredient_id_fkey"
+            columns: ["workspace_id", "ingredient_id"]
+            isOneToOne: true
+            referencedRelation: "ingredients"
+            referencedColumns: ["workspace_id", "id"]
+          },
+        ]
+      }
+      ingredient_knowledge_roles: {
+        Row: {
+          confidence: string
+          context: string
+          created_at: string
+          evidence_ids: Json
+          id: string
+          ingredient_knowledge_profile_id: string
+          level: string
+          notes: string
+          owner_id: string
+          role: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          confidence: string
+          context: string
+          created_at: string
+          evidence_ids?: Json
+          id: string
+          ingredient_knowledge_profile_id: string
+          level: string
+          notes?: string
+          owner_id: string
+          role: string
+          updated_at: string
+          workspace_id: string
+        }
+        Update: {
+          confidence?: string
+          context?: string
+          created_at?: string
+          evidence_ids?: Json
+          id?: string
+          ingredient_knowledge_profile_id?: string
+          level?: string
+          notes?: string
+          owner_id?: string
+          role?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ingredient_knowledge_roles_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ingredient_knowledge_roles_workspace_id_ingredient_knowled_fkey"
+            columns: ["workspace_id", "ingredient_knowledge_profile_id"]
+            isOneToOne: false
+            referencedRelation: "ingredient_knowledge_profiles"
+            referencedColumns: ["workspace_id", "id"]
+          },
+        ]
+      }
       ingredients: {
         Row: {
           adopted_reference_snapshot: Json | null
@@ -6311,6 +6569,10 @@ export type Database = {
         Returns: string
       }
       import_v9_relational: { Args: { payload: Json }; Returns: Json }
+      import_v9_relational_pre_ingredient_knowledge: {
+        Args: { payload: Json }
+        Returns: Json
+      }
       kf_convert_quantity: {
         Args: { from_unit: string; q: number; to_unit: string }
         Returns: number
@@ -6433,6 +6695,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      save_ingredient_knowledge_aggregate: {
+        Args: { aggregate: Json; expected_updated_at?: string }
+        Returns: Json
       }
       transition_development_experiment: {
         Args: {

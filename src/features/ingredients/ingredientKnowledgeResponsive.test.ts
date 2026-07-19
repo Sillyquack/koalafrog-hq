@@ -1,0 +1,8 @@
+import{readFileSync}from'node:fs'
+import{describe,expect,it}from'vitest'
+const css=readFileSync('src/styles/index.css','utf8'),page=readFileSync('src/features/ingredients/IngredientKnowledgePage.tsx','utf8')
+describe('Ingredient Knowledge responsive and accessibility contracts',()=>{
+  it('keeps editors single-column and bounded at approximately 390px',()=>{expect(css).toContain('@media(max-width:520px){.knowledge-grid{grid-template-columns:1fr}');expect(css).toContain('.knowledge-repeat,.evidence-row{grid-template-columns:minmax(0,1fr)}');expect(css).toContain('.knowledge-field input,.knowledge-field select,.knowledge-field textarea');expect(css).toContain('min-width:0;width:100%')})
+  it('provides labelled section navigation, destructive controls, and announced status',()=>{expect(page).toContain('aria-label="Ingredient Knowledge sections"');expect(page).toContain('aria-current=');expect(page).toContain('aria-label={`Delete role');expect(page).toContain('aria-label={`Delete compatibility');expect(page).toContain('aria-label={`Delete evidence');expect(page).toContain('role="alert"');expect(page).toContain('role="status"')})
+  it('keeps completed child cards usable at 390px with stable labels and wrapping',()=>{expect(css).toContain('@media(max-width:520px){.knowledge-card-grid{grid-template-columns:minmax(0,1fr)}');expect(css).toContain('.knowledge-card header strong,.knowledge-card header span');expect(css).toContain('overflow-wrap:anywhere');expect(page).toContain('Canonical Workspace Ingredient');expect(page).toContain('User-defined target label');expect(page).toContain('Linked evidence')})
+})

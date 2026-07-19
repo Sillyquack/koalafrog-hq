@@ -48,6 +48,7 @@ import { ProductStudioPage } from '../features/product-studio/ProductStudioPage'
 import { BeardOilStudioPage } from '../features/product-studio/BeardOilStudioPage'
 import { BeardButterStudioPage } from '../features/product-studio/BeardButterStudioPage'
 import { NaturalDeodorantStudioPage } from '../features/product-studio/NaturalDeodorantStudioPage'
+import { IngredientKnowledgePage } from '../features/ingredients/IngredientKnowledgePage'
 
 export function App() {
   return (
@@ -67,6 +68,7 @@ export function App() {
         <Route path="ingredients/reference/:entryId" element={<ReferenceEntryPage />} />
         <Route path="ingredients/smart-start" element={<SmartStartPage />} />
         <Route path="ingredients/:ingredientId" element={<IngredientDetailPage />} />
+        <Route path="ingredients/:ingredientId/knowledge" element={<IngredientKnowledgePage />} />
         <Route path="inventory" element={<InventoryPage />} />
         <Route path="inventory/lots/:lotId" element={<LotDetailPage />} />
         <Route path="lab" element={<StudioLabHandoff fallback={<LabPage />}/>} />

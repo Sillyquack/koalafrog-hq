@@ -1,5 +1,7 @@
 # Core Formulation Engine
 
+Ingredient classification prefers explicit Ingredient Knowledge physical form and primary roles. Missing profiles fall back to legacy Workspace Ingredient metadata at lower confidence. Unknown and review-required states do not become verified facts. No recommendation, usage-level, pairing, safety, efficacy, stability, or prediction heuristic is added.
+
 Koalafrog separates the commercial product template shown in Product Studio from the formulation archetype that describes reusable process capabilities.
 
 ## Operational archetypes

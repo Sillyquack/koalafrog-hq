@@ -1,5 +1,7 @@
 # Koalafrog
 
+Ingredient Knowledge enriches Workspace Ingredients with explicit unknown states and traceable evidence. It is a knowledge foundation, not a prediction, safety, efficacy, or recommendation system. See `docs/INGREDIENT_KNOWLEDGE.md`.
+
 ## Hva er Koalafrog?
 
 Koalafrog er et privat produktutviklingssystem for kosmetikk og grooming som hjelper én produsent hele veien fra idé til ferdig produkt.

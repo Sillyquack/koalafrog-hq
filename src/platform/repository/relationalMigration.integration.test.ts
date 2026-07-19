@@ -2,7 +2,7 @@ import { createClient } from '@supabase/supabase-js'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { formulaSeed } from '../../data/formulaSeed'
 import { compareReconciliation, reconciliationSnapshot, validateV9Workspace } from '../migration/v9Migration'
-import { relationalMigrationPayload, relationalTableByCollection, SupabaseWorkspaceRepository, toDomainValue } from './supabaseWorkspaceRepository'
+import { relationalMigrationPayload, relationalTableByCollection, SupabaseWorkspaceRepository, toDatabaseValue, toDomainValue } from './supabaseWorkspaceRepository'
 import { supabase } from '../supabase/client'
 import type { FormulaState, SupplierProductVerification } from '../../types/domain'
 import { executeWorkspaceAction } from '../actions/workspaceActionExecutor'
@@ -13,6 +13,7 @@ import { finishedGoodsBalance } from '../../features/finished-goods/domain/finis
 import { actualMaterialCost, additionalCostTotal, productionCost } from '../../features/costing/domain/costingLogic'
 import { LocalWorkspaceRepository } from './localWorkspaceRepository'
 import type { WorkspaceRepository } from './workspaceRepository'
+import { createEmptyIngredientKnowledgeProfile } from '../../features/ingredients/domain/ingredientKnowledge'
 
 const url = import.meta.env.VITE_SUPABASE_TEST_URL as string | undefined
 const serviceKey = import.meta.env.VITE_SUPABASE_TEST_SERVICE_ROLE_KEY as string | undefined
@@ -90,6 +91,61 @@ run('relational v9 migration against local Supabase', () => {
     const report = await client.from('migration_runs').select('state,errors').eq('owner_id', ownerId).single()
     expect(report.data?.state).toBe('Failed')
     expect((await client.from('workspaces').select('lifecycle_state').eq('owner_id',ownerId).single()).data?.lifecycle_state).toBe('failed')
+  })
+
+  it('imports and atomically replaces an owner-isolated Ingredient Knowledge aggregate',async()=>{
+    const {client,ownerId}=await ownerClient('ingredient-knowledge')
+    const state=structuredClone(formulaSeed),profile=createEmptyIngredientKnowledgeProfile('i1','2026-07-20T12:00:00.000Z')
+    profile.id='knowledge-profile-1';profile.physicalProperties.physicalForm={state:'known',value:'liquid',confidence:'supported',sourceReference:'supplier-spec'}
+    state.ingredientKnowledgeProfiles=[profile]
+    state.ingredientKnowledgeEvidence=[{id:'evidence-1',ingredientKnowledgeProfileId:profile.id,sourceType:'supplier_document',provenance:'supplier_specific',title:'Supplier specification',summary:'Physical form declared liquid.',notes:'',confidence:'supported',createdAt:profile.createdAt,updatedAt:profile.updatedAt}]
+    state.ingredientKnowledgeRoles=[{id:'role-1',ingredientKnowledgeProfileId:profile.id,role:'liquid_emollient',level:'primary',context:'Anhydrous formulas',evidenceIds:['evidence-1'],confidence:'supported',notes:'',createdAt:profile.createdAt,updatedAt:profile.updatedAt}]
+    const imported=await client.rpc('import_v9_relational',{payload:relationalMigrationPayload(state)})
+    expect(imported.error).toBeNull()
+    expect((await client.from('ingredient_knowledge_profiles').select('id').eq('owner_id',ownerId)).data).toHaveLength(1)
+    const updated={...profile,updatedAt:'2026-07-20T13:00:00.000Z'}
+    const aggregate=toDatabaseValue({profile:updated,roles:[{...state.ingredientKnowledgeRoles[0],context:'Leave-on anhydrous formulas',updatedAt:updated.updatedAt}],compatibility:[],evidence:state.ingredientKnowledgeEvidence})
+    expect((await client.rpc('save_ingredient_knowledge_aggregate',{aggregate,expected_updated_at:profile.updatedAt})).error).toBeNull()
+    const repeated=await client.rpc('save_ingredient_knowledge_aggregate',{aggregate,expected_updated_at:updated.updatedAt})
+    expect(repeated.error).toBeNull()
+    expect((await client.from('ingredient_knowledge_roles').select('id').eq('owner_id',ownerId)).data).toHaveLength(1)
+    const stale=await client.rpc('save_ingredient_knowledge_aggregate',{aggregate:{...(aggregate as object),profile:toDatabaseValue({...updated,updatedAt:'2026-07-20T14:00:00.000Z'})},expected_updated_at:profile.updatedAt})
+    expect(stale.error?.message).toContain('changed since it was opened')
+    expect((await client.from('ingredient_knowledge_profiles').select('updated_at').eq('owner_id',ownerId).single()).data?.updated_at).toBe(updated.updatedAt)
+    const invalid=structuredClone(aggregate)as Record<string,unknown>;invalid.profile=toDatabaseValue({...updated,updatedAt:'2026-07-20T15:00:00.000Z'});invalid.roles=[toDatabaseValue({...state.ingredientKnowledgeRoles[0],context:'',updatedAt:'2026-07-20T15:00:00.000Z'})]
+    expect((await client.rpc('save_ingredient_knowledge_aggregate',{aggregate:invalid,expected_updated_at:updated.updatedAt})).error).not.toBeNull()
+    expect((await client.from('ingredient_knowledge_profiles').select('updated_at').eq('owner_id',ownerId).single()).data?.updated_at).toBe(updated.updatedAt)
+  })
+
+  it('rejects real cross-owner aggregate references while allowing identical raw IDs in isolated composite identities',async()=>{
+    const ownerA=await ownerClient('knowledge-owner-a'),ownerB=await ownerClient('knowledge-owner-b')
+    const stateA=structuredClone(formulaSeed),stateB=structuredClone(formulaSeed),now='2026-07-20T12:00:00.000Z'
+    stateA.ingredients.push({...stateA.ingredients[0],id:'owner-a-only-ingredient',commonName:'Owner A only',createdAt:now,updatedAt:now})
+    await ownerA.client.rpc('import_v9_relational',{payload:relationalMigrationPayload(stateA)})
+    await ownerB.client.rpc('import_v9_relational',{payload:relationalMigrationPayload(stateB)})
+    const profileA=createEmptyIngredientKnowledgeProfile('owner-a-only-ingredient',now);profileA.id='shared-profile-id'
+    const evidenceA={id:'shared-evidence-id',ingredientKnowledgeProfileId:profileA.id,sourceType:'user_note' as const,provenance:'user' as const,title:'Owner A evidence',summary:'Owner A only.',notes:'',confidence:'observed' as const,createdAt:now,updatedAt:now}
+    const roleA={id:'shared-role-id',ingredientKnowledgeProfileId:profileA.id,role:'other' as const,level:'secondary' as const,context:'Owner A context',evidenceIds:[evidenceA.id],confidence:'observed' as const,notes:'',createdAt:now,updatedAt:now}
+    const compatibilityA={id:'shared-compatibility-id',ingredientKnowledgeProfileId:profileA.id,targetType:'ingredient' as const,targetId:'i1',targetLabel:'Jojoba Oil',context:'Directional Owner A evidence',rating:'acceptable' as const,evidenceIds:[evidenceA.id],confidence:'observed' as const,notes:'',createdAt:now,updatedAt:now}
+    const aggregateA=toDatabaseValue({profile:profileA,roles:[roleA],compatibility:[compatibilityA],evidence:[evidenceA]})
+    expect((await ownerA.client.rpc('save_ingredient_knowledge_aggregate',{aggregate:aggregateA,expected_updated_at:null})).error).toBeNull()
+    for(const table of['ingredient_knowledge_profiles','ingredient_knowledge_roles','ingredient_knowledge_compatibility','ingredient_knowledge_evidence'])expect((await ownerB.client.from(table).select('id')).data).toHaveLength(0)
+    // The RPC derives workspace and owner from auth; caller-supplied workspace/owner fields are ignored.
+    // A real attack therefore requires a foreign Ingredient/Profile reference, not merely an equal raw ID.
+    const attack=toDatabaseValue({profile:{...profileA,workspaceId:(await ownerA.client.from('workspaces').select('id').single()).data!.id,updatedAt:'2026-07-20T13:00:00.000Z'},roles:[roleA],compatibility:[compatibilityA],evidence:[evidenceA]})
+    expect((await ownerB.client.rpc('save_ingredient_knowledge_aggregate',{aggregate:attack,expected_updated_at:profileA.updatedAt})).error).not.toBeNull()
+    for(const table of['ingredient_knowledge_profiles','ingredient_knowledge_roles','ingredient_knowledge_compatibility','ingredient_knowledge_evidence'])expect((await ownerB.client.from(table).select('id')).data).toHaveLength(0)
+    expect((await ownerA.client.from('ingredient_knowledge_profiles').select('updated_at').eq('id',profileA.id).single()).data?.updated_at).toBe(now)
+    expect((await ownerA.client.from('ingredient_knowledge_roles').select('id')).data).toHaveLength(1)
+    expect((await ownerA.client.from('ingredient_knowledge_compatibility').select('id')).data).toHaveLength(1)
+    expect((await ownerA.client.from('ingredient_knowledge_evidence').select('id')).data).toHaveLength(1)
+    // Equal raw IDs are legal because every primary/foreign key is scoped by workspace_id.
+    const profileB=createEmptyIngredientKnowledgeProfile('i1',now);profileB.id=profileA.id
+    const evidenceB={...evidenceA,ingredientKnowledgeProfileId:profileB.id,title:'Owner B independent evidence'}
+    const roleB={...roleA,ingredientKnowledgeProfileId:profileB.id,context:'Owner B context'}
+    expect((await ownerB.client.rpc('save_ingredient_knowledge_aggregate',{aggregate:toDatabaseValue({profile:profileB,roles:[roleB],compatibility:[],evidence:[evidenceB]}),expected_updated_at:null})).error).toBeNull()
+    expect((await ownerB.client.from('ingredient_knowledge_profiles').select('id').eq('id',profileB.id)).data).toHaveLength(1)
+    expect((await ownerA.client.from('ingredient_knowledge_evidence').select('title').eq('id',evidenceA.id).single()).data?.title).toBe('Owner A evidence')
   })
 
   it('commits audit-critical operations atomically and rejects duplicates or excess', async () => {
