@@ -321,9 +321,11 @@ export function LabBatchDetailPage() {
                 />
                 <span>
                   <b>
-                    {step.stepNumber}. {step.instruction}
+                    {step.stepNumber}. {step.title&&`${step.title}: `}{step.instruction}
                   </b>
-                  <small>{step.status}</small>
+                  <small>{[step.phaseCode&&`Phase ${step.phaseCode}`,step.minimumTemperature!=null||step.maximumTemperature!=null?`${step.minimumTemperature??'≤'}–${step.maximumTemperature??'open'} °C`:step.targetTemperature!=null?`${step.targetTemperature} °C`:undefined,step.mixingMethod,step.durationMinutes!=null?`${step.durationMinutes} min`:undefined,step.critical?'Critical':undefined,step.status].filter(Boolean).join(' · ')}</small>
+                  <input aria-label={`Actual temperature for step ${step.stepNumber}`} disabled={readOnly} type="number" step="0.1" placeholder="Actual °C, if measured" value={step.actualTemperature??''} onChange={e=>{const value=Number(e.target.value);if(Number.isFinite(value))data.updateProcessStep(step.id,{actualTemperature:value})}}/>
+                  <input aria-label={`Operator note for step ${step.stepNumber}`} disabled={readOnly} placeholder="Operator note or deviation" value={step.operatorNote??''} onChange={e=>data.updateProcessStep(step.id,{operatorNote:e.target.value})}/>
                 </span>
               </label>
             ))}
@@ -347,6 +349,10 @@ export function LabBatchDetailPage() {
             />
             <span>{batch.plannedBatchUnit}</span>
           </label>
+          <label>Fill count<input disabled={readOnly} type="number" min="0" value={batch.fillCount??''} onChange={e=>{const value=e.target.value===''?undefined:Number(e.target.value);if(value==null||(Number.isFinite(value)&&value>=0))data.updateLabBatch(batch.id,{fillCount:value})}}/></label>
+          <label>Packaging used<input disabled={readOnly} value={batch.packagingUsed??''} onChange={e=>data.updateLabBatch(batch.id,{packagingUsed:e.target.value})}/></label>
+          <label>Deviations<textarea disabled={readOnly} value={batch.deviations??''} onChange={e=>data.updateLabBatch(batch.id,{deviations:e.target.value})}/></label>
+          <label>Final texture observations<textarea disabled={readOnly} value={batch.finalTextureObservations??''} onChange={e=>data.updateLabBatch(batch.id,{finalTextureObservations:e.target.value})}/></label>
           <dl>
             <div>
               <dt>Planned</dt>

@@ -1,13 +1,23 @@
 import { formulaSeed } from '../../../data/formulaSeed'
 import type { FormulaState } from '../../../types/domain'
+import {
+  LEGACY_STORAGE_KEY,
+  PHASE_FIVE_STORAGE_KEY,
+  PHASE_FOUR_STORAGE_KEY,
+  PHASE_SIX_STORAGE_KEY,
+  PHASE_THREE_STORAGE_KEY,
+  STORAGE_KEY,
+} from './workspaceMigrationVersions'
+export {
+  LEGACY_STORAGE_KEY,
+  PHASE_FIVE_STORAGE_KEY,
+  PHASE_FOUR_STORAGE_KEY,
+  PHASE_SIX_STORAGE_KEY,
+  PHASE_THREE_STORAGE_KEY,
+  STORAGE_KEY,
+} from './workspaceMigrationVersions'
 
 export interface FormulaRepository { load(): FormulaState; save(state: FormulaState): void }
-export const STORAGE_KEY = 'koalafrog-hq:workspace:v9'
-export const PHASE_SIX_STORAGE_KEY = 'koalafrog-hq:workspace:v8'
-export const PHASE_FIVE_STORAGE_KEY = 'koalafrog-hq:workspace:v7'
-export const PHASE_FOUR_STORAGE_KEY = 'koalafrog-hq:workspace:v6'
-export const PHASE_THREE_STORAGE_KEY = 'koalafrog-hq:workspace:v4'
-export const LEGACY_STORAGE_KEY = 'koalafrog-hq:formula-state:v2'
 const cloneSeed = () => structuredClone(formulaSeed)
 type PhaseTwoState = Pick<FormulaState, 'products' | 'formulas' | 'formulaVersions' | 'formulaLines'>
 export function migratePhaseTwoState(legacy: PhaseTwoState): FormulaState { const seed = cloneSeed(); return { ...seed, products: legacy.products, formulas: legacy.formulas, formulaVersions: legacy.formulaVersions, formulaLines: legacy.formulaLines } }

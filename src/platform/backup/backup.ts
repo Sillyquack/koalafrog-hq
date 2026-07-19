@@ -1,5 +1,6 @@
 import type { FormulaState } from "../../types/domain";
-export const BACKUP_FORMAT = "koalafrog-backup-v1";
+import { APPLICATION_VERSION, BACKUP_FORMAT, WORKSPACE_SCHEMA } from "../version";
+export { BACKUP_FORMAT } from "../version";
 type StorageRecord = {
   documentId: string;
   bucket: string;
@@ -76,8 +77,8 @@ export function createBackup(
   return {
     format: BACKUP_FORMAT,
     exportedAt: new Date().toISOString(),
-    applicationVersion: "0.1.0",
-    workspace: { sourceSchema: "koalafrog-hq:workspace:v9", ownerId },
+    applicationVersion: APPLICATION_VERSION,
+    workspace: { sourceSchema: WORKSPACE_SCHEMA, ownerId },
     entityCounts,
     records: structuredClone(state),
     intelligenceHistory: structuredClone(intelligenceHistory),

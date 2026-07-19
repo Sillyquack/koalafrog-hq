@@ -35,6 +35,12 @@ Prediksjoner skal aldri presenteres som observerte fakta.
 
 Fysisk testing, sporbarhet og dokumentasjon skal følge ideen når den utvikles fra konsept til reelt produkt.
 
+## Produktstudio og flerfaseutvikling
+
+Beard Butter er den første varmeprosesserte flerfasemodellen i Product Studio. Den utvider Beard Oil-arbeidsflyten med eksplisitte formelfaser, temperaturgrenser, kontrollert nedkjøling, prosess-steg, variantvurdering og fasebevisst Lab-overlevering. Dette er strukturert utviklingsstøtte, ikke en erstatning for formuleringsekspertise, stabilitetstesting, sikkerhetsvurdering eller regulatorisk dokumentasjon.
+
+Beard Oil og Beard Butter er produktsjablonger over en felles formuleringsmotor. Motoren beskriver gjenbrukbare arketyper og prosessegenskaper, mens sjablongen beholder produktmål, veiledning og evalueringskriterier. Planlagte arketyper skal være ærlig merket som utilgjengelige til regler og sikkerhetsgrenser faktisk er implementert.
+
 ## Release-regel
 
 Ingen ny stor fase starter før den forrige er verdt å beholde.

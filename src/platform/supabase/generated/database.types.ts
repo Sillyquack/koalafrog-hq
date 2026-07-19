@@ -1754,7 +1754,9 @@ export type Database = {
           development_notes: string | null
           formula_id: string
           id: string
+          manufacturing_process: Json | null
           owner_id: string
+          phase_definitions: Json | null
           process_instructions: string | null
           status: string
           target_characteristics: string
@@ -1772,7 +1774,9 @@ export type Database = {
           development_notes?: string | null
           formula_id: string
           id: string
+          manufacturing_process?: Json | null
           owner_id: string
+          phase_definitions?: Json | null
           process_instructions?: string | null
           status: string
           target_characteristics: string
@@ -1790,7 +1794,9 @@ export type Database = {
           development_notes?: string | null
           formula_id?: string
           id?: string
+          manufacturing_process?: Json | null
           owner_id?: string
+          phase_definitions?: Json | null
           process_instructions?: string | null
           status?: string
           target_characteristics?: string
@@ -2475,11 +2481,15 @@ export type Database = {
           created_at: string
           development_experiment_id: string | null
           development_experiment_variant_id: string | null
+          deviations: string | null
+          fill_count: number | null
+          final_texture_observations: string | null
           formula_id: string
           formula_version_id: string
           id: string
           notes: string
           owner_id: string
+          packaging_used: string | null
           planned_batch_size: number
           planned_batch_unit: string
           product_id: string
@@ -2499,11 +2509,15 @@ export type Database = {
           created_at: string
           development_experiment_id?: string | null
           development_experiment_variant_id?: string | null
+          deviations?: string | null
+          fill_count?: number | null
+          final_texture_observations?: string | null
           formula_id: string
           formula_version_id: string
           id: string
           notes: string
           owner_id: string
+          packaging_used?: string | null
           planned_batch_size: number
           planned_batch_unit: string
           product_id: string
@@ -2523,11 +2537,15 @@ export type Database = {
           created_at?: string
           development_experiment_id?: string | null
           development_experiment_variant_id?: string | null
+          deviations?: string | null
+          fill_count?: number | null
+          final_texture_observations?: string | null
           formula_id?: string
           formula_version_id?: string
           id?: string
           notes?: string
           owner_id?: string
+          packaging_used?: string | null
           planned_batch_size?: number
           planned_batch_unit?: string
           product_id?: string
@@ -2718,36 +2736,72 @@ export type Database = {
       }
       lab_process_steps: {
         Row: {
+          actual_temperature: number | null
           completed_at: string | null
+          completion_criteria: string | null
+          critical: boolean | null
+          duration_minutes: number | null
           id: string
           instruction: string
           lab_batch_id: string
+          maximum_temperature: number | null
+          minimum_temperature: number | null
+          mixing_intensity: string | null
+          mixing_method: string | null
           notes: string
+          operator_note: string | null
           owner_id: string
+          phase_code: string | null
           status: string
           step_number: number
+          target_temperature: number | null
+          title: string | null
           workspace_id: string
         }
         Insert: {
+          actual_temperature?: number | null
           completed_at?: string | null
+          completion_criteria?: string | null
+          critical?: boolean | null
+          duration_minutes?: number | null
           id: string
           instruction: string
           lab_batch_id: string
+          maximum_temperature?: number | null
+          minimum_temperature?: number | null
+          mixing_intensity?: string | null
+          mixing_method?: string | null
           notes: string
+          operator_note?: string | null
           owner_id: string
+          phase_code?: string | null
           status: string
           step_number: number
+          target_temperature?: number | null
+          title?: string | null
           workspace_id: string
         }
         Update: {
+          actual_temperature?: number | null
           completed_at?: string | null
+          completion_criteria?: string | null
+          critical?: boolean | null
+          duration_minutes?: number | null
           id?: string
           instruction?: string
           lab_batch_id?: string
+          maximum_temperature?: number | null
+          minimum_temperature?: number | null
+          mixing_intensity?: string | null
+          mixing_method?: string | null
           notes?: string
+          operator_note?: string | null
           owner_id?: string
+          phase_code?: string | null
           status?: string
           step_number?: number
+          target_temperature?: number | null
+          title?: string | null
           workspace_id?: string
         }
         Relationships: [
@@ -6241,6 +6295,16 @@ export type Database = {
           target_variant: string
         }
         Returns: string
+      }
+      create_product_studio_formula_handoff: {
+        Args: {
+          concept_id: string
+          formula: Json
+          formula_lines: Json
+          formula_version: Json
+          product: Json
+        }
+        Returns: Json
       }
       create_product_studio_purchase_plan: {
         Args: { concept_id: string; lines: Json }

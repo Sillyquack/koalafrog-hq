@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { FormulaLine, FormulaVersion } from '../../../types/domain'
-import { calculatePercentageTotal, canTransition, duplicateVersion, nextVersionNumber, percentageBalance, scaleFormula } from './formulaLogic'
+import { batchPlanningTarget, calculatePercentageTotal, canTransition, duplicateVersion, nextVersionNumber, percentageBalance, scaleFormula } from './formulaLogic'
 
 const line = (id: string, percentage: number): FormulaLine => ({ id, formulaVersionId: 'version-1', ingredientId: `ingredient-${id}`, percentage, phase: 'Phase A', sortOrder: Number(id), notes: '' })
 const version: FormulaVersion = { id: 'version-1', formulaId: 'formula-1', version: 'v0.2', status: 'Candidate', description: 'Frozen source', targetCharacteristics: 'Dry finish', createdAt: '2026-01-01', updatedAt: '2026-01-02' }
@@ -22,6 +22,10 @@ describe('batch scaling', () => {
     const source = [line('1', 60), line('2', 25)]
     expect(scaleFormula(source, 500).map((item) => item.calculatedWeight)).toEqual([300, 125])
     expect(source.map((item) => item.percentage)).toEqual([60, 25])
+  })
+  it('supports explicit fill planning without changing Formula or inventory records',()=>{
+    expect(batchPlanningTarget(500,30,10,5)).toEqual({targetGrams:315,estimatedFills:10})
+    expect(batchPlanningTarget(500,0,0,0)).toEqual({targetGrams:500,estimatedFills:undefined})
   })
 })
 

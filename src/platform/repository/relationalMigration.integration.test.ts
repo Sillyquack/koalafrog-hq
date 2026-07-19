@@ -328,6 +328,25 @@ run('relational v9 migration against local Supabase', () => {
     expect(saved.inventoryMovements).toHaveLength(beforeMovements)
     const hydrated=await new SupabaseWorkspaceRepository().load(ownerId)
     expect(hydrated.productStudioConcepts.find(item=>item.id===conceptId)).toMatchObject({id:conceptId,selectedIngredients:[{ingredientId:'i1',role:'liquid_base',essential:true}],analysis:{profile:'predicted'}})
+    const productId=`studio-product-${crypto.randomUUID()}`,formulaId=`studio-formula-${crypto.randomUUID()}`,versionId=`studio-version-${crypto.randomUUID()}`,lineId=`studio-line-${crypto.randomUUID()}`
+    const handedOff:FormulaState={...hydrated,products:[...hydrated.products,{id:productId,name:'Hosted Beard Oil',category:'Beard Care',status:'Active',developmentStage:'Formulation',description:'Studio handoff',currentDevelopmentFormulaVersionId:versionId,scentProfile:'Product Studio concept',createdAt:now,updatedAt:now}],formulas:[...hydrated.formulas,{id:formulaId,productId,name:'Hosted Beard Oil — Studio Draft',description:'Studio handoff',createdAt:now,updatedAt:now}],formulaVersions:[...hydrated.formulaVersions,{id:versionId,formulaId,version:'v0.1',status:'Draft',description:'Studio starting point',targetCharacteristics:'Physical testing required',createdAt:now,updatedAt:now}],formulaLines:[...hydrated.formulaLines,{id:lineId,formulaVersionId:versionId,ingredientId:'i1',percentage:100,phase:'Main blend',sortOrder:1,notes:'Structured composition',formulationRole:'liquid_base'}],productStudioConcepts:hydrated.productStudioConcepts.map(item=>item.id===conceptId?{...item,generatedProductId:productId,generatedFormulaId:formulaId,generatedFormulaVersionId:versionId,updatedAt:now}:item)}
+    await repository.commit({action:'createFormulaFromStudio',previous:hydrated,next:handedOff})
+    await repository.commit({action:'createFormulaFromStudio',previous:hydrated,next:handedOff})
+    const formulaHydrated=await new SupabaseWorkspaceRepository().load(ownerId)
+    expect(formulaHydrated.formulas.find(item=>item.id===formulaId)).toMatchObject({id:formulaId,productId})
+    expect(formulaHydrated.formulaVersions.find(item=>item.id===versionId)).toMatchObject({id:versionId,formulaId,status:'Draft'})
+    expect(formulaHydrated.formulaLines.filter(item=>item.formulaVersionId===versionId)).toEqual([expect.objectContaining({id:lineId,ingredientId:'i1',percentage:100})])
+    expect(formulaHydrated.productStudioConcepts.find(item=>item.id===conceptId)).toMatchObject({generatedProductId:productId,generatedFormulaId:formulaId,generatedFormulaVersionId:versionId})
+    expect((await client.from('formulas').select('*',{count:'exact',head:true}).eq('owner_id',ownerId).eq('id',formulaId)).count).toBe(1)
+    const failedConceptId=`failed-${crypto.randomUUID()}`,failedProductId=`failed-product-${crypto.randomUUID()}`,failedFormulaId=`failed-formula-${crypto.randomUUID()}`,failedVersionId=`failed-version-${crypto.randomUUID()}`
+    const beforeFailure=await new SupabaseWorkspaceRepository().load(ownerId)
+    await repository.commit({action:'saveProductStudioConcept',previous:beforeFailure,next:{...beforeFailure,productStudioConcepts:[...beforeFailure.productStudioConcepts,{id:failedConceptId,name:'Failed handoff',productType:'beard_oil',intentMode:'design',desiredProperties:[],selectedIngredients:[],scentDirections:[],candidateSubstitutes:{},notes:'Must remain intact',analysis:{},createdAt:now,updatedAt:now}]}})
+    const failed=await client.rpc('create_product_studio_formula_handoff',{concept_id:failedConceptId,product:{id:failedProductId,name:'Failed',category:'Beard Care',status:'Active',development_stage:'Formulation',description:'',scent_profile:'',created_at:now,updated_at:now},formula:{id:failedFormulaId,product_id:failedProductId,name:'Failed',description:'',created_at:now,updated_at:now},formula_version:{id:failedVersionId,formula_id:failedFormulaId,version:'v0.1',status:'Draft',description:'',target_characteristics:'',created_at:now,updated_at:now},formula_lines:[{id:`failed-line-${crypto.randomUUID()}`,formula_version_id:failedVersionId,ingredient_id:'missing-ingredient',percentage:100,phase:'Main blend',sort_order:1,notes:'',formulation_role:'liquid_base'}]})
+    expect(failed.error).not.toBeNull()
+    expect((await client.from('products').select('*',{count:'exact',head:true}).eq('owner_id',ownerId).eq('id',failedProductId)).count).toBe(0)
+    expect((await client.from('formulas').select('*',{count:'exact',head:true}).eq('owner_id',ownerId).eq('id',failedFormulaId)).count).toBe(0)
+    expect((await client.from('formula_versions').select('*',{count:'exact',head:true}).eq('owner_id',ownerId).eq('id',failedVersionId)).count).toBe(0)
+    expect((await client.from('product_studio_concepts').select('generated_formula_id').eq('owner_id',ownerId).eq('id',failedConceptId).single()).data?.generated_formula_id).toBeNull()
     const lines=[{inventoryDomain:'raw_material',supplierProductId:'sp1',description:'Jojoba top-up',quantity:100,unit:'g',reason:'Below target',basis:{ruleId:'studio.inventory'},displayOrder:0}]
     const plan=await client.rpc('create_product_studio_purchase_plan',{concept_id:conceptId,lines})
     expect(plan.error).toBeNull()
@@ -343,6 +362,49 @@ run('relational v9 migration against local Supabase', () => {
     expect(after.inventoryMovements).toHaveLength(beforeMovements)
     expect((await client.from('inventory_movements').select('*',{count:'exact',head:true}).eq('owner_id',ownerId).in('type',['Receipt','Consumption'])).count).toBe(state.inventoryMovements.filter(item=>item.type==='Receipt'||item.type==='Consumption').length)
     expect((await client.from('stock_policies').select('*',{count:'exact',head:true}).eq('owner_id',ownerId)).count).toBe(beforeStockPolicies)
+    await supabase!.auth.signOut()
+  },30_000)
+
+  it('round-trips Beard Butter phase and Lab process metadata without planning inventory writes',async()=>{
+    const{client,ownerId,email,password}=await ownerClient('beard-butter')
+    const imported=await client.rpc('import_v9_relational',{payload:relationalMigrationPayload(structuredClone(formulaSeed))})
+    expect(imported.error).toBeNull()
+    const snapshot=reconciliationSnapshot(formulaSeed)
+    expect((await client.rpc('complete_v9_reconciliation',{run_id:(imported.data as {migrationRunId:string}).migrationRunId,report:compareReconciliation(snapshot,snapshot)})).error).toBeNull()
+    expect((await supabase!.auth.signInWithPassword({email,password})).error).toBeNull()
+    const repository=new SupabaseWorkspaceRepository(),state=await repository.load(ownerId),beforeLots=state.inventoryLots.length,beforeMovements=state.inventoryMovements.length,now='2026-07-18T12:00:00.000Z'
+    const phaseDefinitions=[{code:'A',name:'Heat phase',order:1,minimumTemperature:65,maximumTemperature:75,instructions:'Melt until homogeneous.'},{code:'C',name:'Sensitive additions',order:2,maximumTemperature:40,instructions:'Add below 40 C.'}]
+    const manufacturingProcess=[{order:1,title:'Melt',instruction:'Melt Phase A.',phaseCode:'A',minimumTemperature:65,maximumTemperature:75,critical:true},{order:2,title:'Cool-down',instruction:'Add Phase C.',phaseCode:'C',maximumTemperature:40,critical:true}]
+    const concept={id:`butter-${crypto.randomUUID()}`,name:'Integration Beard Butter',productType:'beard_butter' as const,intentMode:'design' as const,desiredProperties:['Firm butter'],selectedIngredients:[{ingredientId:'i1',role:'liquid oil',essential:true}],scentDirections:['Subtle'],candidateSubstitutes:{},notes:'Draft only',analysis:{targets:{firmness:'Medium'},variants:[]},createdAt:now,updatedAt:now}
+    const version=state.formulaVersions.find(item=>item.id==='fv-bb-01')!
+    const batch=state.labBatches[0],stepId=`butter-step-${crypto.randomUUID()}`
+    const next={...state,productStudioConcepts:[...state.productStudioConcepts,concept],formulaVersions:state.formulaVersions.map(item=>item.id===version.id?{...item,phaseDefinitions,manufacturingProcess,updatedAt:now}:item),formulaLines:state.formulaLines.map(item=>item.formulaVersionId===version.id&&item.percentage===1?{...item,percentage:4}:item),labBatches:state.labBatches.map(item=>item.id===batch.id?{...item,fillCount:4,packagingUsed:'Wide-mouth jar',deviations:'None',finalTextureObservations:'Smooth initial set'}:item),processSteps:[...state.processSteps,{id:stepId,labBatchId:batch.id,stepNumber:99,title:'Controlled cool-down',instruction:'Cool while stirring.',phaseCode:'C',maximumTemperature:40,actualTemperature:38,durationMinutes:10,mixingMethod:'Stirring',mixingIntensity:'Gentle',completionCriteria:'Uniform texture',critical:true,operatorNote:'No visible separation',status:'Pending' as const,notes:''}]}
+    await repository.commit({action:'saveProductStudioConcept',previous:state,next})
+    const hydrated=await new SupabaseWorkspaceRepository().load(ownerId)
+    expect(hydrated.productStudioConcepts.find(item=>item.id===concept.id)?.productType).toBe('beard_butter')
+    expect(hydrated.formulaVersions.find(item=>item.id===version.id)).toMatchObject({phaseDefinitions,manufacturingProcess})
+    expect(hydrated.processSteps.find(item=>item.id===stepId)).toMatchObject({phaseCode:'C',maximumTemperature:40,actualTemperature:38,critical:true,operatorNote:'No visible separation'})
+    expect(hydrated.labBatches.find(item=>item.id===batch.id)).toMatchObject({fillCount:4,packagingUsed:'Wide-mouth jar',finalTextureObservations:'Smooth initial set'})
+    expect(hydrated.inventoryLots).toHaveLength(beforeLots)
+    expect(hydrated.inventoryMovements).toHaveLength(beforeMovements)
+    const variantId=crypto.randomUUID(),experiment=await client.rpc('create_development_experiment',{plan:{title:'Beard Butter metadata preservation',experimentType:'process_adjustment',objective:'Verify controlled handoff metadata',hypothesis:'Phase metadata survives',productId:state.formulas.find(item=>item.id===version.formulaId)!.productId,baseFormulaVersionId:version.id,idempotencyKey:crypto.randomUUID(),variants:[{id:variantId,name:'Control',purpose:'Metadata handoff',isControl:true,displayOrder:0,changes:[]}],observationPrompts:[]}})
+    expect(experiment.error).toBeNull()
+    expect((await client.rpc('transition_development_experiment',{target_id:experiment.data!,target_status:'ready_for_review',expected_revision:1,note:null})).error).toBeNull()
+    expect((await client.rpc('transition_development_experiment',{target_id:experiment.data!,target_status:'approved',expected_revision:2,note:null})).error).toBeNull()
+    const branchKey=crypto.randomUUID(),branch=await client.rpc('create_formula_branch_from_experiment',{target_experiment:experiment.data!,target_variant:variantId,idempotency:branchKey})
+    expect(branch.error).toBeNull()
+    expect((await client.rpc('create_formula_branch_from_experiment',{target_experiment:experiment.data!,target_variant:variantId,idempotency:branchKey})).data).toBe(branch.data)
+    expect((await client.from('formula_versions').select('phase_definitions,manufacturing_process').eq('id',branch.data!).single()).data).toMatchObject({phase_definitions:expect.any(Array),manufacturing_process:expect.any(Array)})
+    const labKey=crypto.randomUUID(),lab=await client.rpc('create_lab_batch_from_experiment',{target_experiment:experiment.data!,target_variant:variantId,formula_version:branch.data!,batch_size:100,batch_unit:'g',idempotency:labKey})
+    expect(lab.error).toBeNull()
+    expect((await client.rpc('create_lab_batch_from_experiment',{target_experiment:experiment.data!,target_variant:variantId,formula_version:branch.data!,batch_size:100,batch_unit:'g',idempotency:labKey})).data).toBe(lab.data)
+    const handedOffSteps=await client.from('lab_process_steps').select('phase_code,critical').eq('lab_batch_id',lab.data!).order('step_number')
+    expect(handedOffSteps.error).toBeNull()
+    expect(handedOffSteps.data).toHaveLength(manufacturingProcess.length)
+    expect(handedOffSteps.data?.[0]).toMatchObject({phase_code:'A',critical:true})
+    expect((await client.from('inventory_movements').select('*',{count:'exact',head:true}).eq('owner_id',ownerId)).count).toBe(beforeMovements)
+    const other=await ownerClient('beard-butter-isolation')
+    expect((await other.client.from('product_studio_concepts').select('id').eq('id',concept.id)).data).toHaveLength(0)
     await supabase!.auth.signOut()
   },30_000)
 })
