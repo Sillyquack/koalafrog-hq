@@ -17,6 +17,22 @@ export function formulaTotalsExactly100(lines:Array<{percentage:number}>,toleran
   return Number.isFinite(total)&&Math.abs(total-100)<=tolerance
 }
 
+export function formulaCompositionIssues(lines:Array<{percentage:number}>){
+  const issues:string[]=[]
+  for(const line of lines)if(!Number.isFinite(line.percentage)||line.percentage<0||line.percentage>100)issues.push('Formula percentages must be finite values from 0 to 100.')
+  if(!formulaTotalsExactly100(lines))issues.push('Formula percentages must total exactly 100%.')
+  return [...new Set(issues)]
+}
+
+export function formulationIssues(
+  capabilities:{phases:boolean},
+  phases:FormulaPhaseDefinition[],
+  lines:Array<{phase:string;percentage:number}>,
+  process:FormulaProcessStep[]=[],
+){
+  return capabilities.phases?multiPhaseIssues(phases,lines,process):formulaCompositionIssues(lines)
+}
+
 export function multiPhaseIssues(
   phases:FormulaPhaseDefinition[],
   lines:Array<{phase:string;percentage:number}>,
@@ -35,9 +51,8 @@ export function multiPhaseIssues(
   }
   for(const line of lines){
     if(!codes.includes(line.phase))issues.push(`Formula line references unknown phase ${line.phase||'(blank)'}.`)
-    if(!Number.isFinite(line.percentage)||line.percentage<0||line.percentage>100)issues.push('Formula percentages must be finite values from 0 to 100.')
   }
-  if(!formulaTotalsExactly100(lines))issues.push('Formula percentages must total exactly 100%.')
+  issues.push(...formulaCompositionIssues(lines))
   for(const step of process){
     if(step.phaseCode&&!codes.includes(step.phaseCode))issues.push(`Process step ${step.order} references unknown phase ${step.phaseCode}.`)
     if(!Number.isInteger(step.order)||step.order<1)issues.push('Process step order must use positive whole numbers.')

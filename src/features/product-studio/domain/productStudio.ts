@@ -2,6 +2,7 @@ import type{FormulaState,Ingredient,InventoryLot,InventoryMovement,LabObservatio
 import{convertUnit,lotBalance}from'../../inventory/domain/inventoryLogic'
 import{packagingLotBalance}from'../../packaging/domain/packagingLogic'
 import type{EquipmentItem}from'../../procurement/domain/procurement'
+import{productTemplates}from'./formulationEngine'
 
 export type FindingSeverity='information'|'recommendation'|'caution'|'blocking'
 export interface RuleFinding{id:string;severity:FindingSeverity;title:string;explanation:string;evidence:string[];actions:string[]}
@@ -9,7 +10,7 @@ export interface IngredientFit{ingredient:Ingredient;role:string;range:[number,n
 export interface ReadinessItem{id:string;name:string;available:number;required:number;state:'ready'|'low'|'missing';supplierProduct?:SupplierProduct;reason:string}
 
 export const beardOilArchitecture={
- id:'beard-oil-v1',productType:'beard_oil',label:'Beard Oil',description:'An anhydrous liquid carrier system with optional sensory, antioxidant, functional and aromatic support.',
+ id:'beard-oil-v1',productType:productTemplates.beard_oil.id,label:productTemplates.beard_oil.displayName,description:productTemplates.beard_oil.description,
  roles:[
   {id:'liquid_base',label:'Liquid base / carrier system',required:true},
   {id:'supporting_carrier',label:'Supporting carrier oils',required:false},

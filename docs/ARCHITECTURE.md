@@ -48,6 +48,8 @@ Backend clients, generated database types, and query details remain in the platf
 
 Product Studio Formula handoffs may attach optional ordered phase definitions and a structured manufacturing-process draft to an existing Formula Version. Formula Lines remain the canonical percentage composition and carry their phase association. Lab Batch creation snapshots those lines and process steps for execution; the Formula Version remains unchanged, and planning never creates Inventory Movements.
 
+The Core Formulation Engine separates reusable formulation archetypes from familiar Product Studio templates. The typed registry owns capability maturity and template-to-archetype mapping; shared handoff validation resolves capabilities from the saved concept type rather than product-name conditionals. See [FORMULATION_ENGINE.md](FORMULATION_ENGINE.md).
+
 ## UI approach
 
 The visual system uses shared CSS tokens and purposeful components rather than a third-party component kit. The dense sidebar supports the breadth of the operating system; content remains calm and tactile. Scent House intentionally shifts into a darker, more atmospheric workspace while retaining shared navigation and interaction conventions.

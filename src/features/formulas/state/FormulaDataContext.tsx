@@ -53,7 +53,8 @@ import type {
 } from "../../../types/domain";
 import { duplicateDossier as duplicateComplianceDossierDomain } from "../../compliance/domain/complianceLogic";
 import { canTransition, duplicateVersion } from "../domain/formulaLogic";
-import { multiPhaseIssues } from "../domain/multiPhaseLogic";
+import { formulationIssues } from "../domain/multiPhaseLogic";
+import { resolveTemplateArchetype } from "../../product-studio/domain/formulationEngine";
 import {
   generateLotNumber,
   validateMovement,
@@ -533,11 +534,15 @@ export function FormulaDataProvider({
         const concept=stateRef.current.productStudioConcepts.find(item=>item.id===conceptId)
         if(!concept)throw new Error('Product Studio concept is unavailable.')
         if(concept.generatedProductId&&concept.generatedFormulaId&&concept.generatedFormulaVersionId)return{productId:concept.generatedProductId,formulaId:concept.generatedFormulaId,formulaVersionId:concept.generatedFormulaVersionId}
-        if(input.phaseDefinitions?.length){const issues=multiPhaseIssues(input.phaseDefinitions,input.lines,input.manufacturingProcess);if(issues.length)throw new Error(issues.join(' '))}
+        const resolved=resolveTemplateArchetype(concept.productType)
+        if(!resolved.ok)throw new Error(resolved.error)
+        if(resolved.value.archetype.maturity!=='operational')throw new Error(`${resolved.value.archetype.displayName} is not an operational formulation workflow.`)
+        const issues=formulationIssues(resolved.value.archetype.capabilities,input.phaseDefinitions??[],input.lines,input.manufacturingProcess)
+        if(issues.length)throw new Error(issues.join(' '))
         const now=new Date().toISOString(),productId=uid(),formulaId=uid(),formulaVersionId=uid()
         const product:Product={id:productId,name:input.productName,category:'Beard Care',status:'Active',developmentStage:'Formulation',description:input.description,currentDevelopmentFormulaVersionId:formulaVersionId,scentProfile:'Product Studio concept',createdAt:now,updatedAt:now}
         const formula:Formula={id:formulaId,productId,name:input.formulaName,description:input.description,createdAt:now,updatedAt:now}
-        const version:FormulaVersion={id:formulaVersionId,formulaId,version:'v0.1',status:'Draft',description:'Rule-based Product Studio starting point.',targetCharacteristics:'Predicted direction; physical testing required.',processInstructions:input.manufacturingProcess?.map(step=>`${step.order}. ${step.title}: ${step.instruction}`).join('\n')??'Use the Beard Oil Product Studio procedure as preparation guidance, then execute through a Lab Batch.',developmentNotes:'Percentages are explainable starting points from curated rules, not supplier-specific limits or safety approval.',phaseDefinitions:input.phaseDefinitions,manufacturingProcess:input.manufacturingProcess,createdAt:now,updatedAt:now}
+        const version:FormulaVersion={id:formulaVersionId,formulaId,version:'v0.1',status:'Draft',description:'Rule-based Product Studio starting point.',targetCharacteristics:'Predicted direction; physical testing required.',processInstructions:input.manufacturingProcess?.map(step=>`${step.order}. ${step.title}: ${step.instruction}`).join('\n')??'Use the Product Studio template procedure as preparation guidance, then execute through a Lab Batch.',developmentNotes:'Percentages are explainable starting points from curated rules, not supplier-specific limits or safety approval.',phaseDefinitions:input.phaseDefinitions,manufacturingProcess:input.manufacturingProcess,createdAt:now,updatedAt:now}
         const lines:FormulaLine[]=input.lines.map((line,index)=>({id:uid(),formulaVersionId,ingredientId:line.ingredientId,percentage:line.percentage,phase:line.phase,sortOrder:index+1,notes:'Product Studio starting recommendation; editable in Draft.',formulationRole:line.role}))
         commitState("createFormulaFromStudio",current=>({...current,products:[...current.products,product],formulas:[...current.formulas,formula],formulaVersions:[...current.formulaVersions,version],formulaLines:[...current.formulaLines,...lines],productStudioConcepts:current.productStudioConcepts.map(concept=>concept.id===conceptId?{...concept,generatedProductId:productId,generatedFormulaId:formulaId,generatedFormulaVersionId:formulaVersionId,updatedAt:now}:concept)}))
         return{productId,formulaId,formulaVersionId}
