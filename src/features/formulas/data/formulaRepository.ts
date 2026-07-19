@@ -19,6 +19,7 @@ export {
 
 export interface FormulaRepository { load(): FormulaState; save(state: FormulaState): void }
 const cloneSeed = () => structuredClone(formulaSeed)
+export function normalizeIngredientKnowledgeState(state:FormulaState):FormulaState{return{...state,ingredientKnowledgeProfiles:state.ingredientKnowledgeProfiles??[],ingredientKnowledgeRoles:state.ingredientKnowledgeRoles??[],ingredientKnowledgeCompatibility:state.ingredientKnowledgeCompatibility??[],ingredientKnowledgeEvidence:state.ingredientKnowledgeEvidence??[]}}
 type PhaseTwoState = Pick<FormulaState, 'products' | 'formulas' | 'formulaVersions' | 'formulaLines'>
 export function migratePhaseTwoState(legacy: PhaseTwoState): FormulaState { const seed = cloneSeed(); return { ...seed, products: legacy.products, formulas: legacy.formulas, formulaVersions: legacy.formulaVersions, formulaLines: legacy.formulaLines } }
 type PhaseThreeState = Pick<FormulaState,'products'|'formulas'|'formulaVersions'|'formulaLines'|'ingredients'|'supplierProducts'|'inventoryLots'|'inventoryMovements'>
@@ -34,7 +35,7 @@ export class LocalFormulaRepository implements FormulaRepository {
   load(): FormulaState {
     try {
       const stored = window.localStorage.getItem(STORAGE_KEY)
-      if (stored) return JSON.parse(stored) as FormulaState
+      if (stored) return normalizeIngredientKnowledgeState(JSON.parse(stored) as FormulaState)
       const phaseSix=window.localStorage.getItem(PHASE_SIX_STORAGE_KEY)
       if(phaseSix)return migratePhaseSixState(JSON.parse(phaseSix) as PhaseSixState)
       const phaseFive=window.localStorage.getItem(PHASE_FIVE_STORAGE_KEY)

@@ -20,6 +20,10 @@ import type {
   FormulaVersion,
   FormulaVersionStatus,
   Ingredient,
+  IngredientKnowledgeCompatibility,
+  IngredientKnowledgeEvidence,
+  IngredientKnowledgeProfile,
+  IngredientKnowledgeRole,
   InventoryLot,
   InventoryMovement,
   InventoryUnit,
@@ -53,8 +57,12 @@ import type {
 } from "../../../types/domain";
 import { duplicateDossier as duplicateComplianceDossierDomain } from "../../compliance/domain/complianceLogic";
 import { canTransition, duplicateVersion } from "../domain/formulaLogic";
-import { formulationIssues } from "../domain/multiPhaseLogic";
+import { formulaTotalsExactly100, formulationIssues } from "../domain/multiPhaseLogic";
 import { resolveTemplateArchetype } from "../../product-studio/domain/formulationEngine";
+import {
+  naturalDeodorantFormulaCompatibility,
+} from "../../product-studio/domain/naturalDeodorant";
+import { validateIngredientKnowledgeAggregate } from "../../ingredients/domain/ingredientKnowledge";
 import {
   generateLotNumber,
   validateMovement,
@@ -123,6 +131,7 @@ interface FormulaDataValue extends FormulaState {
   adoptReferenceIngredient(input:Omit<Ingredient,"id"|"createdAt"|"updatedAt">):Promise<Ingredient>;
   updateIngredient(id: string, patch: Partial<Ingredient>): void;
   archiveIngredient(id: string): void;
+  saveIngredientKnowledge(input:{profile:IngredientKnowledgeProfile;roles:IngredientKnowledgeRole[];compatibility:IngredientKnowledgeCompatibility[];evidence:IngredientKnowledgeEvidence[]}):Promise<void>|void;
   saveSupplierProduct(
     input: Omit<SupplierProduct, "id" | "createdAt" | "updatedAt"> & {
       id?: string;
@@ -442,6 +451,16 @@ export function FormulaDataProvider({
             (item) => item.id === versionId,
           );
           if (!source || !canTransition(source.status, status)) return current;
+          if (status === "Candidate") {
+            const candidateLines=current.formulaLines.filter(item=>item.formulaVersionId===versionId);
+            if(!formulaTotalsExactly100(candidateLines))return current;
+            const formula=current.formulas.find(item=>item.id===source.formulaId);
+            const concept=current.productStudioConcepts.find(item=>item.generatedFormulaId===formula?.id);
+            if(concept?.productType==="natural_deodorant"){
+              const compatibility=naturalDeodorantFormulaCompatibility(String(concept.analysis.packagingIntent??"Unknown"),candidateLines,current.ingredients);
+              if(!compatibility.compatible)return current;
+            }
+          }
           const version = {
             ...source,
             status,
@@ -540,7 +559,7 @@ export function FormulaDataProvider({
         const issues=formulationIssues(resolved.value.archetype.capabilities,input.phaseDefinitions??[],input.lines,input.manufacturingProcess)
         if(issues.length)throw new Error(issues.join(' '))
         const now=new Date().toISOString(),productId=uid(),formulaId=uid(),formulaVersionId=uid()
-        const product:Product={id:productId,name:input.productName,category:'Beard Care',status:'Active',developmentStage:'Formulation',description:input.description,currentDevelopmentFormulaVersionId:formulaVersionId,scentProfile:'Product Studio concept',createdAt:now,updatedAt:now}
+        const product:Product={id:productId,name:input.productName,category:resolved.value.template.productCategory,status:'Active',developmentStage:'Formulation',description:input.description,currentDevelopmentFormulaVersionId:formulaVersionId,scentProfile:'Product Studio concept',createdAt:now,updatedAt:now}
         const formula:Formula={id:formulaId,productId,name:input.formulaName,description:input.description,createdAt:now,updatedAt:now}
         const version:FormulaVersion={id:formulaVersionId,formulaId,version:'v0.1',status:'Draft',description:'Rule-based Product Studio starting point.',targetCharacteristics:'Predicted direction; physical testing required.',processInstructions:input.manufacturingProcess?.map(step=>`${step.order}. ${step.title}: ${step.instruction}`).join('\n')??'Use the Product Studio template procedure as preparation guidance, then execute through a Lab Batch.',developmentNotes:'Percentages are explainable starting points from curated rules, not supplier-specific limits or safety approval.',phaseDefinitions:input.phaseDefinitions,manufacturingProcess:input.manufacturingProcess,createdAt:now,updatedAt:now}
         const lines:FormulaLine[]=input.lines.map((line,index)=>({id:uid(),formulaVersionId,ingredientId:line.ingredientId,percentage:line.percentage,phase:line.phase,sortOrder:index+1,notes:'Product Studio starting recommendation; editable in Draft.',formulationRole:line.role}))
@@ -590,6 +609,22 @@ export function FormulaDataProvider({
               : item,
           ),
         }));
+      },
+      saveIngredientKnowledge(input) {
+        const now=input.profile.updatedAt,previousRoles=new Map(stateRef.current.ingredientKnowledgeRoles.map(item=>[item.id,item])),previousCompatibility=new Map(stateRef.current.ingredientKnowledgeCompatibility.map(item=>[item.id,item])),previousEvidence=new Map(stateRef.current.ingredientKnowledgeEvidence.map(item=>[item.id,item]))
+        const aggregate={...input,
+          roles:input.roles.map(item=>({...item,createdAt:previousRoles.get(item.id)?.createdAt??item.createdAt,updatedAt:now})),
+          compatibility:input.compatibility.map(item=>({...item,createdAt:previousCompatibility.get(item.id)?.createdAt??item.createdAt,updatedAt:now})),
+          evidence:input.evidence.map(item=>({...item,createdAt:previousEvidence.get(item.id)?.createdAt??item.createdAt,updatedAt:now})),
+        }
+        const errors=validateIngredientKnowledgeAggregate(aggregate,stateRef.current.ingredients.map(item=>item.id))
+        if(errors.length)throw new Error(errors.join(' '))
+        const result=commitState('saveIngredientKnowledge',current=>({...current,
+          ingredientKnowledgeProfiles:[...current.ingredientKnowledgeProfiles.filter(item=>item.ingredientId!==aggregate.profile.ingredientId),aggregate.profile],
+          ingredientKnowledgeRoles:[...current.ingredientKnowledgeRoles.filter(item=>item.ingredientKnowledgeProfileId!==aggregate.profile.id),...aggregate.roles],
+          ingredientKnowledgeCompatibility:[...current.ingredientKnowledgeCompatibility.filter(item=>item.ingredientKnowledgeProfileId!==aggregate.profile.id),...aggregate.compatibility],
+          ingredientKnowledgeEvidence:[...current.ingredientKnowledgeEvidence.filter(item=>item.ingredientKnowledgeProfileId!==aggregate.profile.id),...aggregate.evidence],
+        }));return result instanceof Promise?result.then(()=>undefined):undefined
       },
       saveSupplierProduct(input) {
         const now = new Date().toISOString();
@@ -700,6 +735,11 @@ export function FormulaDataProvider({
         );
         if (!product || !version || version.formulaId !== input.formulaId)
           throw new Error("Select a valid product, formula, and version.");
+        const concept=state.productStudioConcepts.find(item=>item.generatedFormulaId===input.formulaId);
+        if(concept?.productType==="natural_deodorant"){
+          const compatibility=naturalDeodorantFormulaCompatibility(String(concept.analysis.packagingIntent??"Unknown"),state.formulaLines.filter(line=>line.formulaVersionId===version.id),state.ingredients);
+          if(!compatibility.compatible)throw new Error(compatibility.blockingIssues.join(" "));
+        }
         if (version.status === "Retired")
           throw new Error(
             "Retired versions require a deliberate historical workflow.",
@@ -755,6 +795,11 @@ export function FormulaDataProvider({
           )
             return current;
           const next = { ...line, ...patch };
+          if (
+            patch.actualQuantity !== undefined &&
+            (!Number.isFinite(patch.actualQuantity) || patch.actualQuantity < 0)
+          )
+            return current;
           if (patch.actualQuantity !== undefined)
             next.variance = quantityVariance(
               patch.actualQuantity,
@@ -883,6 +928,15 @@ export function FormulaDataProvider({
         });
       },
       updateLabBatch(id, patch) {
+        if (
+          (patch.actualYield !== undefined &&
+            (!Number.isFinite(patch.actualYield) || patch.actualYield < 0)) ||
+          (patch.fillCount !== undefined &&
+            (!Number.isFinite(patch.fillCount) ||
+              patch.fillCount < 0 ||
+              !Number.isInteger(patch.fillCount)))
+        )
+          return;
         commitState("updateLabBatch", (current) => ({
           ...current,
           labBatches: current.labBatches.map((b) =>
@@ -911,6 +965,11 @@ export function FormulaDataProvider({
         }));
       },
       updateProcessStep(id, patch) {
+        if (
+          patch.actualTemperature !== undefined &&
+          !Number.isFinite(patch.actualTemperature)
+        )
+          return;
         commitState("updateProcessStep", (current) => ({
           ...current,
           processSteps: current.processSteps.map((s) =>

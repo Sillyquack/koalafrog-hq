@@ -25,6 +25,10 @@ describe('Product Studio to Development Workspace continuity',()=>{
   expect(detail).toContain('versionBatches.length')
   expect(detail).toContain('observation.labBatchId===batch.id&&observation.observedAt')
   expect(detail).toContain('/lab/start/${formula.id}')
+  expect(detail).toContain('Physical-system compatibility')
+  expect(detail).toContain('Ingredient-documentation review')
+  expect(detail).toContain('Prepare Lab Batch blocked')
+  expect(detail).toContain('disabled={!candidateReady}')
  })
  it('keeps source notes separate from Formula composition',()=>{
   expect(detail).toContain('Context notes from Product Studio')

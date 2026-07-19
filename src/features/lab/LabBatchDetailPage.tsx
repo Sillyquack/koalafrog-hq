@@ -207,14 +207,13 @@ export function LabBatchDetailPage() {
                   <input
                     disabled={readOnly || batch.status !== "In Progress"}
                     type="number"
+                    min="0"
                     step="any"
                     value={line.actualQuantity ?? ""}
-                    onChange={(e) =>
-                      data.updateBatchLine(line.id, {
-                        actualQuantity: Number(e.target.value),
-                        status: "Weighed",
-                      })
-                    }
+                    onChange={(e) => {
+                      const value=e.target.value===''?undefined:Number(e.target.value)
+                      if(value===undefined||(Number.isFinite(value)&&value>=0))data.updateBatchLine(line.id,{actualQuantity:value,status:value===undefined?'Pending':'Weighed'})
+                    }}
                   />
                   <small>
                     {line.variance != null
@@ -324,7 +323,7 @@ export function LabBatchDetailPage() {
                     {step.stepNumber}. {step.title&&`${step.title}: `}{step.instruction}
                   </b>
                   <small>{[step.phaseCode&&`Phase ${step.phaseCode}`,step.minimumTemperature!=null||step.maximumTemperature!=null?`${step.minimumTemperature??'≤'}–${step.maximumTemperature??'open'} °C`:step.targetTemperature!=null?`${step.targetTemperature} °C`:undefined,step.mixingMethod,step.durationMinutes!=null?`${step.durationMinutes} min`:undefined,step.critical?'Critical':undefined,step.status].filter(Boolean).join(' · ')}</small>
-                  <input aria-label={`Actual temperature for step ${step.stepNumber}`} disabled={readOnly} type="number" step="0.1" placeholder="Actual °C, if measured" value={step.actualTemperature??''} onChange={e=>{const value=Number(e.target.value);if(Number.isFinite(value))data.updateProcessStep(step.id,{actualTemperature:value})}}/>
+                  <input aria-label={`Actual temperature for step ${step.stepNumber}`} disabled={readOnly} type="number" step="0.1" placeholder="Actual °C, if measured" value={step.actualTemperature??''} onChange={e=>{const value=e.target.value===''?undefined:Number(e.target.value);if(value===undefined||Number.isFinite(value))data.updateProcessStep(step.id,{actualTemperature:value})}}/>
                   <input aria-label={`Operator note for step ${step.stepNumber}`} disabled={readOnly} placeholder="Operator note or deviation" value={step.operatorNote??''} onChange={e=>data.updateProcessStep(step.id,{operatorNote:e.target.value})}/>
                 </span>
               </label>
@@ -338,14 +337,13 @@ export function LabBatchDetailPage() {
             <input
               disabled={readOnly}
               type="number"
+              min="0"
               step="0.1"
               value={batch.actualYield ?? ""}
-              onChange={(e) =>
-                data.updateLabBatch(batch.id, {
-                  actualYield: Number(e.target.value),
-                  yieldUnit: batch.plannedBatchUnit,
-                })
-              }
+              onChange={(e) => {
+                const value=e.target.value===''?undefined:Number(e.target.value)
+                if(value===undefined||(Number.isFinite(value)&&value>=0))data.updateLabBatch(batch.id,{actualYield:value,yieldUnit:value===undefined?undefined:batch.plannedBatchUnit})
+              }}
             />
             <span>{batch.plannedBatchUnit}</span>
           </label>

@@ -1,5 +1,7 @@
 # Koalafrog
 
+Ingredient Knowledge enriches Workspace Ingredients with explicit unknown states and traceable evidence. It is a knowledge foundation, not a prediction, safety, efficacy, or recommendation system. See `docs/INGREDIENT_KNOWLEDGE.md`.
+
 ## Hva er Koalafrog?
 
 Koalafrog er et privat produktutviklingssystem for kosmetikk og grooming som hjelper én produsent hele veien fra idé til ferdig produkt.
@@ -40,6 +42,8 @@ Fysisk testing, sporbarhet og dokumentasjon skal følge ideen når den utvikles 
 Beard Butter er den første varmeprosesserte flerfasemodellen i Product Studio. Den utvider Beard Oil-arbeidsflyten med eksplisitte formelfaser, temperaturgrenser, kontrollert nedkjøling, prosess-steg, variantvurdering og fasebevisst Lab-overlevering. Dette er strukturert utviklingsstøtte, ikke en erstatning for formuleringsekspertise, stabilitetstesting, sikkerhetsvurdering eller regulatorisk dokumentasjon.
 
 Beard Oil og Beard Butter er produktsjablonger over en felles formuleringsmotor. Motoren beskriver gjenbrukbare arketyper og prosessegenskaper, mens sjablongen beholder produktmål, veiledning og evalueringskriterier. Planlagte arketyper skal være ærlig merket som utilgjengelige til regler og sikkerhetsgrenser faktisk er implementert.
+
+Fra v0.12.0 er `solid_or_stick` en operativ arketype. Natural Deodorant er den første produktsjablongen og gjenbruker samme Formula-, Development-, Lab-, Testing-, emballasje- og lagergrenser som resten av systemet. Den støtter strukturerende materialer, væsker, pulverdispersjon, kontrollert fylling og fysisk evaluering uten å anta universelle temperaturer, effekt, sikkerhet eller regulatorisk status.
 
 ## Release-regel
 

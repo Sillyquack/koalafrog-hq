@@ -47,6 +47,8 @@ import { EquipmentDetailPage } from '../features/procurement/EquipmentDetailPage
 import { ProductStudioPage } from '../features/product-studio/ProductStudioPage'
 import { BeardOilStudioPage } from '../features/product-studio/BeardOilStudioPage'
 import { BeardButterStudioPage } from '../features/product-studio/BeardButterStudioPage'
+import { NaturalDeodorantStudioPage } from '../features/product-studio/NaturalDeodorantStudioPage'
+import { IngredientKnowledgePage } from '../features/ingredients/IngredientKnowledgePage'
 
 export function App() {
   return (
@@ -56,6 +58,7 @@ export function App() {
         <Route path="product-studio" element={<ProductStudioPage />} />
         <Route path="product-studio/beard-oil" element={<BeardOilStudioPage />} />
         <Route path="product-studio/beard-butter" element={<BeardButterStudioPage />} />
+        <Route path="product-studio/natural-deodorant" element={<NaturalDeodorantStudioPage />} />
         <Route path="products" element={<ProductsPage />} />
         <Route path="products/:productId" element={<ProductDetailPage />} />
         <Route path="formulas" element={<FormulaLibraryPage />} />
@@ -65,6 +68,7 @@ export function App() {
         <Route path="ingredients/reference/:entryId" element={<ReferenceEntryPage />} />
         <Route path="ingredients/smart-start" element={<SmartStartPage />} />
         <Route path="ingredients/:ingredientId" element={<IngredientDetailPage />} />
+        <Route path="ingredients/:ingredientId/knowledge" element={<IngredientKnowledgePage />} />
         <Route path="inventory" element={<InventoryPage />} />
         <Route path="inventory/lots/:lotId" element={<LotDetailPage />} />
         <Route path="lab" element={<StudioLabHandoff fallback={<LabPage />}/>} />

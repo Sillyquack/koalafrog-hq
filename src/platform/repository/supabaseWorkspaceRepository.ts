@@ -7,6 +7,7 @@ import { changedCollections } from './workspaceRepository'
 import type { WorkspaceCommit } from '../actions/workspaceActions'
 
 export const relationalTableByCollection: Record<keyof FormulaState, string> = {
+  ingredientKnowledgeProfiles:'ingredient_knowledge_profiles',ingredientKnowledgeRoles:'ingredient_knowledge_roles',ingredientKnowledgeCompatibility:'ingredient_knowledge_compatibility',ingredientKnowledgeEvidence:'ingredient_knowledge_evidence',
   productStudioConcepts:'product_studio_concepts',products:'products',formulas:'formulas',formulaVersions:'formula_versions',formulaLines:'formula_lines',ingredients:'ingredients',supplierProducts:'supplier_products',inventoryLots:'inventory_lots',inventoryMovements:'inventory_movements',labBatches:'lab_batches',labBatchLines:'lab_batch_lines',labBatchAllocations:'lab_lot_allocations',processSteps:'lab_process_steps',labObservations:'lab_observations',testers:'testers',testTemplates:'test_templates',testSessions:'test_sessions',testResponses:'test_responses',productionRuns:'production_runs',productionRunLines:'production_run_lines',productionRunAllocations:'production_lot_allocations',productionProcessSteps:'production_process_steps',costLines:'cost_lines',packagingComponents:'packaging_components',packagingSupplierProducts:'packaging_supplier_products',packagingInventoryLots:'packaging_inventory_lots',packagingInventoryMovements:'packaging_inventory_movements',packagingSpecifications:'packaging_specifications',packagingSpecificationVersions:'packaging_specification_versions',packagingSpecificationLines:'packaging_specification_lines',packagingAllocations:'packaging_allocations',finishedGoodsBatches:'finished_goods_batches',finishedGoodsMovements:'finished_goods_movements',responsiblePersons:'responsible_persons',complianceDossiers:'compliance_dossiers',complianceDocuments:'compliance_documents',regulatorySources:'regulatory_sources',regulatoryReviews:'regulatory_reviews',pifSections:'pif_evidence_sections',cpsrRecords:'cpsr_records',labelArtworkVersions:'label_artwork_versions',labelReviewItems:'label_checklist_items',inciDrafts:'inci_declarations',claims:'claims',claimEvidence:'claim_evidence',cpnpRecords:'cpnp_records',readinessIssues:'readiness_issues',launchPlans:'launch_plans',launchMilestones:'launch_milestones',launchDecisions:'launch_decisions',safetyEffectRecords:'undesirable_effect_records',
 }
 
@@ -112,6 +113,20 @@ export class SupabaseWorkspaceRepository implements WorkspaceRepository {
   }
 
   private async commitAtomic(change: WorkspaceCommit, client: SupabaseClient) {
+    if(change.action==='saveIngredientKnowledge'){
+      const profile=change.next.ingredientKnowledgeProfiles.find(item=>change.previous.ingredientKnowledgeProfiles.find(previous=>previous.ingredientId===item.ingredientId)!==item)
+      if(!profile)throw new Error('Ingredient Knowledge mutation is missing its profile.')
+      const aggregate={
+        profile:toDatabaseValue(profile),
+        roles:toDatabaseValue(change.next.ingredientKnowledgeRoles.filter(item=>item.ingredientKnowledgeProfileId===profile.id)),
+        compatibility:toDatabaseValue(change.next.ingredientKnowledgeCompatibility.filter(item=>item.ingredientKnowledgeProfileId===profile.id)),
+        evidence:toDatabaseValue(change.next.ingredientKnowledgeEvidence.filter(item=>item.ingredientKnowledgeProfileId===profile.id)),
+      }
+      const previous=change.previous.ingredientKnowledgeProfiles.find(item=>item.id===profile.id)
+      const result=await client.rpc('save_ingredient_knowledge_aggregate',{aggregate,expected_updated_at:previous?.updatedAt??null})
+      if(result.error)throw new Error(result.error.message)
+      return true
+    }
     if(change.action==='createFormulaFromStudio'){
       const concept=change.next.productStudioConcepts.find(item=>!change.previous.productStudioConcepts.find(previous=>previous.id===item.id)?.generatedFormulaId&&item.generatedFormulaId)
       if(!concept?.generatedProductId||!concept.generatedFormulaId||!concept.generatedFormulaVersionId)throw new Error('Formula creation is missing its linked records.')

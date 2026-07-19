@@ -13,6 +13,7 @@ import {
 } from "./workspaceStartup";
 import { configuredWorkspaceRuntime as configuredRuntime } from './runtimeMode'
 import {ActiveWorkspaceProvider} from './ActiveWorkspaceContext'
+import {SecureLogoutButton} from'../auth/AuthGate'
 
 class ReadOnlyMigrationRepository implements WorkspaceRepository {
   readonly kind = "local" as const;
@@ -125,6 +126,7 @@ export function WorkspaceRuntime({ children }: { children: React.ReactNode }) {
           <button className="button primary" onClick={retry}>
             Retry Supabase
           </button>
+          <SecureLogoutButton />
         </div>
       </main>
     );

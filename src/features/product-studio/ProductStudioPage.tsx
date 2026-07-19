@@ -12,6 +12,7 @@ export function ProductStudioPage(){
   <Link to={`${productTemplates.beard_oil.route}?mode=make`}><PackageCheck/><span><strong>Make Something Today</strong><small>Start with stock, equipment and packaging already recorded. Formulation system: {formulationArchetypes.simple_liquid.displayName}.</small></span></Link>
   <Link to={`${productTemplates.beard_oil.route}?mode=design`}><Sparkles/><span><strong>Design a Product</strong><small>Build a Beard Oil direction from desired properties. Formulation system: {formulationArchetypes.simple_liquid.displayName}.</small></span></Link>
   <Link to={productTemplates.beard_butter.route}><Beaker/><span><strong>Design Beard Butter</strong><small>Build a heat-processed, multi-phase butter and draft process. Formulation system: {formulationArchetypes.anhydrous_multiphase.displayName}.</small></span></Link>
+  <Link to={productTemplates.natural_deodorant.route}><Sparkles/><span><strong>Design Natural Deodorant</strong><small>Build an anhydrous heated stick or jar concept with explicit powder dispersion and setting controls. Formulation system: {formulationArchetypes.solid_or_stick.displayName}.</small></span></Link>
   <Link to="/ingredients/reference"><BookOpen/><span><strong>Explore Ingredients</strong><small>Browse curated reference knowledge before adoption.</small></span></Link>
   <Link to="/formulas"><FlaskConical/><span><strong>Follow a Proven Formula</strong><small>Use an existing Candidate or Approved internal formula.</small></span></Link>
  </section>
