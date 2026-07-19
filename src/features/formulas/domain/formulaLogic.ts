@@ -4,6 +4,11 @@ export const roundFormulaNumber = (value: number) => Math.round((value + Number.
 export const calculatePercentageTotal = (lines: Pick<FormulaLine, 'percentage'>[]) => roundFormulaNumber(lines.reduce((sum, line) => sum + Number(line.percentage || 0), 0))
 export const percentageBalance = (lines: Pick<FormulaLine, 'percentage'>[]) => roundFormulaNumber(100 - calculatePercentageTotal(lines))
 export const scaleFormula = (lines: FormulaLine[], targetGrams: number) => lines.map((line) => ({ ...line, calculatedWeight: roundFormulaNumber(targetGrams * line.percentage / 100) }))
+export function batchPlanningTarget(directTargetGrams:number,fillGrams:number,containerCount:number,overagePercent:number){
+  const plannedFills=fillGrams>0&&containerCount>0
+  const targetGrams=plannedFills?roundFormulaNumber(fillGrams*containerCount*(1+Math.max(0,overagePercent)/100)):Math.max(0,directTargetGrams)
+  return{targetGrams,estimatedFills:fillGrams>0?Math.floor(targetGrams/fillGrams):undefined}
+}
 export const isEditableStatus = (status: FormulaVersionStatus) => status === 'Draft'
 
 export const allowedTransitions: Record<FormulaVersionStatus, FormulaVersionStatus[]> = {
