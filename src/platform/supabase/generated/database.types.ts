@@ -6296,6 +6296,16 @@ export type Database = {
         }
         Returns: string
       }
+      create_product_studio_formula_handoff: {
+        Args: {
+          concept_id: string
+          formula: Json
+          formula_lines: Json
+          formula_version: Json
+          product: Json
+        }
+        Returns: Json
+      }
       create_product_studio_purchase_plan: {
         Args: { concept_id: string; lines: Json }
         Returns: string
