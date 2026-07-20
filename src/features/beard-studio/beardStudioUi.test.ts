@@ -13,6 +13,14 @@ describe('Beard Studio integration', () => {
     expect(css).toContain('@media(max-width:410px)')
     expect(css).toContain('.touch-button{min-height:52px')
     expect(css).toContain('.page{overflow-x:hidden}')
+    expect(css).toContain('@media(max-width:410px){.product-choice{grid-template-columns:1fr}')
+  })
+  it('reuses Koalafrog Products with explicit grooming usage roles', () => {
+    const selector = readFileSync('src/features/beard-studio/components/GroomingProductSelector.tsx', 'utf8')
+    expect(selector).toContain('useFormulaData')
+    expect(selector).toContain('product.status !==')
+    expect(selector).toContain('Usage role')
+    expect(selector).toContain('No Koalafrog Products available')
   })
   it('does not expose camera, AI analysis or photo upload controls', () => {
     const ui = readFileSync('src/features/beard-studio/BeardStudioPages.tsx', 'utf8')

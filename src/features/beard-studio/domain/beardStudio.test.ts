@@ -91,6 +91,20 @@ describe('Beard Studio domain', () => {
     expect(snapshot.tools[0].attachments[0].name).toBe('Integrated adjustable comb')
   })
 
+  it('preserves an immutable Product snapshot after a source rename or archive', () => {
+    let state = createStarterWorkspace()
+    const product = { productId: 'product-beard-oil', nameSnapshot: 'Forest Beard Oil', categorySnapshot: 'Beard care', role: 'beard oil' as const }
+    state.recipes[0].preferredProducts = [product]
+    const recipe = state.recipes[0]
+    state = startTrim(state, recipe.id)
+    let session = state.sessions[0]
+    for (let index = 0; index < recipe.steps.length; index++) session = progressTrimSession(session, recipe, 'next')
+    state = { ...state, sessions: [session] }
+    const logged = createLogFromSession(state, session.id, { overallRating: 5, fadeRating: null, lineSharpnessRating: null, symmetryRating: null, comfortRating: 5 })
+    product.nameSnapshot = 'Renamed source value'
+    expect(logged.logs[0].snapshot.products[0]).toEqual(expect.objectContaining({ nameSnapshot: 'Forest Beard Oil', categorySnapshot: 'Beard care', role: 'beard oil' }))
+  })
+
   it('validates result ratings from 1 to 5', () => {
     expect(validateRating(1, true)).toBeNull()
     expect(validateRating(5)).toBeNull()

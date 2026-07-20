@@ -75,7 +75,9 @@ export interface TrimRecipeStep {
   caution: string
   completionRequired: boolean
 }
-export interface GroomingProductReference { productId: string | null; nameSnapshot: string; role: string }
+export const groomingProductRoles = ['pre-trim', 'beard wash', 'conditioner', 'beard oil', 'beard butter', 'beard balm', 'styling product', 'post-trim soothing', 'fragrance'] as const
+export type GroomingProductRole = typeof groomingProductRoles[number]
+export interface GroomingProductReference { productId: string | null; nameSnapshot: string; categorySnapshot: string; role: GroomingProductRole }
 export interface TrimRecipe {
   id: string
   profileId: string
@@ -213,7 +215,7 @@ export function validateRating(value: number | null, required = false) {
   return Number.isInteger(value) && value >= 1 && value <= 5 ? null : 'Ratings must be whole numbers from 1 to 5.'
 }
 
-export function createLogFromSession(state: BeardStudioState, sessionId: string, ratings: Pick<BeardLogEntry, 'overallRating' | 'fadeRating' | 'lineSharpnessRating' | 'symmetryRating' | 'comfortRating'>, notes = ''): BeardStudioState {
+export function createLogFromSession(state: BeardStudioState, sessionId: string, ratings: Pick<BeardLogEntry, 'overallRating' | 'fadeRating' | 'lineSharpnessRating' | 'symmetryRating' | 'comfortRating'>, notes = '', productsUsed?: GroomingProductReference[]): BeardStudioState {
   const session = state.sessions.find(item => item.id === sessionId)
   const recipe = session && state.recipes.find(item => item.id === session.recipeId)
   const profile = recipe && state.profiles.find(item => item.id === recipe.profileId)
@@ -224,7 +226,7 @@ export function createLogFromSession(state: BeardStudioState, sessionId: string,
   const previous = [...state.logs].filter(log => log.profileId === profile.id).sort((a, b) => b.occurredAt.localeCompare(a.occurredAt))[0]
   const daysSincePreviousTrim = previous ? Math.max(0, Math.floor((new Date(timestamp).getTime() - new Date(previous.occurredAt).getTime()) / 86_400_000)) : null
   const usedToolIds = new Set(recipe.steps.map(step => step.toolId).filter(Boolean))
-  const snapshot: BeardLogSnapshot = { schemaVersion: 1, profile: structuredClone(profile), recipe: structuredClone(recipe), lengthMap: structuredClone(state.lengthMaps.find(map => map.profileId === profile.id) ?? null), tools: structuredClone(state.tools.filter(tool => usedToolIds.has(tool.id))), products: structuredClone(recipe.preferredProducts) }
+  const snapshot: BeardLogSnapshot = { schemaVersion: 1, profile: structuredClone(profile), recipe: structuredClone(recipe), lengthMap: structuredClone(state.lengthMaps.find(map => map.profileId === profile.id) ?? null), tools: structuredClone(state.tools.filter(tool => usedToolIds.has(tool.id))), products: structuredClone(productsUsed ?? recipe.preferredProducts) }
   const entry: BeardLogEntry = { id: id(), sessionId, occurredAt: timestamp, profileId: profile.id, recipeId: recipe.id, recipeVersion: recipe.version, startingCondition: recipe.startingCondition, daysSincePreviousTrim, durationMinutes: Math.max(1, Math.round((new Date(timestamp).getTime() - new Date(session.startedAt).getTime()) / 60_000)), ...ratings, notes, whatWorked: '', changeNextTime: '', snapshot, createdAt: timestamp, updatedAt: timestamp }
   return { ...state, logs: [entry, ...state.logs] }
 }
