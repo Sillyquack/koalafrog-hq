@@ -1,6 +1,6 @@
 export const APPLICATION_VERSION = __APP_VERSION__
 export const BACKUP_FORMAT = 'koalafrog-backup-v1'
-export const WORKSPACE_SCHEMA = 'koalafrog-hq:workspace:v9'
+export const WORKSPACE_SCHEMA = 'koalafrog-hq:workspace:v10'
 
 export const platformVersionInfo = [
   { label: 'Application', value: `v${APPLICATION_VERSION}` },

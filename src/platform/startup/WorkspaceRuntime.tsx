@@ -6,7 +6,8 @@ import { SupabaseWorkspaceRepository } from "../repository/supabaseWorkspaceRepo
 import type { WorkspaceRepository } from "../repository/workspaceRepository";
 import { supabase } from "../supabase/client";
 import { PlatformPage } from "../PlatformPage";
-import { STORAGE_KEY } from "../../features/formulas/data/formulaRepository";
+import { PHASE_SEVEN_STORAGE_KEY,STORAGE_KEY } from "../../features/formulas/data/formulaRepository";
+import{normalizeWorkspaceState}from"../../features/formulas/data/formulaRepository";
 import {
   resolveWorkspaceStartup,
   type WorkspaceStartupResult,
@@ -58,10 +59,10 @@ export function WorkspaceRuntime({ children }: { children: React.ReactNode }) {
           .eq("owner_id", data.user.id)
           .maybeSingle();
         let localV9: FormulaState | undefined;
-        const stored = window.localStorage.getItem(STORAGE_KEY);
+        const stored = window.localStorage.getItem(STORAGE_KEY)??window.localStorage.getItem(PHASE_SEVEN_STORAGE_KEY);
         if (stored) {
           try {
-            localV9 = JSON.parse(stored) as FormulaState;
+            localV9 = normalizeWorkspaceState(JSON.parse(stored) as FormulaState);
           } catch {
             localV9 = undefined;
           }

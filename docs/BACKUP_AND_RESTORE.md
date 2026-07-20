@@ -5,7 +5,7 @@ Open **System → Platform** in the application sidebar to export or validate a 
 Koalafrog tracks three independent versions:
 
 - **Application version** identifies the release that produced the export. It is metadata sourced from `package.json`; an older application version such as `0.1.0` does not invalidate an otherwise valid backup.
-- **Workspace schema version** identifies the shape of the exported domain workspace. It remains `koalafrog-hq:workspace:v9`.
+- **Workspace schema version** identifies the shape of the exported domain workspace. v0.13.0 uses `koalafrog-hq:workspace:v10`, adding the typed Beard Studio aggregate while hydrating v9 sources to an empty Beard Studio state.
 - **Backup format version** identifies the JSON envelope understood by backup validation. It remains `koalafrog-backup-v1`.
 
 Application-version metadata is not a restore compatibility gate. Restore decisions depend on the backup format, workspace schema, record validation, reconciliation, and the controlled target environment.

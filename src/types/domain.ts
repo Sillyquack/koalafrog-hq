@@ -67,6 +67,7 @@ export interface ProductStudioConcept {
 }
 
 export interface FormulaState {
+  beardStudio: BeardStudioState
   ingredientKnowledgeProfiles: IngredientKnowledgeProfile[]
   ingredientKnowledgeRoles: IngredientKnowledgeRole[]
   ingredientKnowledgeCompatibility: IngredientKnowledgeCompatibility[]
@@ -284,3 +285,4 @@ export interface Accord { id: string; name: string; materials: string[]; status:
 export interface Activity { id: string; title: string; detail: string; timestamp: string; type: string }
 export interface TestingActivity { id: string; title: string; product: string; date: string; type: string }
 export interface ModuleDefinition { path: string; name: string; eyebrow: string; description: string; capabilities: string[] }
+import type { BeardStudioState } from './beardStudio'

@@ -3,9 +3,9 @@ import { formulaSeed } from '../../data/formulaSeed'
 import { normalizeProductRow, relationalMigrationPayload, relationalTableByCollection, toDatabaseValue, toDomainValue } from './supabaseWorkspaceRepository'
 
 describe('relational workspace mapping', () => {
-  it('maps every v9 collection to an explicit table', () => {
-    expect(Object.keys(relationalTableByCollection)).toEqual(Object.keys(formulaSeed))
-    expect(new Set(Object.values(relationalTableByCollection)).size).toBe(Object.keys(formulaSeed).length)
+  it('maps every relational collection explicitly and keeps Beard Studio as a typed aggregate gateway', () => {
+    expect(Object.keys(relationalTableByCollection)).toEqual(Object.keys(formulaSeed).filter(key=>key!=='beardStudio'))
+    expect(new Set(Object.values(relationalTableByCollection)).size).toBe(Object.keys(formulaSeed).length-1)
     expect(Object.values(relationalTableByCollection)).not.toContain('workspace_records')
   })
 

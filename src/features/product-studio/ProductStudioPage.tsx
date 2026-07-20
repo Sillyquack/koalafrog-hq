@@ -1,5 +1,5 @@
 import{Link}from'react-router-dom'
-import{Beaker,BookOpen,FlaskConical,PackageCheck,Sparkles}from'lucide-react'
+import{Beaker,BookOpen,FlaskConical,PackageCheck,Scissors,Sparkles}from'lucide-react'
 import{useFormulaData}from'../formulas/state/FormulaDataContext'
 import{inventoryReadiness,maximumBatchSize}from'./domain/productStudio'
 import{formulationArchetypes,productTemplates,resolveProductTemplate}from'./domain/formulationEngine'
@@ -15,6 +15,7 @@ export function ProductStudioPage(){
   <Link to={`${productTemplates.beard_oil.route}?mode=design`}><Sparkles/><span><strong>Design a Product</strong><small>Build a Beard Oil direction from desired properties. Formulation system: {formulationArchetypes.simple_liquid.displayName}.</small></span></Link>
   <Link to={productTemplates.beard_butter.route}><Beaker/><span><strong>Design Beard Butter</strong><small>Build a heat-processed, multi-phase butter and draft process. Formulation system: {formulationArchetypes.anhydrous_multiphase.displayName}.</small></span></Link>
   <Link to="/product-studio/benchmark-lab/new"><Sparkles/><span><strong>Design Natural Deodorant</strong><small>Begin with benchmark research and functional requirements, then continue into the {formulationArchetypes.solid_or_stick.displayName} formulation workflow.</small></span></Link>
+  <Link to="/grooming/beard-studio"><Scissors/><span><strong>Open Beard Studio</strong><small>Define and record a repeatable grooming practice using canonical workspace Products without changing Formula composition.</small></span></Link>
   <Link to="/ingredients/reference"><BookOpen/><span><strong>Explore Ingredients</strong><small>Browse curated reference knowledge before adoption.</small></span></Link>
   <Link to="/formulas"><FlaskConical/><span><strong>Follow a Proven Formula</strong><small>Use an existing Candidate or Approved internal formula.</small></span></Link>
  </section>

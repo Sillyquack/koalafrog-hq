@@ -46,7 +46,7 @@ run('relational v9 migration against local Supabase', () => {
   beforeAll(() => {
     admin = createClient(url!, serviceKey!, { auth: { persistSession: false } })
     expect(validateV9Workspace(formulaSeed).blockingErrors).toBe(0)
-    expect(Object.values(formulaSeed).reduce((sum, records) => sum + records.length, 0)).toBe(134)
+    expect(Object.values(formulaSeed).filter(Array.isArray).reduce((sum, records) => sum + records.length, 0)).toBe(134)
   })
   afterAll(async () => { for (const id of createdUsers) await admin.auth.admin.deleteUser(id) })
 
@@ -62,8 +62,8 @@ run('relational v9 migration against local Supabase', () => {
       if (result.error) throw result.error
       remoteState[collection] = toDomainValue(result.data) as unknown[]
     }
-    const remote = remoteState as unknown as FormulaState
-    for (const collection of Object.keys(relationalTableByCollection) as Array<keyof FormulaState>) {
+    const remote = {...remoteState,beardStudio:structuredClone(formulaSeed.beardStudio)} as unknown as FormulaState
+    for (const collection of Object.keys(relationalTableByCollection) as Array<Exclude<keyof FormulaState,'beardStudio'>>) {
       expect(remote[collection].map(record => record.id).sort(), collection).toEqual(formulaSeed[collection].map(record => record.id).sort())
     }
     const reconciliation = compareReconciliation(reconciliationSnapshot(formulaSeed), reconciliationSnapshot(remote))

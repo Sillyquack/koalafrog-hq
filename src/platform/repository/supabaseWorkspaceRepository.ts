@@ -5,8 +5,9 @@ import { supabase } from '../supabase/client'
 import type { WorkspaceRepository } from './workspaceRepository'
 import { changedCollections } from './workspaceRepository'
 import type { WorkspaceCommit } from '../actions/workspaceActions'
+import{SupabaseBeardStudioGateway}from'../../features/beard-studio/data/beardStudioRepository'
 
-export const relationalTableByCollection: Record<keyof FormulaState, string> = {
+export const relationalTableByCollection: Record<Exclude<keyof FormulaState,'beardStudio'>, string> = {
   ingredientKnowledgeProfiles:'ingredient_knowledge_profiles',ingredientKnowledgeRoles:'ingredient_knowledge_roles',ingredientKnowledgeCompatibility:'ingredient_knowledge_compatibility',ingredientKnowledgeEvidence:'ingredient_knowledge_evidence',
   productStudioConcepts:'product_studio_concepts',products:'products',formulas:'formulas',formulaVersions:'formula_versions',formulaLines:'formula_lines',ingredients:'ingredients',supplierProducts:'supplier_products',inventoryLots:'inventory_lots',inventoryMovements:'inventory_movements',labBatches:'lab_batches',labBatchLines:'lab_batch_lines',labBatchAllocations:'lab_lot_allocations',processSteps:'lab_process_steps',labObservations:'lab_observations',testers:'testers',testTemplates:'test_templates',testSessions:'test_sessions',testResponses:'test_responses',productionRuns:'production_runs',productionRunLines:'production_run_lines',productionRunAllocations:'production_lot_allocations',productionProcessSteps:'production_process_steps',costLines:'cost_lines',packagingComponents:'packaging_components',packagingSupplierProducts:'packaging_supplier_products',packagingInventoryLots:'packaging_inventory_lots',packagingInventoryMovements:'packaging_inventory_movements',packagingSpecifications:'packaging_specifications',packagingSpecificationVersions:'packaging_specification_versions',packagingSpecificationLines:'packaging_specification_lines',packagingAllocations:'packaging_allocations',finishedGoodsBatches:'finished_goods_batches',finishedGoodsMovements:'finished_goods_movements',responsiblePersons:'responsible_persons',complianceDossiers:'compliance_dossiers',complianceDocuments:'compliance_documents',regulatorySources:'regulatory_sources',regulatoryReviews:'regulatory_reviews',pifSections:'pif_evidence_sections',cpsrRecords:'cpsr_records',labelArtworkVersions:'label_artwork_versions',labelReviewItems:'label_checklist_items',inciDrafts:'inci_declarations',claims:'claims',claimEvidence:'claim_evidence',cpnpRecords:'cpnp_records',readinessIssues:'readiness_issues',launchPlans:'launch_plans',launchMilestones:'launch_milestones',launchDecisions:'launch_decisions',safetyEffectRecords:'undesirable_effect_records',
 }
@@ -34,7 +35,7 @@ export function normalizeProductRow(value: unknown) {
 }
 
 export function relationalMigrationPayload(state: FormulaState) {
-  return Object.fromEntries(Object.entries(state).map(([collection, records]) => [collection, toDatabaseValue(records)]))
+  return Object.fromEntries(Object.entries(state).filter(([collection])=>collection!=='beardStudio').map(([collection, records]) => [collection, toDatabaseValue(records)]))
 }
 
 const embeddedColumns: Partial<Record<keyof FormulaState, string[]>> = {
@@ -46,12 +47,15 @@ export class SupabaseWorkspaceRepository implements WorkspaceRepository {
   async importV9(_ownerId: string, state: FormulaState, onStage?: (stage: string) => void) {
     if (!supabase) throw new Error('Supabase is not configured.')
     onStage?.('transactional relational import')
+    const{beardStudio}=state
     const result = await supabase.rpc('import_v9_relational', { payload: relationalMigrationPayload(state) as Json })
     if (result.error) {
       await supabase.rpc('record_v9_migration_failure', { error_message: result.error.message })
       throw new Error(result.error.message)
     }
-    return result.data as { migrationRunId:string;workspaceId: string; ownerId: string; counts: Record<string, number>; state: string }
+    const imported=result.data as { migrationRunId:string;workspaceId: string; ownerId: string; counts: Record<string, number>; state: string }
+    if(beardStudio.profiles.length||beardStudio.tools.length||beardStudio.recipes.length||beardStudio.sessions.length||beardStudio.logs.length)await new SupabaseBeardStudioGateway(imported.workspaceId,supabase).save(beardStudio)
+    return imported
   }
 
   async completeReconciliation(migrationRunId: string, report: Json) {
@@ -69,6 +73,7 @@ export class SupabaseWorkspaceRepository implements WorkspaceRepository {
     const client: SupabaseClient = supabase
     if (await this.commitAtomic(change, client)) return
     for (const collection of changedCollections(change)) {
+      if(collection==='beardStudio')continue
       const table = relationalTableByCollection[collection]
       const previous = change.previous[collection] as Array<{id:string;updatedAt?:string}>
       const next = change.next[collection] as Array<{id:string;updatedAt?:string}>
@@ -113,6 +118,12 @@ export class SupabaseWorkspaceRepository implements WorkspaceRepository {
   }
 
   private async commitAtomic(change: WorkspaceCommit, client: SupabaseClient) {
+    if(change.action==='saveBeardStudio'){
+      const workspace=await client.from('workspaces').select('id').single()
+      if(workspace.error)throw workspace.error
+      await new SupabaseBeardStudioGateway(workspace.data.id,client as SupabaseClient<import('../supabase/generated/database.types').Database>).save(change.next.beardStudio,change.previous.beardStudio.revision)
+      return true
+    }
     if(change.action==='saveIngredientKnowledge'){
       const profile=change.next.ingredientKnowledgeProfiles.find(item=>change.previous.ingredientKnowledgeProfiles.find(previous=>previous.ingredientId===item.ingredientId)!==item)
       if(!profile)throw new Error('Ingredient Knowledge mutation is missing its profile.')
@@ -200,9 +211,9 @@ export class SupabaseWorkspaceRepository implements WorkspaceRepository {
       if (auth.error || !auth.data.user) throw new Error('Authenticated owner required.')
       ownerId = auth.data.user.id
     }
-    const result: Partial<Record<keyof FormulaState, unknown[]>> = {}
+    const result: Partial<Record<Exclude<keyof FormulaState,'beardStudio'>, unknown[]>> = {}
     const client: SupabaseClient = supabase
-    for (const [collection, table] of Object.entries(relationalTableByCollection) as Array<[keyof FormulaState, string]>) {
+    for (const [collection, table] of Object.entries(relationalTableByCollection) as Array<[Exclude<keyof FormulaState,'beardStudio'>, string]>) {
       const response = await client.from(table).select('*').eq('owner_id', ownerId)
       if (response.error) throw new Error(`${table}: ${response.error.message}`)
       result[collection] = collection === 'products'
@@ -210,10 +221,12 @@ export class SupabaseWorkspaceRepository implements WorkspaceRepository {
         : toDomainValue(response.data) as unknown[]
     }
     await this.loadEmbeddedChildren(result, ownerId)
-    return result as FormulaState
+    const workspace=await client.from('workspaces').select('id').eq('owner_id',ownerId).single()
+    if(workspace.error)throw workspace.error
+    return{...result,beardStudio:await new SupabaseBeardStudioGateway(workspace.data.id,client as SupabaseClient<import('../supabase/generated/database.types').Database>).load()}as FormulaState
   }
 
-  private async loadEmbeddedChildren(state: Partial<Record<keyof FormulaState, unknown[]>>, ownerId: string) {
+  private async loadEmbeddedChildren(state: Partial<Record<Exclude<keyof FormulaState,'beardStudio'>, unknown[]>>, ownerId: string) {
     if (!supabase) return
     const [questions, answers, composition, reviewSources, pifDocuments] = await Promise.all([
       supabase.from('test_template_questions').select('*').eq('owner_id', ownerId),

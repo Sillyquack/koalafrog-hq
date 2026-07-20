@@ -1,6 +1,6 @@
 # Supabase platform migration
 
-Koalafrog normalizes every older local workspace through the retained local migration chain to `koalafrog-hq:workspace:v9`. Only v9 is eligible for remote dry-run validation.
+Koalafrog normalizes every older local workspace through the retained local migration chain to `koalafrog-hq:workspace:v10`. v9 is hydrated non-destructively with an empty Beard Studio aggregate before controlled remote migration.
 
 ## Setup
 

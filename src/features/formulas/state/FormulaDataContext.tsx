@@ -55,6 +55,7 @@ import type {
   TestTemplate,
   Tester,
 } from "../../../types/domain";
+import type { BeardStudioState } from "../../../types/beardStudio";
 import { duplicateDossier as duplicateComplianceDossierDomain } from "../../compliance/domain/complianceLogic";
 import { canTransition, duplicateVersion } from "../domain/formulaLogic";
 import { formulaTotalsExactly100, formulationIssues } from "../domain/multiPhaseLogic";
@@ -107,6 +108,7 @@ import type {
 interface FormulaDataValue extends FormulaState {
   pendingActions: readonly WorkspaceActionName[];
   actionError?: string;
+  saveBeardStudio(mutation:(current:BeardStudioState)=>BeardStudioState):Promise<void>;
   createProduct(
     input: Omit<Product, "id" | "createdAt" | "updatedAt">,
   ): Product;
@@ -341,6 +343,9 @@ export function FormulaDataProvider({
       ...state,
       pendingActions,
       actionError,
+      async saveBeardStudio(mutation) {
+        await commitState("saveBeardStudio",current=>{const next=mutation(current.beardStudio);return{...current,beardStudio:{...next,revision:current.beardStudio.revision+1}}});
+      },
       createProduct(input) {
         const now = new Date().toISOString();
         const product: Product = {

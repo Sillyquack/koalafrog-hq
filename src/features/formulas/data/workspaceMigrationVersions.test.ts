@@ -5,6 +5,7 @@ import {
   PHASE_FIVE_STORAGE_KEY as REPOSITORY_PHASE_FIVE_STORAGE_KEY,
   PHASE_FOUR_STORAGE_KEY as REPOSITORY_PHASE_FOUR_STORAGE_KEY,
   PHASE_SIX_STORAGE_KEY as REPOSITORY_PHASE_SIX_STORAGE_KEY,
+  PHASE_SEVEN_STORAGE_KEY as REPOSITORY_PHASE_SEVEN_STORAGE_KEY,
   PHASE_THREE_STORAGE_KEY as REPOSITORY_PHASE_THREE_STORAGE_KEY,
   STORAGE_KEY as REPOSITORY_STORAGE_KEY,
   LocalFormulaRepository,
@@ -15,6 +16,7 @@ import {
   PHASE_FIVE_STORAGE_KEY,
   PHASE_FOUR_STORAGE_KEY,
   PHASE_SIX_STORAGE_KEY,
+  PHASE_SEVEN_STORAGE_KEY,
   PHASE_THREE_STORAGE_KEY,
   STORAGE_KEY,
 } from './workspaceMigrationVersions'
@@ -23,13 +25,14 @@ describe('local workspace migration versions',()=>{
   it('retains every historical storage key and the current workspace schema',()=>{
     expect({
       current:STORAGE_KEY,
-      phaseSix:PHASE_SIX_STORAGE_KEY,
+      phaseSeven:PHASE_SEVEN_STORAGE_KEY,phaseSix:PHASE_SIX_STORAGE_KEY,
       phaseFive:PHASE_FIVE_STORAGE_KEY,
       phaseFour:PHASE_FOUR_STORAGE_KEY,
       phaseThree:PHASE_THREE_STORAGE_KEY,
       legacyFormulaState:LEGACY_STORAGE_KEY,
     }).toEqual({
-      current:'koalafrog-hq:workspace:v9',
+      current:'koalafrog-hq:workspace:v10',
+      phaseSeven:'koalafrog-hq:workspace:v9',
       phaseSix:'koalafrog-hq:workspace:v8',
       phaseFive:'koalafrog-hq:workspace:v7',
       phaseFour:'koalafrog-hq:workspace:v6',
@@ -43,6 +46,7 @@ describe('local workspace migration versions',()=>{
     const orderedKeys=LOCAL_WORKSPACE_FALLBACK_ORDER.map(entry=>entry.storageKey)
     expect(orderedKeys).toEqual([
       STORAGE_KEY,
+      PHASE_SEVEN_STORAGE_KEY,
       PHASE_SIX_STORAGE_KEY,
       PHASE_FIVE_STORAGE_KEY,
       PHASE_FOUR_STORAGE_KEY,
@@ -58,6 +62,7 @@ describe('local workspace migration versions',()=>{
   it('keeps the formula repository public constants intact',()=>{
     expect([
       REPOSITORY_STORAGE_KEY,
+      REPOSITORY_PHASE_SEVEN_STORAGE_KEY,
       REPOSITORY_PHASE_SIX_STORAGE_KEY,
       REPOSITORY_PHASE_FIVE_STORAGE_KEY,
       REPOSITORY_PHASE_FOUR_STORAGE_KEY,
@@ -65,6 +70,7 @@ describe('local workspace migration versions',()=>{
       REPOSITORY_LEGACY_STORAGE_KEY,
     ]).toEqual([
       STORAGE_KEY,
+      PHASE_SEVEN_STORAGE_KEY,
       PHASE_SIX_STORAGE_KEY,
       PHASE_FIVE_STORAGE_KEY,
       PHASE_FOUR_STORAGE_KEY,

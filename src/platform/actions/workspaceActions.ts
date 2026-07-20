@@ -1,6 +1,7 @@
 import type { FormulaState } from "../../types/domain";
 
 export const workspaceActionNames = [
+  "saveBeardStudio",
   "createProduct",
   "saveProductStudioConcept",
   "createFormulaFromStudio",

@@ -19,6 +19,7 @@ const baseLines: readonly SeedLine[] = [
 const linesFor = (versionId: string, percentages: readonly SeedLine[] = baseLines) => percentages.map(([ingredientId, percentage, phase, notes], index) => ({ id: `fl-${versionId}-${index + 1}`, formulaVersionId: versionId, ingredientId, percentage, phase, sortOrder: index + 1, notes }))
 
 export const formulaSeed: FormulaState = {
+  beardStudio:{revision:0,profiles:[],lengthMaps:[],tools:[],recipes:[],sessions:[],logs:[]},
   ingredientKnowledgeProfiles:[],ingredientKnowledgeRoles:[],ingredientKnowledgeCompatibility:[],ingredientKnowledgeEvidence:[],
   productStudioConcepts:[],
   products,
