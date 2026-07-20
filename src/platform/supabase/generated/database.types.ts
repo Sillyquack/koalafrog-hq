@@ -7,13 +7,435 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "14.5"
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
   }
   public: {
     Tables: {
+      beard_length_map_zones: {
+        Row: {
+          attachment_id: string | null
+          display_order: number
+          enabled: boolean
+          id: string
+          length_map_id: string
+          maximum_length_mm: number | null
+          minimum_length_mm: number | null
+          notes: string
+          target_length_mm: number
+          tool_id: string | null
+          trim_direction: string
+          workspace_id: string
+          zone_name: string
+        }
+        Insert: {
+          attachment_id?: string | null
+          display_order: number
+          enabled?: boolean
+          id: string
+          length_map_id: string
+          maximum_length_mm?: number | null
+          minimum_length_mm?: number | null
+          notes?: string
+          target_length_mm: number
+          tool_id?: string | null
+          trim_direction: string
+          workspace_id: string
+          zone_name: string
+        }
+        Update: {
+          attachment_id?: string | null
+          display_order?: number
+          enabled?: boolean
+          id?: string
+          length_map_id?: string
+          maximum_length_mm?: number | null
+          minimum_length_mm?: number | null
+          notes?: string
+          target_length_mm?: number
+          tool_id?: string | null
+          trim_direction?: string
+          workspace_id?: string
+          zone_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "beard_length_map_zones_attachment_id_fkey"
+            columns: ["attachment_id"]
+            isOneToOne: false
+            referencedRelation: "grooming_tool_attachments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "beard_length_map_zones_length_map_id_workspace_id_fkey"
+            columns: ["length_map_id", "workspace_id"]
+            isOneToOne: false
+            referencedRelation: "beard_length_maps"
+            referencedColumns: ["id", "workspace_id"]
+          },
+          {
+            foreignKeyName: "beard_length_map_zones_tool_id_workspace_id_fkey"
+            columns: ["tool_id", "workspace_id"]
+            isOneToOne: false
+            referencedRelation: "grooming_tools"
+            referencedColumns: ["id", "workspace_id"]
+          },
+        ]
+      }
+      beard_length_maps: {
+        Row: {
+          created_at: string
+          id: string
+          owner_id: string
+          profile_id: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          owner_id: string
+          profile_id: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          owner_id?: string
+          profile_id?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "beard_length_maps_profile_id_workspace_id_fkey"
+            columns: ["profile_id", "workspace_id"]
+            isOneToOne: false
+            referencedRelation: "beard_profiles"
+            referencedColumns: ["id", "workspace_id"]
+          },
+          {
+            foreignKeyName: "beard_length_maps_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      beard_log_entries: {
+        Row: {
+          change_next_time: string
+          comfort_rating: number | null
+          created_at: string
+          days_since_previous_trim: number | null
+          duration_minutes: number | null
+          fade_rating: number | null
+          id: string
+          image_references: Json
+          immutable_snapshot: Json
+          line_sharpness_rating: number | null
+          notes: string
+          occurred_at: string
+          overall_rating: number
+          owner_id: string
+          profile_id: string
+          recipe_id: string | null
+          recipe_version: number | null
+          session_id: string | null
+          snapshot_schema_version: number
+          starting_condition: string
+          symmetry_rating: number | null
+          updated_at: string
+          what_worked: string
+          workspace_id: string
+        }
+        Insert: {
+          change_next_time?: string
+          comfort_rating?: number | null
+          created_at?: string
+          days_since_previous_trim?: number | null
+          duration_minutes?: number | null
+          fade_rating?: number | null
+          id: string
+          image_references?: Json
+          immutable_snapshot: Json
+          line_sharpness_rating?: number | null
+          notes?: string
+          occurred_at: string
+          overall_rating: number
+          owner_id: string
+          profile_id: string
+          recipe_id?: string | null
+          recipe_version?: number | null
+          session_id?: string | null
+          snapshot_schema_version?: number
+          starting_condition?: string
+          symmetry_rating?: number | null
+          updated_at?: string
+          what_worked?: string
+          workspace_id: string
+        }
+        Update: {
+          change_next_time?: string
+          comfort_rating?: number | null
+          created_at?: string
+          days_since_previous_trim?: number | null
+          duration_minutes?: number | null
+          fade_rating?: number | null
+          id?: string
+          image_references?: Json
+          immutable_snapshot?: Json
+          line_sharpness_rating?: number | null
+          notes?: string
+          occurred_at?: string
+          overall_rating?: number
+          owner_id?: string
+          profile_id?: string
+          recipe_id?: string | null
+          recipe_version?: number | null
+          session_id?: string | null
+          snapshot_schema_version?: number
+          starting_condition?: string
+          symmetry_rating?: number | null
+          updated_at?: string
+          what_worked?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "beard_log_entries_profile_id_workspace_id_fkey"
+            columns: ["profile_id", "workspace_id"]
+            isOneToOne: false
+            referencedRelation: "beard_profiles"
+            referencedColumns: ["id", "workspace_id"]
+          },
+          {
+            foreignKeyName: "beard_log_entries_recipe_id_workspace_id_fkey"
+            columns: ["recipe_id", "workspace_id"]
+            isOneToOne: false
+            referencedRelation: "trim_recipes"
+            referencedColumns: ["id", "workspace_id"]
+          },
+          {
+            foreignKeyName: "beard_log_entries_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "beard_trim_sessions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "beard_log_entries_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      beard_log_product_links: {
+        Row: {
+          beard_log_entry_id: string
+          display_order: number
+          id: string
+          owner_id: string
+          product_category_snapshot: string
+          product_id: string | null
+          product_name_snapshot: string
+          usage_role: string
+          workspace_id: string
+        }
+        Insert: {
+          beard_log_entry_id: string
+          display_order: number
+          id: string
+          owner_id: string
+          product_category_snapshot?: string
+          product_id?: string | null
+          product_name_snapshot: string
+          usage_role: string
+          workspace_id: string
+        }
+        Update: {
+          beard_log_entry_id?: string
+          display_order?: number
+          id?: string
+          owner_id?: string
+          product_category_snapshot?: string
+          product_id?: string | null
+          product_name_snapshot?: string
+          usage_role?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "beard_log_product_links_beard_log_entry_id_fkey"
+            columns: ["beard_log_entry_id"]
+            isOneToOne: false
+            referencedRelation: "beard_log_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "beard_log_product_links_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "beard_log_product_links_workspace_id_product_id_fkey"
+            columns: ["workspace_id", "product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["workspace_id", "id"]
+          },
+        ]
+      }
+      beard_profiles: {
+        Row: {
+          created_at: string
+          density: string
+          description: string
+          id: string
+          maintenance_frequency_days: number
+          name: string
+          owner_id: string
+          preferred_overall_length_mm: number
+          profile_details: Json
+          status: string
+          style_name: string
+          target_look: string
+          texture: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          density: string
+          description?: string
+          id: string
+          maintenance_frequency_days: number
+          name: string
+          owner_id: string
+          preferred_overall_length_mm: number
+          profile_details?: Json
+          status: string
+          style_name: string
+          target_look?: string
+          texture: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          density?: string
+          description?: string
+          id?: string
+          maintenance_frequency_days?: number
+          name?: string
+          owner_id?: string
+          preferred_overall_length_mm?: number
+          profile_details?: Json
+          status?: string
+          style_name?: string
+          target_look?: string
+          texture?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "beard_profiles_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      beard_trim_sessions: {
+        Row: {
+          completed_at: string | null
+          completed_step_ids: string[]
+          current_step_index: number
+          id: string
+          owner_id: string
+          recipe_id: string
+          recipe_version: number
+          skipped_step_ids: string[]
+          started_at: string
+          status: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          completed_step_ids?: string[]
+          current_step_index?: number
+          id: string
+          owner_id: string
+          recipe_id: string
+          recipe_version: number
+          skipped_step_ids?: string[]
+          started_at?: string
+          status: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          completed_step_ids?: string[]
+          current_step_index?: number
+          id?: string
+          owner_id?: string
+          recipe_id?: string
+          recipe_version?: number
+          skipped_step_ids?: string[]
+          started_at?: string
+          status?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "beard_trim_sessions_recipe_id_workspace_id_fkey"
+            columns: ["recipe_id", "workspace_id"]
+            isOneToOne: false
+            referencedRelation: "trim_recipes"
+            referencedColumns: ["id", "workspace_id"]
+          },
+          {
+            foreignKeyName: "beard_trim_sessions_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       claim_evidence: {
         Row: {
           claim_id: string
@@ -1867,6 +2289,103 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "products"
             referencedColumns: ["workspace_id", "id"]
+          },
+        ]
+      }
+      grooming_tool_attachments: {
+        Row: {
+          display_order: number
+          id: string
+          name: string
+          tool_id: string
+          workspace_id: string
+        }
+        Insert: {
+          display_order?: number
+          id: string
+          name: string
+          tool_id: string
+          workspace_id: string
+        }
+        Update: {
+          display_order?: number
+          id?: string
+          name?: string
+          tool_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "grooming_tool_attachments_tool_id_workspace_id_fkey"
+            columns: ["tool_id", "workspace_id"]
+            isOneToOne: false
+            referencedRelation: "grooming_tools"
+            referencedColumns: ["id", "workspace_id"]
+          },
+        ]
+      }
+      grooming_tools: {
+        Row: {
+          adjustment_increment_mm: number | null
+          brand: string
+          created_at: string
+          id: string
+          is_primary: boolean
+          maximum_length_mm: number | null
+          minimum_length_mm: number | null
+          model: string
+          name: string
+          notes: string
+          owner_id: string
+          status: string
+          tool_type: string
+          updated_at: string
+          washable: boolean
+          workspace_id: string
+        }
+        Insert: {
+          adjustment_increment_mm?: number | null
+          brand?: string
+          created_at?: string
+          id: string
+          is_primary?: boolean
+          maximum_length_mm?: number | null
+          minimum_length_mm?: number | null
+          model?: string
+          name: string
+          notes?: string
+          owner_id: string
+          status: string
+          tool_type: string
+          updated_at?: string
+          washable?: boolean
+          workspace_id: string
+        }
+        Update: {
+          adjustment_increment_mm?: number | null
+          brand?: string
+          created_at?: string
+          id?: string
+          is_primary?: boolean
+          maximum_length_mm?: number | null
+          minimum_length_mm?: number | null
+          model?: string
+          name?: string
+          notes?: string
+          owner_id?: string
+          status?: string
+          tool_type?: string
+          updated_at?: string
+          washable?: boolean
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "grooming_tools_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -6346,6 +6865,203 @@ export type Database = {
           },
         ]
       }
+      trim_recipe_product_links: {
+        Row: {
+          display_order: number
+          id: string
+          owner_id: string
+          product_category_snapshot: string
+          product_id: string | null
+          product_name_snapshot: string
+          recipe_id: string
+          usage_role: string
+          workspace_id: string
+        }
+        Insert: {
+          display_order: number
+          id: string
+          owner_id: string
+          product_category_snapshot?: string
+          product_id?: string | null
+          product_name_snapshot: string
+          recipe_id: string
+          usage_role: string
+          workspace_id: string
+        }
+        Update: {
+          display_order?: number
+          id?: string
+          owner_id?: string
+          product_category_snapshot?: string
+          product_id?: string | null
+          product_name_snapshot?: string
+          recipe_id?: string
+          usage_role?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trim_recipe_product_links_recipe_id_workspace_id_fkey"
+            columns: ["recipe_id", "workspace_id"]
+            isOneToOne: false
+            referencedRelation: "trim_recipes"
+            referencedColumns: ["id", "workspace_id"]
+          },
+          {
+            foreignKeyName: "trim_recipe_product_links_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trim_recipe_product_links_workspace_id_product_id_fkey"
+            columns: ["workspace_id", "product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["workspace_id", "id"]
+          },
+        ]
+      }
+      trim_recipe_steps: {
+        Row: {
+          attachment_id: string | null
+          caution: string
+          completion_required: boolean
+          display_order: number
+          id: string
+          instruction: string
+          recipe_id: string
+          target_length_mm: number | null
+          technique: string
+          title: string
+          tool_id: string | null
+          trim_direction: string | null
+          workspace_id: string
+          zones: string[]
+        }
+        Insert: {
+          attachment_id?: string | null
+          caution?: string
+          completion_required?: boolean
+          display_order: number
+          id: string
+          instruction: string
+          recipe_id: string
+          target_length_mm?: number | null
+          technique: string
+          title: string
+          tool_id?: string | null
+          trim_direction?: string | null
+          workspace_id: string
+          zones?: string[]
+        }
+        Update: {
+          attachment_id?: string | null
+          caution?: string
+          completion_required?: boolean
+          display_order?: number
+          id?: string
+          instruction?: string
+          recipe_id?: string
+          target_length_mm?: number | null
+          technique?: string
+          title?: string
+          tool_id?: string | null
+          trim_direction?: string | null
+          workspace_id?: string
+          zones?: string[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trim_recipe_steps_attachment_id_fkey"
+            columns: ["attachment_id"]
+            isOneToOne: false
+            referencedRelation: "grooming_tool_attachments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trim_recipe_steps_recipe_id_workspace_id_fkey"
+            columns: ["recipe_id", "workspace_id"]
+            isOneToOne: false
+            referencedRelation: "trim_recipes"
+            referencedColumns: ["id", "workspace_id"]
+          },
+          {
+            foreignKeyName: "trim_recipe_steps_tool_id_workspace_id_fkey"
+            columns: ["tool_id", "workspace_id"]
+            isOneToOne: false
+            referencedRelation: "grooming_tools"
+            referencedColumns: ["id", "workspace_id"]
+          },
+        ]
+      }
+      trim_recipes: {
+        Row: {
+          created_at: string
+          estimated_duration_minutes: number
+          finishing_instructions: string
+          id: string
+          name: string
+          notes: string
+          owner_id: string
+          preparation_instructions: string
+          profile_id: string
+          starting_condition: string
+          status: string
+          updated_at: string
+          version: number
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          estimated_duration_minutes: number
+          finishing_instructions?: string
+          id: string
+          name: string
+          notes?: string
+          owner_id: string
+          preparation_instructions?: string
+          profile_id: string
+          starting_condition?: string
+          status: string
+          updated_at?: string
+          version: number
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          estimated_duration_minutes?: number
+          finishing_instructions?: string
+          id?: string
+          name?: string
+          notes?: string
+          owner_id?: string
+          preparation_instructions?: string
+          profile_id?: string
+          starting_condition?: string
+          status?: string
+          updated_at?: string
+          version?: number
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trim_recipes_profile_id_workspace_id_fkey"
+            columns: ["profile_id", "workspace_id"]
+            isOneToOne: false
+            referencedRelation: "beard_profiles"
+            referencedColumns: ["id", "workspace_id"]
+          },
+          {
+            foreignKeyName: "trim_recipes_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       undesirable_effect_records: {
         Row: {
           corrective_action_notes: string
@@ -6676,6 +7392,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      save_beard_studio_workspace: { Args: { payload: Json }; Returns: Json }
       save_ingredient_knowledge_aggregate: {
         Args: { aggregate: Json; expected_updated_at?: string }
         Returns: Json
@@ -6817,6 +7534,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {},
   },
