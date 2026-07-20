@@ -55,6 +55,30 @@ run('Beard Studio against local Supabase',()=>{
     const hydrated=await repository.load()
     expect(hydrated.sessions[0].status).toBe('completed')
     expect(hydrated.logs[0].snapshot.products[0]).toMatchObject({productId,nameSnapshot:'Workshop Beard Oil',categorySnapshot:'Beard care',role:'beard oil'})
+
+    const invalidTool=await first.client.from('grooming_tools').update({tool_type:'invalid' as never}).eq('id',hydrated.tools[0].id)
+    expect(invalidTool.error?.code).toBe('23514')
+    const invalidZone=await first.client.from('beard_length_map_zones').update({zone_name:'invalid' as never}).eq('id',hydrated.lengthMaps[0].zones[0].id)
+    expect(invalidZone.error?.code).toBe('23514')
+    const invalidTechnique=await first.client.from('trim_recipe_steps').update({technique:'invalid' as never}).eq('id',hydrated.recipes[0].steps[0].id)
+    expect(invalidTechnique.error?.code).toBe('23514')
+    const recipeLink=await first.client.from('trim_recipe_product_links').select('id').eq('recipe_id',hydrated.recipes[0].id).single()
+    expect(recipeLink.error).toBeNull()
+    const invalidRecipeRole=await first.client.from('trim_recipe_product_links').update({usage_role:'invalid' as never}).eq('id',recipeLink.data!.id)
+    expect(invalidRecipeRole.error?.code).toBe('23514')
+    const invalidLogRole=await first.client.from('beard_log_product_links').insert({
+      id:crypto.randomUUID(),
+      workspace_id:first.workspaceId,
+      owner_id:first.ownerId,
+      beard_log_entry_id:hydrated.logs[0].id,
+      product_id:null,
+      product_name_snapshot:'Invalid role probe',
+      product_category_snapshot:'',
+      usage_role:'invalid' as never,
+      display_order:99,
+    })
+    expect(invalidLogRole.error?.code).toBe('23514')
+
     expect((await second.client.from('beard_profiles').select('id').eq('workspace_id',first.workspaceId)).data).toEqual([])
     expect((await second.client.from('beard_log_entries').select('id').eq('workspace_id',first.workspaceId)).data).toEqual([])
   })

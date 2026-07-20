@@ -7005,7 +7005,6 @@ export type Database = {
           name: string
           notes: string
           owner_id: string
-          preferred_products: Json
           preparation_instructions: string
           profile_id: string
           starting_condition: string
@@ -7022,7 +7021,6 @@ export type Database = {
           name: string
           notes?: string
           owner_id: string
-          preferred_products?: Json
           preparation_instructions?: string
           profile_id: string
           starting_condition?: string
@@ -7039,7 +7037,6 @@ export type Database = {
           name?: string
           notes?: string
           owner_id?: string
-          preferred_products?: Json
           preparation_instructions?: string
           profile_id?: string
           starting_condition?: string

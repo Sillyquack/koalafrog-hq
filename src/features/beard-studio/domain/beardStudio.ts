@@ -1,3 +1,5 @@
+// Editable business-record lifecycles use title case; machine execution and
+// equipment states use lower-case values. Persisted values intentionally match.
 export type BeardProfileStatus = 'Draft' | 'Active' | 'Archived'
 export type TrimDirection = 'with growth' | 'against growth' | 'across growth' | 'detail only'
 export type RecipeStatus = BeardProfileStatus

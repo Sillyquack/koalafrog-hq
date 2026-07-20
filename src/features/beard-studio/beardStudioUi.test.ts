@@ -23,7 +23,15 @@ describe('Beard Studio integration', () => {
     expect(selector).toContain('No Koalafrog Products available')
   })
   it('does not expose camera, AI analysis or photo upload controls', () => {
-    const ui = readFileSync('src/features/beard-studio/BeardStudioPages.tsx', 'utf8')
+    const ui = [
+      'BeardOverviewPage',
+      'BeardProfilePage',
+      'LengthMapPage',
+      'GroomingToolsPage',
+      'TrimRecipesPage',
+      'TrimModePage',
+      'BeardLogPage',
+    ].map((page) => readFileSync(`src/features/beard-studio/pages/${page}.tsx`, 'utf8')).join('\n')
     expect(ui).not.toMatch(/facial recognition|AI analysis|Upload photo/i)
   })
 })

@@ -50,7 +50,13 @@ import { BeardButterStudioPage } from '../features/product-studio/BeardButterStu
 import { NaturalDeodorantStudioPage } from '../features/product-studio/NaturalDeodorantStudioPage'
 import { IngredientKnowledgePage } from '../features/ingredients/IngredientKnowledgePage'
 import { BeardStudioShell } from '../features/beard-studio/components/BeardStudioShell'
-import { BeardLogPage, BeardOverviewPage, BeardProfilePage, GroomingToolsPage, LengthMapPage, TrimModePage, TrimRecipesPage } from '../features/beard-studio/BeardStudioPages'
+import { BeardLogPage } from '../features/beard-studio/pages/BeardLogPage'
+import { BeardOverviewPage } from '../features/beard-studio/pages/BeardOverviewPage'
+import { BeardProfilePage } from '../features/beard-studio/pages/BeardProfilePage'
+import { GroomingToolsPage } from '../features/beard-studio/pages/GroomingToolsPage'
+import { LengthMapPage } from '../features/beard-studio/pages/LengthMapPage'
+import { TrimModePage } from '../features/beard-studio/pages/TrimModePage'
+import { TrimRecipesPage } from '../features/beard-studio/pages/TrimRecipesPage'
 
 export function App() {
   return (
