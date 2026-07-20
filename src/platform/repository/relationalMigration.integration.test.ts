@@ -14,6 +14,7 @@ import { actualMaterialCost, additionalCostTotal, productionCost } from '../../f
 import { LocalWorkspaceRepository } from './localWorkspaceRepository'
 import type { WorkspaceRepository } from './workspaceRepository'
 import { createEmptyIngredientKnowledgeProfile } from '../../features/ingredients/domain/ingredientKnowledge'
+import { benchmarkLabFrom, createDevelopmentProjectFromBenchmark } from '../../features/product-studio/domain/benchmarkLab'
 
 const url = import.meta.env.VITE_SUPABASE_TEST_URL as string | undefined
 const serviceKey = import.meta.env.VITE_SUPABASE_TEST_SERVICE_ROLE_KEY as string | undefined
@@ -447,6 +448,32 @@ run('relational v9 migration against local Supabase', () => {
     expect(hydrated.formulaLines.filter(item=>item.formulaVersionId===versionId)).toEqual([expect.objectContaining({ingredientId:'i1',percentage:100,phase:'A',formulationRole:'liquid_emollient'})])
     expect(hydrated.productStudioConcepts.find(item=>item.id===conceptId)).toMatchObject({generatedFormulaId:formulaId,generatedFormulaVersionId:versionId})
     expect({lots:hydrated.inventoryLots.length,movements:hydrated.inventoryMovements.length,packagingLots:hydrated.packagingInventoryLots.length,packagingMovements:hydrated.packagingInventoryMovements.length}).toEqual(inventoryBefore)
+    await supabase!.auth.signOut()
+  },30_000)
+
+  it('atomically creates a lineage-preserving blank Benchmark Lab Draft without composition or operational side effects',async()=>{
+    const{client,ownerId,email,password}=await ownerClient('benchmark-lab-blank')
+    const imported=await client.rpc('import_v9_relational',{payload:relationalMigrationPayload(structuredClone(formulaSeed))})
+    expect(imported.error).toBeNull()
+    const snapshot=reconciliationSnapshot(formulaSeed)
+    expect((await client.rpc('complete_v9_reconciliation',{run_id:(imported.data as {migrationRunId:string}).migrationRunId,report:compareReconciliation(snapshot,snapshot)})).error).toBeNull()
+    expect((await supabase!.auth.signInWithPassword({email,password})).error).toBeNull()
+    const repository=new SupabaseWorkspaceRepository(),state=await repository.load(ownerId),project=createDevelopmentProjectFromBenchmark(),now='2026-07-20T12:00:00.000Z'
+    const benchmarkLab=benchmarkLabFrom(project)!
+    benchmarkLab.functionalRequirements[0].reviewStatus='not_applicable'
+    project.analysis.benchmarkLab=benchmarkLab
+    const concept={...project,id:`benchmark-project-${crypto.randomUUID()}`,createdAt:now,updatedAt:now},saved={...state,productStudioConcepts:[...state.productStudioConcepts,concept]}
+    await repository.commit({action:'saveProductStudioConcept',previous:state,next:saved})
+    const hydrated=await repository.load(ownerId),productId=`benchmark-product-${crypto.randomUUID()}`,formulaId=`benchmark-formula-${crypto.randomUUID()}`,versionId=`benchmark-version-${crypto.randomUUID()}`,inventoryBefore={ingredients:hydrated.ingredients.length,suppliers:hydrated.supplierProducts.length,lots:hydrated.inventoryLots.length,movements:hydrated.inventoryMovements.length,packaging:hydrated.packagingInventoryLots.length}
+    const handedOff:FormulaState={...hydrated,products:[...hydrated.products,{id:productId,name:'Koalafrog Deodorant Stick',category:'Deodorant',status:'Active',developmentStage:'Formulation',description:'Blank Benchmark Lab handoff',currentDevelopmentFormulaVersionId:versionId,scentProfile:'Product Studio concept',createdAt:now,updatedAt:now}],formulas:[...hydrated.formulas,{id:formulaId,productId,name:'Koalafrog Deodorant Stick — Blank Draft',description:'No copied composition.',createdAt:now,updatedAt:now}],formulaVersions:[...hydrated.formulaVersions,{id:versionId,formulaId,version:'v0.1',status:'Draft',description:'Blank Draft',targetCharacteristics:'Targets remain in Benchmark Lab.',developmentNotes:`Lineage: benchmark → ${concept.id}`,createdAt:now,updatedAt:now}],productStudioConcepts:hydrated.productStudioConcepts.map(item=>item.id===concept.id?{...item,generatedProductId:productId,generatedFormulaId:formulaId,generatedFormulaVersionId:versionId,updatedAt:now}:item)}
+    await repository.commit({action:'createFormulaFromStudio',previous:hydrated,next:handedOff})
+    const restored=await repository.load(ownerId)
+    expect(restored.formulaLines.filter(line=>line.formulaVersionId===versionId)).toEqual([])
+    expect(restored.formulaVersions.find(version=>version.id===versionId)).toMatchObject({status:'Draft',developmentNotes:expect.stringContaining(concept.id)})
+    const restoredConcept=restored.productStudioConcepts.find(item=>item.id===concept.id)!
+    expect(restoredConcept).toMatchObject({generatedProductId:productId,generatedFormulaId:formulaId,analysis:{recordType:'development_project'}})
+    expect(benchmarkLabFrom(restoredConcept)!.functionalRequirements[0].reviewStatus).toBe('not_applicable')
+    expect({ingredients:restored.ingredients.length,suppliers:restored.supplierProducts.length,lots:restored.inventoryLots.length,movements:restored.inventoryMovements.length,packaging:restored.packagingInventoryLots.length}).toEqual(inventoryBefore)
     await supabase!.auth.signOut()
   },30_000)
 

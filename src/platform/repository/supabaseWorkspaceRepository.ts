@@ -134,7 +134,7 @@ export class SupabaseWorkspaceRepository implements WorkspaceRepository {
       const formula=change.next.formulas.find(item=>item.id===concept.generatedFormulaId)
       const version=change.next.formulaVersions.find(item=>item.id===concept.generatedFormulaVersionId)
       const lines=change.next.formulaLines.filter(item=>item.formulaVersionId===concept.generatedFormulaVersionId)
-      if(!product||!formula||!version||!lines.length)throw new Error('Formula creation is incomplete.')
+      if(!product||!formula||!version)throw new Error('Formula creation is incomplete.')
       const result=await client.rpc('create_product_studio_formula_handoff',{concept_id:concept.id,product:toDatabaseValue(product) as Json,formula:toDatabaseValue(formula) as Json,formula_version:toDatabaseValue(version) as Json,formula_lines:toDatabaseValue(lines) as Json})
       if(result.error)throw new Error(result.error.message)
       const persisted=result.data as {productId?:string;formulaId?:string;formulaVersionId?:string}|null

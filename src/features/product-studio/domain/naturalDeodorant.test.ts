@@ -58,7 +58,7 @@ describe('Natural Deodorant solid or stick workflow',()=>{
  it('contains no unsupported antiperspirant or timed-protection claims',()=>{
   const serialized=JSON.stringify(productTemplates.natural_deodorant).toLowerCase()
   expect(serialized).not.toMatch(/prevents sweating|clinically proven|24-hour|48-hour/)
-  expect(serialized).toContain('without unsupported antiperspirant')
+  expect(serialized).toContain('without unsupported efficacy claims')
  })
  it('preserves phase-aware lines and ordered draft process in Lab snapshots without inventory writes',()=>{
   const material=ingredient('powder','Arrowroot Starch','Powder'),lines=createBatchLines('batch',[{id:'line',formulaVersionId:'version',ingredientId:material.id,percentage:100,phase:'B',sortOrder:1,notes:'Dispersed'}],[material],50,'g',()=> 'lab-line')

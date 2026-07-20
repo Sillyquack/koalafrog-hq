@@ -48,6 +48,7 @@ import { ProductStudioPage } from '../features/product-studio/ProductStudioPage'
 import { BeardOilStudioPage } from '../features/product-studio/BeardOilStudioPage'
 import { BeardButterStudioPage } from '../features/product-studio/BeardButterStudioPage'
 import { NaturalDeodorantStudioPage } from '../features/product-studio/NaturalDeodorantStudioPage'
+import { BenchmarkLabPage } from '../features/product-studio/BenchmarkLabPage'
 import { IngredientKnowledgePage } from '../features/ingredients/IngredientKnowledgePage'
 
 export function App() {
@@ -59,6 +60,8 @@ export function App() {
         <Route path="product-studio/beard-oil" element={<BeardOilStudioPage />} />
         <Route path="product-studio/beard-butter" element={<BeardButterStudioPage />} />
         <Route path="product-studio/natural-deodorant" element={<NaturalDeodorantStudioPage />} />
+        <Route path="product-studio/benchmark-lab/new" element={<BenchmarkLabPage />} />
+        <Route path="product-studio/benchmark-lab/:conceptId" element={<BenchmarkLabPage />} />
         <Route path="products" element={<ProductsPage />} />
         <Route path="products/:productId" element={<ProductDetailPage />} />
         <Route path="formulas" element={<FormulaLibraryPage />} />
