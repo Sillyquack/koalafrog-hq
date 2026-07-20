@@ -49,6 +49,8 @@ import { BeardOilStudioPage } from '../features/product-studio/BeardOilStudioPag
 import { BeardButterStudioPage } from '../features/product-studio/BeardButterStudioPage'
 import { NaturalDeodorantStudioPage } from '../features/product-studio/NaturalDeodorantStudioPage'
 import { IngredientKnowledgePage } from '../features/ingredients/IngredientKnowledgePage'
+import { BeardStudioShell } from '../features/beard-studio/components/BeardStudioShell'
+import { BeardLogPage, BeardOverviewPage, BeardProfilePage, GroomingToolsPage, LengthMapPage, TrimModePage, TrimRecipesPage } from '../features/beard-studio/BeardStudioPages'
 
 export function App() {
   return (
@@ -59,6 +61,16 @@ export function App() {
         <Route path="product-studio/beard-oil" element={<BeardOilStudioPage />} />
         <Route path="product-studio/beard-butter" element={<BeardButterStudioPage />} />
         <Route path="product-studio/natural-deodorant" element={<NaturalDeodorantStudioPage />} />
+        <Route path="grooming/beard-studio" element={<BeardStudioShell />}>
+          <Route index element={<BeardOverviewPage />} />
+          <Route path="profile" element={<BeardProfilePage />} />
+          <Route path="length-map" element={<LengthMapPage />} />
+          <Route path="recipes" element={<TrimRecipesPage />} />
+          <Route path="trim" element={<TrimModePage />} />
+          <Route path="log" element={<BeardLogPage />} />
+          <Route path="log/:logId" element={<BeardLogPage />} />
+          <Route path="tools" element={<GroomingToolsPage />} />
+        </Route>
         <Route path="products" element={<ProductsPage />} />
         <Route path="products/:productId" element={<ProductDetailPage />} />
         <Route path="formulas" element={<FormulaLibraryPage />} />
