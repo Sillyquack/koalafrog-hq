@@ -5,7 +5,8 @@ function client(){return{auth:{resetPasswordForEmail:vi.fn().mockResolvedValue({
 
 describe('owner password recovery',()=>{
  it('calls the Supabase auth API with the running origin and public callback route',async()=>{const sdk=client();await requestPasswordRecovery(sdk,'owner@example.test','http://127.0.0.1:4173');expect(sdk.auth.resetPasswordForEmail).toHaveBeenCalledWith('owner@example.test',{redirectTo:'http://127.0.0.1:4173/auth/recovery'})})
- it('builds the recovery callback route for any configured app origin',()=>expect(passwordRecoveryRedirectUrl('https://hq.example.test')).toBe('https://hq.example.test/auth/recovery'))
+ it('builds the recovery callback route for a deployed Pages origin',()=>expect(passwordRecoveryRedirectUrl('https://example.pages.dev')).toBe('https://example.pages.dev/auth/recovery'))
+ it('preserves the local recovery callback route',()=>expect(passwordRecoveryRedirectUrl('http://127.0.0.1:4173')).toBe('http://127.0.0.1:4173/auth/recovery'))
  it('loads the public callback route in recovery mode',()=>expect(initialAuthView('/auth/recovery')).toBe('recovery'))
  it('shows the new-password form for PASSWORD_RECOVERY',()=>expect(authViewAfterEvent('PASSWORD_RECOVERY','login')).toBe('recovery'))
  it('rejects mismatching password confirmation',()=>expect(validateRecoveredPassword('a-secure-password','a-different-password')).toBe('Password confirmation does not match.'))
