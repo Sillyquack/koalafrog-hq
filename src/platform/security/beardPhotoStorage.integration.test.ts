@@ -106,6 +106,8 @@ run('beard photo temporary storage isolation', () => {
     })
     const active = row('analyzing')
     expect((await owner.from('intelligence_analyses').insert(active)).error).toBeNull()
+    expect((await owner.from('intelligence_analyses').delete().eq('id', active.id)).error).not.toBeNull()
+    expect((await owner.from('intelligence_analyses').update({ profile_id: crypto.randomUUID() }).eq('id', active.id)).error).not.toBeNull()
     expect((await owner.from('intelligence_analyses').insert(row('analyzing'))).error?.message).toContain('ANALYSIS_IN_PROGRESS')
     expect((await owner.from('intelligence_analyses').update({ status: 'failed' }).eq('id', active.id)).error).toBeNull()
     for (let index = 0; index < 4; index += 1) {

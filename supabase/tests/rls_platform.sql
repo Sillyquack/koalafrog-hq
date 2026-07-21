@@ -1,6 +1,6 @@
 begin;
 -- Run with Supabase CLI test harness. Synthetic JWT claims must be supplied by the harness.
-select plan(17);
+select plan(20);
 select has_table('public','workspaces','workspaces exists');
 select has_table('public','workspace_records','record store exists');
 select is((select relrowsecurity from pg_class where oid='public.workspace_records'::regclass),true,'record store RLS is enabled');
@@ -18,5 +18,8 @@ select is((select relrowsecurity from pg_class where oid='public.intelligence_an
 select is((select relrowsecurity from pg_class where oid='public.intelligence_observations'::regclass),true,'intelligence observation RLS is enabled');
 select is((select relrowsecurity from pg_class where oid='public.intelligence_recommendations'::regclass),true,'intelligence recommendation RLS is enabled');
 select is((select public from storage.buckets where id='beard-analysis-images'),false,'beard analysis image bucket is private');
+select is(has_table_privilege('authenticated','public.intelligence_analyses','DELETE'),false,'authenticated cannot delete intelligence analyses');
+select is(has_column_privilege('authenticated','public.intelligence_analyses','profile_id','UPDATE'),false,'authenticated cannot rewrite analysis identity');
+select is(has_column_privilege('authenticated','public.intelligence_recommendations','review_status','UPDATE'),true,'authenticated may review recommendations');
 select * from finish();
 rollback;
