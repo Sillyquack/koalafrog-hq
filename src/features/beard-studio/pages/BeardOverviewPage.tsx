@@ -4,6 +4,7 @@ import { Play, Plus, Wrench } from 'lucide-react'
 import { BeardStudioEmptyState } from '../components/BeardStudioEmptyState'
 import { useBeardStudio } from '../data/beardStudioRepository'
 import { formatBeardStudioDate } from '../utils/beardStudioFormat'
+import { BeardIntelligencePanel } from '../components/BeardIntelligencePanel'
 
 export function BeardOverviewPage() {
   const { state } = useBeardStudio()
@@ -36,6 +37,7 @@ export function BeardOverviewPage() {
         <h2>Recent Beard Log</h2>
         {logs.length ? <div className="beard-log-list">{logs.slice(0, 4).map(log => <Link key={log.id} to={`/grooming/beard-studio/log/${log.id}`}><strong>{formatBeardStudioDate(log.occurredAt)}</strong><span>{log.snapshot.recipe.name} · {log.overallRating}/5</span></Link>)}</div> : <p className="muted">No trims have been recorded for this profile.</p>}
       </section>
+      <BeardIntelligencePanel state={state} />
     </div>
   )
 }
