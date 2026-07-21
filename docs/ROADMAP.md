@@ -51,6 +51,37 @@ Phase 6 now replaces overlapping manual packaging Cost Lines with authoritative 
 - Phase 9B: Intelligence Memory, Knowledge Library, usage visibility, and Scent Memory — Complete locally; hosted deployment pending
 - Phase 9C+: Operations Copilot and later Intelligence work — Future
 - Phase 10A: Procurement, Suppliers & Equipment Foundation — Implemented locally; hosted migration pending
+
+## Koalafrog HQ v0.13.0 — Delivered
+
+**Release theme:** Benchmark Lab, Living Research and Beard Studio
+
+Release details and validation are recorded in [the v0.13.0 release note](releases/v0.13.0.md).
+
+Delivered capabilities:
+
+- Benchmark-based product research and a guided R&D workflow with structured scientific observations, benchmark-versus-target comparison, Research Progress, and deliberately conservative research maturity.
+- Accessible attribute descriptors and meters, including state communication that does not rely on colour alone.
+- A Functional Requirement Map with separate Importance and Review status, including an explicit research-needed state.
+- Formula Readiness and a gated handoff that creates a blank Draft Formula; research is never converted automatically into formula content.
+- Product Studio workflow integration, including Natural Deodorant Studio.
+- Beard Studio with canonical workspace persistence, local and hosted Supabase repository implementations, workspace migration support, and backup/restore coverage.
+- Beard Studio stale-write and dirty-navigation protection, cross-workspace database integrity hardening, and desktop plus 390 px mobile validation.
+
+The scientific boundary remains: **HQ shall never invent knowledge. It shall either know, not know, or show where the knowledge comes from.** Benchmark observations are not targets; targets are not Formula Lines; and research does not automatically become formula content. Draft Formula creation remains blank, and Unknown remains Unknown.
+
+No remote migrations were run and no hosted data was modified during v0.13.0 release preparation.
+
+## Current phase: v0.13.0 stabilization
+
+Major feature development is deliberately paused for one to two days after release. During this pause, use the released application, observe friction, and record defects or confusing behaviour. Avoid speculative feature additions and premature v0.14.0 scope decisions; distinguish actual user friction from attractive new ideas and preserve architectural stability.
+
+## v0.14.0
+
+**Status:** Not yet scoped
+
+v0.14.0 will be selected only after the stabilization review. No release theme or implementation scope is assigned.
+
 # Documentation phase — Koalafrog Bible (implemented locally)
 
 The repository now contains a typed, searchable, cross-linked in-app operations manual under Knowledge → Koalafrog Bible, contextual route help, a verified limitations register, playbooks, glossary, and governance tests. Supplier and Equipment guidance reflects the Phase 10A implementation and its deliberate no-ordering, no-payment, and no-safety-certification boundaries.
