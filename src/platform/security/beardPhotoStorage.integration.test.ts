@@ -98,18 +98,33 @@ run('beard photo temporary storage isolation', () => {
       density: 'medium',
       texture: 'wavy',
     })).error).toBeNull()
-    const row = (status: 'analyzing' | 'failed') => ({
+    const row = (status: 'staging' | 'analyzing' | 'failed') => ({
       id: crypto.randomUUID(), workspace_id: workspaceId, owner_user_id: ownerId,
       source_module: 'beard-studio', analysis_type: 'beard_photo_analysis', schema_version: 1,
       prompt_version: 'beard-photo-analysis-v1', status, idempotency_key: crypto.randomUUID(),
       profile_id: profileId, context_manifest: {}, correlation_id: crypto.randomUUID(),
     })
-    const active = row('analyzing')
+    const active = row('staging')
     expect((await owner.from('intelligence_analyses').insert(active)).error).toBeNull()
+    const attempt = {
+      candidate_workspace_id: workspaceId,
+      candidate_analysis_id: active.id,
+      candidate_provider: 'openai',
+      candidate_model: 'gpt-5',
+      candidate_prompt_version: 'beard-photo-analysis-v1',
+    }
+    expect((await owner.rpc('begin_beard_provider_attempt', attempt)).data).toBe(true)
+    expect((await owner.rpc('begin_beard_provider_attempt', attempt)).data).toBe(false)
+    const provenance = await owner.from('intelligence_analyses').select('provider_name,model_name,provider_attempt_count,provider_attempted_at,status').eq('id', active.id).single()
+    expect(provenance.data).toMatchObject({ provider_name: 'openai', model_name: 'gpt-5', provider_attempt_count: 1, status: 'analyzing' })
+    expect(provenance.data?.provider_attempted_at).toBeTruthy()
     expect((await owner.from('intelligence_analyses').delete().eq('id', active.id)).error).not.toBeNull()
     expect((await owner.from('intelligence_analyses').update({ profile_id: crypto.randomUUID() }).eq('id', active.id)).error).not.toBeNull()
     expect((await owner.from('intelligence_analyses').insert(row('analyzing'))).error?.message).toContain('ANALYSIS_IN_PROGRESS')
-    expect((await owner.from('intelligence_analyses').update({ status: 'failed' }).eq('id', active.id)).error).toBeNull()
+    expect((await owner.from('intelligence_analyses').update({ status: 'failed', error_code: 'PROVIDER_TIMEOUT' }).eq('id', active.id)).error).toBeNull()
+    const timedOut = await owner.from('intelligence_analyses').select('provider_name,model_name,provider_attempt_count,provider_attempted_at,status,error_code').eq('id', active.id).single()
+    expect(timedOut.data).toMatchObject({ provider_name: 'openai', model_name: 'gpt-5', provider_attempt_count: 1, status: 'failed', error_code: 'PROVIDER_TIMEOUT' })
+    expect(timedOut.data?.provider_attempted_at).toBeTruthy()
     for (let index = 0; index < 4; index += 1) {
       expect((await owner.from('intelligence_analyses').insert(row('failed'))).error).toBeNull()
     }

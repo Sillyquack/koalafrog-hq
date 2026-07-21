@@ -1,6 +1,6 @@
 begin;
 -- Run with Supabase CLI test harness. Synthetic JWT claims must be supplied by the harness.
-select plan(20);
+select plan(25);
 select has_table('public','workspaces','workspaces exists');
 select has_table('public','workspace_records','record store exists');
 select is((select relrowsecurity from pg_class where oid='public.workspace_records'::regclass),true,'record store RLS is enabled');
@@ -21,5 +21,10 @@ select is((select public from storage.buckets where id='beard-analysis-images'),
 select is(has_table_privilege('authenticated','public.intelligence_analyses','DELETE'),false,'authenticated cannot delete intelligence analyses');
 select is(has_column_privilege('authenticated','public.intelligence_analyses','profile_id','UPDATE'),false,'authenticated cannot rewrite analysis identity');
 select is(has_column_privilege('authenticated','public.intelligence_recommendations','review_status','UPDATE'),true,'authenticated may review recommendations');
+select has_column('public','intelligence_analyses','provider_attempted_at','analysis attempt timestamp exists');
+select has_column('public','intelligence_analyses','provider_attempt_count','analysis attempt counter exists');
+select is(has_column_privilege('authenticated','public.intelligence_analyses','provider_name','UPDATE'),false,'authenticated cannot directly rewrite provider provenance');
+select is(has_column_privilege('authenticated','public.intelligence_analyses','model_name','INSERT'),false,'authenticated cannot insert model provenance');
+select has_function('public','begin_beard_provider_attempt',array['uuid','uuid','text','text','text'],'atomic provider attempt function exists');
 select * from finish();
 rollback;

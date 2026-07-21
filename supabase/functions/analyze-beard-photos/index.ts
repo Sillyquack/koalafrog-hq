@@ -10,11 +10,17 @@ import {
   validateBeardPhotoAnalysisResult,
 } from "../_shared/beardPhotoAnalysisContract.ts";
 import { beardPhotoSystemPrompt } from "../_shared/beardPhotoPrompt.ts";
+import {
+  beardStageLog,
+  InvalidProviderTimeoutError,
+  parseBeardProviderTimeout,
+  ProviderDeadlineError,
+  withProviderDeadline,
+} from "../_shared/beardPhotoRuntime.ts";
 
 const BUCKET = "beard-analysis-images",
   MAX_BYTES = 8 * 1024 * 1024,
-  MAX_PER_HOUR = 5,
-  TIMEOUT_MS = 45_000;
+  MAX_PER_HOUR = 5;
 const ALLOWED_MODELS = new Set(["gpt-5", "gpt-5-2025-08-07"]);
 const allowedOrigin = (origin: string | null) =>
   !origin || origin === "https://koalafrog-hq.pages.dev" ||
@@ -227,7 +233,11 @@ class ProviderError extends Error {
 class OpenAIBeardVisionProvider implements VisionAnalysisProvider {
   id = "openai";
   capabilities = { imageInput: true as const, structuredOutput: true as const };
-  constructor(private key: string, public model: string) {}
+  constructor(
+    private key: string,
+    public model: string,
+    private timeoutMs: number,
+  ) {}
   healthCheck() {
     return { configured: Boolean(this.key && this.model) };
   }
@@ -239,66 +249,66 @@ class OpenAIBeardVisionProvider implements VisionAnalysisProvider {
       correlationId: string;
     },
   ) {
-    const controller = new AbortController(),
-      timer = setTimeout(() => controller.abort(), TIMEOUT_MS);
     let response: Response;
     try {
-      response = await fetch("https://api.openai.com/v1/responses", {
-        method: "POST",
-        signal: controller.signal,
-        headers: {
-          Authorization: `Bearer ${this.key}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: this.model,
-          store: false,
-          input: [{ role: "system", content: beardPhotoSystemPrompt }, {
-            role: "user",
-            content: [
-              {
-                type: "input_text",
-                text: JSON.stringify({
-                  task:
-                    "Analyze the supplied labeled beard views using only this minimal Beard Studio context.",
-                  context: request.context,
-                }),
-              },
-              ...request.images.flatMap(
-                (image) => [{
-                  type: "input_text",
-                  text: `Image view: ${image.view}`,
-                }, {
-                  type: "input_image",
-                  image_url: image.dataUrl,
-                  detail: "high",
-                }],
-              ),
-            ],
-          }],
-          text: {
-            format: {
-              type: "json_schema",
-              name: "beard_photo_analysis",
-              strict: true,
-              schema: resultSchema({
-                analysisId: request.analysisId,
-                provider: this.id,
-                model: this.model,
-                correlationId: request.correlationId,
-              }),
+      response = await withProviderDeadline(
+        (signal) =>
+          fetch("https://api.openai.com/v1/responses", {
+            method: "POST",
+            signal,
+            headers: {
+              Authorization: `Bearer ${this.key}`,
+              "Content-Type": "application/json",
             },
-          },
-        }),
-      });
+            body: JSON.stringify({
+              model: this.model,
+              store: false,
+              input: [{ role: "system", content: beardPhotoSystemPrompt }, {
+                role: "user",
+                content: [
+                  {
+                    type: "input_text",
+                    text: JSON.stringify({
+                      task:
+                        "Analyze the supplied labeled beard views using only this minimal Beard Studio context.",
+                      context: request.context,
+                    }),
+                  },
+                  ...request.images.flatMap(
+                    (image) => [{
+                      type: "input_text",
+                      text: `Image view: ${image.view}`,
+                    }, {
+                      type: "input_image",
+                      image_url: image.dataUrl,
+                      detail: "high",
+                    }],
+                  ),
+                ],
+              }],
+              text: {
+                format: {
+                  type: "json_schema",
+                  name: "beard_photo_analysis",
+                  strict: true,
+                  schema: resultSchema({
+                    analysisId: request.analysisId,
+                    provider: this.id,
+                    model: this.model,
+                    correlationId: request.correlationId,
+                  }),
+                },
+              },
+            }),
+          }),
+        this.timeoutMs,
+      );
     } catch (error) {
       throw new ProviderError(
-        error instanceof DOMException && error.name === "AbortError"
+        error instanceof ProviderDeadlineError
           ? "PROVIDER_TIMEOUT"
           : "NETWORK_FAILURE",
       );
-    } finally {
-      clearTimeout(timer);
     }
     if (!response.ok) {
       if (response.status === 429) {
@@ -353,6 +363,7 @@ const toBase64 = (bytes: Uint8Array) => {
 };
 
 Deno.serve(async (req) => {
+  const requestStartedAt = Date.now();
   const origin = req.headers.get("Origin");
   if (!allowedOrigin(origin)) return new Response(null, { status: 403 });
   const responseOrigin = origin ?? "https://koalafrog-hq.pages.dev";
@@ -416,6 +427,23 @@ Deno.serve(async (req) => {
       400,
     );
   }
+  const stage = (
+    name: Parameters<typeof beardStageLog>[0]["stage"],
+    details: Partial<
+      Pick<
+        Parameters<typeof beardStageLog>[0],
+        "outcomeCode" | "provider" | "model"
+      >
+    > = {},
+  ) =>
+    console.info(beardStageLog({
+      correlationId,
+      analysisId: body.analysisId,
+      stage: name,
+      elapsedMs: Date.now() - requestStartedAt,
+      ...details,
+    }));
+  stage("authentication_completed");
   const userId = auth.data.user.id;
   const existing = await client.from("intelligence_analyses").select(
     "result_payload,status",
@@ -454,7 +482,40 @@ Deno.serve(async (req) => {
     );
   }
   const cleanupRequestedInputs = () =>
-    client.storage.from(BUCKET).remove(body.inputs.map((input) => input.objectPath));
+    client.storage.from(BUCKET).remove(
+      body.inputs.map((input) => input.objectPath),
+    );
+  const model = Deno.env.get("OPENAI_BEARD_VISION_MODEL")?.trim() ?? "",
+    key = Deno.env.get("OPENAI_API_KEY") || "";
+  let timeoutMs: number;
+  try {
+    timeoutMs = parseBeardProviderTimeout(
+      Deno.env.get("OPENAI_BEARD_VISION_TIMEOUT_MS"),
+    );
+  } catch (error) {
+    if (!(error instanceof InvalidProviderTimeoutError)) throw error;
+    await cleanupRequestedInputs();
+    return json(
+      safeError(
+        "PROVIDER_NOT_CONFIGURED",
+        "Beard photo analysis is not configured.",
+        correlationId,
+      ),
+      503,
+    );
+  }
+  const provider = new OpenAIBeardVisionProvider(key, model, timeoutMs);
+  if (!provider.healthCheck().configured || !ALLOWED_MODELS.has(model)) {
+    await cleanupRequestedInputs();
+    return json(
+      safeError(
+        "PROVIDER_NOT_CONFIGURED",
+        "Beard photo analysis is not configured.",
+        correlationId,
+      ),
+      503,
+    );
+  }
   if (
     existing.data?.result_payload &&
     ["completed", "completed_cleanup_required"].includes(existing.data.status)
@@ -539,20 +600,7 @@ Deno.serve(async (req) => {
       502,
     );
   }
-  const model = Deno.env.get("OPENAI_BEARD_VISION_MODEL")?.trim() ?? "",
-    key = Deno.env.get("OPENAI_API_KEY") || "",
-    provider = new OpenAIBeardVisionProvider(key, model);
-  if (!provider.healthCheck().configured || !ALLOWED_MODELS.has(model)) {
-    await cleanupRequestedInputs();
-    return json(
-      safeError(
-        "PROVIDER_NOT_CONFIGURED",
-        "Beard photo analysis is not configured.",
-        correlationId,
-      ),
-      503,
-    );
-  }
+  stage("context_loaded");
   const inserted = await client.from("intelligence_analyses").insert({
     id: body.analysisId,
     workspace_id: body.workspaceId,
@@ -561,7 +609,7 @@ Deno.serve(async (req) => {
     analysis_type: "beard_photo_analysis",
     schema_version: 1,
     prompt_version: BEARD_PHOTO_PROMPT_VERSION,
-    status: "analyzing",
+    status: "staging",
     idempotency_key: body.idempotencyKey,
     profile_id: body.profileId,
     context_manifest: {
@@ -625,6 +673,33 @@ Deno.serve(async (req) => {
       502,
     );
   }
+  const attempted = await client.rpc("begin_beard_provider_attempt", {
+    candidate_workspace_id: body.workspaceId,
+    candidate_analysis_id: body.analysisId,
+    candidate_provider: provider.id,
+    candidate_model: provider.model,
+    candidate_prompt_version: BEARD_PHOTO_PROMPT_VERSION,
+  });
+  if (attempted.error || attempted.data !== true) {
+    await client.from("intelligence_analyses").update({
+      status: "failed",
+      error_code: "ATTEMPT_PROVENANCE_FAILED",
+      completed_at: new Date().toISOString(),
+    }).eq("id", body.analysisId).eq("workspace_id", body.workspaceId);
+    const removed = await cleanupRequestedInputs();
+    await client.from("intelligence_analysis_inputs").update({
+      cleanup_state: removed.error ? "cleanup_required" : "deleted",
+      cleaned_at: removed.error ? null : new Date().toISOString(),
+    }).eq("analysis_id", body.analysisId).eq("workspace_id", body.workspaceId);
+    return json(
+      safeError(
+        "ATTEMPT_PROVENANCE_FAILED",
+        "Analysis attempt could not be recorded.",
+        correlationId,
+      ),
+      502,
+    );
+  }
   let result: BeardPhotoAnalysisResult | undefined,
     errorCode: string | undefined;
   try {
@@ -648,6 +723,11 @@ Deno.serve(async (req) => {
         ),
       });
     }
+    stage("images_loaded", { provider: provider.id, model: provider.model });
+    stage("provider_request_started", {
+      provider: provider.id,
+      model: provider.model,
+    });
     const analyzed = await provider.analyzeBeardPhotos({
       analysisId: body.analysisId,
       correlationId,
@@ -659,29 +739,43 @@ Deno.serve(async (req) => {
       },
       images,
     });
+    stage("provider_response_received", {
+      provider: provider.id,
+      model: provider.model,
+    });
     result = analyzed.result;
-    await client.from("intelligence_observations").insert(
-      [
-        ...result.observations,
-        ...result.symmetry,
-        ...result.densityDistribution,
-        ...result.lineAssessment,
-      ].map((item) => ({
-        id: item.id,
-        workspace_id: body.workspaceId,
-        owner_user_id: userId,
-        analysis_id: body.analysisId,
-        category: item.category,
-        statement: item.statement,
-        confidence: item.confidence,
-        supporting_views: item.supportingViews,
-        evidence_description: item.evidenceDescription,
-        limitations: item.limitations,
-        related_beard_zones: item.relatedBeardZones,
-        provenance: "ai",
-      })),
-    );
-    await client.from("intelligence_recommendations").insert(
+    stage("validation_completed", {
+      provider: provider.id,
+      model: provider.model,
+    });
+    const observationInsert = await client.from("intelligence_observations")
+      .insert(
+        [
+          ...result.observations,
+          ...result.symmetry,
+          ...result.densityDistribution,
+          ...result.lineAssessment,
+        ].map((item) => ({
+          id: item.id,
+          workspace_id: body.workspaceId,
+          owner_user_id: userId,
+          analysis_id: body.analysisId,
+          category: item.category,
+          statement: item.statement,
+          confidence: item.confidence,
+          supporting_views: item.supportingViews,
+          evidence_description: item.evidenceDescription,
+          limitations: item.limitations,
+          related_beard_zones: item.relatedBeardZones,
+          provenance: "ai",
+        })),
+      );
+    if (observationInsert.error) {
+      throw new ProviderError("RESULT_PERSISTENCE_FAILED");
+    }
+    const recommendationInsert = await client.from(
+      "intelligence_recommendations",
+    ).insert(
       result.recommendations.map((item) => ({
         id: item.id,
         workspace_id: body.workspaceId,
@@ -700,7 +794,10 @@ Deno.serve(async (req) => {
         provenance: "ai",
       })),
     );
-    await client.from("intelligence_analyses").update({
+    if (recommendationInsert.error) {
+      throw new ProviderError("RESULT_PERSISTENCE_FAILED");
+    }
+    const resultUpdate = await client.from("intelligence_analyses").update({
       status: "completed",
       provider_name: provider.id,
       model_name: provider.model,
@@ -708,10 +805,14 @@ Deno.serve(async (req) => {
       provider_usage: analyzed.usage ?? null,
       completed_at: new Date().toISOString(),
     }).eq("id", body.analysisId).eq("workspace_id", body.workspaceId);
+    if (resultUpdate.error) {
+      throw new ProviderError("RESULT_PERSISTENCE_FAILED");
+    }
   } catch (error) {
     errorCode = error instanceof ProviderError
       ? error.code
       : "UNEXPECTED_ERROR";
+    result = undefined;
     await client.from("intelligence_analyses").update({
       status: "failed",
       error_code: errorCode,
@@ -726,6 +827,15 @@ Deno.serve(async (req) => {
     cleanup_state: cleanupFailed ? "cleanup_required" : "deleted",
     cleaned_at: cleanupFailed ? null : new Date().toISOString(),
   }).eq("analysis_id", body.analysisId).eq("workspace_id", body.workspaceId);
+  stage("cleanup_completed", {
+    outcomeCode: cleanupFailed
+      ? "CLEANUP_FAILURE"
+      : result
+      ? "COMPLETED"
+      : errorCode ?? "UNEXPECTED_ERROR",
+    provider: provider.id,
+    model: provider.model,
+  });
   if (result) {
     if (cleanupFailed) {
       result = { ...result, status: "completed_cleanup_required" };

@@ -31,6 +31,7 @@ The provider adapter is implemented only inside the Edge Function. Configure hos
 
 - `OPENAI_API_KEY`: required server-side provider credential.
 - `OPENAI_BEARD_VISION_MODEL`: required explicit model identifier. There is no fallback. The server currently allows only the documented image-capable Responses models `gpt-5` and `gpt-5-2025-08-07`; account access must still be verified before a paid test.
+- `OPENAI_BEARD_VISION_TIMEOUT_MS`: optional server-only override. Missing uses 110,000 ms; configured values must be whole milliseconds from 60,000 through 120,000 or the provider fails closed before transmission. The 110-second default leaves 40 seconds before Supabase's 150-second request idle timeout for typed persistence, private-image cleanup, and the final response. The browser adds no shorter request timer and the provider is never retried automatically.
 
 When the credential is missing, the function returns `PROVIDER_NOT_CONFIGURED`; the UI shows a controlled error and never substitutes mock output.
 
@@ -61,6 +62,10 @@ The Supabase test suite verifies bucket ownership, anonymous and cross-owner den
 ## Cost and limitations
 
 Each confirmed submission can incur provider image and output-token cost. The function allows one active analysis per owner/workspace and at most five starts per hour. Images cannot establish exact millimeter length, growth rate, objective facial geometry, identity, health, or medical conditions. Lighting, perspective, occlusion, filters, and inconsistent distance reduce confidence.
+
+Before provider transmission, an atomic database claim records the server-selected provider, exact allowlisted model, prompt version, attempt timestamp, count, and analyzing state. All terminal outcomes retain that provenance. Safe stage logs contain only correlation ID, analysis ID, stage, elapsed milliseconds, typed outcome, provider, and model; they never contain images, paths, filenames, prompts, response bodies, user identity, tokens, or secrets.
+
+The first production attempt (`a6ce0c1f-c822-4048-9672-d0df451e2775`) remains unchanged. It timed out under the former 45-second local provider deadline before attempt provenance was persisted; its null provider/model fields are historical evidence of that defect, not values to backfill. The owner separately confirmed that the configured model at the time was `gpt-5`.
 
 ## Phase B deployment and rollback
 
