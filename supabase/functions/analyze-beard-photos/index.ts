@@ -8,6 +8,8 @@ import {
   beardPhotoViews,
   requiredBeardPhotoViews,
   validateBeardPhotoAnalysisResult,
+  validateBeardPhotoContract,
+  validateBeardPhotoSemantics,
 } from "../_shared/beardPhotoAnalysisContract.ts";
 import { beardPhotoSystemPrompt } from "../_shared/beardPhotoPrompt.ts";
 import {
@@ -17,6 +19,15 @@ import {
   ProviderDeadlineError,
   withProviderDeadline,
 } from "../_shared/beardPhotoRuntime.ts";
+import {
+  executeValidation,
+  intelligenceRuleCodes,
+  IntelligenceTraceBuilder,
+  TraceReporter,
+  validateStructuredValue,
+  type ValidationFailure,
+  verifyCleanup,
+} from "../../../src/intelligence/Diagnostics/index.ts";
 
 const BUCKET = "beard-analysis-images",
   MAX_BYTES = 8 * 1024 * 1024,
@@ -222,11 +233,13 @@ interface VisionAnalysisProvider {
       images: Array<{ view: BeardPhotoView; dataUrl: string }>;
       analysisId: string;
       correlationId: string;
+      trace: IntelligenceTraceBuilder;
+      reporter: TraceReporter;
     },
   ): Promise<{ result: BeardPhotoAnalysisResult; usage?: unknown }>;
 }
 class ProviderError extends Error {
-  constructor(public code: string) {
+  constructor(public code: string, public diagnostic?: ValidationFailure) {
     super(code);
   }
 }
@@ -247,8 +260,15 @@ class OpenAIBeardVisionProvider implements VisionAnalysisProvider {
       images: Array<{ view: BeardPhotoView; dataUrl: string }>;
       analysisId: string;
       correlationId: string;
+      trace: IntelligenceTraceBuilder;
+      reporter: TraceReporter;
     },
   ) {
+    const finish = (
+      stage: Parameters<IntelligenceTraceBuilder["finish"]>[0],
+      result: Parameters<IntelligenceTraceBuilder["finish"]>[1],
+      metadata: Parameters<IntelligenceTraceBuilder["finish"]>[2] = {},
+    ) => request.reporter.report(request.trace.finish(stage, result, metadata));
     let response: Response;
     try {
       response = await withProviderDeadline(
@@ -304,13 +324,39 @@ class OpenAIBeardVisionProvider implements VisionAnalysisProvider {
         this.timeoutMs,
       );
     } catch (error) {
+      finish("ProviderInvocation", "failed", {
+        ruleCode: error instanceof ProviderDeadlineError
+          ? intelligenceRuleCodes.providerTimeout
+          : intelligenceRuleCodes.invalidHttpEnvelope,
+        validator: "openai-responses",
+        provider: this.id,
+        model: this.model,
+      });
       throw new ProviderError(
         error instanceof ProviderDeadlineError
           ? "PROVIDER_TIMEOUT"
           : "NETWORK_FAILURE",
       );
     }
+    finish("ProviderInvocation", "succeeded", {
+      provider: this.id,
+      model: this.model,
+    });
+    request.reporter.report(
+      request.trace.start("ProviderResponse", {
+        provider: this.id,
+        model: this.model,
+      }),
+    );
     if (!response.ok) {
+      finish("ProviderResponse", "failed", {
+        ruleCode: response.status === 429
+          ? intelligenceRuleCodes.providerTimeout
+          : intelligenceRuleCodes.invalidHttpEnvelope,
+        validator: "openai-responses",
+        provider: this.id,
+        model: this.model,
+      });
       if (response.status === 429) {
         throw new ProviderError("PROVIDER_RATE_LIMIT");
       }
@@ -320,30 +366,293 @@ class OpenAIBeardVisionProvider implements VisionAnalysisProvider {
       if (response.status >= 500) throw new ProviderError("PROVIDER_FAILURE");
       throw new ProviderError("PROVIDER_REFUSAL");
     }
+    finish("ProviderResponse", "succeeded", {
+      provider: this.id,
+      model: this.model,
+    });
+    request.reporter.report(
+      request.trace.start("EnvelopeParsing", {
+        provider: this.id,
+        model: this.model,
+      }),
+    );
     let raw: any;
     try {
       raw = await response.json();
     } catch {
-      throw new ProviderError("INVALID_STRUCTURED_OUTPUT");
+      const diagnostic: ValidationFailure = {
+        success: false,
+        ruleCode: intelligenceRuleCodes.invalidHttpEnvelope,
+        jsonPath: "$",
+        expected: "object",
+        received: "unknown",
+        validator: "responses-envelope",
+        stage: "EnvelopeParsing",
+      };
+      finish("EnvelopeParsing", "failed", {
+        ruleCode: diagnostic.ruleCode,
+        jsonPath: diagnostic.jsonPath,
+        expectedType: diagnostic.expected,
+        receivedType: diagnostic.received,
+        validator: diagnostic.validator,
+        provider: this.id,
+        model: this.model,
+      });
+      throw new ProviderError("INVALID_ENVELOPE", diagnostic);
     }
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+      const diagnostic: ValidationFailure = {
+        success: false,
+        ruleCode: intelligenceRuleCodes.invalidHttpEnvelope,
+        jsonPath: "$",
+        expected: "object",
+        received: "unknown",
+        validator: "responses-envelope",
+        stage: "EnvelopeParsing",
+      };
+      finish("EnvelopeParsing", "failed", {
+        ruleCode: diagnostic.ruleCode,
+        jsonPath: diagnostic.jsonPath,
+        expectedType: diagnostic.expected,
+        receivedType: diagnostic.received,
+        validator: diagnostic.validator,
+        provider: this.id,
+        model: this.model,
+      });
+      throw new ProviderError("INVALID_ENVELOPE", diagnostic);
+    }
+    if (raw.status === "incomplete") {
+      const diagnostic: ValidationFailure = {
+        success: false,
+        ruleCode: intelligenceRuleCodes.providerIncomplete,
+        jsonPath: "$.status",
+        expected: "completed response",
+        received: "incomplete",
+        validator: "responses-envelope",
+        stage: "EnvelopeParsing",
+      };
+      finish("EnvelopeParsing", "failed", {
+        ruleCode: diagnostic.ruleCode,
+        jsonPath: diagnostic.jsonPath,
+        expectedType: diagnostic.expected,
+        receivedType: diagnostic.received,
+        validator: diagnostic.validator,
+        provider: this.id,
+        model: this.model,
+      });
+      throw new ProviderError("PROVIDER_INCOMPLETE", diagnostic);
+    }
+    finish("EnvelopeParsing", "succeeded", {
+      provider: this.id,
+      model: this.model,
+    });
     const refusal = raw.output?.flatMap((x: any) => x.content ?? []).find((
       x: any,
     ) => x.type === "refusal");
-    if (refusal) throw new ProviderError("PROVIDER_REFUSAL");
+    if (refusal) {
+      request.reporter.report(request.trace.add({
+        stage: "ProviderResponse",
+        result: "failed",
+        ruleCode: intelligenceRuleCodes.providerRefusal,
+        jsonPath: "$.output[0].content[0]",
+        expectedType: "completed response",
+        receivedType: "unexpected",
+        validator: "responses-refusal",
+        provider: this.id,
+        model: this.model,
+        elapsedMs: 0,
+        timestamp: new Date().toISOString(),
+      }));
+      throw new ProviderError("PROVIDER_REFUSAL", {
+        success: false,
+        ruleCode: intelligenceRuleCodes.providerRefusal,
+        jsonPath: "$.output[0].content[0]",
+        expected: "completed response",
+        received: "unexpected",
+        validator: "responses-refusal",
+        stage: "ProviderResponse",
+      });
+    }
     const text = raw.output?.flatMap((x: any) => x.content ?? []).find((
       x: any,
     ) => x.type === "output_text")?.text;
+    request.reporter.report(
+      request.trace.start("JsonParsing", {
+        provider: this.id,
+        model: this.model,
+      }),
+    );
+    if (typeof text !== "string" || text.length === 0) {
+      const diagnostic: ValidationFailure = {
+        success: false,
+        ruleCode: intelligenceRuleCodes.missingOutputText,
+        jsonPath: "$.output[0].content[0].text",
+        expected: "string",
+        received: "missing",
+        validator: "responses-output",
+        stage: "JsonParsing",
+      };
+      finish("JsonParsing", "failed", {
+        ruleCode: diagnostic.ruleCode,
+        jsonPath: diagnostic.jsonPath,
+        expectedType: diagnostic.expected,
+        receivedType: diagnostic.received,
+        validator: diagnostic.validator,
+        provider: this.id,
+        model: this.model,
+      });
+      throw new ProviderError("MISSING_OUTPUT_TEXT", diagnostic);
+    }
     let parsed: unknown;
     try {
       parsed = JSON.parse(text);
     } catch {
-      throw new ProviderError("INVALID_STRUCTURED_OUTPUT");
+      const diagnostic: ValidationFailure = {
+        success: false,
+        ruleCode: intelligenceRuleCodes.invalidJson,
+        jsonPath: "$",
+        expected: "object",
+        received: "unknown",
+        validator: "json-parser",
+        stage: "JsonParsing",
+      };
+      finish("JsonParsing", "failed", {
+        ruleCode: diagnostic.ruleCode,
+        jsonPath: diagnostic.jsonPath,
+        expectedType: diagnostic.expected,
+        receivedType: diagnostic.received,
+        validator: diagnostic.validator,
+        provider: this.id,
+        model: this.model,
+      });
+      throw new ProviderError("INVALID_JSON", diagnostic);
     }
-    if (!validateBeardPhotoAnalysisResult(parsed)) {
-      throw new ProviderError("INVALID_STRUCTURED_OUTPUT");
+    finish("JsonParsing", "succeeded", {
+      provider: this.id,
+      model: this.model,
+    });
+    request.reporter.report(
+      request.trace.start("SchemaValidation", {
+        provider: this.id,
+        model: this.model,
+      }),
+    );
+    const schemaValidation = executeValidation(
+      "SchemaValidation",
+      "json-schema",
+      () =>
+        validateStructuredValue(
+          parsed,
+          resultSchema({
+            analysisId: request.analysisId,
+            provider: this.id,
+            model: this.model,
+            correlationId: request.correlationId,
+          }),
+        ),
+    );
+    if (!schemaValidation.success) {
+      finish("SchemaValidation", "failed", {
+        ruleCode: schemaValidation.ruleCode,
+        jsonPath: schemaValidation.jsonPath,
+        expectedType: schemaValidation.expected,
+        receivedType: schemaValidation.received,
+        validator: schemaValidation.validator,
+        provider: this.id,
+        model: this.model,
+      });
+      throw new ProviderError(
+        schemaValidation.ruleCode ===
+            intelligenceRuleCodes.unexpectedValidatorException
+          ? "UNKNOWN_VALIDATION_FAILURE"
+          : "SCHEMA_VALIDATION_FAILED",
+        schemaValidation,
+      );
+    }
+    finish("SchemaValidation", "succeeded", {
+      provider: this.id,
+      model: this.model,
+    });
+    const typed = parsed as BeardPhotoAnalysisResult;
+    request.reporter.report(
+      request.trace.start("ContractValidation", {
+        provider: this.id,
+        model: this.model,
+      }),
+    );
+    const contractValidation = executeValidation(
+      "ContractValidation",
+      "beard-contract",
+      () => validateBeardPhotoContract(typed),
+    );
+    if (!contractValidation.success) {
+      finish("ContractValidation", "failed", {
+        ruleCode: contractValidation.ruleCode,
+        jsonPath: contractValidation.jsonPath,
+        expectedType: contractValidation.expected,
+        receivedType: contractValidation.received,
+        validator: contractValidation.validator,
+        provider: this.id,
+        model: this.model,
+      });
+      throw new ProviderError(
+        contractValidation.ruleCode ===
+            intelligenceRuleCodes.unexpectedValidatorException
+          ? "UNKNOWN_VALIDATION_FAILURE"
+          : "CONTRACT_VALIDATION_FAILED",
+        contractValidation,
+      );
+    }
+    finish("ContractValidation", "succeeded", {
+      provider: this.id,
+      model: this.model,
+    });
+    request.reporter.report(
+      request.trace.start("SemanticValidation", {
+        provider: this.id,
+        model: this.model,
+      }),
+    );
+    const semanticValidation = executeValidation(
+      "SemanticValidation",
+      "beard-semantic-safety",
+      () => validateBeardPhotoSemantics(typed),
+    );
+    if (!semanticValidation.success) {
+      finish("SemanticValidation", "failed", {
+        ruleCode: semanticValidation.ruleCode,
+        jsonPath: semanticValidation.jsonPath,
+        expectedType: semanticValidation.expected,
+        receivedType: semanticValidation.received,
+        validator: semanticValidation.validator,
+        provider: this.id,
+        model: this.model,
+      });
+      throw new ProviderError(
+        semanticValidation.ruleCode ===
+            intelligenceRuleCodes.unexpectedValidatorException
+          ? "UNKNOWN_VALIDATION_FAILURE"
+          : "SEMANTIC_VALIDATION_FAILED",
+        semanticValidation,
+      );
+    }
+    finish("SemanticValidation", "succeeded", {
+      provider: this.id,
+      model: this.model,
+    });
+    if (!validateBeardPhotoAnalysisResult(typed)) {
+      throw new ProviderError("UNKNOWN_VALIDATION_FAILURE", {
+        success: false,
+        ruleCode: intelligenceRuleCodes.unexpectedValidatorException,
+        jsonPath: "$",
+        expected: "object",
+        received: "unknown",
+        validator: "legacy-beard-validator",
+        stage: "ContractValidation",
+      });
     }
     return {
-      result: parsed,
+      result: typed,
       usage: raw.usage
         ? {
           inputTokens: raw.usage.input_tokens,
@@ -427,6 +736,23 @@ Deno.serve(async (req) => {
       400,
     );
   }
+  const trace = new IntelligenceTraceBuilder(correlationId, body.analysisId);
+  const reporter = new TraceReporter();
+  const traceComplete = (
+    stageName: Parameters<IntelligenceTraceBuilder["finish"]>[0],
+    result: Parameters<IntelligenceTraceBuilder["finish"]>[1],
+    metadata: Parameters<IntelligenceTraceBuilder["finish"]>[2] = {},
+  ) => reporter.report(trace.finish(stageName, result, metadata));
+  const traceInstant = (
+    stageName: Parameters<IntelligenceTraceBuilder["start"]>[0],
+    result: "succeeded" | "failed" | "skipped" = "succeeded",
+    metadata: Parameters<IntelligenceTraceBuilder["finish"]>[2] = {},
+  ) => {
+    reporter.report(trace.start(stageName));
+    traceComplete(stageName, result, metadata);
+  };
+  traceInstant("Authentication");
+  traceInstant("InputValidation");
   const stage = (
     name: Parameters<typeof beardStageLog>[0]["stage"],
     details: Partial<
@@ -465,6 +791,7 @@ Deno.serve(async (req) => {
       403,
     );
   }
+  traceInstant("WorkspaceValidation");
   const prefix = `${body.workspaceId}/${userId}/${body.analysisId}/`;
   if (
     body.inputs.some((input) =>
@@ -516,6 +843,10 @@ Deno.serve(async (req) => {
       503,
     );
   }
+  traceInstant("ProviderConfiguration", "succeeded", {
+    provider: provider.id,
+    model: provider.model,
+  });
   if (
     existing.data?.result_payload &&
     ["completed", "completed_cleanup_required"].includes(existing.data.status)
@@ -531,6 +862,12 @@ Deno.serve(async (req) => {
     ["staging", "analyzing"],
   );
   if ((active.count ?? 0) > 0) {
+    traceInstant("Completed", "failed", {
+      ruleCode: intelligenceRuleCodes.duplicateInvocation,
+      validator: "invocation-guard",
+      provider: provider.id,
+      model: provider.model,
+    });
     await cleanupRequestedInputs();
     return json(
       safeError(
@@ -601,6 +938,7 @@ Deno.serve(async (req) => {
     );
   }
   stage("context_loaded");
+  traceInstant("ContextBuild");
   const inserted = await client.from("intelligence_analyses").insert({
     id: body.analysisId,
     workspace_id: body.workspaceId,
@@ -703,6 +1041,10 @@ Deno.serve(async (req) => {
   let result: BeardPhotoAnalysisResult | undefined,
     errorCode: string | undefined;
   try {
+    reporter.report(trace.start("ImageRetrieval", {
+      provider: provider.id,
+      model: provider.model,
+    }));
     const images = [] as Array<{ view: BeardPhotoView; dataUrl: string }>;
     for (const input of body.inputs) {
       const downloaded = await client.storage.from(BUCKET).download(
@@ -723,11 +1065,19 @@ Deno.serve(async (req) => {
         ),
       });
     }
+    traceComplete("ImageRetrieval", "succeeded", {
+      provider: provider.id,
+      model: provider.model,
+    });
     stage("images_loaded", { provider: provider.id, model: provider.model });
     stage("provider_request_started", {
       provider: provider.id,
       model: provider.model,
     });
+    reporter.report(trace.start("ProviderInvocation", {
+      provider: provider.id,
+      model: provider.model,
+    }));
     const analyzed = await provider.analyzeBeardPhotos({
       analysisId: body.analysisId,
       correlationId,
@@ -738,6 +1088,8 @@ Deno.serve(async (req) => {
         lastTrim: lastLog.data ?? null,
       },
       images,
+      trace,
+      reporter,
     });
     stage("provider_response_received", {
       provider: provider.id,
@@ -748,6 +1100,10 @@ Deno.serve(async (req) => {
       provider: provider.id,
       model: provider.model,
     });
+    reporter.report(trace.start("Persistence", {
+      provider: provider.id,
+      model: provider.model,
+    }));
     const observationInsert = await client.from("intelligence_observations")
       .insert(
         [
@@ -808,6 +1164,10 @@ Deno.serve(async (req) => {
     if (resultUpdate.error) {
       throw new ProviderError("RESULT_PERSISTENCE_FAILED");
     }
+    traceComplete("Persistence", "succeeded", {
+      provider: provider.id,
+      model: provider.model,
+    });
   } catch (error) {
     errorCode = error instanceof ProviderError
       ? error.code
@@ -819,14 +1179,94 @@ Deno.serve(async (req) => {
       completed_at: new Date().toISOString(),
     }).eq("id", body.analysisId).eq("workspace_id", body.workspaceId);
   }
+  traceInstant("CleanupDeleteRequested", "succeeded", {
+    provider: provider.id,
+    model: provider.model,
+  });
+  reporter.report(trace.start("CleanupDeleteAcknowledged", {
+    provider: provider.id,
+    model: provider.model,
+  }));
   const removed = await client.storage.from(BUCKET).remove(
     body.inputs.map((input) => input.objectPath),
   );
-  const cleanupFailed = Boolean(removed.error);
-  await client.from("intelligence_analysis_inputs").update({
-    cleanup_state: cleanupFailed ? "cleanup_required" : "deleted",
-    cleaned_at: cleanupFailed ? null : new Date().toISOString(),
-  }).eq("analysis_id", body.analysisId).eq("workspace_id", body.workspaceId);
+  const acknowledgementFailed = Boolean(removed.error) ||
+    !removed.data || removed.data.length !== body.inputs.length;
+  traceComplete(
+    "CleanupDeleteAcknowledged",
+    acknowledgementFailed ? "failed" : "succeeded",
+    {
+      ...(acknowledgementFailed
+        ? {
+          ruleCode: removed.error
+            ? intelligenceRuleCodes.cleanupDeleteFailed
+            : intelligenceRuleCodes.cleanupAcknowledgementMismatch,
+          expectedType: "deleted object" as const,
+          receivedType: "not deleted" as const,
+          validator: "supabase-storage-delete",
+        }
+        : {}),
+      provider: provider.id,
+      model: provider.model,
+    },
+  );
+  reporter.report(trace.start("CleanupDeleteVerified", {
+    provider: provider.id,
+    model: provider.model,
+  }));
+  const analysisPrefix = `${body.workspaceId}/${userId}/${body.analysisId}`;
+  const remaining = await client.storage.from(BUCKET).list(analysisPrefix, {
+    limit: 100,
+  });
+  const cleanupVerification = verifyCleanup({
+    requestedCount: body.inputs.length,
+    acknowledgedCount: removed.data?.length ?? null,
+    deleteError: Boolean(removed.error),
+    verificationError: Boolean(remaining.error),
+    remainingCount: remaining.data?.length ?? null,
+  });
+  const verificationFailed = !cleanupVerification.success;
+  traceComplete(
+    "CleanupDeleteVerified",
+    verificationFailed ? "failed" : "succeeded",
+    {
+      ...(verificationFailed
+        ? {
+          ruleCode: cleanupVerification.ruleCode ??
+            intelligenceRuleCodes.cleanupVerificationFailed,
+          expectedType: "empty prefix" as const,
+          receivedType: "not deleted" as const,
+          validator: "supabase-storage-list",
+        }
+        : {}),
+      provider: provider.id,
+      model: provider.model,
+    },
+  );
+  const cleanupFailed = acknowledgementFailed || verificationFailed;
+  reporter.report(trace.start("CleanupMetadataUpdated", {
+    provider: provider.id,
+    model: provider.model,
+  }));
+  const cleanupMetadata = await client.from("intelligence_analysis_inputs")
+    .update({
+      cleanup_state: cleanupFailed ? "cleanup_required" : "deleted",
+      cleaned_at: cleanupFailed ? null : new Date().toISOString(),
+    }).eq("analysis_id", body.analysisId).eq("workspace_id", body.workspaceId);
+  traceComplete(
+    "CleanupMetadataUpdated",
+    cleanupMetadata.error ? "failed" : "succeeded",
+    {
+      ...(cleanupMetadata.error
+        ? {
+          ruleCode: intelligenceRuleCodes.cleanupMetadataFailed,
+          validator: "analysis-input-metadata",
+        }
+        : {}),
+      provider: provider.id,
+      model: provider.model,
+    },
+  );
   stage("cleanup_completed", {
     outcomeCode: cleanupFailed
       ? "CLEANUP_FAILURE"
@@ -844,6 +1284,16 @@ Deno.serve(async (req) => {
         result_payload: result,
       }).eq("id", body.analysisId);
     }
+    traceInstant("Completed", cleanupFailed ? "failed" : "succeeded", {
+      ...(cleanupFailed
+        ? {
+          ruleCode: intelligenceRuleCodes.cleanupVerificationFailed,
+          validator: "cleanup-lifecycle",
+        }
+        : {}),
+      provider: provider.id,
+      model: provider.model,
+    });
     return json({
       result,
       cleanupWarning: cleanupFailed
@@ -851,6 +1301,16 @@ Deno.serve(async (req) => {
         : undefined,
     });
   }
+  traceInstant("Completed", "failed", {
+    ...(errorCode?.includes("VALIDATION") || errorCode?.includes("JSON") ||
+        errorCode?.includes("ENVELOPE") ||
+        errorCode === "MISSING_OUTPUT_TEXT" ||
+        errorCode === "PROVIDER_INCOMPLETE"
+      ? { validator: "intelligence-validation" }
+      : {}),
+    provider: provider.id,
+    model: provider.model,
+  });
   return json(
     safeError(
       errorCode ?? "UNEXPECTED_ERROR",

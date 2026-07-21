@@ -1,0 +1,25 @@
+export const intelligenceRuleCodes = {
+  invalidHttpEnvelope: "VAL-0001",
+  missingOutputText: "VAL-0002",
+  providerIncomplete: "VAL-0003",
+  invalidJson: "VAL-0004",
+  missingRequiredProperty: "VAL-0010",
+  wrongType: "VAL-0011",
+  enumMismatch: "VAL-0012",
+  duplicateObservationId: "VAL-0013",
+  brokenRecommendationReference: "VAL-0014",
+  unexpectedProperty: "VAL-0015",
+  constMismatch: "VAL-0016",
+  rangeViolation: "VAL-0017",
+  semanticSafetyViolation: "VAL-0020",
+  unexpectedValidatorException: "VAL-0030",
+  cleanupDeleteFailed: "CLN-0001",
+  cleanupAcknowledgementMismatch: "CLN-0002",
+  cleanupVerificationFailed: "CLN-0003",
+  cleanupMetadataFailed: "CLN-0004",
+  providerTimeout: "PRV-0001",
+  providerRefusal: "PRV-0002",
+  duplicateInvocation: "PRV-0003",
+} as const;
+export type IntelligenceRuleCode =
+  typeof intelligenceRuleCodes[keyof typeof intelligenceRuleCodes];

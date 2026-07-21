@@ -1,3 +1,10 @@
+import { intelligenceRuleCodes } from "../../../src/intelligence/Diagnostics/TraceCodes.ts";
+import {
+  validationFailure,
+  validationSuccess,
+  type ValidationTrace,
+} from "../../../src/intelligence/Diagnostics/ValidationTrace.ts";
+
 export const BEARD_PHOTO_SCHEMA_VERSION = 1 as const;
 export const BEARD_PHOTO_PROMPT_VERSION = "beard-photo-analysis-v1" as const;
 export const beardPhotoViews = [
@@ -195,4 +202,130 @@ export function validateBeardPhotoAnalysisResult(
     v.recommendations.every((x) => validRecommendation(x, ids)) &&
     safeStrings(v.limitations) && safeStrings(v.unknowns) &&
     safeStrings(v.safetyFlags);
+}
+
+export function validateBeardPhotoContract(
+  value: BeardPhotoAnalysisResult,
+): ValidationTrace<BeardPhotoAnalysisResult> {
+  const groups = [
+    ["observations", value.observations],
+    ["symmetry", value.symmetry],
+    ["densityDistribution", value.densityDistribution],
+    ["lineAssessment", value.lineAssessment],
+  ] as const;
+  const ids = new Set<string>();
+  for (const [groupName, group] of groups) {
+    for (const [index, item] of group.entries()) {
+      if (ids.has(item.id)) {
+        return validationFailure({
+          ruleCode: intelligenceRuleCodes.duplicateObservationId,
+          jsonPath: `$.${groupName}[${index}].id`,
+          expected: "unique id",
+          received: "duplicate",
+          validator: "beard-contract",
+          stage: "ContractValidation",
+        });
+      }
+      ids.add(item.id);
+    }
+  }
+  for (
+    const [recommendationIndex, recommendation] of value.recommendations
+      .entries()
+  ) {
+    for (
+      const [referenceIndex, reference] of recommendation
+        .supportingObservationIds.entries()
+    ) {
+      if (!ids.has(reference)) {
+        return validationFailure({
+          ruleCode: intelligenceRuleCodes.brokenRecommendationReference,
+          jsonPath:
+            `$.recommendations[${recommendationIndex}].supportingObservationIds[${referenceIndex}]`,
+          expected: "known reference",
+          received: "unknown reference",
+          validator: "beard-contract",
+          stage: "ContractValidation",
+        });
+      }
+    }
+  }
+  return validationSuccess(value);
+}
+
+export function validateBeardPhotoSemantics(
+  value: BeardPhotoAnalysisResult,
+): ValidationTrace<BeardPhotoAnalysisResult> {
+  const check = (text: string, path: string) =>
+    safeText(text) ? undefined : validationFailure({
+      ruleCode: intelligenceRuleCodes.semanticSafetyViolation,
+      jsonPath: path,
+      expected: "safe text",
+      received: "unsafe text",
+      validator: "beard-semantic-safety",
+      stage: "SemanticValidation",
+    });
+  const groups = [
+    ["observations", value.observations],
+    ["symmetry", value.symmetry],
+    ["densityDistribution", value.densityDistribution],
+    ["lineAssessment", value.lineAssessment],
+  ] as const;
+  for (const [groupName, group] of groups) {
+    for (const [index, item] of group.entries()) {
+      for (
+        const [field, text] of [["statement", item.statement], [
+          "evidenceDescription",
+          item.evidenceDescription,
+        ]] as const
+      ) {
+        const failure = check(text, `$.${groupName}[${index}].${field}`);
+        if (failure) return failure;
+      }
+      for (const [limitationIndex, text] of item.limitations.entries()) {
+        const failure = check(
+          text,
+          `$.${groupName}[${index}].limitations[${limitationIndex}]`,
+        );
+        if (failure) return failure;
+      }
+    }
+  }
+  for (const [index, item] of value.recommendations.entries()) {
+    for (
+      const [field, text] of [["title", item.title], ["reason", item.reason], [
+        "expectedBenefit",
+        item.expectedBenefit,
+      ]] as const
+    ) {
+      const failure = check(text, `$.recommendations[${index}].${field}`);
+      if (failure) return failure;
+    }
+    for (const [constraintIndex, text] of item.toolConstraints.entries()) {
+      const failure = check(
+        text,
+        `$.recommendations[${index}].toolConstraints[${constraintIndex}]`,
+      );
+      if (failure) return failure;
+    }
+    if (item.proposedGuardStrategy !== null) {
+      const failure = check(
+        item.proposedGuardStrategy,
+        `$.recommendations[${index}].proposedGuardStrategy`,
+      );
+      if (failure) return failure;
+    }
+  }
+  for (
+    const [field, values] of [["limitations", value.limitations], [
+      "unknowns",
+      value.unknowns,
+    ], ["safetyFlags", value.safetyFlags]] as const
+  ) {
+    for (const [index, text] of values.entries()) {
+      const failure = check(text, `$.${field}[${index}]`);
+      if (failure) return failure;
+    }
+  }
+  return validationSuccess(value);
 }
