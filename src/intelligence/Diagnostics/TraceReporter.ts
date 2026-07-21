@@ -1,5 +1,5 @@
-import { safeTraceEvent } from "./SafeDiagnostics";
-import type { IntelligenceTraceEvent } from "./TraceTypes";
+import { safeTraceEvent } from "./SafeDiagnostics.ts";
+import type { IntelligenceTraceEvent } from "./TraceTypes.ts";
 export interface TraceSink {
   write(event: IntelligenceTraceEvent): void;
 }

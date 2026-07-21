@@ -1,4 +1,4 @@
-import type { IntelligenceTrace, IntelligenceTraceEvent } from "./TraceTypes";
+import type { IntelligenceTrace, IntelligenceTraceEvent } from "./TraceTypes.ts";
 export function traceSummary(trace: IntelligenceTrace) {
   const completed = trace.events.filter((x) => x.result !== "started");
   return {

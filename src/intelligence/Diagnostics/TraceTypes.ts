@@ -1,4 +1,4 @@
-import type { IntelligenceRuleCode } from "./TraceCodes";
+import type { IntelligenceRuleCode } from "./TraceCodes.ts";
 export const intelligenceStages = [
   "Authentication",
   "WorkspaceValidation",

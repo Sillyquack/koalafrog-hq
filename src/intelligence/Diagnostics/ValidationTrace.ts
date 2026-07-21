@@ -1,10 +1,10 @@
-import type { IntelligenceRuleCode } from "./TraceCodes";
-import { intelligenceRuleCodes } from "./TraceCodes";
+import type { IntelligenceRuleCode } from "./TraceCodes.ts";
+import { intelligenceRuleCodes } from "./TraceCodes.ts";
 import type {
   IntelligenceStage,
   SafeExpected,
   SafeReceived,
-} from "./TraceTypes";
+} from "./TraceTypes.ts";
 export interface ValidationFailure {
   success: false;
   ruleCode: IntelligenceRuleCode;

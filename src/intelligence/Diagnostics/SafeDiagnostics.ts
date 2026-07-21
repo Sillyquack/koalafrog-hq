@@ -5,8 +5,8 @@ import {
   type SafeExpected,
   type SafeReceived,
   type TraceResult,
-} from "./TraceTypes";
-import { type IntelligenceRuleCode, intelligenceRuleCodes } from "./TraceCodes";
+} from "./TraceTypes.ts";
+import { type IntelligenceRuleCode, intelligenceRuleCodes } from "./TraceCodes.ts";
 const results = new Set<TraceResult>([
     "started",
     "succeeded",

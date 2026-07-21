@@ -1,7 +1,7 @@
 import {
   type IntelligenceRuleCode,
   intelligenceRuleCodes,
-} from "../TraceCodes";
+} from "../TraceCodes.ts";
 export interface CleanupVerification {
   success: boolean;
   ruleCode?: IntelligenceRuleCode;

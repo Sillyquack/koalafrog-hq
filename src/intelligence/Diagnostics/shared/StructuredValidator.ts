@@ -1,10 +1,10 @@
-import { safeRuntimeType } from "../SafeDiagnostics";
-import { intelligenceRuleCodes } from "../TraceCodes";
+import { safeRuntimeType } from "../SafeDiagnostics.ts";
+import { intelligenceRuleCodes } from "../TraceCodes.ts";
 import {
   validationFailure,
   validationSuccess,
   type ValidationTrace,
-} from "../ValidationTrace";
+} from "../ValidationTrace.ts";
 
 export interface StructuredSchemaNode {
   type?: string | readonly string[];

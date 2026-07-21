@@ -1,5 +1,5 @@
-import { safeTraceEvent } from "./SafeDiagnostics";
-import type { IntelligenceTrace, IntelligenceTraceEvent } from "./TraceTypes";
+import { safeTraceEvent } from "./SafeDiagnostics.ts";
+import type { IntelligenceTrace, IntelligenceTraceEvent } from "./TraceTypes.ts";
 export class IntelligenceTraceBuilder {
   readonly #events: IntelligenceTraceEvent[] = [];
   readonly #started = new Map<IntelligenceTraceEvent["stage"], number>();
