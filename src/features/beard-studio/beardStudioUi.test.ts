@@ -22,16 +22,14 @@ describe('Beard Studio integration', () => {
     expect(selector).toContain('Usage role')
     expect(selector).toContain('No Koalafrog Products available')
   })
-  it('does not expose camera, AI analysis or photo upload controls', () => {
-    const ui = [
-      'BeardOverviewPage',
-      'BeardProfilePage',
-      'LengthMapPage',
-      'GroomingToolsPage',
-      'TrimRecipesPage',
-      'TrimModePage',
-      'BeardLogPage',
-    ].map((page) => readFileSync(`src/features/beard-studio/pages/${page}.tsx`, 'utf8')).join('\n')
-    expect(ui).not.toMatch(/facial recognition|AI analysis|Upload photo/i)
+  it('keeps photo analysis explicit, reviewable, and separate from authoritative Beard data', () => {
+    const flow = readFileSync('src/features/beard-studio/components/BeardPhotoAnalysisFlow.tsx', 'utf8')
+    expect(flow).toContain("front:'Front'")
+    expect(flow).toContain('Left profile')
+    expect(flow).toContain('Right profile')
+    expect(flow).toContain('I confirm these photos contain my face and beard')
+    expect(flow).toContain('Accept for planning')
+    expect(flow).toContain('Dismiss')
+    expect(flow).not.toMatch(/saveBeardStudio|localStorage|workspace_records/)
   })
 })

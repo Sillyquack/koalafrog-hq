@@ -22,7 +22,7 @@ export {
 export interface FormulaRepository { load(): FormulaState; save(state: FormulaState): void }
 const cloneSeed = () => structuredClone(formulaSeed)
 const emptyBeardStudio=()=>({revision:0,profiles:[],lengthMaps:[],tools:[],recipes:[],sessions:[],logs:[]})
-export function normalizeWorkspaceState(state:FormulaState):FormulaState{return{...state,beardStudio:state.beardStudio??emptyBeardStudio(),ingredientKnowledgeProfiles:state.ingredientKnowledgeProfiles??[],ingredientKnowledgeRoles:state.ingredientKnowledgeRoles??[],ingredientKnowledgeCompatibility:state.ingredientKnowledgeCompatibility??[],ingredientKnowledgeEvidence:state.ingredientKnowledgeEvidence??[]}}
+export function normalizeWorkspaceState(state:FormulaState):FormulaState{return{...state,beardStudio:{...emptyBeardStudio(),...(state.beardStudio??{})},ingredientKnowledgeProfiles:state.ingredientKnowledgeProfiles??[],ingredientKnowledgeRoles:state.ingredientKnowledgeRoles??[],ingredientKnowledgeCompatibility:state.ingredientKnowledgeCompatibility??[],ingredientKnowledgeEvidence:state.ingredientKnowledgeEvidence??[]}}
 type PhaseTwoState = Pick<FormulaState, 'products' | 'formulas' | 'formulaVersions' | 'formulaLines'>
 export function migratePhaseTwoState(legacy: PhaseTwoState): FormulaState { const seed = cloneSeed(); return { ...seed, products: legacy.products, formulas: legacy.formulas, formulaVersions: legacy.formulaVersions, formulaLines: legacy.formulaLines } }
 type PhaseThreeState = Pick<FormulaState,'products'|'formulas'|'formulaVersions'|'formulaLines'|'ingredients'|'supplierProducts'|'inventoryLots'|'inventoryMovements'>

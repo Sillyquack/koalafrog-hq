@@ -1,13 +1,22 @@
 begin;
 -- Run with Supabase CLI test harness. Synthetic JWT claims must be supplied by the harness.
-select plan(8);
+select plan(17);
 select has_table('public','workspaces','workspaces exists');
 select has_table('public','workspace_records','record store exists');
-select row_security_active('public.workspace_records'::regclass);
+select is((select relrowsecurity from pg_class where oid='public.workspace_records'::regclass),true,'record store RLS is enabled');
 select is((select public from storage.buckets where id='compliance-documents'),false,'document bucket is private');
 select has_table('public','intelligence_threads','intelligence threads exist');
 select has_table('public','intelligence_runs','intelligence runs exist');
-select row_security_active('public.intelligence_threads'::regclass);
-select row_security_active('public.intelligence_runs'::regclass);
+select is((select relrowsecurity from pg_class where oid='public.intelligence_threads'::regclass),true,'intelligence thread RLS is enabled');
+select is((select relrowsecurity from pg_class where oid='public.intelligence_runs'::regclass),true,'intelligence run RLS is enabled');
+select has_table('public','intelligence_analyses','intelligence analyses exist');
+select has_table('public','intelligence_analysis_inputs','intelligence inputs exist');
+select has_table('public','intelligence_observations','intelligence observations exist');
+select has_table('public','intelligence_recommendations','intelligence recommendations exist');
+select is((select relrowsecurity from pg_class where oid='public.intelligence_analyses'::regclass),true,'intelligence analysis RLS is enabled');
+select is((select relrowsecurity from pg_class where oid='public.intelligence_analysis_inputs'::regclass),true,'intelligence input RLS is enabled');
+select is((select relrowsecurity from pg_class where oid='public.intelligence_observations'::regclass),true,'intelligence observation RLS is enabled');
+select is((select relrowsecurity from pg_class where oid='public.intelligence_recommendations'::regclass),true,'intelligence recommendation RLS is enabled');
+select is((select public from storage.buckets where id='beard-analysis-images'),false,'beard analysis image bucket is private');
 select * from finish();
 rollback;

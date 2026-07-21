@@ -98,6 +98,7 @@ import {
   validateFinishedGoodsOutput,
 } from "../../finished-goods/domain/finishedGoodsLogic";
 import { LocalWorkspaceRepository } from "../../../platform/repository/localWorkspaceRepository";
+import { normalizeWorkspaceState } from "../data/formulaRepository";
 import type { WorkspaceRepository } from "../../../platform/repository/workspaceRepository";
 import { executeWorkspaceAction } from "../../../platform/actions/workspaceActionExecutor";
 import type {
@@ -303,7 +304,7 @@ export function FormulaDataProvider({
     throw new Error(
       "Asynchronous repository hydration belongs to the Phase 8B.3 startup boundary.",
     );
-  const [state, setState] = useState<FormulaState>(() => loaded);
+  const [state, setState] = useState<FormulaState>(() => normalizeWorkspaceState(loaded));
   const stateRef = useRef(state);
   const [pendingActions, setPendingActions] = useState<WorkspaceActionName[]>(
     [],

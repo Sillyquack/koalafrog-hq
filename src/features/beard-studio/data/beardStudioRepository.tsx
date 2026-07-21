@@ -159,8 +159,9 @@ export class SupabaseBeardStudioGateway {
 
 interface BeardStudioContextValue { state: BeardStudioState; pending: boolean; error: string; retry(): void; update(mutation: (current: BeardStudioState) => BeardStudioState): Promise<void> }
 const BeardStudioContext = createContext<BeardStudioContextValue | null>(null)
+const emptyBeardStudioState=():BeardStudioState=>({revision:0,profiles:[],lengthMaps:[],tools:[],recipes:[],sessions:[],logs:[]})
 export function BeardStudioProvider({ children }: { children: ReactNode }) {
-  const data=useFormulaData(),state=data.beardStudio,pending=data.pendingActions.includes('saveBeardStudio'),error=data.actionError??''
+  const data=useFormulaData(),state=data.beardStudio??emptyBeardStudioState(),pending=data.pendingActions.includes('saveBeardStudio'),error=data.actionError??''
   const update = async (mutation: (current: BeardStudioState) => BeardStudioState) => {
     if(pending)return
     await data.saveBeardStudio(mutation)
