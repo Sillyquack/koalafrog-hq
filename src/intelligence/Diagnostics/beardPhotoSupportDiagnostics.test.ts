@@ -23,6 +23,8 @@ describe('owner-safe beard support diagnostic contract', () => {
     expect(validateBeardPhotoSupportDiagnostic(safeDiagnostic())).toBe(true)
     const historical = {...safeDiagnostic(),failureStage:null,ruleCode:null,jsonPath:null,validator:null,expectedCategory:null,receivedCategory:null,failureSchemaVersion:null,traceVersion:null,provenance:{...safeDiagnostic().provenance,contractVersion:null,semanticVersion:null}}
     expect(validateBeardPhotoSupportDiagnostic(historical)).toBe(true)
+    expect(validateBeardPhotoSupportDiagnostic({...safeDiagnostic(),status:'completed',errorCode:null,resultPresent:true})).toBe(true)
+    expect(validateBeardPhotoSupportDiagnostic({...safeDiagnostic(),status:'completed_cleanup_required',errorCode:null,resultPresent:true,cleanupState:'cleanup_required'})).toBe(true)
   })
 
   it.each(['providerOutput','prompt','exceptionMessage','detail','hint','imageUrl','signedUrl','rejectedValue','jwt','secret'])(

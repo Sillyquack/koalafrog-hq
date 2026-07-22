@@ -30,7 +30,7 @@ begin
   select jsonb_build_object(
     'supportId',a.correlation_id,
     'analysisId',a.id,
-    'status','failed',
+    'status',a.status,
     'errorCode',case when a.error_code in (
       'PROVIDER_NOT_CONFIGURED','PROVIDER_TIMEOUT','PROVIDER_RATE_LIMIT',
       'PROVIDER_REFUSAL','INVALID_STRUCTURED_OUTPUT','INVALID_ENVELOPE',
@@ -101,7 +101,7 @@ begin
   where a.workspace_id=candidate_workspace_id
     and a.owner_user_id=current_owner
     and a.correlation_id=support_uuid
-    and a.status='failed';
+    and a.status in ('failed','completed','completed_cleanup_required');
 
   return response;
 end

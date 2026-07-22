@@ -5,7 +5,7 @@ type NullableString = string | null
 export interface BeardPhotoSupportDiagnostic {
   supportId: string
   analysisId: string
-  status: 'failed'
+  status: 'failed' | 'completed' | 'completed_cleanup_required'
   errorCode: NullableString
   failureStage: NullableString
   ruleCode: NullableString
@@ -43,6 +43,7 @@ export interface BeardPhotoSupportDiagnostic {
 }
 
 const supportIdPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+export const isValidBeardPhotoSupportId = (value: string) => supportIdPattern.test(value)
 const safePathPattern = /^\$(?:\.[A-Za-z][A-Za-z0-9]*|\[[0-9]+\])*$/
 const safeExpected = new Set(['object','array','string','number','integer','boolean','null','required','allowed enum','constant','unique id','known reference','valid observation key','unique observation key','safe text','non-calibrated grooming language','non-medical observation','non-sensitive observation','grooming-only recommendation','unambiguous safe language','completed response'])
 const safeReceived = new Set(['object','array','string','number','integer','boolean','null','missing','unexpected','duplicate','unknown reference','unsafe text','invalid observation key','incomplete','unknown','unsupported measurement claim','medical assertion','infection assertion','biological cause assertion','sensitive trait inference','personal inference','unsafe recommendation','ambiguous sensitive reference'])
@@ -59,7 +60,7 @@ export function validateBeardPhotoSupportDiagnostic(value: unknown): value is Be
     'attemptCount','providerAttemptedAt','terminalAt','cleanupState','cleanupCompletedAt',
     'resultPresent','providerUsagePresent',
   ])) return false
-  if (!supportIdPattern.test(String(value.supportId)) || !supportIdPattern.test(String(value.analysisId)) || value.status !== 'failed') return false
+  if (!supportIdPattern.test(String(value.supportId)) || !supportIdPattern.test(String(value.analysisId)) || !['failed','completed','completed_cleanup_required'].includes(String(value.status))) return false
   if (![value.errorCode,value.failureStage,value.ruleCode,value.jsonPath,value.validator,value.expectedCategory,value.receivedCategory,value.traceVersion,value.providerAttemptedAt,value.terminalAt,value.cleanupCompletedAt].every(nullableString)) return false
   const jsonPath = value.jsonPath as NullableString
   const expectedCategory = value.expectedCategory as NullableString
@@ -76,7 +77,7 @@ export function validateBeardPhotoSupportDiagnostic(value: unknown): value is Be
 }
 
 export async function lookupBeardPhotoSupportDiagnostic(workspaceId: string, supportId: string) {
-  if (!supabase || !supportIdPattern.test(supportId)) return undefined
+  if (!supabase || !isValidBeardPhotoSupportId(supportId)) return undefined
   const rpc = supabase.rpc as unknown as (name: string, args: Record<string,string>) => Promise<{data:unknown;error:{message:string}|null}>
   const response = await rpc('lookup_beard_analysis_support_diagnostic', {
     candidate_workspace_id: workspaceId,

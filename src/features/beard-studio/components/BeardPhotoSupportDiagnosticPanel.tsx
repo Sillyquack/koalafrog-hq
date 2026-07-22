@@ -10,13 +10,14 @@ export function BeardPhotoSupportDiagnosticPanel({workspaceId,supportId}:{worksp
 
   useEffect(()=>{let active=true;void lookupBeardPhotoSupportDiagnostic(workspaceId,supportId).then(value=>{if(active)setDiagnostic(value)}).catch(()=>{if(active)setError('Support diagnostics are unavailable.')}).finally(()=>{if(active)setLoading(false)});return()=>{active=false}},[workspaceId,supportId])
 
-  if(loading)return <section className="beard-support-diagnostic" aria-live="polite"><h4>Support diagnostics</h4><p>Loading safe diagnostic metadata…</p></section>
-  if(error)return <section className="beard-support-diagnostic"><h4>Support diagnostics</h4><p>{error}</p></section>
-  if(!diagnostic)return <section className="beard-support-diagnostic"><h4>Support diagnostics</h4><p>No owner-visible diagnostic metadata is available for this support ID.</p></section>
+  if(loading)return <section className="beard-support-diagnostic" aria-live="polite"><h4>Analysis metadata</h4><p>Loading safe diagnostic metadata…</p></section>
+  if(error)return <section className="beard-support-diagnostic"><h4>Analysis metadata</h4><p>{error}</p></section>
+  if(!diagnostic)return <section className="beard-support-diagnostic"><h4>Analysis metadata</h4><p>No owner-visible diagnostic metadata is available for this support ID.</p></section>
 
   return <section className="beard-support-diagnostic" aria-label="Safe support diagnostics">
-    <h4>Support diagnostics</h4>
+    <h4>Analysis metadata</h4>
     <dl>
+      <div><dt>Status</dt><dd>{diagnostic.status}</dd></div>
       <div><dt>Failure code</dt><dd>{shown(diagnostic.errorCode)}</dd></div>
       <div><dt>Stage</dt><dd>{shown(diagnostic.failureStage)}</dd></div>
       <div><dt>Rule</dt><dd>{shown(diagnostic.ruleCode)}</dd></div>

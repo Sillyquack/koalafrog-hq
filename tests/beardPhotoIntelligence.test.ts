@@ -150,7 +150,7 @@ describe('beard photo intelligence boundaries', () => {
   it('exposes only an owner-scoped metadata allowlist for support lookup', () => {
     expect(supportDiagnosticMigration).toContain('lookup_beard_analysis_support_diagnostic')
     expect(supportDiagnosticMigration).toContain('a.owner_user_id=current_owner')
-    expect(supportDiagnosticMigration).toContain("a.status='failed'")
+    expect(supportDiagnosticMigration).toContain("a.status in ('failed','completed','completed_cleanup_required')")
     expect(supportDiagnosticMigration).toContain('candidate_support_id !~*')
     expect(supportDiagnosticMigration).toMatch(/revoke all on function public\.lookup_beard_analysis_support_diagnostic\(uuid,text\)[\s\S]*from public,anon,service_role/)
     expect(supportDiagnosticMigration).toMatch(/grant execute on function public\.lookup_beard_analysis_support_diagnostic\(uuid,text\)[\s\S]*to authenticated/)

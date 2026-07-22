@@ -149,6 +149,9 @@ run('beard photo temporary storage isolation', () => {
       .select('recommendation_id,observation_id').eq('analysis_id', analysisId)
     expect(relationships.data).toHaveLength(3)
     expect(relationships.data?.every(item => recommendationIds.includes(item.recommendation_id) && internalIds.has(item.observation_id))).toBe(true)
+    expect((await owner.rpc('lookup_beard_analysis_support_diagnostic', {
+      candidate_workspace_id: workspaceId, candidate_support_id: correlationId,
+    })).data).toMatchObject({ status: 'completed', errorCode: null, resultPresent: true, supportId: correlationId })
     expect((await owner.from('intelligence_observations').insert({})).error).not.toBeNull()
     expect((await owner.from('intelligence_recommendation_observations').insert({})).error).not.toBeNull()
   })
