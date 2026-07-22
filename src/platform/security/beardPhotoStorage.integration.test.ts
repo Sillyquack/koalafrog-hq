@@ -84,6 +84,112 @@ run('beard photo temporary storage isolation', () => {
     expect((await owner.storage.from('beard-analysis-images').download(objectPath)).error).not.toBeNull()
   })
 
+  it('rolls back result rows and records only metadata for the exact persistence failure', async () => {
+    const profileId = crypto.randomUUID()
+    const analysisId = crypto.randomUUID()
+    const correlationId = crypto.randomUUID()
+    expect((await owner.from('beard_profiles').insert({
+      id: profileId,
+      workspace_id: workspaceId,
+      owner_id: ownerId,
+      name: 'Persistence diagnostic fixture',
+      status: 'Draft',
+      style_name: 'Test style',
+      maintenance_frequency_days: 7,
+      preferred_overall_length_mm: 9,
+      density: 'medium',
+      texture: 'wavy',
+    })).error).toBeNull()
+    expect((await owner.from('intelligence_analyses').insert({
+      id: analysisId,
+      workspace_id: workspaceId,
+      owner_user_id: ownerId,
+      source_module: 'beard-studio',
+      analysis_type: 'beard_photo_analysis',
+      schema_version: 1,
+      prompt_version: 'beard-photo-analysis-v3',
+      status: 'staging',
+      idempotency_key: crypto.randomUUID(),
+      profile_id: profileId,
+      context_manifest: {},
+      correlation_id: correlationId,
+    })).error).toBeNull()
+    expect((await owner.rpc('begin_beard_provider_attempt', {
+      candidate_workspace_id: workspaceId,
+      candidate_analysis_id: analysisId,
+      candidate_provider: 'openai',
+      candidate_model: 'gpt-5',
+      candidate_prompt_version: 'beard-photo-analysis-v3',
+    })).data).toBe(true)
+    const providerText = 'private provider observation that must never enter diagnostics'
+    const observationId = crypto.randomUUID()
+    const args = {
+      candidate_workspace_id: workspaceId,
+      candidate_analysis_id: analysisId,
+      candidate_correlation_id: correlationId,
+      candidate_result: { privateProviderResult: providerText },
+      candidate_observations: [{
+        id: observationId,
+        category: 'density',
+        statement: providerText,
+        confidence: 0.8,
+        supportingViews: ['front'],
+        evidenceDescription: providerText,
+        limitations: [providerText],
+        relatedBeardZones: [],
+      }],
+      candidate_recommendations: [{
+        id: 'not-a-uuid',
+        title: providerText,
+        reason: providerText,
+        confidence: 0.7,
+        priority: 'low',
+        expectedBenefit: providerText,
+        supportingObservationIds: [observationId],
+        affectedZones: [],
+        toolConstraints: [],
+        proposedGuardStrategy: null,
+        status: 'undecided',
+      }],
+      candidate_provider_usage: null,
+    }
+    expect((await owner.rpc('persist_beard_analysis_result', args)).error).not.toBeNull()
+    const persisted = await admin.rpc('persist_beard_analysis_result', args)
+    expect(persisted.error).toBeNull()
+    expect(persisted.data).toMatchObject({
+      success: false,
+      step: 'recommendation_insert',
+      table: 'intelligence_recommendations',
+      operation: 'insert',
+      sqlstate: '22P02',
+      constraint: null,
+      entityType: 'recommendation',
+      entityIndex: 0,
+      diagnosticVersion: 'beard-persistence-diagnostic-v1',
+    })
+    expect(JSON.stringify(persisted.data)).not.toContain(providerText)
+    expect((await owner.from('intelligence_observations').select('id').eq('analysis_id', analysisId)).data).toEqual([])
+    expect((await owner.from('intelligence_recommendations').select('id').eq('analysis_id', analysisId)).data).toEqual([])
+    const analysis = await owner.from('intelligence_analyses').select(
+      'status,error_code,result_payload,provider_usage,persistence_failure_step,persistence_failure_table,persistence_failure_operation,persistence_failure_sqlstate,persistence_failure_constraint,persistence_failure_entity_type,persistence_failure_entity_index,persistence_failure_diagnostic_version',
+    ).eq('id', analysisId).single()
+    expect(analysis.data).toMatchObject({
+      status: 'failed',
+      error_code: 'RESULT_PERSISTENCE_FAILED',
+      result_payload: null,
+      provider_usage: null,
+      persistence_failure_step: 'recommendation_insert',
+      persistence_failure_table: 'intelligence_recommendations',
+      persistence_failure_operation: 'insert',
+      persistence_failure_sqlstate: '22P02',
+      persistence_failure_constraint: null,
+      persistence_failure_entity_type: 'recommendation',
+      persistence_failure_entity_index: 0,
+      persistence_failure_diagnostic_version: 'beard-persistence-diagnostic-v1',
+    })
+    expect(JSON.stringify(analysis.data)).not.toContain(providerText)
+  })
+
   it('enforces active-analysis and hourly limits atomically in the database', async () => {
     const profileId = crypto.randomUUID()
     expect((await owner.from('beard_profiles').insert({
@@ -128,7 +234,7 @@ run('beard photo temporary storage isolation', () => {
     const timedOut = await owner.from('intelligence_analyses').select('provider_name,model_name,provider_attempt_count,provider_attempted_at,status,error_code').eq('id', active.id).single()
     expect(timedOut.data).toMatchObject({ provider_name: 'openai', model_name: 'gpt-5', provider_attempt_count: 1, status: 'failed', error_code: 'PROVIDER_TIMEOUT' })
     expect(timedOut.data?.provider_attempted_at).toBeTruthy()
-    for (let index = 0; index < 4; index += 1) {
+    for (let index = 0; index < 3; index += 1) {
       expect((await owner.from('intelligence_analyses').insert(row('failed'))).error).toBeNull()
     }
     expect((await owner.from('intelligence_analyses').insert(row('failed'))).error?.message).toContain('RATE_LIMITED')

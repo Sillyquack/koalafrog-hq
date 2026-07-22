@@ -1110,64 +1110,24 @@ Deno.serve(async (req) => {
       provider: provider.id,
       model: provider.model,
     }));
-    const observationInsert = await client.from("intelligence_observations")
-      .insert(
-        [
-          ...result.observations,
-          ...result.symmetry,
-          ...result.densityDistribution,
-          ...result.lineAssessment,
-        ].map((item) => ({
-          id: item.id,
-          workspace_id: body.workspaceId,
-          owner_user_id: userId,
-          analysis_id: body.analysisId,
-          category: item.category,
-          statement: item.statement,
-          confidence: item.confidence,
-          supporting_views: item.supportingViews,
-          evidence_description: item.evidenceDescription,
-          limitations: item.limitations,
-          related_beard_zones: item.relatedBeardZones,
-          provenance: "ai",
-        })),
-      );
-    if (observationInsert.error) {
-      throw new ProviderError("RESULT_PERSISTENCE_FAILED");
-    }
-    const recommendationInsert = await client.from(
-      "intelligence_recommendations",
-    ).insert(
-      result.recommendations.map((item) => ({
-        id: item.id,
-        workspace_id: body.workspaceId,
-        owner_user_id: userId,
-        analysis_id: body.analysisId,
-        title: item.title,
-        reason: item.reason,
-        confidence: item.confidence,
-        priority: item.priority,
-        expected_benefit: item.expectedBenefit,
-        supporting_observation_ids: item.supportingObservationIds,
-        affected_zones: item.affectedZones,
-        tool_constraints: item.toolConstraints,
-        proposed_guard_strategy: item.proposedGuardStrategy,
-        review_status: item.status,
-        provenance: "ai",
-      })),
-    );
-    if (recommendationInsert.error) {
-      throw new ProviderError("RESULT_PERSISTENCE_FAILED");
-    }
-    const resultUpdate = await client.from("intelligence_analyses").update({
-      status: "completed",
-      provider_name: provider.id,
-      model_name: provider.model,
-      result_payload: result,
-      provider_usage: analyzed.usage ?? null,
-      completed_at: new Date().toISOString(),
-    }).eq("id", body.analysisId).eq("workspace_id", body.workspaceId);
-    if (resultUpdate.error) {
+    const persisted = await trustedClient.rpc("persist_beard_analysis_result", {
+      candidate_workspace_id: body.workspaceId,
+      candidate_analysis_id: body.analysisId,
+      candidate_correlation_id: correlationId,
+      candidate_result: result,
+      candidate_observations: [
+        ...result.observations,
+        ...result.symmetry,
+        ...result.densityDistribution,
+        ...result.lineAssessment,
+      ],
+      candidate_recommendations: result.recommendations,
+      candidate_provider_usage: analyzed.usage ?? null,
+    });
+    if (
+      persisted.error ||
+      !(persisted.data as { success?: boolean } | null)?.success
+    ) {
       throw new ProviderError("RESULT_PERSISTENCE_FAILED");
     }
     traceComplete("Persistence", "succeeded", {

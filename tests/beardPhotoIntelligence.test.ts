@@ -9,6 +9,7 @@ const provenanceMigration = readFileSync('supabase/migrations/20260721210000_bea
 const semanticMigration = readFileSync('supabase/migrations/20260722090000_beard_semantic_diagnostics.sql', 'utf8')
 const guardStrategyMigration = readFileSync('supabase/migrations/20260722100000_beard_guard_strategy_semantics.sql', 'utf8')
 const semanticV3Constraints = readFileSync('supabase/migrations/20260722101000_beard_semantic_v3_constraints.sql', 'utf8')
+const persistenceDiagnostics = readFileSync('supabase/migrations/20260722110000_beard_persistence_diagnostics.sql', 'utf8')
 const runtime = readFileSync('supabase/functions/_shared/beardPhotoRuntime.ts', 'utf8')
 
 describe('beard photo intelligence boundaries', () => {
@@ -105,8 +106,22 @@ describe('beard photo intelligence boundaries', () => {
   })
 
   it('persists no partial domain result when semantic validation fails and still reaches cleanup', () => {
-    expect(edge.indexOf('() => validateBeardPhotoSemantics(typed)')).toBeLessThan(edge.indexOf('"intelligence_observations"'))
+    expect(edge.indexOf('() => validateBeardPhotoSemantics(typed)')).toBeLessThan(edge.indexOf('persist_beard_analysis_result'))
     expect(edge.indexOf('toDurableBeardFailureDiagnostic')).toBeLessThan(edge.indexOf('const removed = await client.storage'))
     expect(edge.indexOf('result = undefined')).toBeLessThan(edge.indexOf('const removed = await client.storage'))
+  })
+
+  it('persists results atomically with metadata-only database diagnostics', () => {
+    expect(edge).toContain('trustedClient.rpc("persist_beard_analysis_result"')
+    expect(edge).not.toContain('client.from("intelligence_observations")')
+    expect(edge).not.toContain('"intelligence_recommendations",\n    ).insert')
+    expect(persistenceDiagnostics).toContain('exception when others')
+    expect(persistenceDiagnostics).toContain('get stacked diagnostics')
+    expect(persistenceDiagnostics).toContain('returned_sqlstate')
+    expect(persistenceDiagnostics).toContain('constraint_name')
+    expect(persistenceDiagnostics).toContain("'beard-persistence-diagnostic-v1'")
+    expect(persistenceDiagnostics).not.toMatch(/message_text|pg_exception_detail|pg_exception_hint/i)
+    expect(persistenceDiagnostics).toMatch(/revoke all on function public\.persist_beard_analysis_result[\s\S]*from public,anon,authenticated/)
+    expect(persistenceDiagnostics).toMatch(/grant execute on function public\.persist_beard_analysis_result[\s\S]*to service_role/)
   })
 })
