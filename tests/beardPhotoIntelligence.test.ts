@@ -11,6 +11,7 @@ const guardStrategyMigration = readFileSync('supabase/migrations/20260722100000_
 const semanticV3Constraints = readFileSync('supabase/migrations/20260722101000_beard_semantic_v3_constraints.sql', 'utf8')
 const persistenceDiagnostics = readFileSync('supabase/migrations/20260722110000_beard_persistence_diagnostics.sql', 'utf8')
 const observationKeysMigration = readFileSync('supabase/migrations/20260722130000_beard_observation_keys.sql', 'utf8')
+const supportDiagnosticMigration = readFileSync('supabase/migrations/20260722190000_beard_support_diagnostic_lookup.sql', 'utf8')
 const runtime = readFileSync('supabase/functions/_shared/beardPhotoRuntime.ts', 'utf8')
 
 describe('beard photo intelligence boundaries', () => {
@@ -144,5 +145,17 @@ describe('beard photo intelligence boundaries', () => {
     expect(observationKeysMigration).toContain("revoke insert on table public.intelligence_observations from authenticated")
     expect(observationKeysMigration).toContain("grant select on table public.intelligence_recommendation_observations")
     expect(observationKeysMigration).not.toMatch(/message_text|pg_exception_detail|pg_exception_hint/i)
+  })
+
+  it('exposes only an owner-scoped metadata allowlist for support lookup', () => {
+    expect(supportDiagnosticMigration).toContain('lookup_beard_analysis_support_diagnostic')
+    expect(supportDiagnosticMigration).toContain('a.owner_user_id=current_owner')
+    expect(supportDiagnosticMigration).toContain("a.status='failed'")
+    expect(supportDiagnosticMigration).toContain('candidate_support_id !~*')
+    expect(supportDiagnosticMigration).toMatch(/revoke all on function public\.lookup_beard_analysis_support_diagnostic\(uuid,text\)[\s\S]*from public,anon,service_role/)
+    expect(supportDiagnosticMigration).toMatch(/grant execute on function public\.lookup_beard_analysis_support_diagnostic\(uuid,text\)[\s\S]*to authenticated/)
+    expect(supportDiagnosticMigration).not.toMatch(/object_path|mime_type|byte_size|statement|reason|context_manifest/)
+    expect(supportDiagnosticMigration).not.toMatch(/'resultPayload'|'providerUsage'|a\.result_payload\s*[,)]|a\.provider_usage\s*[,)]/)
+    expect(supportDiagnosticMigration).not.toMatch(/message_text|pg_exception_detail|pg_exception_hint|createSignedUrl|signedUrl/i)
   })
 })

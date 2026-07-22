@@ -260,6 +260,39 @@ run('beard photo temporary storage isolation', () => {
       persistence_failure_diagnostic_version: 'beard-persistence-diagnostic-v1',
     })
     expect(JSON.stringify(analysis.data)).not.toContain(providerText)
+    const promptCanary = 'private prompt content that must never leave the analysis row'
+    expect((await admin.from('intelligence_analyses').update({ context_manifest: { prompt: promptCanary } }).eq('id', analysisId)).error).toBeNull()
+    expect((await admin.from('intelligence_analysis_inputs').insert({
+      id: crypto.randomUUID(), workspace_id: workspaceId, owner_user_id: ownerId,
+      analysis_id: analysisId, view: 'front', bucket: 'beard-analysis-images',
+      object_path: `${workspaceId}/${ownerId}/${analysisId}/front.png`,
+      mime_type: 'image/png', byte_size: 8, cleanup_state: 'cleanup_required',
+    })).error).toBeNull()
+    const profileBeforeLookup = await owner.from('beard_profiles').select('name,status').eq('id', profileId).single()
+    const lookupArgs = { candidate_workspace_id: workspaceId, candidate_support_id: correlationId }
+    const lookup = await owner.rpc('lookup_beard_analysis_support_diagnostic', lookupArgs)
+    expect(lookup.error).toBeNull()
+    expect(lookup.data).toMatchObject({
+      supportId: correlationId, analysisId, status: 'failed',
+      errorCode: 'RESULT_PERSISTENCE_FAILED', cleanupState: 'cleanup_required',
+      resultPresent: false, providerUsagePresent: false, attemptCount: 1,
+      persistence: { step: 'relationship_insert', table: 'intelligence_recommendation_observations', operation: 'insert', sqlstate: '23505', constraint: 'intelligence_recommendation_observations_pkey', entityType: 'relationship', entityIndex: 1, diagnosticVersion: 'beard-persistence-diagnostic-v1' },
+      provenance: { provider: 'openai', model: 'gpt-5', promptVersion: 'beard-photo-analysis-v4', contractVersion: 'beard-photo-result-contract-v2', schemaVersion: 2, semanticVersion: 'beard-semantic-safety-v3' },
+    })
+    expect(Object.keys(lookup.data as object).sort()).toEqual([
+      'analysisId','attemptCount','cleanupCompletedAt','cleanupState','errorCode',
+      'expectedCategory','failureSchemaVersion','failureStage','jsonPath','persistence',
+      'provenance','providerAttemptedAt','providerUsagePresent','receivedCategory',
+      'resultPresent','ruleCode','status','supportId','terminalAt','traceVersion','validator',
+    ].sort())
+    expect(JSON.stringify(lookup.data)).not.toContain(providerText)
+    expect(JSON.stringify(lookup.data)).not.toContain(promptCanary)
+    expect((await otherOwner.rpc('lookup_beard_analysis_support_diagnostic', lookupArgs)).data).toBeNull()
+    expect((await owner.rpc('lookup_beard_analysis_support_diagnostic', { ...lookupArgs, candidate_workspace_id: crypto.randomUUID() })).data).toBeNull()
+    expect((await owner.rpc('lookup_beard_analysis_support_diagnostic', { ...lookupArgs, candidate_support_id: crypto.randomUUID() })).data).toBeNull()
+    expect((await owner.rpc('lookup_beard_analysis_support_diagnostic', { ...lookupArgs, candidate_support_id: 'not-a-support-id' })).data).toBeNull()
+    expect((await anonymous.rpc('lookup_beard_analysis_support_diagnostic', lookupArgs)).error).not.toBeNull()
+    expect((await owner.from('beard_profiles').select('name,status').eq('id', profileId).single()).data).toEqual(profileBeforeLookup.data)
   })
 
   it('enforces active-analysis and hourly limits atomically in the database', async () => {
@@ -308,6 +341,18 @@ run('beard photo temporary storage isolation', () => {
     const timedOut = await owner.from('intelligence_analyses').select('provider_name,model_name,provider_attempt_count,provider_attempted_at,status,error_code').eq('id', active.id).single()
     expect(timedOut.data).toMatchObject({ provider_name: 'openai', model_name: 'gpt-5', provider_attempt_count: 1, status: 'failed', error_code: 'PROVIDER_TIMEOUT' })
     expect(timedOut.data?.provider_attempted_at).toBeTruthy()
+    const cleanedAt = new Date().toISOString()
+    expect((await admin.from('intelligence_analysis_inputs').insert({
+      id: crypto.randomUUID(), workspace_id: workspaceId, owner_user_id: ownerId,
+      analysis_id: active.id, view: 'front', bucket: 'beard-analysis-images',
+      object_path: `${workspaceId}/${ownerId}/${active.id}/front.png`,
+      mime_type: 'image/png', byte_size: 8, cleanup_state: 'deleted', cleaned_at: cleanedAt,
+    })).error).toBeNull()
+    const cleanedLookup = await owner.rpc('lookup_beard_analysis_support_diagnostic', {
+      candidate_workspace_id: workspaceId, candidate_support_id: active.correlation_id,
+    })
+    expect(cleanedLookup.data).toMatchObject({ cleanupState: 'deleted' })
+    expect(new Date((cleanedLookup.data as { cleanupCompletedAt: string }).cleanupCompletedAt).toISOString()).toBe(cleanedAt)
     for (let index = 0; index < 2; index += 1) {
       expect((await admin.from('intelligence_analyses').insert(row('failed'))).error).toBeNull()
     }

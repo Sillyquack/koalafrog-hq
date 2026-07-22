@@ -1,6 +1,6 @@
 begin;
 -- Run with Supabase CLI test harness. Synthetic JWT claims must be supplied by the harness.
-select plan(36);
+select plan(40);
 select has_table('public','workspaces','workspaces exists');
 select has_table('public','workspace_records','record store exists');
 select is((select relrowsecurity from pg_class where oid='public.workspace_records'::regclass),true,'record store RLS is enabled');
@@ -37,5 +37,9 @@ select is(has_column_privilege('authenticated','public.intelligence_analyses','f
 select is(has_column_privilege('authenticated','public.intelligence_analyses','provider_name','UPDATE'),false,'authenticated cannot directly rewrite provider provenance');
 select is(has_column_privilege('authenticated','public.intelligence_analyses','model_name','INSERT'),false,'authenticated cannot insert model provenance');
 select has_function('public','begin_beard_provider_attempt',array['uuid','uuid','text','text','text'],'atomic provider attempt function exists');
+select has_function('public','lookup_beard_analysis_support_diagnostic',array['uuid','text'],'owner-safe support lookup exists');
+select is(has_function_privilege('authenticated','public.lookup_beard_analysis_support_diagnostic(uuid,text)','EXECUTE'),true,'authenticated owner may execute safe support lookup');
+select is(has_function_privilege('anon','public.lookup_beard_analysis_support_diagnostic(uuid,text)','EXECUTE'),false,'anonymous cannot execute support lookup');
+select is(has_function_privilege('service_role','public.lookup_beard_analysis_support_diagnostic(uuid,text)','EXECUTE'),false,'service role lookup is not browser-facing infrastructure');
 select * from finish();
 rollback;
