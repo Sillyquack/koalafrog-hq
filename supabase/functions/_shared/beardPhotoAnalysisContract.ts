@@ -6,9 +6,9 @@ import {
 } from "../../../src/intelligence/Diagnostics/ValidationTrace.ts";
 
 export const BEARD_PHOTO_SCHEMA_VERSION = 1 as const;
-export const BEARD_PHOTO_PROMPT_VERSION = "beard-photo-analysis-v2" as const;
+export const BEARD_PHOTO_PROMPT_VERSION = "beard-photo-analysis-v3" as const;
 export const BEARD_PHOTO_SEMANTIC_RULE_VERSION =
-  "beard-semantic-safety-v2" as const;
+  "beard-semantic-safety-v3" as const;
 export const beardPhotoViews = [
   "front",
   "left_profile",
@@ -255,11 +255,19 @@ export function validateBeardPhotoContract(
 export function validateBeardPhotoSemantics(
   value: BeardPhotoAnalysisResult,
 ): ValidationTrace<BeardPhotoAnalysisResult> {
-  type FieldRole = "observation" | "limitation" | "recommendation";
+  type FieldRole =
+    | "observation"
+    | "limitation"
+    | "recommendation"
+    | "guard_strategy";
   const exactMeasurement =
     /\b\d+(?:\.\d+)?\s*(?:mm|millimet(?:er|re)s?)\b/i;
-  const knownSetting =
-    /\b(?:existing|current|recorded|saved|user[- ]supplied|beard studio|recipe)\b.{0,80}\b(?:guard|setting|target|recipe)\b|\b(?:guard|setting|target|recipe)\b.{0,80}\b(?:existing|current|recorded|saved|user[- ]supplied|beard studio|recipe)\b/i;
+  const guardReference =
+    /\bguard\b|\b(?:length map|recipe)\b.{0,80}\b(?:setting|guard)\b|\b(?:existing|current|recorded|saved|user[- ]supplied)\b.{0,80}\b(?:setting|guard)\b/i;
+  const visualMeasurementAssertion =
+    /\b(?:photo|image|visually|visible|appears?|shows?|indicates?|confirms?|measures?|measurement|growth|beard|length)\b.{0,100}\b\d+(?:\.\d+)?\s*(?:mm|millimet(?:er|re)s?)\b|\b\d+(?:\.\d+)?\s*(?:mm|millimet(?:er|re)s?)\b.{0,100}\b(?:beard|growth|length|measures?|measurement|visible|visually|photo|image)\b/i;
+  const exactResultGuarantee =
+    /\b(?:will|would|shall|guarantee[sd]?|ensure[sd]?|leave[sd]?|produce[sd]?|result(?:s|ed)? in)\b.{0,80}\b(?:exactly|precisely|objective(?:ly)?)?\s*\d+(?:\.\d+)?\s*(?:mm|millimet(?:er|re)s?)\b|\b(?:exactly|precisely)\s*\d+(?:\.\d+)?\s*(?:mm|millimet(?:er|re)s?)\b.{0,80}\b(?:leave|remaining|physical beard|result)\b/i;
   const limitationAction =
     /\b(?:cannot|can't|can not|could not|unable to|not possible to|do not|does not|don't|doesn't|is not|isn't|are not|aren't|no)\b.{0,100}\b(?:diagnos|determin|establish|infer|identify|confirm|assess|conclude|measure|estimate|calibrat)|\b(?:diagnos|determin|establish|infer|identify|confirm|assess|conclude|measure|estimate|calibrat)[a-z]*\b.{0,100}\b(?:cannot|can't|can not|could not|unable|not possible|is not|isn't|are not|aren't|unknown|unavailable)\b/i;
   const professionalGuidance =
@@ -289,7 +297,7 @@ export function validateBeardPhotoSemantics(
       jsonPath: path,
       expected,
       received,
-      validator: "beard-semantic-safety-v2",
+      validator: BEARD_PHOTO_SEMANTIC_RULE_VERSION,
       stage: "SemanticValidation",
     });
   const check = (value: string, path: string, role: FieldRole) => {
@@ -297,11 +305,15 @@ export function validateBeardPhotoSemantics(
       /[.!?;]|\b(?:but|however|although|yet)\b/i,
     ).map((clause) => clause.trim()).filter(Boolean);
     for (const clause of clauses) {
+      const guardClause = clause.replace(/\bbeard studio\b|\blength map\b/gi, "workspace");
+      const permittedGuardInstruction = role === "guard_strategy" &&
+        guardReference.test(clause) &&
+        !visualMeasurementAssertion.test(guardClause) &&
+        !exactResultGuarantee.test(clause);
       if (
         exactMeasurement.test(clause) &&
-        !(
-          role === "recommendation" && knownSetting.test(clause)
-        ) && !(role === "limitation" && limitationAction.test(clause))
+        !permittedGuardInstruction &&
+        !(role === "limitation" && limitationAction.test(clause))
       ) {
         return fail(
           intelligenceRuleCodes.unsupportedExactMeasurement,
@@ -422,7 +434,7 @@ export function validateBeardPhotoSemantics(
       const failure = check(
         item.proposedGuardStrategy,
         `$.recommendations[${index}].proposedGuardStrategy`,
-        "recommendation",
+        "guard_strategy",
       );
       if (failure) return failure;
     }

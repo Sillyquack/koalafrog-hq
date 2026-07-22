@@ -7,6 +7,8 @@ const prompt = readFileSync('supabase/functions/_shared/beardPhotoPrompt.ts', 'u
 const migration = readFileSync('supabase/migrations/20260721140000_beard_photo_analysis.sql', 'utf8')
 const provenanceMigration = readFileSync('supabase/migrations/20260721210000_beard_photo_attempt_provenance.sql', 'utf8')
 const semanticMigration = readFileSync('supabase/migrations/20260722090000_beard_semantic_diagnostics.sql', 'utf8')
+const guardStrategyMigration = readFileSync('supabase/migrations/20260722100000_beard_guard_strategy_semantics.sql', 'utf8')
+const semanticV3Constraints = readFileSync('supabase/migrations/20260722101000_beard_semantic_v3_constraints.sql', 'utf8')
 const runtime = readFileSync('supabase/functions/_shared/beardPhotoRuntime.ts', 'utf8')
 
 describe('beard photo intelligence boundaries', () => {
@@ -44,6 +46,10 @@ describe('beard photo intelligence boundaries', () => {
     expect(provenanceMigration).toContain("and status='staging'")
     expect(semanticMigration).toContain("semantic_rule_version='beard-semantic-safety-v2'")
     expect(semanticMigration).toContain("candidate_prompt_version <> 'beard-photo-analysis-v2'")
+    expect(guardStrategyMigration).toContain("semantic_rule_version='beard-semantic-safety-v3'")
+    expect(guardStrategyMigration).toContain("candidate_prompt_version <> 'beard-photo-analysis-v3'")
+    expect(semanticV3Constraints).toContain("'beard-semantic-safety-v2'")
+    expect(semanticV3Constraints).toContain("'beard-semantic-safety-v3'")
     expect(edge.indexOf('begin_beard_provider_attempt')).toBeLessThan(edge.indexOf('.download('))
     expect(edge).toContain('status: "staging"')
   })
@@ -59,7 +65,10 @@ describe('beard photo intelligence boundaries', () => {
     expect(prompt).toMatch(/health.*medical conditions/i)
     expect(prompt).toMatch(/Never claim exact millimeter length/i)
     expect(prompt).toMatch(/cannot diagnose a medical condition/i)
-    expect(prompt).toMatch(/existing user-supplied Beard Studio recipe/i)
+    expect(prompt).toMatch(/Existing recipe and Length Map values/i)
+    expect(prompt).toMatch(/guard number is an equipment instruction/i)
+    expect(prompt).toMatch(/proposed guard experiment/i)
+    expect(prompt).toMatch(/never guarantee the exact physical length/i)
   })
 
   it('persists only server-owned allowlisted failure metadata', () => {

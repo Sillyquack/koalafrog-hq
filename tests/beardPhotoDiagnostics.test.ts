@@ -89,7 +89,7 @@ describe("Beard diagnostics adapters", () => {
     });
   });
 
-  it("replays deterministic semantic safety v2 fixtures without provider content", () => {
+  it("replays deterministic semantic safety v3 fixtures without provider content", () => {
     const fixtures: Array<{
       name: string;
       mutate: (value: BeardPhotoAnalysisResult) => void;
@@ -187,13 +187,67 @@ describe("Beard diagnostics adapters", () => {
         expect(result, fixture.name).toMatchObject({
           ruleCode: fixture.ruleCode,
           jsonPath: fixture.jsonPath,
-          validator: "beard-semantic-safety-v2",
+          validator: "beard-semantic-safety-v3",
         });
         expect(JSON.stringify(result)).not.toContain(
           value.observations[0].statement,
         );
       }
     }
+  });
+
+  it.each([
+    "Use the 5 mm guard on the sideburns.",
+    "Start one guard step longer, then reduce if needed.",
+    "Keep the current Length Map setting.",
+    "The active recipe uses a 7 mm guard.",
+    "Test a proposed 6 mm guard as a conservative starting point.",
+    "Start with a proposed 4 mm guard, test it, and increase if needed.",
+    "Your current Length Map lists a user-supplied 5 mm side setting.",
+  ])("allows guard instructions and workspace context: %s", (strategy) => {
+    const value = base();
+    value.recommendations[0].proposedGuardStrategy = strategy;
+    expect(validateBeardPhotoSemantics(value).success).toBe(true);
+  });
+
+  it("allows exact-measurement limitations", () => {
+    const value = base();
+    value.limitations = ["Exact beard length cannot be determined from photos."];
+    expect(validateBeardPhotoSemantics(value).success).toBe(true);
+  });
+
+  it.each([
+    ["The beard is exactly 12 mm long.", "$.observations[0].statement"],
+    ["The image shows 10 mm growth.", "$.observations[0].statement"],
+    [
+      "Use an 8 mm guard because the beard visibly measures 11 mm.",
+      "$.recommendations[0].proposedGuardStrategy",
+    ],
+    [
+      "This will leave exactly 8 mm of physical beard.",
+      "$.recommendations[0].proposedGuardStrategy",
+    ],
+    [
+      "The photo shows the beard is 9 mm long.",
+      "$.recommendations[0].proposedGuardStrategy",
+    ],
+    [
+      "Exact length cannot be measured, but the image shows 10 mm growth.",
+      "$.recommendations[0].proposedGuardStrategy",
+    ],
+  ])("rejects unsupported measurement claim: %s", (statement, path) => {
+    const value = base();
+    if (path.includes("proposedGuardStrategy")) {
+      value.recommendations[0].proposedGuardStrategy = statement;
+    } else value.observations[0].statement = statement;
+    const result = validateBeardPhotoSemantics(value);
+    expect(result).toMatchObject({
+      success: false,
+      ruleCode: "SEM-0001",
+      jsonPath: path,
+      validator: "beard-semantic-safety-v3",
+    });
+    expect(JSON.stringify(result)).not.toContain(statement);
   });
 
   it("allows narrow limitations but rejects mixed disclaimers and assertions", () => {

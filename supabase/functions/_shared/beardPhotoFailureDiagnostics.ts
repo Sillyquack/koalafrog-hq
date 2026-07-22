@@ -17,7 +17,8 @@ const stages = new Set([
 ]);
 const validators = new Set([
   "responses-envelope", "responses-output", "json-parser", "json-schema",
-  "beard-contract", "beard-semantic-safety-v2", "legacy-beard-validator",
+  "beard-contract", "beard-semantic-safety-v2", "beard-semantic-safety-v3",
+  "legacy-beard-validator",
 ]);
 const expectedCategories = new Set([
   "object", "array", "string", "number", "integer", "boolean", "null",
