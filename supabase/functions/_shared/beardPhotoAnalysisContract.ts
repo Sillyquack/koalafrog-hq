@@ -6,7 +6,9 @@ import {
 } from "../../../src/intelligence/Diagnostics/ValidationTrace.ts";
 
 export const BEARD_PHOTO_SCHEMA_VERSION = 1 as const;
-export const BEARD_PHOTO_PROMPT_VERSION = "beard-photo-analysis-v1" as const;
+export const BEARD_PHOTO_PROMPT_VERSION = "beard-photo-analysis-v2" as const;
+export const BEARD_PHOTO_SEMANTIC_RULE_VERSION =
+  "beard-semantic-safety-v2" as const;
 export const beardPhotoViews = [
   "front",
   "left_profile",
@@ -75,17 +77,11 @@ export interface BeardPhotoAnalysisResult {
   safetyFlags: string[];
   correlationId: string;
 }
-const exactMeasurement = /\b\d+(?:\.\d+)?\s*(?:mm|millimet(?:er|re)s?)\b/i;
-const forbidden =
-  /(identify|ethnicity|medical condition|diagnos|alopecia|infection|hormonal|attractiveness|personality)/i;
 const keys = (v: Record<string, unknown>, allowed: string[]) =>
   Object.keys(v).every((k) => allowed.includes(k));
 const strings = (v: unknown) =>
   Array.isArray(v) && v.every((x) => typeof x === "string");
-const safeText = (v: unknown) =>
-  typeof v === "string" && !exactMeasurement.test(v) && !forbidden.test(v);
-const safeStrings = (v: unknown) =>
-  strings(v) && (v as string[]).every(safeText);
+const text = (v: unknown) => typeof v === "string";
 const views = (v: unknown) =>
   Array.isArray(v) &&
   v.every((x) => (beardPhotoViews as readonly string[]).includes(String(x)));
@@ -103,10 +99,10 @@ function validItem(value: unknown): value is BeardPhotoItem {
     "relatedBeardZones",
     "provenance",
   ]) && typeof v.id === "string" && typeof v.category === "string" &&
-    safeText(v.statement) && (v.statement as string).length > 0 &&
+    text(v.statement) && (v.statement as string).length > 0 &&
     typeof v.confidence === "number" && v.confidence >= 0 &&
     v.confidence <= 1 && views(v.supportingViews) &&
-    safeText(v.evidenceDescription) && safeStrings(v.limitations) &&
+    text(v.evidenceDescription) && strings(v.limitations) &&
     strings(v.relatedBeardZones) && v.provenance === "ai";
 }
 function validRecommendation(
@@ -128,14 +124,14 @@ function validRecommendation(
     "proposedGuardStrategy",
     "status",
     "provenance",
-  ]) && safeText(v.title) && safeText(v.reason) &&
+  ]) && text(v.title) && text(v.reason) &&
     typeof v.confidence === "number" && v.confidence >= 0 &&
     v.confidence <= 1 &&
     ["low", "medium", "high"].includes(String(v.priority)) &&
-    safeText(v.expectedBenefit) && strings(v.supportingObservationIds) &&
+    text(v.expectedBenefit) && strings(v.supportingObservationIds) &&
     v.supportingObservationIds.every((id) => ids.has(id)) &&
-    strings(v.affectedZones) && safeStrings(v.toolConstraints) &&
-    (v.proposedGuardStrategy === null || safeText(v.proposedGuardStrategy)) &&
+    strings(v.affectedZones) && strings(v.toolConstraints) &&
+    (v.proposedGuardStrategy === null || text(v.proposedGuardStrategy)) &&
     ["undecided", "accepted_for_planning", "dismissed"].includes(
       String(v.status),
     ) && v.provenance === "ai";
@@ -184,8 +180,8 @@ export function validateBeardPhotoAnalysisResult(
       return keys(x, ["view", "quality", "issues"]) &&
         (beardPhotoViews as readonly string[]).includes(String(x.view)) &&
         ["suitable", "limited", "unsuitable"].includes(String(x.quality)) &&
-        safeStrings(x.issues);
-    }) || !safeStrings(q.issues) || typeof q.retakeRecommended !== "boolean"
+        strings(x.issues);
+    }) || !strings(q.issues) || typeof q.retakeRecommended !== "boolean"
   ) return false;
   const groups = [
     v.observations,
@@ -198,10 +194,13 @@ export function validateBeardPhotoAnalysisResult(
   ) return false;
   const allItems = groups.flat() as BeardPhotoItem[],
     ids = new Set(allItems.map((x) => x.id));
-  return ids.size === allItems.length && Array.isArray(v.recommendations) &&
+  const structurallyValid = ids.size === allItems.length &&
+    Array.isArray(v.recommendations) &&
     v.recommendations.every((x) => validRecommendation(x, ids)) &&
-    safeStrings(v.limitations) && safeStrings(v.unknowns) &&
-    safeStrings(v.safetyFlags);
+    strings(v.limitations) && strings(v.unknowns) && strings(v.safetyFlags);
+  return structurallyValid &&
+    validateBeardPhotoSemantics(v as unknown as BeardPhotoAnalysisResult)
+      .success;
 }
 
 export function validateBeardPhotoContract(
@@ -256,15 +255,116 @@ export function validateBeardPhotoContract(
 export function validateBeardPhotoSemantics(
   value: BeardPhotoAnalysisResult,
 ): ValidationTrace<BeardPhotoAnalysisResult> {
-  const check = (text: string, path: string) =>
-    safeText(text) ? undefined : validationFailure({
-      ruleCode: intelligenceRuleCodes.semanticSafetyViolation,
+  type FieldRole = "observation" | "limitation" | "recommendation";
+  const exactMeasurement =
+    /\b\d+(?:\.\d+)?\s*(?:mm|millimet(?:er|re)s?)\b/i;
+  const knownSetting =
+    /\b(?:existing|current|recorded|saved|user[- ]supplied|beard studio|recipe)\b.{0,80}\b(?:guard|setting|target|recipe)\b|\b(?:guard|setting|target|recipe)\b.{0,80}\b(?:existing|current|recorded|saved|user[- ]supplied|beard studio|recipe)\b/i;
+  const limitationAction =
+    /\b(?:cannot|can't|can not|could not|unable to|not possible to|do not|does not|don't|doesn't|is not|isn't|are not|aren't|no)\b.{0,100}\b(?:diagnos|determin|establish|infer|identify|confirm|assess|conclude|measure|estimate|calibrat)|\b(?:diagnos|determin|establish|infer|identify|confirm|assess|conclude|measure|estimate|calibrat)[a-z]*\b.{0,100}\b(?:cannot|can't|can not|could not|unable|not possible|is not|isn't|are not|aren't|unknown|unavailable)\b/i;
+  const professionalGuidance =
+    /\b(?:consult|contact|seek|speak with|talk to)\b.{0,100}\b(?:clinician|doctor|dermatologist|medical professional|healthcare professional|qualified professional)\b/i;
+  const unsafeCareDirective =
+    /\b(?:treat|medicat|prescrib|dose|therapy|remedy|cure)\w*\b/i;
+  const causeAssertion =
+    /\b(?:caused by|due to|results? from|because of|hormonal cause|biological cause)\b/i;
+  const directAssertion =
+    /\b(?:you|the person|this|it|the beard|the images?)\s+(?:have|has|is|are|shows?|indicates?|confirms?|suggests?|appears to have)\b|\b(?:is|are)\s+(?:present|detected|likely)\b|\b(?:medical condition|infection|alopecia|identity|ethnicity|race|religion|sexual orientation|gender identity|age|attractiveness|personality)\b.{0,30}\b(?:is|are|appears?|seems?)\b/i;
+  const medical = /\b(?:medical condition|diagnos(?:e|ed|es|ing|is|tic)?|alopecia)\b/i;
+  const infection = /\binfection\b/i;
+  const biological = /\b(?:hormonal|hormones?|biological cause)\b/i;
+  const sensitiveTrait =
+    /\b(?:identity|ethnicity|race|religion|sexual orientation|gender identity|age)\b|\bidentify(?:ing)?\s+(?:the\s+)?person\b/i;
+  const personal = /\b(?:attractiveness|personality)\b/i;
+  const isPermittedLimitation = (clause: string, role: FieldRole) =>
+    role === "limitation" && limitationAction.test(clause);
+  const fail = (
+    ruleCode: Parameters<typeof validationFailure>[0]["ruleCode"],
+    path: string,
+    expected: Parameters<typeof validationFailure>[0]["expected"],
+    received: Parameters<typeof validationFailure>[0]["received"],
+  ) =>
+    validationFailure({
+      ruleCode,
       jsonPath: path,
-      expected: "safe text",
-      received: "unsafe text",
-      validator: "beard-semantic-safety",
+      expected,
+      received,
+      validator: "beard-semantic-safety-v2",
       stage: "SemanticValidation",
     });
+  const check = (value: string, path: string, role: FieldRole) => {
+    const clauses = value.split(
+      /[.!?;]|\b(?:but|however|although|yet)\b/i,
+    ).map((clause) => clause.trim()).filter(Boolean);
+    for (const clause of clauses) {
+      if (
+        exactMeasurement.test(clause) &&
+        !(
+          role === "recommendation" && knownSetting.test(clause)
+        ) && !(role === "limitation" && limitationAction.test(clause))
+      ) {
+        return fail(
+          intelligenceRuleCodes.unsupportedExactMeasurement,
+          path,
+          "non-calibrated grooming language",
+          "unsupported measurement claim",
+        );
+      }
+      const matches = [
+        { pattern: medical, code: intelligenceRuleCodes.medicalAssertion, received: "medical assertion" as const },
+        { pattern: infection, code: intelligenceRuleCodes.infectionAssertion, received: "infection assertion" as const },
+        { pattern: biological, code: intelligenceRuleCodes.biologicalCauseAssertion, received: "biological cause assertion" as const },
+        { pattern: sensitiveTrait, code: intelligenceRuleCodes.sensitiveTraitInference, received: "sensitive trait inference" as const },
+        { pattern: personal, code: intelligenceRuleCodes.personalInference, received: "personal inference" as const },
+      ];
+      const matched = matches.find(({ pattern }) => pattern.test(clause));
+      if (!matched) continue;
+      const permittedLimitation = isPermittedLimitation(clause, role);
+      const permittedGuidance = professionalGuidance.test(clause) &&
+        !directAssertion.test(clause) && !causeAssertion.test(clause);
+      if (permittedLimitation || permittedGuidance) continue;
+      if (role === "recommendation" && unsafeCareDirective.test(clause)) {
+        return fail(
+          intelligenceRuleCodes.unsafeRecommendation,
+          path,
+          "grooming-only recommendation",
+          "unsafe recommendation",
+        );
+      }
+      if (directAssertion.test(clause) || causeAssertion.test(clause)) {
+        return fail(
+          matched.code,
+          path,
+          matched.code === intelligenceRuleCodes.sensitiveTraitInference ||
+              matched.code === intelligenceRuleCodes.personalInference
+            ? "non-sensitive observation"
+            : "non-medical observation",
+          matched.received,
+        );
+      }
+      return fail(
+        intelligenceRuleCodes.ambiguousSemanticViolation,
+        path,
+        "unambiguous safe language",
+        "ambiguous sensitive reference",
+      );
+    }
+    return undefined;
+  };
+  for (const [index, text] of value.photoQuality.issues.entries()) {
+    const failure = check(text, `$.photoQuality.issues[${index}]`, "limitation");
+    if (failure) return failure;
+  }
+  for (const [viewIndex, view] of value.photoQuality.perView.entries()) {
+    for (const [issueIndex, text] of view.issues.entries()) {
+      const failure = check(
+        text,
+        `$.photoQuality.perView[${viewIndex}].issues[${issueIndex}]`,
+        "limitation",
+      );
+      if (failure) return failure;
+    }
+  }
   const groups = [
     ["observations", value.observations],
     ["symmetry", value.symmetry],
@@ -279,13 +379,18 @@ export function validateBeardPhotoSemantics(
           item.evidenceDescription,
         ]] as const
       ) {
-        const failure = check(text, `$.${groupName}[${index}].${field}`);
+        const failure = check(
+          text,
+          `$.${groupName}[${index}].${field}`,
+          "observation",
+        );
         if (failure) return failure;
       }
       for (const [limitationIndex, text] of item.limitations.entries()) {
         const failure = check(
           text,
           `$.${groupName}[${index}].limitations[${limitationIndex}]`,
+          "limitation",
         );
         if (failure) return failure;
       }
@@ -298,13 +403,18 @@ export function validateBeardPhotoSemantics(
         item.expectedBenefit,
       ]] as const
     ) {
-      const failure = check(text, `$.recommendations[${index}].${field}`);
+      const failure = check(
+        text,
+        `$.recommendations[${index}].${field}`,
+        "recommendation",
+      );
       if (failure) return failure;
     }
     for (const [constraintIndex, text] of item.toolConstraints.entries()) {
       const failure = check(
         text,
         `$.recommendations[${index}].toolConstraints[${constraintIndex}]`,
+        "recommendation",
       );
       if (failure) return failure;
     }
@@ -312,6 +422,7 @@ export function validateBeardPhotoSemantics(
       const failure = check(
         item.proposedGuardStrategy,
         `$.recommendations[${index}].proposedGuardStrategy`,
+        "recommendation",
       );
       if (failure) return failure;
     }
@@ -323,7 +434,7 @@ export function validateBeardPhotoSemantics(
     ], ["safetyFlags", value.safetyFlags]] as const
   ) {
     for (const [index, text] of values.entries()) {
-      const failure = check(text, `$.${field}[${index}]`);
+      const failure = check(text, `$.${field}[${index}]`, "limitation");
       if (failure) return failure;
     }
   }

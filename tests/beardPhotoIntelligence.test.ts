@@ -6,6 +6,7 @@ const client = readFileSync('src/intelligence/Vision/beardPhotoClient.ts', 'utf8
 const prompt = readFileSync('supabase/functions/_shared/beardPhotoPrompt.ts', 'utf8')
 const migration = readFileSync('supabase/migrations/20260721140000_beard_photo_analysis.sql', 'utf8')
 const provenanceMigration = readFileSync('supabase/migrations/20260721210000_beard_photo_attempt_provenance.sql', 'utf8')
+const semanticMigration = readFileSync('supabase/migrations/20260722090000_beard_semantic_diagnostics.sql', 'utf8')
 const runtime = readFileSync('supabase/functions/_shared/beardPhotoRuntime.ts', 'utf8')
 
 describe('beard photo intelligence boundaries', () => {
@@ -41,6 +42,8 @@ describe('beard photo intelligence boundaries', () => {
     expect(migration).toContain('intelligence_analyses_one_active_per_owner')
     expect(provenanceMigration).toContain('provider_attempt_count=provider_attempt_count+1')
     expect(provenanceMigration).toContain("and status='staging'")
+    expect(semanticMigration).toContain("semantic_rule_version='beard-semantic-safety-v2'")
+    expect(semanticMigration).toContain("candidate_prompt_version <> 'beard-photo-analysis-v2'")
     expect(edge.indexOf('begin_beard_provider_attempt')).toBeLessThan(edge.indexOf('.download('))
     expect(edge).toContain('status: "staging"')
   })
@@ -55,6 +58,20 @@ describe('beard photo intelligence boundaries', () => {
     expect(prompt).toMatch(/Never identify the person/i)
     expect(prompt).toMatch(/health.*medical conditions/i)
     expect(prompt).toMatch(/Never claim exact millimeter length/i)
+    expect(prompt).toMatch(/cannot diagnose a medical condition/i)
+    expect(prompt).toMatch(/existing user-supplied Beard Studio recipe/i)
+  })
+
+  it('persists only server-owned allowlisted failure metadata', () => {
+    expect(edge).toContain('Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")')
+    expect(edge).toContain('toDurableBeardFailureDiagnostic')
+    expect(edge).toMatch(/\.eq\(\s*"owner_user_id",\s*userId/)
+    expect(edge).toMatch(/\.eq\("correlation_id", correlationId\)/)
+    expect(semanticMigration).toContain('failure_json_path')
+    expect(semanticMigration).toContain('failure_trace_complete_check')
+    expect(semanticMigration).toMatch(/revoke insert\([\s\S]*failure_stage[\s\S]*from authenticated/)
+    expect(semanticMigration).toMatch(/revoke update\([\s\S]*failure_stage[\s\S]*from authenticated/)
+    expect(semanticMigration).not.toMatch(/update public\.intelligence_analyses[\s\S]*failure_json_path=/)
   })
 
   it('logs only the safe stage envelope and never sensitive request material', () => {
@@ -76,5 +93,11 @@ describe('beard photo intelligence boundaries', () => {
     expect(edge.indexOf('provider.analyzeBeardPhotos')).toBeLessThan(edge.indexOf('const removed = await client.storage'))
     expect(edge.indexOf('status: "failed"')).toBeLessThan(edge.indexOf('const removed = await client.storage'))
     expect(edge).not.toContain('req.signal')
+  })
+
+  it('persists no partial domain result when semantic validation fails and still reaches cleanup', () => {
+    expect(edge.indexOf('() => validateBeardPhotoSemantics(typed)')).toBeLessThan(edge.indexOf('"intelligence_observations"'))
+    expect(edge.indexOf('toDurableBeardFailureDiagnostic')).toBeLessThan(edge.indexOf('const removed = await client.storage'))
+    expect(edge.indexOf('result = undefined')).toBeLessThan(edge.indexOf('const removed = await client.storage'))
   })
 })

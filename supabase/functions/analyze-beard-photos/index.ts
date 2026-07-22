@@ -12,6 +12,7 @@ import {
   validateBeardPhotoSemantics,
 } from "../_shared/beardPhotoAnalysisContract.ts";
 import { beardPhotoSystemPrompt } from "../_shared/beardPhotoPrompt.ts";
+import { toDurableBeardFailureDiagnostic } from "../_shared/beardPhotoFailureDiagnostics.ts";
 import {
   beardStageLog,
   InvalidProviderTimeoutError,
@@ -721,6 +722,11 @@ Deno.serve(async (req) => {
       401,
     );
   }
+  const trustedClient = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+    { auth: { persistSession: false, autoRefreshToken: false } },
+  );
   let body: unknown;
   try {
     body = await req.json();
@@ -1173,11 +1179,25 @@ Deno.serve(async (req) => {
       ? error.code
       : "UNEXPECTED_ERROR";
     result = undefined;
-    await client.from("intelligence_analyses").update({
+    const terminalFailure = await trustedClient.from("intelligence_analyses")
+      .update({
       status: "failed",
       error_code: errorCode,
       completed_at: new Date().toISOString(),
-    }).eq("id", body.analysisId).eq("workspace_id", body.workspaceId);
+      ...toDurableBeardFailureDiagnostic(
+        error instanceof ProviderError ? error.diagnostic : undefined,
+      ),
+    }).eq("id", body.analysisId).eq("workspace_id", body.workspaceId).eq(
+      "owner_user_id",
+      userId,
+    ).eq("correlation_id", correlationId);
+    if (terminalFailure.error) {
+      await client.from("intelligence_analyses").update({
+        status: "failed",
+        error_code: errorCode,
+        completed_at: new Date().toISOString(),
+      }).eq("id", body.analysisId).eq("workspace_id", body.workspaceId);
+    }
   }
   traceInstant("CleanupDeleteRequested", "succeeded", {
     provider: provider.id,

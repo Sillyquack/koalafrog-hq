@@ -4,6 +4,8 @@ import {
   validateBeardPhotoContract,
   validateBeardPhotoSemantics,
 } from "../supabase/functions/_shared/beardPhotoAnalysisContract";
+import { toDurableBeardFailureDiagnostic } from "../supabase/functions/_shared/beardPhotoFailureDiagnostics";
+import type { ValidationFailure } from "../src/intelligence/Diagnostics/ValidationTrace";
 
 const base = (): BeardPhotoAnalysisResult => ({
   analysisId: "analysis",
@@ -81,9 +83,197 @@ describe("Beard diagnostics adapters", () => {
     expect(validateBeardPhotoContract(value).success).toBe(true);
     expect(validateBeardPhotoSemantics(value)).toMatchObject({
       success: false,
-      ruleCode: "VAL-0020",
+      ruleCode: "SEM-0001",
       jsonPath: "$.observations[0].statement",
-      received: "unsafe text",
+      received: "unsupported measurement claim",
     });
+  });
+
+  it("replays deterministic semantic safety v2 fixtures without provider content", () => {
+    const fixtures: Array<{
+      name: string;
+      mutate: (value: BeardPhotoAnalysisResult) => void;
+      success: boolean;
+      ruleCode?: string;
+      jsonPath?: string;
+    }> = [
+      {
+        name: "valid grooming analysis",
+        mutate: () => undefined,
+        success: true,
+      },
+      {
+        name: "diagnosis limitation",
+        mutate: (value) => {
+          value.limitations = ["These photos cannot diagnose a medical condition."];
+        },
+        success: true,
+      },
+      {
+        name: "medical assertion",
+        mutate: (value) => {
+          value.observations[0].statement = "You have a medical condition.";
+        },
+        success: false,
+        ruleCode: "SEM-0002",
+        jsonPath: "$.observations[0].statement",
+      },
+      {
+        name: "measurement unavailable",
+        mutate: (value) => {
+          value.limitations = ["Exact millimetre length cannot be determined from these photos."];
+        },
+        success: true,
+      },
+      {
+        name: "exact visual measurement",
+        mutate: (value) => {
+          value.observations[0].statement = "The beard is 12 mm long.";
+        },
+        success: false,
+        ruleCode: "SEM-0001",
+        jsonPath: "$.observations[0].statement",
+      },
+      {
+        name: "existing guard setting",
+        mutate: (value) => {
+          value.recommendations[0].proposedGuardStrategy =
+            "Use the existing 8 mm Beard Studio guard setting.";
+        },
+        success: true,
+      },
+      {
+        name: "hormonal cause assertion",
+        mutate: (value) => {
+          value.observations[0].statement = "This is caused by hormones.";
+        },
+        success: false,
+        ruleCode: "SEM-0004",
+        jsonPath: "$.observations[0].statement",
+      },
+      {
+        name: "professional care guidance",
+        mutate: (value) => {
+          value.limitations = ["Consult a clinician for medical concerns."];
+        },
+        success: true,
+      },
+      {
+        name: "ambiguous sensitive wording",
+        mutate: (value) => {
+          value.unknowns = ["Hormonal factors are relevant."];
+        },
+        success: false,
+        ruleCode: "SEM-0099",
+        jsonPath: "$.unknowns[0]",
+      },
+      {
+        name: "stable first violation",
+        mutate: (value) => {
+          value.observations[0].statement = "The beard measures 12 mm.";
+          value.limitations = ["You have an infection."];
+        },
+        success: false,
+        ruleCode: "SEM-0001",
+        jsonPath: "$.observations[0].statement",
+      },
+    ];
+    for (const fixture of fixtures) {
+      const value = base();
+      fixture.mutate(value);
+      const result = validateBeardPhotoSemantics(value);
+      expect(result.success, fixture.name).toBe(fixture.success);
+      if (!fixture.success) {
+        expect(result, fixture.name).toMatchObject({
+          ruleCode: fixture.ruleCode,
+          jsonPath: fixture.jsonPath,
+          validator: "beard-semantic-safety-v2",
+        });
+        expect(JSON.stringify(result)).not.toContain(
+          value.observations[0].statement,
+        );
+      }
+    }
+  });
+
+  it("allows narrow limitations but rejects mixed disclaimers and assertions", () => {
+    for (const limitation of [
+      "Images cannot establish hormonal causes.",
+      "No signs of infection can be determined from these photos.",
+      "This is not a calibrated measurement.",
+    ]) {
+      const value = base();
+      value.limitations = [limitation];
+      expect(validateBeardPhotoSemantics(value).success, limitation).toBe(true);
+    }
+    const mixed = base();
+    mixed.limitations = [
+      "These photos cannot diagnose a medical condition, but you have an infection.",
+    ];
+    expect(validateBeardPhotoSemantics(mixed)).toMatchObject({
+      success: false,
+      ruleCode: "SEM-0003",
+      jsonPath: "$.limitations[0]",
+    });
+    const mixedMeasurement = base();
+    mixedMeasurement.recommendations[0].proposedGuardStrategy =
+      "The beard is 12 mm long; use the existing Beard Studio guard setting.";
+    expect(validateBeardPhotoSemantics(mixedMeasurement)).toMatchObject({
+      success: false,
+      ruleCode: "SEM-0001",
+      jsonPath: "$.recommendations[0].proposedGuardStrategy",
+    });
+  });
+
+  it("keeps semantic assertion and recommendation subcodes stable", () => {
+    const fixtures = [
+      ["You have an infection.", "observation", "SEM-0003"],
+      ["The person's ethnicity is likely Scandinavian.", "observation", "SEM-0005"],
+      ["The person's personality is confident.", "observation", "SEM-0006"],
+      ["Treat the infection with medication.", "recommendation", "SEM-0010"],
+    ] as const;
+    for (const [statement, target, ruleCode] of fixtures) {
+      const value = base();
+      if (target === "observation") value.observations[0].statement = statement;
+      else value.recommendations[0].reason = statement;
+      const result = validateBeardPhotoSemantics(value);
+      expect(result, statement).toMatchObject({ success: false, ruleCode });
+      expect(JSON.stringify(result)).not.toContain(statement);
+    }
+  });
+
+  it("persists only allowlisted metadata and never the rejected value", () => {
+    const rejectedValue = "private rejected provider wording";
+    const safe = toDurableBeardFailureDiagnostic({
+      success: false,
+      ruleCode: "SEM-0003",
+      jsonPath: "$.limitations[0]",
+      expected: "non-medical observation",
+      received: "infection assertion",
+      validator: "beard-semantic-safety-v2",
+      stage: "SemanticValidation",
+    });
+    expect(safe).toEqual({
+      failure_stage: "SemanticValidation",
+      failure_rule_code: "SEM-0003",
+      failure_json_path: "$.limitations[0]",
+      failure_validator: "beard-semantic-safety-v2",
+      failure_expected_category: "non-medical observation",
+      failure_received_category: "infection assertion",
+      failure_schema_version: 1,
+      failure_trace_version: "intelligence-failure-trace-v1",
+    });
+    expect(JSON.stringify(safe)).not.toContain(rejectedValue);
+    expect(
+      toDurableBeardFailureDiagnostic({
+        success: false,
+        ruleCode: "SEM-0003",
+        jsonPath: `$.limitations[0].${rejectedValue}`,
+        expected: "non-medical observation",
+        received: "infection assertion",
+        validator: "beard-semantic-safety-v2",
+        stage: "SemanticValidation",
+      } as ValidationFailure),
+    ).toEqual({});
   });
 });

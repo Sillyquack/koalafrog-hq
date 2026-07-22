@@ -1,6 +1,6 @@
 begin;
 -- Run with Supabase CLI test harness. Synthetic JWT claims must be supplied by the harness.
-select plan(25);
+select plan(36);
 select has_table('public','workspaces','workspaces exists');
 select has_table('public','workspace_records','record store exists');
 select is((select relrowsecurity from pg_class where oid='public.workspace_records'::regclass),true,'record store RLS is enabled');
@@ -23,6 +23,17 @@ select is(has_column_privilege('authenticated','public.intelligence_analyses','p
 select is(has_column_privilege('authenticated','public.intelligence_recommendations','review_status','UPDATE'),true,'authenticated may review recommendations');
 select has_column('public','intelligence_analyses','provider_attempted_at','analysis attempt timestamp exists');
 select has_column('public','intelligence_analyses','provider_attempt_count','analysis attempt counter exists');
+select has_column('public','intelligence_analyses','semantic_rule_version','semantic rule provenance exists');
+select has_column('public','intelligence_analyses','failure_stage','failure stage exists');
+select has_column('public','intelligence_analyses','failure_rule_code','failure rule code exists');
+select has_column('public','intelligence_analyses','failure_json_path','safe failure path exists');
+select has_column('public','intelligence_analyses','failure_validator','failure validator exists');
+select has_column('public','intelligence_analyses','failure_expected_category','failure expected category exists');
+select has_column('public','intelligence_analyses','failure_received_category','failure received category exists');
+select has_column('public','intelligence_analyses','failure_schema_version','failure schema version exists');
+select has_column('public','intelligence_analyses','failure_trace_version','failure trace version exists');
+select is(has_column_privilege('authenticated','public.intelligence_analyses','failure_stage','INSERT'),false,'browser cannot insert failure diagnostics');
+select is(has_column_privilege('authenticated','public.intelligence_analyses','failure_stage','UPDATE'),false,'browser cannot update failure diagnostics');
 select is(has_column_privilege('authenticated','public.intelligence_analyses','provider_name','UPDATE'),false,'authenticated cannot directly rewrite provider provenance');
 select is(has_column_privilege('authenticated','public.intelligence_analyses','model_name','INSERT'),false,'authenticated cannot insert model provenance');
 select has_function('public','begin_beard_provider_attempt',array['uuid','uuid','text','text','text'],'atomic provider attempt function exists');
