@@ -7,7 +7,7 @@ export const BEARD_FAILURE_TRACE_VERSION =
 const rules = new Set([
   "VAL-0001", "VAL-0002", "VAL-0003", "VAL-0004", "VAL-0010",
   "VAL-0011", "VAL-0012", "VAL-0013", "VAL-0014", "VAL-0015",
-  "VAL-0016", "VAL-0017", "VAL-0020", "VAL-0030", "SEM-0001",
+  "VAL-0016", "VAL-0017", "VAL-0018", "VAL-0020", "VAL-0030", "SEM-0001",
   "SEM-0002", "SEM-0003", "SEM-0004", "SEM-0005", "SEM-0006",
   "SEM-0010", "SEM-0099",
 ]);
@@ -23,6 +23,7 @@ const validators = new Set([
 const expectedCategories = new Set([
   "object", "array", "string", "number", "integer", "boolean", "null",
   "required", "allowed enum", "constant", "unique id", "known reference",
+  "valid observation key", "unique observation key",
   "safe text", "non-calibrated grooming language", "non-medical observation",
   "non-sensitive observation", "grooming-only recommendation",
   "unambiguous safe language", "completed response",
@@ -30,6 +31,7 @@ const expectedCategories = new Set([
 const receivedCategories = new Set([
   "object", "array", "string", "number", "integer", "boolean", "null",
   "missing", "unexpected", "duplicate", "unknown reference", "unsafe text",
+  "invalid observation key",
   "incomplete", "unknown", "unsupported measurement claim",
   "medical assertion", "infection assertion", "biological cause assertion",
   "sensitive trait inference", "personal inference", "unsafe recommendation",

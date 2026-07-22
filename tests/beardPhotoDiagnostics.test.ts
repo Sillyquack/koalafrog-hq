@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   type BeardPhotoAnalysisResult,
   validateBeardPhotoContract,
+  validateReadableHistoricalBeardPhotoResult,
   validateBeardPhotoSemantics,
 } from "../supabase/functions/_shared/beardPhotoAnalysisContract";
 import { toDurableBeardFailureDiagnostic } from "../supabase/functions/_shared/beardPhotoFailureDiagnostics";
@@ -9,8 +10,9 @@ import type { ValidationFailure } from "../src/intelligence/Diagnostics/Validati
 
 const base = (): BeardPhotoAnalysisResult => ({
   analysisId: "analysis",
-  schemaVersion: 1,
-  promptVersion: "v1",
+  schemaVersion: 2,
+  contractVersion: "beard-photo-result-contract-v2",
+  promptVersion: "beard-photo-analysis-v4",
   provider: "openai",
   model: "gpt-5",
   createdAt: "2026-07-21T00:00:00Z",
@@ -23,7 +25,7 @@ const base = (): BeardPhotoAnalysisResult => ({
     retakeRecommended: false,
   },
   observations: [{
-    id: "observation-1",
+    observationKey: "front_density",
     category: "density",
     statement: "Density appears even.",
     confidence: .8,
@@ -43,7 +45,7 @@ const base = (): BeardPhotoAnalysisResult => ({
     confidence: .7,
     priority: "low",
     expectedBenefit: "A more even outline.",
-    supportingObservationIds: ["observation-1"],
+    supportingObservationKeys: ["front_density"],
     affectedZones: [],
     toolConstraints: [],
     proposedGuardStrategy: null,
@@ -56,26 +58,111 @@ const base = (): BeardPhotoAnalysisResult => ({
   correlationId: "support",
 });
 describe("Beard diagnostics adapters", () => {
-  it("reports duplicate ids without content", () => {
+  it("reports duplicate observation keys without content", () => {
     const value = base();
     value.symmetry = [{ ...value.observations[0] }];
     expect(validateBeardPhotoContract(value)).toMatchObject({
       success: false,
       ruleCode: "VAL-0013",
-      jsonPath: "$.symmetry[0].id",
+      jsonPath: "$.symmetry[0].observationKey",
       received: "duplicate",
     });
   });
   it("reports broken references without the rejected id", () => {
     const value = base();
-    value.recommendations[0].supportingObservationIds = ["private-reference"];
+    value.recommendations[0].supportingObservationKeys = ["private_reference"];
     const result = validateBeardPhotoContract(value);
     expect(result).toMatchObject({
       success: false,
       ruleCode: "VAL-0014",
-      jsonPath: "$.recommendations[0].supportingObservationIds[0]",
+      jsonPath: "$.recommendations[0].supportingObservationKeys[0]",
     });
     expect(JSON.stringify(result)).not.toContain("private-reference");
+  });
+  it("accepts coherent keys across collections and reference shapes", () => {
+    const value = base();
+    value.symmetry = [{
+      ...value.observations[0],
+      observationKey: "side_symmetry_difference",
+    }];
+    value.densityDistribution = [{
+      ...value.observations[0],
+      observationKey: "right_side_volume",
+    }];
+    value.recommendations.push({
+      ...value.recommendations[0],
+      id: "recommendation-2",
+      supportingObservationKeys: ["front_density"],
+    });
+    value.recommendations[0].supportingObservationKeys = [
+      "front_density",
+      "side_symmetry_difference",
+      "right_side_volume",
+    ];
+    expect(validateBeardPhotoContract(value).success).toBe(true);
+  });
+  it.each([
+    ["Upper_Key", "$.observations[0].observationKey"],
+    ["left-cheek", "$.observations[0].observationKey"],
+    ["", "$.observations[0].observationKey"],
+  ])("rejects invalid observation key %s without persisting its value", (key, path) => {
+    const value = base();
+    value.observations[0].observationKey = key;
+    const result = validateBeardPhotoContract(value);
+    expect(result).toMatchObject({
+      success: false,
+      ruleCode: "VAL-0018",
+      jsonPath: path,
+      expected: "valid observation key",
+      received: "invalid observation key",
+    });
+    expect(JSON.stringify(result)).not.toContain(key || "private-empty-key");
+  });
+  it("rejects duplicate keys within one recommendation", () => {
+    const value = base();
+    value.recommendations[0].supportingObservationKeys = [
+      "front_density",
+      "front_density",
+    ];
+    expect(validateBeardPhotoContract(value)).toMatchObject({
+      success: false,
+      ruleCode: "VAL-0013",
+      jsonPath: "$.recommendations[0].supportingObservationKeys[1]",
+    });
+  });
+  it.each(["recommendation_key", "valid_but_absent_key"])(
+    "rejects a valid-looking absent reference: %s",
+    (key) => {
+      const value = base();
+      value.recommendations[0].supportingObservationKeys = [key];
+      expect(validateBeardPhotoContract(value)).toMatchObject({
+        success: false,
+        ruleCode: "VAL-0014",
+        jsonPath: "$.recommendations[0].supportingObservationKeys[0]",
+      });
+    },
+  );
+  it("retains read compatibility for coherent historical schema v1 payloads", () => {
+    const current = base() as unknown as Record<string, unknown>;
+    const legacyObservation = {
+      ...(current.observations as Array<Record<string, unknown>>)[0],
+      id: "observation-1",
+    };
+    delete legacyObservation.observationKey;
+    const legacyRecommendation = {
+      ...(current.recommendations as Array<Record<string, unknown>>)[0],
+      supportingObservationIds: ["observation-1"],
+    };
+    delete legacyRecommendation.supportingObservationKeys;
+    const legacy = {
+      ...current,
+      schemaVersion: 1,
+      promptVersion: "beard-photo-analysis-v3",
+      observations: [legacyObservation],
+      recommendations: [legacyRecommendation],
+    };
+    delete legacy.contractVersion;
+    expect(validateReadableHistoricalBeardPhotoResult(legacy)).toBe(true);
   });
   it("separates semantic safety from structural validation", () => {
     const value = base();
@@ -314,7 +401,7 @@ describe("Beard diagnostics adapters", () => {
       failure_validator: "beard-semantic-safety-v2",
       failure_expected_category: "non-medical observation",
       failure_received_category: "infection assertion",
-      failure_schema_version: 1,
+      failure_schema_version: 2,
       failure_trace_version: "intelligence-failure-trace-v1",
     });
     expect(JSON.stringify(safe)).not.toContain(rejectedValue);

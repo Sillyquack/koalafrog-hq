@@ -84,6 +84,75 @@ run('beard photo temporary storage isolation', () => {
     expect((await owner.storage.from('beard-analysis-images').download(objectPath)).error).not.toBeNull()
   })
 
+  it('maps stable provider keys to internal ids and normalized relationships', async () => {
+    const profileId = crypto.randomUUID()
+    const analysisId = crypto.randomUUID()
+    const correlationId = crypto.randomUUID()
+    expect((await owner.from('beard_profiles').insert({
+      id: profileId, workspace_id: workspaceId, owner_id: ownerId,
+      name: 'Stable key fixture', status: 'Draft', style_name: 'Test style',
+      maintenance_frequency_days: 7, preferred_overall_length_mm: 9,
+      density: 'medium', texture: 'wavy',
+    })).error).toBeNull()
+    expect((await admin.from('intelligence_analyses').insert({
+      id: analysisId, workspace_id: workspaceId, owner_user_id: ownerId,
+      source_module: 'beard-studio', analysis_type: 'beard_photo_analysis',
+      schema_version: 2, contract_version: 'beard-photo-result-contract-v2',
+      prompt_version: 'beard-photo-analysis-v4', status: 'staging',
+      idempotency_key: crypto.randomUUID(), profile_id: profileId,
+      context_manifest: {}, correlation_id: correlationId,
+    })).error).toBeNull()
+    expect((await owner.rpc('begin_beard_provider_attempt', {
+      candidate_workspace_id: workspaceId,
+      candidate_analysis_id: analysisId,
+      candidate_provider: 'openai',
+      candidate_model: 'gpt-5',
+      candidate_prompt_version: 'beard-photo-analysis-v4',
+    })).data).toBe(true)
+    const observationKeys = ['front_density_distribution', 'side_symmetry_difference']
+    const recommendationIds = [crypto.randomUUID(), crypto.randomUUID()]
+    const observations = observationKeys.map(observationKey => ({
+      observationKey, category: 'density', statement: 'A visible grooming fact.',
+      confidence: 0.8, supportingViews: ['front'],
+      evidenceDescription: 'Visible in the supplied view.', limitations: [],
+      relatedBeardZones: [],
+    }))
+    const recommendations = recommendationIds.map((id, index) => ({
+      id, title: 'Conservative review', reason: 'Supported by visible evidence.',
+      confidence: 0.7, priority: 'low', expectedBenefit: 'A cautious plan.',
+      supportingObservationKeys: index === 0 ? observationKeys : [observationKeys[0]],
+      affectedZones: [], toolConstraints: [], proposedGuardStrategy: null,
+      status: 'undecided',
+    }))
+    const persisted = await admin.rpc('persist_beard_analysis_result', {
+      candidate_workspace_id: workspaceId,
+      candidate_analysis_id: analysisId,
+      candidate_correlation_id: correlationId,
+      candidate_result: { schemaVersion: 2, contractVersion: 'beard-photo-result-contract-v2' },
+      candidate_observations: observations,
+      candidate_recommendations: recommendations,
+      candidate_provider_usage: null,
+    })
+    expect(persisted.error).toBeNull()
+    expect(persisted.data).toEqual({ success: true })
+    const storedObservations = await owner.from('intelligence_observations')
+      .select('id,provider_observation_key').eq('analysis_id', analysisId)
+    expect(storedObservations.data).toHaveLength(2)
+    expect(new Set(storedObservations.data?.map(item => item.provider_observation_key))).toEqual(new Set(observationKeys))
+    expect(storedObservations.data?.every(item => !observationKeys.includes(item.id))).toBe(true)
+    const storedRecommendations = await owner.from('intelligence_recommendations')
+      .select('id,supporting_observation_ids').eq('analysis_id', analysisId)
+    expect(storedRecommendations.data).toHaveLength(2)
+    const internalIds = new Set(storedObservations.data?.map(item => item.id))
+    expect(storedRecommendations.data?.flatMap(item => item.supporting_observation_ids).every(id => internalIds.has(id))).toBe(true)
+    const relationships = await owner.from('intelligence_recommendation_observations')
+      .select('recommendation_id,observation_id').eq('analysis_id', analysisId)
+    expect(relationships.data).toHaveLength(3)
+    expect(relationships.data?.every(item => recommendationIds.includes(item.recommendation_id) && internalIds.has(item.observation_id))).toBe(true)
+    expect((await owner.from('intelligence_observations').insert({})).error).not.toBeNull()
+    expect((await owner.from('intelligence_recommendation_observations').insert({})).error).not.toBeNull()
+  })
+
   it('rolls back result rows and records only metadata for the exact persistence failure', async () => {
     const profileId = crypto.randomUUID()
     const analysisId = crypto.randomUUID()
@@ -100,14 +169,15 @@ run('beard photo temporary storage isolation', () => {
       density: 'medium',
       texture: 'wavy',
     })).error).toBeNull()
-    expect((await owner.from('intelligence_analyses').insert({
+    expect((await admin.from('intelligence_analyses').insert({
       id: analysisId,
       workspace_id: workspaceId,
       owner_user_id: ownerId,
       source_module: 'beard-studio',
       analysis_type: 'beard_photo_analysis',
-      schema_version: 1,
-      prompt_version: 'beard-photo-analysis-v3',
+      schema_version: 2,
+      contract_version: 'beard-photo-result-contract-v2',
+      prompt_version: 'beard-photo-analysis-v4',
       status: 'staging',
       idempotency_key: crypto.randomUUID(),
       profile_id: profileId,
@@ -119,17 +189,18 @@ run('beard photo temporary storage isolation', () => {
       candidate_analysis_id: analysisId,
       candidate_provider: 'openai',
       candidate_model: 'gpt-5',
-      candidate_prompt_version: 'beard-photo-analysis-v3',
+      candidate_prompt_version: 'beard-photo-analysis-v4',
     })).data).toBe(true)
     const providerText = 'private provider observation that must never enter diagnostics'
-    const observationId = crypto.randomUUID()
+    const observationKey = 'front_density_distribution'
+    const recommendationId = crypto.randomUUID()
     const args = {
       candidate_workspace_id: workspaceId,
       candidate_analysis_id: analysisId,
       candidate_correlation_id: correlationId,
       candidate_result: { privateProviderResult: providerText },
       candidate_observations: [{
-        id: observationId,
+        observationKey,
         category: 'density',
         statement: providerText,
         confidence: 0.8,
@@ -139,13 +210,13 @@ run('beard photo temporary storage isolation', () => {
         relatedBeardZones: [],
       }],
       candidate_recommendations: [{
-        id: 'not-a-uuid',
+        id: recommendationId,
         title: providerText,
         reason: providerText,
         confidence: 0.7,
         priority: 'low',
         expectedBenefit: providerText,
-        supportingObservationIds: [observationId],
+        supportingObservationKeys: [observationKey, observationKey],
         affectedZones: [],
         toolConstraints: [],
         proposedGuardStrategy: null,
@@ -158,18 +229,19 @@ run('beard photo temporary storage isolation', () => {
     expect(persisted.error).toBeNull()
     expect(persisted.data).toMatchObject({
       success: false,
-      step: 'recommendation_insert',
-      table: 'intelligence_recommendations',
+      step: 'relationship_insert',
+      table: 'intelligence_recommendation_observations',
       operation: 'insert',
-      sqlstate: '22P02',
-      constraint: null,
-      entityType: 'recommendation',
-      entityIndex: 0,
+      sqlstate: '23505',
+      constraint: 'intelligence_recommendation_observations_pkey',
+      entityType: 'relationship',
+      entityIndex: 1,
       diagnosticVersion: 'beard-persistence-diagnostic-v1',
     })
     expect(JSON.stringify(persisted.data)).not.toContain(providerText)
     expect((await owner.from('intelligence_observations').select('id').eq('analysis_id', analysisId)).data).toEqual([])
     expect((await owner.from('intelligence_recommendations').select('id').eq('analysis_id', analysisId)).data).toEqual([])
+    expect((await owner.from('intelligence_recommendation_observations').select('recommendation_id').eq('analysis_id', analysisId)).data).toEqual([])
     const analysis = await owner.from('intelligence_analyses').select(
       'status,error_code,result_payload,provider_usage,persistence_failure_step,persistence_failure_table,persistence_failure_operation,persistence_failure_sqlstate,persistence_failure_constraint,persistence_failure_entity_type,persistence_failure_entity_index,persistence_failure_diagnostic_version',
     ).eq('id', analysisId).single()
@@ -178,13 +250,13 @@ run('beard photo temporary storage isolation', () => {
       error_code: 'RESULT_PERSISTENCE_FAILED',
       result_payload: null,
       provider_usage: null,
-      persistence_failure_step: 'recommendation_insert',
-      persistence_failure_table: 'intelligence_recommendations',
+      persistence_failure_step: 'relationship_insert',
+      persistence_failure_table: 'intelligence_recommendation_observations',
       persistence_failure_operation: 'insert',
-      persistence_failure_sqlstate: '22P02',
-      persistence_failure_constraint: null,
-      persistence_failure_entity_type: 'recommendation',
-      persistence_failure_entity_index: 0,
+      persistence_failure_sqlstate: '23505',
+      persistence_failure_constraint: 'intelligence_recommendation_observations_pkey',
+      persistence_failure_entity_type: 'relationship',
+      persistence_failure_entity_index: 1,
       persistence_failure_diagnostic_version: 'beard-persistence-diagnostic-v1',
     })
     expect(JSON.stringify(analysis.data)).not.toContain(providerText)
@@ -206,18 +278,20 @@ run('beard photo temporary storage isolation', () => {
     })).error).toBeNull()
     const row = (status: 'staging' | 'analyzing' | 'failed') => ({
       id: crypto.randomUUID(), workspace_id: workspaceId, owner_user_id: ownerId,
-      source_module: 'beard-studio', analysis_type: 'beard_photo_analysis', schema_version: 1,
-      prompt_version: 'beard-photo-analysis-v3', status, idempotency_key: crypto.randomUUID(),
+      source_module: 'beard-studio', analysis_type: 'beard_photo_analysis', schema_version: 2,
+      contract_version: 'beard-photo-result-contract-v2',
+      prompt_version: 'beard-photo-analysis-v4', status, idempotency_key: crypto.randomUUID(),
       profile_id: profileId, context_manifest: {}, correlation_id: crypto.randomUUID(),
     })
     const active = row('staging')
-    expect((await owner.from('intelligence_analyses').insert(active)).error).toBeNull()
+    expect((await owner.from('intelligence_analyses').insert(active)).error).not.toBeNull()
+    expect((await admin.from('intelligence_analyses').insert(active)).error).toBeNull()
     const attempt = {
       candidate_workspace_id: workspaceId,
       candidate_analysis_id: active.id,
       candidate_provider: 'openai',
       candidate_model: 'gpt-5',
-      candidate_prompt_version: 'beard-photo-analysis-v3',
+      candidate_prompt_version: 'beard-photo-analysis-v4',
     }
     expect((await owner.rpc('begin_beard_provider_attempt', attempt)).data).toBe(true)
     expect((await owner.rpc('begin_beard_provider_attempt', attempt)).data).toBe(false)
@@ -229,14 +303,14 @@ run('beard photo temporary storage isolation', () => {
     expect((await otherOwner.from('intelligence_analyses').select('id,failure_stage').eq('id', active.id)).data).toEqual([])
     expect((await owner.from('intelligence_analyses').delete().eq('id', active.id)).error).not.toBeNull()
     expect((await owner.from('intelligence_analyses').update({ profile_id: crypto.randomUUID() }).eq('id', active.id)).error).not.toBeNull()
-    expect((await owner.from('intelligence_analyses').insert(row('analyzing'))).error?.message).toContain('ANALYSIS_IN_PROGRESS')
+    expect((await admin.from('intelligence_analyses').insert(row('analyzing'))).error?.message).toContain('ANALYSIS_IN_PROGRESS')
     expect((await owner.from('intelligence_analyses').update({ status: 'failed', error_code: 'PROVIDER_TIMEOUT' }).eq('id', active.id)).error).toBeNull()
     const timedOut = await owner.from('intelligence_analyses').select('provider_name,model_name,provider_attempt_count,provider_attempted_at,status,error_code').eq('id', active.id).single()
     expect(timedOut.data).toMatchObject({ provider_name: 'openai', model_name: 'gpt-5', provider_attempt_count: 1, status: 'failed', error_code: 'PROVIDER_TIMEOUT' })
     expect(timedOut.data?.provider_attempted_at).toBeTruthy()
-    for (let index = 0; index < 3; index += 1) {
-      expect((await owner.from('intelligence_analyses').insert(row('failed'))).error).toBeNull()
+    for (let index = 0; index < 2; index += 1) {
+      expect((await admin.from('intelligence_analyses').insert(row('failed'))).error).toBeNull()
     }
-    expect((await owner.from('intelligence_analyses').insert(row('failed'))).error?.message).toContain('RATE_LIMITED')
+    expect((await admin.from('intelligence_analyses').insert(row('failed'))).error?.message).toContain('RATE_LIMITED')
   })
 })

@@ -10,6 +10,7 @@ const semanticMigration = readFileSync('supabase/migrations/20260722090000_beard
 const guardStrategyMigration = readFileSync('supabase/migrations/20260722100000_beard_guard_strategy_semantics.sql', 'utf8')
 const semanticV3Constraints = readFileSync('supabase/migrations/20260722101000_beard_semantic_v3_constraints.sql', 'utf8')
 const persistenceDiagnostics = readFileSync('supabase/migrations/20260722110000_beard_persistence_diagnostics.sql', 'utf8')
+const observationKeysMigration = readFileSync('supabase/migrations/20260722130000_beard_observation_keys.sql', 'utf8')
 const runtime = readFileSync('supabase/functions/_shared/beardPhotoRuntime.ts', 'utf8')
 
 describe('beard photo intelligence boundaries', () => {
@@ -49,6 +50,7 @@ describe('beard photo intelligence boundaries', () => {
     expect(semanticMigration).toContain("candidate_prompt_version <> 'beard-photo-analysis-v2'")
     expect(guardStrategyMigration).toContain("semantic_rule_version='beard-semantic-safety-v3'")
     expect(guardStrategyMigration).toContain("candidate_prompt_version <> 'beard-photo-analysis-v3'")
+    expect(observationKeysMigration).toContain("candidate_prompt_version <> 'beard-photo-analysis-v4'")
     expect(semanticV3Constraints).toContain("'beard-semantic-safety-v2'")
     expect(semanticV3Constraints).toContain("'beard-semantic-safety-v3'")
     expect(edge.indexOf('begin_beard_provider_attempt')).toBeLessThan(edge.indexOf('.download('))
@@ -70,6 +72,10 @@ describe('beard photo intelligence boundaries', () => {
     expect(prompt).toMatch(/guard number is an equipment instruction/i)
     expect(prompt).toMatch(/proposed guard experiment/i)
     expect(prompt).toMatch(/never guarantee the exact physical length/i)
+    expect(prompt).toMatch(/observationKey/)
+    expect(prompt).toMatch(/lowercase snake_case/)
+    expect(prompt).toMatch(/not database IDs/)
+    expect(prompt).toMatch(/supportingObservationKeys/)
   })
 
   it('persists only server-owned allowlisted failure metadata', () => {
@@ -123,5 +129,20 @@ describe('beard photo intelligence boundaries', () => {
     expect(persistenceDiagnostics).not.toMatch(/message_text|pg_exception_detail|pg_exception_hint/i)
     expect(persistenceDiagnostics).toMatch(/revoke all on function public\.persist_beard_analysis_result[\s\S]*from public,anon,authenticated/)
     expect(persistenceDiagnostics).toMatch(/grant execute on function public\.persist_beard_analysis_result[\s\S]*to service_role/)
+  })
+
+  it('maps provider keys to server ids and normalized relationships without browser writes', () => {
+    expect(edge).toContain('schema_version: 2')
+    expect(edge).toContain('contract_version: BEARD_PHOTO_CONTRACT_VERSION')
+    expect(edge).toContain('trustedClient.from("intelligence_analyses")')
+    expect(edge).toContain('trustedClient.from("intelligence_analysis_inputs")')
+    expect(observationKeysMigration).toContain('provider_observation_key')
+    expect(observationKeysMigration).toContain('observation_id_by_key')
+    expect(observationKeysMigration).toContain('gen_random_uuid()')
+    expect(observationKeysMigration).toContain('supportingObservationKeys')
+    expect(observationKeysMigration).toContain('intelligence_recommendation_observations')
+    expect(observationKeysMigration).toContain("revoke insert on table public.intelligence_observations from authenticated")
+    expect(observationKeysMigration).toContain("grant select on table public.intelligence_recommendation_observations")
+    expect(observationKeysMigration).not.toMatch(/message_text|pg_exception_detail|pg_exception_hint/i)
   })
 })

@@ -5,8 +5,10 @@ import {
   type ValidationTrace,
 } from "../../../src/intelligence/Diagnostics/ValidationTrace.ts";
 
-export const BEARD_PHOTO_SCHEMA_VERSION = 1 as const;
-export const BEARD_PHOTO_PROMPT_VERSION = "beard-photo-analysis-v3" as const;
+export const BEARD_PHOTO_SCHEMA_VERSION = 2 as const;
+export const BEARD_PHOTO_CONTRACT_VERSION =
+  "beard-photo-result-contract-v2" as const;
+export const BEARD_PHOTO_PROMPT_VERSION = "beard-photo-analysis-v4" as const;
 export const BEARD_PHOTO_SEMANTIC_RULE_VERSION =
   "beard-semantic-safety-v3" as const;
 export const beardPhotoViews = [
@@ -22,7 +24,7 @@ export type RecommendationReviewStatus =
   | "accepted_for_planning"
   | "dismissed";
 export interface BeardPhotoItem {
-  id: string;
+  observationKey: string;
   category: string;
   statement: string;
   confidence: number;
@@ -39,7 +41,7 @@ export interface BeardPhotoRecommendation {
   confidence: number;
   priority: "low" | "medium" | "high";
   expectedBenefit: string;
-  supportingObservationIds: string[];
+  supportingObservationKeys: string[];
   affectedZones: string[];
   toolConstraints: string[];
   proposedGuardStrategy: string | null;
@@ -48,7 +50,8 @@ export interface BeardPhotoRecommendation {
 }
 export interface BeardPhotoAnalysisResult {
   analysisId: string;
-  schemaVersion: 1;
+  schemaVersion: 2;
+  contractVersion: typeof BEARD_PHOTO_CONTRACT_VERSION;
   promptVersion: string;
   provider: string;
   model: string;
@@ -82,6 +85,7 @@ const keys = (v: Record<string, unknown>, allowed: string[]) =>
 const strings = (v: unknown) =>
   Array.isArray(v) && v.every((x) => typeof x === "string");
 const text = (v: unknown) => typeof v === "string";
+export const beardObservationKeyPattern = /^[a-z][a-z0-9_]{2,63}$/;
 const views = (v: unknown) =>
   Array.isArray(v) &&
   v.every((x) => (beardPhotoViews as readonly string[]).includes(String(x)));
@@ -89,7 +93,7 @@ function validItem(value: unknown): value is BeardPhotoItem {
   if (!value || typeof value !== "object") return false;
   const v = value as Record<string, unknown>;
   return keys(v, [
-    "id",
+    "observationKey",
     "category",
     "statement",
     "confidence",
@@ -98,7 +102,9 @@ function validItem(value: unknown): value is BeardPhotoItem {
     "limitations",
     "relatedBeardZones",
     "provenance",
-  ]) && typeof v.id === "string" && typeof v.category === "string" &&
+  ]) && typeof v.observationKey === "string" &&
+    beardObservationKeyPattern.test(v.observationKey) &&
+    typeof v.category === "string" &&
     text(v.statement) && (v.statement as string).length > 0 &&
     typeof v.confidence === "number" && v.confidence >= 0 &&
     v.confidence <= 1 && views(v.supportingViews) &&
@@ -118,7 +124,7 @@ function validRecommendation(
     "confidence",
     "priority",
     "expectedBenefit",
-    "supportingObservationIds",
+    "supportingObservationKeys",
     "affectedZones",
     "toolConstraints",
     "proposedGuardStrategy",
@@ -128,8 +134,11 @@ function validRecommendation(
     typeof v.confidence === "number" && v.confidence >= 0 &&
     v.confidence <= 1 &&
     ["low", "medium", "high"].includes(String(v.priority)) &&
-    text(v.expectedBenefit) && strings(v.supportingObservationIds) &&
-    v.supportingObservationIds.every((id) => ids.has(id)) &&
+    text(v.expectedBenefit) && strings(v.supportingObservationKeys) &&
+    v.supportingObservationKeys.length > 0 &&
+    new Set(v.supportingObservationKeys).size ===
+      v.supportingObservationKeys.length &&
+    v.supportingObservationKeys.every((key) => ids.has(key)) &&
     strings(v.affectedZones) && strings(v.toolConstraints) &&
     (v.proposedGuardStrategy === null || text(v.proposedGuardStrategy)) &&
     ["undecided", "accepted_for_planning", "dismissed"].includes(
@@ -145,6 +154,7 @@ export function validateBeardPhotoAnalysisResult(
     !keys(v, [
       "analysisId",
       "schemaVersion",
+      "contractVersion",
       "promptVersion",
       "provider",
       "model",
@@ -164,7 +174,8 @@ export function validateBeardPhotoAnalysisResult(
     ])
   ) return false;
   if (
-    typeof v.analysisId !== "string" || v.schemaVersion !== 1 ||
+    typeof v.analysisId !== "string" || v.schemaVersion !== 2 ||
+    v.contractVersion !== BEARD_PHOTO_CONTRACT_VERSION ||
     typeof v.promptVersion !== "string" || typeof v.provider !== "string" ||
     typeof v.model !== "string" || typeof v.createdAt !== "string" ||
     v.provenance !== "ai" ||
@@ -193,7 +204,7 @@ export function validateBeardPhotoAnalysisResult(
     !groups.every((group) => Array.isArray(group) && group.every(validItem))
   ) return false;
   const allItems = groups.flat() as BeardPhotoItem[],
-    ids = new Set(allItems.map((x) => x.id));
+    ids = new Set(allItems.map((x) => x.observationKey));
   const structurallyValid = ids.size === allItems.length &&
     Array.isArray(v.recommendations) &&
     v.recommendations.every((x) => validRecommendation(x, ids)) &&
@@ -201,6 +212,30 @@ export function validateBeardPhotoAnalysisResult(
   return structurallyValid &&
     validateBeardPhotoSemantics(v as unknown as BeardPhotoAnalysisResult)
       .success;
+}
+
+export function validateReadableHistoricalBeardPhotoResult(value: unknown) {
+  if (validateBeardPhotoAnalysisResult(value)) return true;
+  if (!value || typeof value !== "object") return false;
+  const v = value as Record<string, unknown>;
+  if (v.schemaVersion !== 1) return false;
+  const groups = [
+    v.observations,
+    v.symmetry,
+    v.densityDistribution,
+    v.lineAssessment,
+  ];
+  if (!groups.every((group) => Array.isArray(group))) return false;
+  const observations = groups.flat() as Array<Record<string, unknown>>;
+  if (!observations.every((item) => typeof item.id === "string")) return false;
+  const ids = new Set(observations.map((item) => item.id as string));
+  if (ids.size !== observations.length || !Array.isArray(v.recommendations)) {
+    return false;
+  }
+  return (v.recommendations as Array<Record<string, unknown>>).every((item) =>
+    strings(item.supportingObservationIds) &&
+    (item.supportingObservationIds as string[]).every((id) => ids.has(id))
+  );
 }
 
 export function validateBeardPhotoContract(
@@ -215,17 +250,27 @@ export function validateBeardPhotoContract(
   const ids = new Set<string>();
   for (const [groupName, group] of groups) {
     for (const [index, item] of group.entries()) {
-      if (ids.has(item.id)) {
+      if (!beardObservationKeyPattern.test(item.observationKey)) {
+        return validationFailure({
+          ruleCode: intelligenceRuleCodes.invalidObservationKey,
+          jsonPath: `$.${groupName}[${index}].observationKey`,
+          expected: "valid observation key",
+          received: "invalid observation key",
+          validator: "beard-contract",
+          stage: "ContractValidation",
+        });
+      }
+      if (ids.has(item.observationKey)) {
         return validationFailure({
           ruleCode: intelligenceRuleCodes.duplicateObservationId,
-          jsonPath: `$.${groupName}[${index}].id`,
-          expected: "unique id",
+          jsonPath: `$.${groupName}[${index}].observationKey`,
+          expected: "unique observation key",
           received: "duplicate",
           validator: "beard-contract",
           stage: "ContractValidation",
         });
       }
-      ids.add(item.id);
+      ids.add(item.observationKey);
     }
   }
   for (
@@ -234,13 +279,38 @@ export function validateBeardPhotoContract(
   ) {
     for (
       const [referenceIndex, reference] of recommendation
-        .supportingObservationIds.entries()
+        .supportingObservationKeys.entries()
     ) {
+      if (!beardObservationKeyPattern.test(reference)) {
+        return validationFailure({
+          ruleCode: intelligenceRuleCodes.invalidObservationKey,
+          jsonPath:
+            `$.recommendations[${recommendationIndex}].supportingObservationKeys[${referenceIndex}]`,
+          expected: "valid observation key",
+          received: "invalid observation key",
+          validator: "beard-contract",
+          stage: "ContractValidation",
+        });
+      }
+      if (
+        recommendation.supportingObservationKeys.indexOf(reference) !==
+          referenceIndex
+      ) {
+        return validationFailure({
+          ruleCode: intelligenceRuleCodes.duplicateObservationId,
+          jsonPath:
+            `$.recommendations[${recommendationIndex}].supportingObservationKeys[${referenceIndex}]`,
+          expected: "unique observation key",
+          received: "duplicate",
+          validator: "beard-contract",
+          stage: "ContractValidation",
+        });
+      }
       if (!ids.has(reference)) {
         return validationFailure({
           ruleCode: intelligenceRuleCodes.brokenRecommendationReference,
           jsonPath:
-            `$.recommendations[${recommendationIndex}].supportingObservationIds[${referenceIndex}]`,
+            `$.recommendations[${recommendationIndex}].supportingObservationKeys[${referenceIndex}]`,
           expected: "known reference",
           received: "unknown reference",
           validator: "beard-contract",

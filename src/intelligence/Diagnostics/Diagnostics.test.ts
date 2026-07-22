@@ -41,6 +41,7 @@ describe("shared intelligence diagnostics", () => {
         "VAL-0012",
         "VAL-0013",
         "VAL-0014",
+        "VAL-0018",
         "VAL-0020",
         "VAL-0030",
         "CLN-0003",

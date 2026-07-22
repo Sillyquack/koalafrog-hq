@@ -8,8 +8,9 @@ import {
 
 const validResult = (): BeardPhotoAnalysisResult => ({
   analysisId: 'analysis-1',
-  schemaVersion: 1,
-  promptVersion: 'beard-photo-analysis-v1',
+  schemaVersion: 2,
+  contractVersion: 'beard-photo-result-contract-v2',
+  promptVersion: 'beard-photo-analysis-v4',
   provider: 'openai',
   model: 'configured-model',
   createdAt: '2026-07-21T12:00:00.000Z',
@@ -27,7 +28,7 @@ const validResult = (): BeardPhotoAnalysisResult => ({
   },
   observations: [
     {
-      id: 'observation-1',
+      observationKey: 'left_jaw_density',
       category: 'visible-density',
       statement: 'The left jaw appears less visually dense than the right jaw.',
       confidence: 0.72,
@@ -49,7 +50,7 @@ const validResult = (): BeardPhotoAnalysisResult => ({
       confidence: 0.68,
       priority: 'medium',
       expectedBenefit: 'Avoid removing more visual weight from the left jaw.',
-      supportingObservationIds: ['observation-1'],
+      supportingObservationKeys: ['left_jaw_density'],
       affectedZones: ['left-jaw'],
       toolConstraints: ['Use only tools already present in Beard Studio.'],
       proposedGuardStrategy: null,
@@ -81,7 +82,7 @@ describe('beard photo analysis contract', () => {
     expect(validateBeardPhotoAnalysisResult(measurement)).toBe(false)
 
     const missingEvidence = validResult()
-    missingEvidence.recommendations[0].supportingObservationIds = ['missing']
+    missingEvidence.recommendations[0].supportingObservationKeys = ['missing_key']
     expect(validateBeardPhotoAnalysisResult(missingEvidence)).toBe(false)
   })
 

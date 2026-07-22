@@ -2,6 +2,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { corsHeaders } from "npm:@supabase/supabase-js@^2/cors";
 import {
+  BEARD_PHOTO_CONTRACT_VERSION,
   BEARD_PHOTO_PROMPT_VERSION,
   type BeardPhotoAnalysisResult,
   type BeardPhotoView,
@@ -44,7 +45,7 @@ type Input = {
   byteSize: number;
 };
 type Body = {
-  schemaVersion: 1;
+  schemaVersion: 2;
   workspaceId: string;
   analysisId: string;
   idempotencyKey: string;
@@ -56,7 +57,7 @@ const uuid =
 function validBody(value: unknown): value is Body {
   const v = value as Body;
   if (
-    !v || v.schemaVersion !== 1 ||
+    !v || v.schemaVersion !== 2 ||
     ![v.workspaceId, v.analysisId, v.idempotencyKey, v.profileId].every((x) =>
       typeof x === "string" && uuid.test(x)
     ) || !Array.isArray(v.inputs) || v.inputs.length < 3 || v.inputs.length > 4
@@ -81,7 +82,7 @@ const outputItem = {
   type: "object",
   additionalProperties: false,
   required: [
-    "id",
+    "observationKey",
     "category",
     "statement",
     "confidence",
@@ -92,7 +93,12 @@ const outputItem = {
     "provenance",
   ],
   properties: {
-    id: { type: "string" },
+    observationKey: {
+      type: "string",
+      minLength: 3,
+      maxLength: 64,
+      pattern: "^[a-z][a-z0-9_]{2,63}$",
+    },
     category: { type: "string" },
     statement: { type: "string" },
     confidence: { type: "number", minimum: 0, maximum: 1 },
@@ -119,6 +125,7 @@ const resultSchema = (
   required: [
     "analysisId",
     "schemaVersion",
+    "contractVersion",
     "promptVersion",
     "provider",
     "model",
@@ -138,7 +145,11 @@ const resultSchema = (
   ],
   properties: {
     analysisId: { type: "string", const: meta.analysisId },
-    schemaVersion: { type: "integer", const: 1 },
+    schemaVersion: { type: "integer", const: 2 },
+    contractVersion: {
+      type: "string",
+      const: BEARD_PHOTO_CONTRACT_VERSION,
+    },
     promptVersion: { type: "string", const: BEARD_PHOTO_PROMPT_VERSION },
     provider: { type: "string", const: meta.provider },
     model: { type: "string", const: meta.model },
@@ -190,7 +201,7 @@ const resultSchema = (
           "confidence",
           "priority",
           "expectedBenefit",
-          "supportingObservationIds",
+          "supportingObservationKeys",
           "affectedZones",
           "toolConstraints",
           "proposedGuardStrategy",
@@ -204,9 +215,15 @@ const resultSchema = (
           confidence: { type: "number", minimum: 0, maximum: 1 },
           priority: { type: "string", enum: ["low", "medium", "high"] },
           expectedBenefit: { type: "string" },
-          supportingObservationIds: {
+          supportingObservationKeys: {
             type: "array",
-            items: { type: "string" },
+            minItems: 1,
+            items: {
+              type: "string",
+              minLength: 3,
+              maxLength: 64,
+              pattern: "^[a-z][a-z0-9_]{2,63}$",
+            },
           },
           affectedZones: { type: "array", items: { type: "string" } },
           toolConstraints: { type: "array", items: { type: "string" } },
@@ -945,13 +962,14 @@ Deno.serve(async (req) => {
   }
   stage("context_loaded");
   traceInstant("ContextBuild");
-  const inserted = await client.from("intelligence_analyses").insert({
+  const inserted = await trustedClient.from("intelligence_analyses").insert({
     id: body.analysisId,
     workspace_id: body.workspaceId,
     owner_user_id: userId,
     source_module: "beard-studio",
     analysis_type: "beard_photo_analysis",
-    schema_version: 1,
+    schema_version: 2,
+    contract_version: BEARD_PHOTO_CONTRACT_VERSION,
     prompt_version: BEARD_PHOTO_PROMPT_VERSION,
     status: "staging",
     idempotency_key: body.idempotencyKey,
@@ -996,7 +1014,7 @@ Deno.serve(async (req) => {
     mime_type: input.mimeType,
     byte_size: input.byteSize,
   }));
-  const inputInsert = await client.from("intelligence_analysis_inputs").insert(
+  const inputInsert = await trustedClient.from("intelligence_analysis_inputs").insert(
     inputRows,
   );
   if (inputInsert.error) {

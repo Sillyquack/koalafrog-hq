@@ -189,7 +189,7 @@ export async function runBeardPhotoAnalysis(
     invoked = true;
     const response = await supabase.functions.invoke('analyze-beard-photos', {
       body: {
-        schemaVersion: 1,
+        schemaVersion: 2,
         workspaceId: input.workspaceId,
         analysisId: input.analysisId,
         idempotencyKey: input.idempotencyKey,

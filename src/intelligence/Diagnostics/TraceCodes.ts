@@ -11,6 +11,7 @@ export const intelligenceRuleCodes = {
   unexpectedProperty: "VAL-0015",
   constMismatch: "VAL-0016",
   rangeViolation: "VAL-0017",
+  invalidObservationKey: "VAL-0018",
   semanticSafetyViolation: "VAL-0020",
   unsupportedExactMeasurement: "SEM-0001",
   medicalAssertion: "SEM-0002",
