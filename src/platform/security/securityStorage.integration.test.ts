@@ -168,6 +168,12 @@ run("local Supabase Auth, RLS, RPC, Storage, and cutover security", () => {
       "equipment_policies",
       "equipment_service_events",
       "process_equipment_requirements",
+      "procurement_requests",
+      "procurement_requested_items",
+      "procurement_supplier_offers",
+      "procurement_recommendations",
+      "procurement_research_jobs",
+      "procurement_offer_candidates",
     ];
     for (const table of tables) {
       const anon = await anonymous
@@ -215,6 +221,107 @@ run("local Supabase Auth, RLS, RPC, Storage, and cutover security", () => {
     expect(orderedRetry.data).toBe(ordered.data);
     expect((await userA.from("inventory_movements").select("id", { count: "exact", head: true })).count).toBe(beforeRaw);
     expect((await userA.from("packaging_inventory_movements").select("id", { count: "exact", head: true })).count).toBe(beforePackaging);
+  });
+
+  it("isolates request research and records ordered status without purchasing or stock writes", async () => {
+    // Generated database types refresh after the additive migration is applied.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const a=userA as any,b=userB as any;
+    const beforeImport=(await a.from("procurement_requests").select("id",{count:"exact",head:true})).count;
+    const importRequest=crypto.randomUUID(),now=new Date().toISOString();
+    const failedImport=await a.rpc("import_procurement_snapshot",{candidate_workspace_id:workspaceA,payload:{requests:[{id:importRequest,title:"Atomic import",status:"needed",category:"raw_material",priority:"normal",needed_by:null,notes:"",revision:1,created_at:now,updated_at:now}],requestedItems:[{id:crypto.randomUUID(),procurement_request_id:crypto.randomUUID(),name:"Disconnected",category:"raw_material",requested_quantity:1,unit:"kg",intended_product_ids:[],intended_formula_ids:[],required_specifications:[],acceptable_substitutes:[],priority:"normal",needed_by:null,notes:"",display_order:0,created_at:now,updated_at:now}],offers:[],recommendations:[]}});
+    expect(failedImport.error).not.toBeNull();
+    expect((await a.from("procurement_requests").select("id",{count:"exact",head:true})).count).toBe(beforeImport);
+    const supplier=await a.from("suppliers").insert({workspace_id:workspaceA,owner_id:userAId,legal_name:"Research supplier",supplier_type:"raw_material",status:"research"}).select("id").single();
+    expect(supplier.error).toBeNull();
+    const beforeRaw=(await a.from("inventory_movements").select("id",{count:"exact",head:true})).count;
+    const request=await a.from("procurement_requests").insert({workspace_id:workspaceA,owner_id:userAId,title:"Pilot oils",status:"needed",category:"raw_material",priority:"high"}).select("id").single();
+    expect(request.error).toBeNull();
+    const item=await a.from("procurement_requested_items").insert({workspace_id:workspaceA,owner_id:userAId,procurement_request_id:request.data.id,name:"Jojoba",category:"carrier_oil",requested_quantity:2,unit:"kg",priority:"high"}).select("id").single();
+    expect(item.error).toBeNull();
+    const offer=await a.from("procurement_supplier_offers").insert({workspace_id:workspaceA,owner_id:userAId,requested_item_id:item.data.id,supplier_id:supplier.data.id,product_title:"Jojoba 1 kg",package_quantity:1,package_unit:"kg",item_price:250,currency:"NOK",date_checked:"2026-07-23"}).select("id").single();
+    expect(offer.error).toBeNull();
+    expect((await a.from("procurement_recommendations").insert({workspace_id:workspaceA,owner_id:userAId,procurement_request_id:request.data.id,requested_item_id:item.data.id,supplier_offer_id:offer.data.id,summary:"Owner-reviewed choice",status:"recommended"})).error).toBeNull();
+    expect((await b.from("procurement_requests").select("id").eq("id",request.data.id)).data).toEqual([]);
+    expect((await a.from("procurement_requests").update({status:"ordered"}).eq("id",request.data.id)).error).toBeNull();
+    expect((await a.from("inventory_movements").select("id",{count:"exact",head:true})).count).toBe(beforeRaw);
+  });
+
+  it("keeps Procurement acceptance, retries, duplicates, and cancellation workspace-safe",async()=>{
+    // Generated database types refresh after the additive migration is applied.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const a=userA as any,b=userB as any;
+    const requestA=await a.from("procurement_requests").insert({workspace_id:workspaceA,owner_id:userAId,title:"Transactional review",category:"raw_material",priority:"normal"}).select("id").single();
+    const requestB=await b.from("procurement_requests").insert({workspace_id:workspaceB,owner_id:userBId,title:"Other workspace",category:"raw_material",priority:"normal"}).select("id").single();
+    const itemA=await a.from("procurement_requested_items").insert({workspace_id:workspaceA,owner_id:userAId,procurement_request_id:requestA.data.id,name:"Jojoba",category:"carrier_oil",requested_quantity:1,unit:"kg",priority:"normal"}).select("id").single();
+    const itemB=await b.from("procurement_requested_items").insert({workspace_id:workspaceB,owner_id:userBId,procurement_request_id:requestB.data.id,name:"Wax",category:"wax",requested_quantity:1,unit:"kg",priority:"normal"}).select("id").single();
+    const jobA=await a.from("procurement_research_jobs").insert({workspace_id:workspaceA,owner_id:userAId,procurement_request_id:requestA.data.id,provider:"mock",status:"running",started_at:new Date().toISOString()}).select("id").single();
+    expect((await b.from("procurement_research_jobs").insert({workspace_id:workspaceB,owner_id:userBId,procurement_request_id:requestB.data.id,provider:"mock-retry",status:"queued",retry_of_job_id:jobA.data.id})).error).not.toBeNull();
+    const jobB=await b.from("procurement_research_jobs").insert({workspace_id:workspaceB,owner_id:userBId,procurement_request_id:requestB.data.id,provider:"mock",status:"running"}).select("id").single();
+    const baseCandidate={supplier_name:"Evidence supplier",product_title:"Jojoba 1 kg",source_url:"https://supplier.invalid/jojoba",package_quantity:1,package_unit:"kg",source_date:"2026-07-23"};
+    const candidateA=await a.from("procurement_offer_candidates").insert({workspace_id:workspaceA,owner_id:userAId,research_job_id:jobA.data.id,procurement_request_id:requestA.data.id,requested_item_id:itemA.data.id,...baseCandidate}).select("id").single();
+    expect((await b.from("procurement_offer_candidates").insert({workspace_id:workspaceB,owner_id:userBId,research_job_id:jobB.data.id,procurement_request_id:requestB.data.id,requested_item_id:itemB.data.id,...baseCandidate,duplicate_of_candidate_id:candidateA.data.id})).error).not.toBeNull();
+    const foreignSupplier=await b.from("suppliers").insert({workspace_id:workspaceB,owner_id:userBId,legal_name:"Foreign supplier",supplier_type:"raw_material",status:"research"}).select("id").single();
+    const beforeOffers=(await a.from("procurement_supplier_offers").select("id",{count:"exact",head:true})).count;
+    expect((await a.rpc("accept_procurement_offer_candidate",{candidate_workspace_id:workspaceA,candidate_id:candidateA.data.id,selected_supplier_id:foreignSupplier.data.id,create_supplier:false})).error).not.toBeNull();
+    expect((await a.from("procurement_supplier_offers").select("id",{count:"exact",head:true})).count).toBe(beforeOffers);
+    const concurrent=await Promise.all([
+      a.rpc("accept_procurement_offer_candidate",{candidate_workspace_id:workspaceA,candidate_id:candidateA.data.id,selected_supplier_id:null,create_supplier:true}),
+      a.rpc("accept_procurement_offer_candidate",{candidate_workspace_id:workspaceA,candidate_id:candidateA.data.id,selected_supplier_id:null,create_supplier:true}),
+    ]);
+    expect(concurrent.filter(result=>!result.error)).toHaveLength(1);
+    expect(concurrent.filter(result=>result.error)).toHaveLength(1);
+    expect((await a.from("procurement_supplier_offers").select("id",{count:"exact",head:true})).count).toBe((beforeOffers??0)+1);
+    expect((await a.from("procurement_research_jobs").update({status:"cancelled",cancellation_requested_at:new Date().toISOString(),completed_at:new Date().toISOString()}).eq("id",jobA.data.id)).error).toBeNull();
+    expect((await a.rpc("publish_procurement_research_results",{candidate_workspace_id:workspaceA,candidate_job_id:jobA.data.id,candidates:[],terminal_status:"completed",provider_request_id:"late"})).error).not.toBeNull();
+    expect((await a.from("procurement_research_jobs").select("status,result_count").eq("id",jobA.data.id).single()).data).toEqual({status:"cancelled",result_count:0});
+    expect((await b.from("procurement_research_jobs").update({status:"partial",completed_at:new Date().toISOString()}).eq("id",jobB.data.id)).error).toBeNull();
+    expect((await b.from("procurement_research_jobs").insert({workspace_id:workspaceB,owner_id:userBId,procurement_request_id:requestB.data.id,provider:"mock",status:"queued",retry_of_job_id:jobB.data.id})).error).toBeNull();
+  });
+
+  it("atomically permits one bounded live invocation per running owned job",async()=>{
+    // Generated database types refresh after the additive migration is applied.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const a=userA as any,b=userB as any;
+    const createLiveJob=async(client:typeof a,workspaceId:string,ownerId:string,status:string,label:string)=>{
+      const request=await client.from("procurement_requests").insert({workspace_id:workspaceId,owner_id:ownerId,title:`Live gate ${label}`,category:"raw_material",priority:"normal"}).select("id").single();
+      expect(request.error).toBeNull();
+      const job=await client.from("procurement_research_jobs").insert({workspace_id:workspaceId,owner_id:ownerId,procurement_request_id:request.data.id,provider:"openai-web-search-v1",status,started_at:status==="running"?new Date().toISOString():null,completed_at:["partial","completed","failed","cancelled"].includes(status)?new Date().toISOString():null}).select("id").single();
+      expect(job.error).toBeNull();
+      return job.data.id as string;
+    };
+    for(const status of["queued","partial","completed","failed","cancelled"]){
+      const jobId=await createLiveJob(a,workspaceA,userAId,status,status);
+      const denied=await a.rpc("begin_procurement_live_invocation",{candidate_workspace_id:workspaceA,candidate_job_id:jobId,maximum_daily_invocations:100});
+      expect(denied.error?.message).toContain("LIVE_JOB_NOT_RUNNING");
+    }
+    const once=await createLiveJob(a,workspaceA,userAId,"running","once");
+    expect((await a.rpc("begin_procurement_live_invocation",{candidate_workspace_id:workspaceA,candidate_job_id:once,maximum_daily_invocations:100})).error).toBeNull();
+    expect((await a.rpc("begin_procurement_live_invocation",{candidate_workspace_id:workspaceA,candidate_job_id:once,maximum_daily_invocations:100})).error?.message).toContain("LIVE_JOB_ALREADY_INVOKED");
+    expect((await a.from("procurement_research_jobs").update({provider_invocation_count:0,live_invocation_started_at:null}).eq("id",once)).error?.message).toContain("LIVE_INVOCATION_STATE_MANAGED");
+    const concurrentJob=await createLiveJob(a,workspaceA,userAId,"running","concurrent");
+    const concurrent=await Promise.all([
+      a.rpc("begin_procurement_live_invocation",{candidate_workspace_id:workspaceA,candidate_job_id:concurrentJob,maximum_daily_invocations:100}),
+      a.rpc("begin_procurement_live_invocation",{candidate_workspace_id:workspaceA,candidate_job_id:concurrentJob,maximum_daily_invocations:100}),
+    ]);
+    expect(concurrent.filter(result=>!result.error)).toHaveLength(1);
+    expect(concurrent.filter(result=>result.error?.message.includes("LIVE_JOB_ALREADY_INVOKED"))).toHaveLength(1);
+    const ownerLimitOne=await createLiveJob(a,workspaceA,userAId,"running","owner-limit-one");
+    const ownerLimitTwo=await createLiveJob(a,workspaceA,userAId,"running","owner-limit-two");
+    const ownerLimitRace=await Promise.all([
+      a.rpc("begin_procurement_live_invocation",{candidate_workspace_id:workspaceA,candidate_job_id:ownerLimitOne,maximum_daily_invocations:3}),
+      a.rpc("begin_procurement_live_invocation",{candidate_workspace_id:workspaceA,candidate_job_id:ownerLimitTwo,maximum_daily_invocations:3}),
+    ]);
+    expect(ownerLimitRace.filter(result=>!result.error)).toHaveLength(1);
+    expect(ownerLimitRace.filter(result=>result.error?.message.includes("LIVE_DAILY_LIMIT_REACHED"))).toHaveLength(1);
+
+    const limitedOne=await createLiveJob(b,workspaceB,userBId,"running","limit-one");
+    const limitedTwo=await createLiveJob(b,workspaceB,userBId,"running","limit-two");
+    const limitedThree=await createLiveJob(b,workspaceB,userBId,"running","limit-three");
+    expect((await a.rpc("begin_procurement_live_invocation",{candidate_workspace_id:workspaceB,candidate_job_id:limitedOne,maximum_daily_invocations:2})).error?.message).toContain("LIVE_JOB_UNAVAILABLE");
+    expect((await b.rpc("begin_procurement_live_invocation",{candidate_workspace_id:workspaceB,candidate_job_id:limitedOne,maximum_daily_invocations:2})).error).toBeNull();
+    expect((await b.rpc("begin_procurement_live_invocation",{candidate_workspace_id:workspaceB,candidate_job_id:limitedTwo,maximum_daily_invocations:2})).error).toBeNull();
+    expect((await b.rpc("begin_procurement_live_invocation",{candidate_workspace_id:workspaceB,candidate_job_id:limitedThree,maximum_daily_invocations:2})).error?.message).toContain("LIVE_DAILY_LIMIT_REACHED");
   });
 
   it("enforces intelligence history ownership and cross-workspace integrity", async () => {

@@ -1,8 +1,23 @@
 begin;
 -- Run with Supabase CLI test harness. Synthetic JWT claims must be supplied by the harness.
-select plan(53);
+select plan(68);
 select has_table('public','workspaces','workspaces exists');
 select has_table('public','workspace_records','record store exists');
+select has_table('public','procurement_research_jobs','Procurement jobs exist');
+select has_table('public','procurement_offer_candidates','Procurement candidates exist');
+select has_function('public','accept_procurement_offer_candidate',array['uuid','uuid','uuid','boolean'],'transactional candidate acceptance exists');
+select has_function('public','publish_procurement_research_results',array['uuid','uuid','jsonb','text','text'],'guarded research publication exists');
+select has_column('public','procurement_research_jobs','live_invocation_started_at','live invocation time exists');
+select has_column('public','procurement_research_jobs','provider_invocation_count','bounded invocation count exists');
+select has_function('public','begin_procurement_live_invocation',array['uuid','uuid','integer'],'atomic live invocation gate exists');
+select is(has_function_privilege('authenticated','public.begin_procurement_live_invocation(uuid,uuid,integer)','EXECUTE'),true,'authenticated owner may request a live invocation');
+select is(has_function_privilege('anon','public.begin_procurement_live_invocation(uuid,uuid,integer)','EXECUTE'),false,'anonymous cannot request a live invocation');
+select is((select prosecdef from pg_proc where oid='public.begin_procurement_live_invocation(uuid,uuid,integer)'::regprocedure),false,'live invocation gate respects RLS as security invoker');
+select has_trigger('public','procurement_research_jobs','guard_procurement_live_invocation_state','managed invocation state trigger exists');
+select is(has_function_privilege('authenticated','public.accept_procurement_offer_candidate(uuid,uuid,uuid,boolean)','EXECUTE'),true,'authenticated owner may accept a candidate');
+select is(has_function_privilege('anon','public.accept_procurement_offer_candidate(uuid,uuid,uuid,boolean)','EXECUTE'),false,'anonymous cannot accept a candidate');
+select is((select prosecdef from pg_proc where oid='public.accept_procurement_offer_candidate(uuid,uuid,uuid,boolean)'::regprocedure),false,'candidate acceptance respects RLS as security invoker');
+select matches((select pg_get_expr(indpred,indrelid) from pg_index where indexrelid='public.procurement_one_active_provider_job'::regclass),'queued.*running','only queued and running jobs are active');
 select is((select relrowsecurity from pg_class where oid='public.workspace_records'::regclass),true,'record store RLS is enabled');
 select is((select public from storage.buckets where id='compliance-documents'),false,'document bucket is private');
 select has_table('public','intelligence_threads','intelligence threads exist');

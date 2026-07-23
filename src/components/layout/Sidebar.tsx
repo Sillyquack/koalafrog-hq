@@ -1,8 +1,9 @@
 import { NavLink } from 'react-router-dom'
 import { Beaker, Blend, BookOpen, Boxes, Calculator, ClipboardCheck, Factory, FileText, FlaskConical, Gauge, Leaf, Package, Rocket, Scissors, Settings, ShoppingBasket, Sparkles, TestTubeDiagonal, Toolbox, WandSparkles, X } from 'lucide-react'
 import { configuredWorkspaceRuntime, workspaceRuntimeLabel } from '../../platform/startup/runtimeMode'
+import { procurementNavigationItem } from '../../features/procurement/procurementNavigation'
 
-const navItems = [
+const navItems: Array<{to:string;label:string;icon:typeof Gauge;end?:boolean}> = [
   { to: '/', label: 'Dashboard', icon: Gauge, end: true },
   { to: '/product-studio', label: 'Product Studio', icon: WandSparkles },
   { to: '/grooming/beard-studio', label: 'Beard Studio', icon: Scissors },
@@ -15,6 +16,7 @@ const navItems = [
   { to: '/production', label: 'Production', icon: Factory },
   { to: '/testing', label: 'Testing', icon: TestTubeDiagonal },
   { to: '/suppliers', label: 'Suppliers', icon: Package },
+  procurementNavigationItem,
   { to: '/equipment', label: 'Equipment', icon: Toolbox },
   { to: '/costing', label: 'Costing', icon: Calculator },
   { to: '/compliance', label: 'Compliance', icon: ClipboardCheck },
