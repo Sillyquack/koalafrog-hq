@@ -14,7 +14,7 @@ const observationKeysMigration = readFileSync('supabase/migrations/2026072213000
 const supportDiagnosticMigration = readFileSync('supabase/migrations/20260722190000_beard_support_diagnostic_lookup.sql', 'utf8')
 const supportDiagnosticRepair = readFileSync('supabase/migrations/20260723044918_fix_beard_support_diagnostic_rpc.sql', 'utf8')
 const semanticV4Migration = readFileSync('supabase/migrations/20260723060732_beard_semantic_safety_v4.sql', 'utf8')
-const providerTraceMigration = readFileSync('supabase/migrations/20260723092822_beard_provider_timeout_observability.sql', 'utf8')
+const providerTraceMigration = readFileSync('supabase/migrations/20260723125652_beard_provider_timeout_observability.sql', 'utf8')
 const semanticV4Lookup = semanticV4Migration.slice(semanticV4Migration.indexOf('create or replace function public.lookup_beard_analysis_support_diagnostic'))
 const runtime = readFileSync('supabase/functions/_shared/beardPhotoRuntime.ts', 'utf8')
 
