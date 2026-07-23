@@ -12,6 +12,7 @@ const semanticV3Constraints = readFileSync('supabase/migrations/20260722101000_b
 const persistenceDiagnostics = readFileSync('supabase/migrations/20260722110000_beard_persistence_diagnostics.sql', 'utf8')
 const observationKeysMigration = readFileSync('supabase/migrations/20260722130000_beard_observation_keys.sql', 'utf8')
 const supportDiagnosticMigration = readFileSync('supabase/migrations/20260722190000_beard_support_diagnostic_lookup.sql', 'utf8')
+const supportDiagnosticRepair = readFileSync('supabase/migrations/20260723044918_fix_beard_support_diagnostic_rpc.sql', 'utf8')
 const runtime = readFileSync('supabase/functions/_shared/beardPhotoRuntime.ts', 'utf8')
 
 describe('beard photo intelligence boundaries', () => {
@@ -157,5 +158,9 @@ describe('beard photo intelligence boundaries', () => {
     expect(supportDiagnosticMigration).not.toMatch(/object_path|mime_type|byte_size|statement|reason|context_manifest/)
     expect(supportDiagnosticMigration).not.toMatch(/'resultPayload'|'providerUsage'|a\.result_payload\s*[,)]|a\.provider_usage\s*[,)]/)
     expect(supportDiagnosticMigration).not.toMatch(/message_text|pg_exception_detail|pg_exception_hint|createSignedUrl|signedUrl/i)
+    expect(supportDiagnosticRepair).toMatch(/revoke all on function public\.lookup_beard_analysis_support_diagnostic\(uuid,text\)[\s\S]*from public,anon,service_role/)
+    expect(supportDiagnosticRepair).toMatch(/grant execute on function public\.lookup_beard_analysis_support_diagnostic\(uuid,text\)[\s\S]*to authenticated/)
+    expect(supportDiagnosticRepair).toContain("notify pgrst, 'reload schema'")
+    expect(supportDiagnosticRepair).not.toMatch(/create function|replace function|update public\.|insert into public\.|delete from public\./i)
   })
 })

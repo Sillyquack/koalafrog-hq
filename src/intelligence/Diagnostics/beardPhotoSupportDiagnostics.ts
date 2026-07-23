@@ -42,6 +42,46 @@ export interface BeardPhotoSupportDiagnostic {
   providerUsagePresent: boolean
 }
 
+export type BeardPhotoSupportRpcCode =
+  | 'SUPPORT_RPC_NOT_FOUND'
+  | 'SUPPORT_RPC_UNAVAILABLE'
+  | 'SUPPORT_RPC_RESPONSE_INVALID'
+
+interface BeardPhotoSupportRpcError {
+  code?: unknown
+  [key: string]: unknown
+}
+
+export interface BeardPhotoSupportRpcResponse {
+  data: unknown
+  error: BeardPhotoSupportRpcError | null
+  status?: number
+}
+
+export class BeardPhotoSupportRpcFailure extends Error {
+  readonly code: Exclude<BeardPhotoSupportRpcCode, 'SUPPORT_RPC_NOT_FOUND'>
+  readonly metadata: Readonly<{
+    classification: Exclude<BeardPhotoSupportRpcCode, 'SUPPORT_RPC_NOT_FOUND'>
+    httpStatus?: number
+    postgrestCode?: string
+  }>
+
+  constructor(
+    code: Exclude<BeardPhotoSupportRpcCode, 'SUPPORT_RPC_NOT_FOUND'>,
+    response: Pick<BeardPhotoSupportRpcResponse, 'error' | 'status'>,
+  ) {
+    super('Support diagnostics are unavailable.')
+    this.name = 'BeardPhotoSupportRpcFailure'
+    this.code = code
+    const postgrestCode = typeof response.error?.code === 'string' ? response.error.code : undefined
+    this.metadata = {
+      classification: code,
+      ...(Number.isInteger(response.status) ? { httpStatus: response.status } : {}),
+      ...(postgrestCode ? { postgrestCode } : {}),
+    }
+  }
+}
+
 const supportIdPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 export const isValidBeardPhotoSupportId = (value: string) => supportIdPattern.test(value)
 const safePathPattern = /^\$(?:\.[A-Za-z][A-Za-z0-9]*|\[[0-9]+\])*$/
@@ -76,15 +116,23 @@ export function validateBeardPhotoSupportDiagnostic(value: unknown): value is Be
   return [value.provenance.provider,value.provenance.model,value.provenance.promptVersion,value.provenance.contractVersion,value.provenance.semanticVersion].every(nullableString) && [1,2].includes(value.provenance.schemaVersion as number)
 }
 
+export function interpretBeardPhotoSupportRpcResponse(response: BeardPhotoSupportRpcResponse) {
+  if (response.error) throw new BeardPhotoSupportRpcFailure('SUPPORT_RPC_UNAVAILABLE', response)
+  if (response.data === null) {
+    return { code: 'SUPPORT_RPC_NOT_FOUND' as const, diagnostic: undefined }
+  }
+  if (!validateBeardPhotoSupportDiagnostic(response.data)) {
+    throw new BeardPhotoSupportRpcFailure('SUPPORT_RPC_RESPONSE_INVALID', response)
+  }
+  return { code: undefined, diagnostic: response.data }
+}
+
 export async function lookupBeardPhotoSupportDiagnostic(workspaceId: string, supportId: string) {
   if (!supabase || !isValidBeardPhotoSupportId(supportId)) return undefined
-  const rpc = supabase.rpc as unknown as (name: string, args: Record<string,string>) => Promise<{data:unknown;error:{message:string}|null}>
+  const rpc = supabase.rpc as unknown as (name: string, args: Record<string,string>) => Promise<BeardPhotoSupportRpcResponse>
   const response = await rpc('lookup_beard_analysis_support_diagnostic', {
     candidate_workspace_id: workspaceId,
     candidate_support_id: supportId,
   })
-  if (response.error) throw new Error('Support diagnostics are unavailable.')
-  if (response.data === null) return undefined
-  if (!validateBeardPhotoSupportDiagnostic(response.data)) throw new Error('Support diagnostics returned an invalid response.')
-  return response.data
+  return interpretBeardPhotoSupportRpcResponse(response).diagnostic
 }

@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { validateBeardPhotoSupportDiagnostic } from './beardPhotoSupportDiagnostics'
+import {
+  BeardPhotoSupportRpcFailure,
+  interpretBeardPhotoSupportRpcResponse,
+  validateBeardPhotoSupportDiagnostic,
+} from './beardPhotoSupportDiagnostics'
 
 const safeDiagnostic = () => ({
   supportId: '844ba77b-fe3d-42c9-8830-f4f4afa40920',
@@ -36,5 +40,43 @@ describe('owner-safe beard support diagnostic contract', () => {
   it('rejects nested provider content and invalid structural paths', () => {
     expect(validateBeardPhotoSupportDiagnostic({...safeDiagnostic(),provenance:{...safeDiagnostic().provenance,prompt:'private prompt'}})).toBe(false)
     expect(validateBeardPhotoSupportDiagnostic({...safeDiagnostic(),jsonPath:'$.observations[left_cheek_private]'})).toBe(false)
+  })
+
+  it('classifies null as unavailable metadata without treating it as transport failure', () => {
+    expect(interpretBeardPhotoSupportRpcResponse({data:null,error:null,status:200})).toEqual({
+      code: 'SUPPORT_RPC_NOT_FOUND',
+      diagnostic: undefined,
+    })
+  })
+
+  it('classifies transport failures using metadata only', () => {
+    let failure: unknown
+    try {
+      interpretBeardPhotoSupportRpcResponse({
+        data: null,
+        error: { code: 'PGRST202', message: 'must not escape', details: 'private', hint: 'private' },
+        status: 404,
+      })
+    } catch (error) {
+      failure = error
+    }
+    expect(failure).toBeInstanceOf(BeardPhotoSupportRpcFailure)
+    expect(failure).toMatchObject({
+      code: 'SUPPORT_RPC_UNAVAILABLE',
+      message: 'Support diagnostics are unavailable.',
+      metadata: { classification: 'SUPPORT_RPC_UNAVAILABLE', httpStatus: 404, postgrestCode: 'PGRST202' },
+    })
+    expect(JSON.stringify(failure)).not.toMatch(/must not escape|private|details|hint/)
+  })
+
+  it('rejects unsafe response fields separately from transport failures', () => {
+    expect(() => interpretBeardPhotoSupportRpcResponse({
+      data: {...safeDiagnostic(),providerOutput:'private content'},
+      error:null,
+      status:200,
+    })).toThrow(expect.objectContaining({
+      code: 'SUPPORT_RPC_RESPONSE_INVALID',
+      metadata: { classification: 'SUPPORT_RPC_RESPONSE_INVALID', httpStatus: 200 },
+    }))
   })
 })
