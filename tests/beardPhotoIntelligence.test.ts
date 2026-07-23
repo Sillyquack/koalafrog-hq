@@ -115,12 +115,13 @@ describe('beard photo intelligence boundaries', () => {
     expect(edge).not.toMatch(/retry\s*[:=]|for\s*\([^)]*retry/i)
   })
 
-  it('returns the timeout support ID and always reaches cleanup after provider execution', () => {
+  it('forwards incoming cancellation and always reaches cleanup after provider execution', () => {
     expect(edge).toContain('error instanceof ProviderError')
     expect(edge).toMatch(/safeError\([\s\S]*correlationId/)
     expect(edge.indexOf('provider.analyzeBeardPhotos')).toBeLessThan(edge.indexOf('const removed = await client.storage'))
     expect(edge.indexOf('status: "failed"')).toBeLessThan(edge.indexOf('const removed = await client.storage'))
-    expect(edge).not.toContain('req.signal')
+    expect(edge).toContain('callerSignal: req.signal')
+    expect(edge).toContain('callerSignal: request.callerSignal')
   })
 
   it('persists no partial domain result when semantic validation fails and still reaches cleanup', () => {

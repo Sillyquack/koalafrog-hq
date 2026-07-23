@@ -70,7 +70,7 @@ export async function invokeProviderJson(options: {
   callerSignal?: AbortSignal;
   now?: () => number;
 }): Promise<{ response: Response; json: unknown; trace: ProviderInvocationTrace }> {
-  const now = options.now ?? Date.now;
+  const now = options.now ?? (() => performance.now());
   const startedAt = now();
   const controller = new AbortController();
   const trace: ProviderInvocationTrace = {
@@ -102,15 +102,36 @@ export async function invokeProviderJson(options: {
     throw new ProviderInvocationError(classification, { ...trace }, response);
   };
   const abort = (source: "application_deadline" | "caller") => {
+    if (controller.signal.aborted) return;
     trace.timeoutSource = source;
     trace.abortReasonCode = source;
-    if (!controller.signal.aborted) controller.abort(source);
+    controller.abort(source);
+  };
+  const enforceDeadline = (
+    phase: "response_headers" | "response_body",
+  ) => {
+    if (!controller.signal.aborted && now() - startedAt >= options.timeoutMs) {
+      abort("application_deadline");
+    }
+    if (!controller.signal.aborted) return;
+    if (trace.timeoutSource === "caller") {
+      return fail("PROVIDER_CALLER_ABORTED", "provider_transport_failed");
+    }
+    return fail(
+      phase === "response_headers"
+        ? "PROVIDER_TIMEOUT_RESPONSE_HEADERS"
+        : "PROVIDER_TIMEOUT_RESPONSE_BODY",
+      "provider_timeout_triggered",
+    );
   };
   const timer = setTimeout(() => abort("application_deadline"), options.timeoutMs);
   const callerAbort = () => abort("caller");
   options.callerSignal?.addEventListener("abort", callerAbort, { once: true });
   try {
-    if (options.callerSignal?.aborted) abort("caller");
+    if (options.callerSignal?.aborted) {
+      abort("caller");
+      return fail("PROVIDER_CALLER_ABORTED", "provider_transport_failed");
+    }
     trace.stage = "provider_dispatch_started";
     trace.requestDispatched = true;
     trace.stage = "provider_dispatched";
@@ -130,6 +151,7 @@ export async function invokeProviderJson(options: {
       trace.transportErrorCategory = "network";
       return fail("PROVIDER_TRANSPORT_NETWORK", "provider_transport_failed");
     }
+    enforceDeadline("response_headers");
     trace.responsePresent = true;
     trace.responseHeadersReceived = true;
     trace.stage = "provider_response_headers_received";
@@ -155,6 +177,7 @@ export async function invokeProviderJson(options: {
       trace.transportErrorCategory = "network";
       return fail("PROVIDER_TRANSPORT_NETWORK", "provider_transport_failed");
     }
+    enforceDeadline("response_body");
     trace.responseBodyCompleted = true;
     trace.stage = "provider_response_body_completed";
     let json: unknown;
@@ -164,6 +187,13 @@ export async function invokeProviderJson(options: {
       return fail("PROVIDER_RESPONSE_PARSE_FAILED", "provider_transport_failed");
     }
     trace.stage = "provider_response_parsed";
+    trace.usagePresent = Boolean(
+      json && typeof json === "object" && !Array.isArray(json) &&
+        (json as Record<string, unknown>).usage &&
+        typeof (json as Record<string, unknown>).usage === "object" &&
+        !Array.isArray((json as Record<string, unknown>).usage),
+    );
+    enforceDeadline("response_body");
     trace.stage = "provider_completed";
     trace.elapsedMs = Math.max(0, Math.round(now() - startedAt));
     return { response, json, trace: { ...trace } };

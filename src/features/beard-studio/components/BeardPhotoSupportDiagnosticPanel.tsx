@@ -32,7 +32,8 @@ export function BeardPhotoSupportDiagnosticPanel({workspaceId,supportId}:{worksp
       <div><dt>Provider stage</dt><dd>{shown(diagnostic.providerTrace.stage)}</dd></div>
       <div><dt>Provider classification</dt><dd>{shown(diagnostic.providerTrace.failureClassification)}</dd></div>
       <div><dt>Timeout source / budget</dt><dd>{shown(diagnostic.providerTrace.timeoutSource)} · {shown(diagnostic.providerTrace.timeoutBudgetMs)}{diagnostic.providerTrace.timeoutBudgetMs === null ? '' : ' ms'}</dd></div>
-      <div><dt>Provider / function elapsed</dt><dd>{shown(diagnostic.providerTrace.providerElapsedMs)} · {shown(diagnostic.providerTrace.edgeFunctionElapsedMs)}{diagnostic.providerTrace.edgeFunctionElapsedMs === null ? '' : ' ms'}</dd></div>
+      <div><dt>Provider elapsed</dt><dd>{shown(diagnostic.providerTrace.providerElapsedMs)}{diagnostic.providerTrace.providerElapsedMs === null ? '' : ' ms'}</dd></div>
+      <div><dt>Function elapsed</dt><dd>{shown(diagnostic.providerTrace.edgeFunctionElapsedMs)}{diagnostic.providerTrace.edgeFunctionElapsedMs === null ? '' : ' ms'}</dd></div>
       <div><dt>Terminal time</dt><dd>{shown(diagnostic.terminalAt)}</dd></div>
       <div><dt>Image cleanup</dt><dd>{shown(diagnostic.cleanupState)}{diagnostic.cleanupCompletedAt?` · ${diagnostic.cleanupCompletedAt}`:''}</dd></div>
     </dl>

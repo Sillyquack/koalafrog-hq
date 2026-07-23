@@ -254,6 +254,7 @@ interface VisionAnalysisProvider {
       correlationId: string;
       trace: IntelligenceTraceBuilder;
       reporter: TraceReporter;
+      callerSignal: AbortSignal;
     },
   ): Promise<{ result: BeardPhotoAnalysisResult; usage?: unknown }>;
 }
@@ -308,6 +309,7 @@ class OpenAIBeardVisionProvider implements VisionAnalysisProvider {
       correlationId: string;
       trace: IntelligenceTraceBuilder;
       reporter: TraceReporter;
+      callerSignal: AbortSignal;
     },
   ) {
     const finish = (
@@ -370,6 +372,7 @@ class OpenAIBeardVisionProvider implements VisionAnalysisProvider {
             }),
           }),
         timeoutMs: this.timeoutMs,
+        callerSignal: request.callerSignal,
       });
       response = invocation.response;
       raw = invocation.json;
@@ -479,7 +482,7 @@ class OpenAIBeardVisionProvider implements VisionAnalysisProvider {
         provider: this.id,
         model: this.model,
       });
-      throw new ProviderError("PROVIDER_INCOMPLETE", diagnostic);
+      throw new ProviderError("PROVIDER_INCOMPLETE", diagnostic, providerTrace);
     }
     finish("EnvelopeParsing", "succeeded", {
       provider: this.id,
@@ -510,7 +513,7 @@ class OpenAIBeardVisionProvider implements VisionAnalysisProvider {
         received: "unexpected",
         validator: "responses-refusal",
         stage: "ProviderResponse",
-      });
+      }, providerTrace);
     }
     const text = raw.output?.flatMap((x: any) => x.content ?? []).find((
       x: any,
@@ -540,7 +543,7 @@ class OpenAIBeardVisionProvider implements VisionAnalysisProvider {
         provider: this.id,
         model: this.model,
       });
-      throw new ProviderError("MISSING_OUTPUT_TEXT", diagnostic);
+      throw new ProviderError("MISSING_OUTPUT_TEXT", diagnostic, providerTrace);
     }
     let parsed: unknown;
     try {
@@ -564,7 +567,7 @@ class OpenAIBeardVisionProvider implements VisionAnalysisProvider {
         provider: this.id,
         model: this.model,
       });
-      throw new ProviderError("INVALID_JSON", diagnostic);
+      throw new ProviderError("INVALID_JSON", diagnostic, providerTrace);
     }
     finish("JsonParsing", "succeeded", {
       provider: this.id,
@@ -606,6 +609,7 @@ class OpenAIBeardVisionProvider implements VisionAnalysisProvider {
           ? "UNKNOWN_VALIDATION_FAILURE"
           : "SCHEMA_VALIDATION_FAILED",
         schemaValidation,
+        providerTrace,
       );
     }
     finish("SchemaValidation", "succeeded", {
@@ -640,6 +644,7 @@ class OpenAIBeardVisionProvider implements VisionAnalysisProvider {
           ? "UNKNOWN_VALIDATION_FAILURE"
           : "CONTRACT_VALIDATION_FAILED",
         contractValidation,
+        providerTrace,
       );
     }
     finish("ContractValidation", "succeeded", {
@@ -673,6 +678,7 @@ class OpenAIBeardVisionProvider implements VisionAnalysisProvider {
           ? "UNKNOWN_VALIDATION_FAILURE"
           : "SEMANTIC_VALIDATION_FAILED",
         semanticValidation,
+        providerTrace,
       );
     }
     finish("SemanticValidation", "succeeded", {
@@ -688,7 +694,7 @@ class OpenAIBeardVisionProvider implements VisionAnalysisProvider {
         received: "unknown",
         validator: "legacy-beard-validator",
         stage: "ContractValidation",
-      });
+      }, providerTrace);
     }
     return {
       result: typed,
@@ -1135,6 +1141,7 @@ Deno.serve(async (req) => {
       images,
       trace,
       reporter,
+      callerSignal: req.signal,
     });
     stage("provider_response_received", {
       provider: provider.id,

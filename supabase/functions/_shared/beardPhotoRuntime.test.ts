@@ -118,6 +118,133 @@ describe('beard provider runtime policy', () => {
     })
   })
 
+  it('does not dispatch when the incoming caller signal is already aborted', async () => {
+    const caller = new AbortController()
+    caller.abort()
+    let calls = 0
+    await expect(invokeProviderJson({
+      callerSignal: caller.signal,
+      request: () => {
+        calls += 1
+        return Promise.resolve(new Response('{}'))
+      },
+      timeoutMs: 60_000,
+    })).rejects.toMatchObject({
+      classification: 'PROVIDER_CALLER_ABORTED',
+      trace: { requestDispatched: false, timeoutSource: 'caller' },
+    })
+    expect(calls).toBe(0)
+  })
+
+  it('keeps an application deadline authoritative when caller cancellation follows before rejection', async () => {
+    vi.useFakeTimers()
+    const caller = new AbortController()
+    let abortEvents = 0
+    const request = invokeProviderJson({
+      callerSignal: caller.signal,
+      request: signal => new Promise((_resolve, reject) => {
+        signal.addEventListener('abort', () => {
+          abortEvents += 1
+          setTimeout(() => reject(new DOMException('aborted', 'AbortError')), 1)
+        }, { once: true })
+      }),
+      timeoutMs: 60_000,
+    })
+    const rejected = expect(request).rejects.toMatchObject({
+      classification: 'PROVIDER_TIMEOUT_RESPONSE_HEADERS',
+      trace: { timeoutSource: 'application_deadline', abortReasonCode: 'application_deadline' },
+    })
+    await vi.advanceTimersByTimeAsync(60_000)
+    caller.abort()
+    await vi.advanceTimersByTimeAsync(1)
+    await rejected
+    expect(abortEvents).toBe(1)
+  })
+
+  it('keeps caller cancellation authoritative when the application deadline follows', async () => {
+    vi.useFakeTimers()
+    const caller = new AbortController()
+    let abortEvents = 0
+    const request = invokeProviderJson({
+      callerSignal: caller.signal,
+      request: signal => new Promise((_resolve, reject) => {
+        signal.addEventListener('abort', () => {
+          abortEvents += 1
+          setTimeout(() => reject(new DOMException('aborted', 'AbortError')), 60_001)
+        }, { once: true })
+      }),
+      timeoutMs: 60_000,
+    })
+    const rejected = expect(request).rejects.toMatchObject({
+      classification: 'PROVIDER_CALLER_ABORTED',
+      trace: { timeoutSource: 'caller', abortReasonCode: 'caller' },
+    })
+    caller.abort()
+    await vi.advanceTimersByTimeAsync(60_001)
+    await rejected
+    expect(abortEvents).toBe(1)
+  })
+
+  it('rejects late headers even when the request ignores abort', async () => {
+    vi.useFakeTimers()
+    let calls = 0
+    const request = invokeProviderJson({
+      request: async () => {
+        calls += 1
+        await new Promise(resolve => setTimeout(resolve, 60_001))
+        return new Response('{"ok":true}')
+      },
+      timeoutMs: 60_000,
+    })
+    const rejected = expect(request).rejects.toMatchObject({
+      classification: 'PROVIDER_TIMEOUT_RESPONSE_HEADERS',
+      trace: { timeoutSource: 'application_deadline', responseHeadersReceived: false },
+    })
+    await vi.advanceTimersByTimeAsync(60_001)
+    await rejected
+    expect(calls).toBe(1)
+  })
+
+  it('rejects a late body even when the response ignores abort', async () => {
+    vi.useFakeTimers()
+    let calls = 0
+    const request = invokeProviderJson({
+      request: async () => {
+        calls += 1
+        const response = new Response('{}')
+        Object.defineProperty(response, 'text', {
+          value: async () => {
+            await new Promise(resolve => setTimeout(resolve, 60_001))
+            return '{"ok":true}'
+          },
+        })
+        return response
+      },
+      timeoutMs: 60_000,
+    })
+    const rejected = expect(request).rejects.toMatchObject({
+      classification: 'PROVIDER_TIMEOUT_RESPONSE_BODY',
+      trace: { timeoutSource: 'application_deadline', responseHeadersReceived: true, responseBodyCompleted: false },
+    })
+    await vi.advanceTimersByTimeAsync(60_001)
+    await rejected
+    expect(calls).toBe(1)
+  })
+
+  it.each([
+    [{ usage: { input_tokens: 1 } }, true],
+    [{ output: [] }, false],
+    [{ usage: 'unsafe raw usage' }, false],
+    [{ usage: ['unsafe raw usage'] }, false],
+  ])('records only safe usage metadata presence for %j', async (json, expected) => {
+    const result = await invokeProviderJson({
+      request: () => Promise.resolve(new Response(JSON.stringify(json))),
+      timeoutMs: 60_000,
+    })
+    expect(result.trace.usagePresent).toBe(expected)
+    expect(result.trace).not.toHaveProperty('usage')
+  })
+
   it('formats only allowlisted safe lifecycle metadata', () => {
     const entry = beardStageLog({ correlationId: 'support-id', analysisId: 'analysis-id', stage: 'provider_request_started', elapsedMs: 12.4, provider: 'openai', model: 'gpt-5' })
     expect(JSON.parse(entry)).toEqual({ event: 'beard_photo_analysis_stage', correlationId: 'support-id', analysisId: 'analysis-id', stage: 'provider_request_started', elapsedMs: 12, provider: 'openai', model: 'gpt-5' })
