@@ -13,3 +13,7 @@ verify_jwt = true
 # a valid Standard Webhooks signature checked against OPENAI_WEBHOOK_SECRET.
 [functions.procurement-live-research-webhook]
 verify_jwt = false
+
+# Invoked only by the configured scheduler with PROCUREMENT_RECONCILER_SECRET.
+[functions.procurement-live-research-reconcile]
+verify_jwt = false
