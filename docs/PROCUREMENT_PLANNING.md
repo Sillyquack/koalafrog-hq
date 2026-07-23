@@ -54,9 +54,9 @@ Operational controls:
 - `PROCUREMENT_LIVE_RESEARCH_ENABLED=true` enables the server function.
 - `OPENAI_API_KEY` is required and must be configured as a Supabase Function secret.
 - `OPENAI_PROCUREMENT_MODEL` defaults to `gpt-5.6`.
-- `PROCUREMENT_LIVE_TIMEOUT_MS` defaults to 30 seconds.
+- `PROCUREMENT_LIVE_TIMEOUT_MS` defaults to 75 seconds and accepts only 30–120 seconds.
 - `PROCUREMENT_LIVE_DAILY_LIMIT` defaults to five permitted live invocations per owner per rolling 24 hours.
-- A partial unique index prevents concurrent `queued` or `running` jobs for the same workspace, request, and provider. These are the only active states. `partial`, `completed`, `failed`, and `cancelled` are terminal snapshots; partial and failed jobs may be retried as a new job whose `retry_of_job_id` preserves lineage. Provider calls make at most three attempts, use bounded exponential backoff, honor `Retry-After`, and emit controlled timeout/rate-limit errors.
+- A partial unique index prevents concurrent `queued` or `running` jobs for the same workspace, request, and provider. These are the only active states. `partial`, `completed`, `failed`, and `cancelled` are terminal snapshots; partial and failed jobs may be retried as a new job whose `retry_of_job_id` preserves lineage. Each job makes exactly one provider call with no automatic retry. A human retry creates a new job and preserves lineage.
 
 Before any paid call, the Edge Function invokes the owner-scoped `begin_procurement_live_invocation` transaction. It serializes the rolling owner limit, locks the job, requires the exact `running` state and live provider, and atomically consumes the job's single invocation slot. Counts use permitted invocations from the preceding 24 hours rather than created jobs. Managed invocation columns cannot be reset through ordinary authenticated table writes.
 
@@ -65,6 +65,14 @@ Provider source dates are accepted only when they are real, non-future `YYYY-MM-
 Local setup uses `supabase secrets set PROCUREMENT_LIVE_RESEARCH_ENABLED=true OPENAI_API_KEY=...` plus the optional variables above, followed by serving/deploying `procurement-live-research`. No live-provider secret belongs in `.env.local`, browser storage, exports, or Procurement records.
 
 Cancellation is deliberately honest: the current synchronous provider call cannot be reliably terminated after it starts. Cancelling records `cancellation_requested_at` and makes the job terminal, but leaves `provider_stopped_at` null unless a future executor can prove termination. The transactional publication RPC locks the job and accepts results only while it is still `running`, so late responses cannot publish candidates or overwrite a cancelled job.
+
+### Durable provider diagnostics
+
+`procurement_provider_diagnostics` stores one allowlisted diagnostic record per consumed live-provider job. Existing jobs remain valid without a diagnostic row. The record contains booleans, bounded elapsed values, safe timestamps, timeout/abort classification, HTTP status, usage presence, validated-candidate count, terminal error code, and diagnostic version only. It never stores prompts, request bodies, raw provider responses, credentials, provider request IDs, source/supplier content, signed URLs, or personal data.
+
+Only the Edge Function's server-side service role can execute `persist_procurement_provider_diagnostic`. The fixed-search-path RPC verifies the supplied owner, workspace, active workspace lifecycle, live provider, and consumed invocation before writing. Authenticated browser users have owner-scoped read access through RLS, but have no insert, update, delete, or writer-RPC permission; anon and public have no access. Diagnostic persistence is best effort and cannot replace the provider's terminal result, trigger a retry, or publish candidates.
+
+Failed live jobs show a collapsed owner-only panel with safe stage, elapsed time, timeout, abort, completion flags, HTTP status, usage presence, and candidate count. Legacy rows and diagnostic-write failures render without the panel.
 
 Procurement is currently Supabase-only. The route requires `VITE_WORKSPACE_REPOSITORY=supabase`, authentication, and an active owner workspace. The deterministic mock provider also requires Supabase because jobs, candidates, provenance, and review decisions use the same durable RLS-protected workflow. The UI presents setup guidance instead of implying browser-local support. A future local adapter could implement the same repository and transactional semantics, but it is not part of Phases 1–3.
 

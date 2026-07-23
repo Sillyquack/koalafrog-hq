@@ -5319,6 +5319,89 @@ export type Database = {
           },
         ]
       }
+      procurement_provider_diagnostics: {
+        Row: {
+          abort_source: string | null
+          created_at: string
+          diagnostic_version: number
+          function_elapsed_ms: number | null
+          job_id: string
+          owner_id: string
+          provider_body_completed_at: string | null
+          provider_called: boolean
+          provider_elapsed_ms: number | null
+          provider_headers_at: string | null
+          provider_http_status: number | null
+          provider_parse_completed_at: string | null
+          provider_stage: string | null
+          provider_started_at: string | null
+          provider_validation_completed_at: string | null
+          terminal_error_code: string | null
+          timeout_limit_ms: number | null
+          timeout_stage: string | null
+          updated_at: string
+          usage_present: boolean | null
+          validated_candidate_count: number | null
+          workspace_id: string
+        }
+        Insert: {
+          abort_source?: string | null
+          created_at?: string
+          diagnostic_version?: number
+          function_elapsed_ms?: number | null
+          job_id: string
+          owner_id: string
+          provider_body_completed_at?: string | null
+          provider_called?: boolean
+          provider_elapsed_ms?: number | null
+          provider_headers_at?: string | null
+          provider_http_status?: number | null
+          provider_parse_completed_at?: string | null
+          provider_stage?: string | null
+          provider_started_at?: string | null
+          provider_validation_completed_at?: string | null
+          terminal_error_code?: string | null
+          timeout_limit_ms?: number | null
+          timeout_stage?: string | null
+          updated_at?: string
+          usage_present?: boolean | null
+          validated_candidate_count?: number | null
+          workspace_id: string
+        }
+        Update: {
+          abort_source?: string | null
+          created_at?: string
+          diagnostic_version?: number
+          function_elapsed_ms?: number | null
+          job_id?: string
+          owner_id?: string
+          provider_body_completed_at?: string | null
+          provider_called?: boolean
+          provider_elapsed_ms?: number | null
+          provider_headers_at?: string | null
+          provider_http_status?: number | null
+          provider_parse_completed_at?: string | null
+          provider_stage?: string | null
+          provider_started_at?: string | null
+          provider_validation_completed_at?: string | null
+          terminal_error_code?: string | null
+          timeout_limit_ms?: number | null
+          timeout_stage?: string | null
+          updated_at?: string
+          usage_present?: boolean | null
+          validated_candidate_count?: number | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "procurement_provider_diagnostics_workspace_id_job_id_fkey"
+            columns: ["workspace_id", "job_id"]
+            isOneToOne: false
+            referencedRelation: "procurement_research_jobs"
+            referencedColumns: ["workspace_id", "id"]
+          },
+        ]
+      }
       procurement_recommendations: {
         Row: {
           created_at: string
@@ -8415,6 +8498,29 @@ export type Database = {
           candidate_workspace_id: string
         }
         Returns: Json
+      }
+      persist_procurement_provider_diagnostic: {
+        Args: {
+          candidate_job_id: string
+          candidate_owner_id: string
+          candidate_workspace_id: string
+          diagnostic_abort_source: string
+          diagnostic_body_elapsed_ms: number
+          diagnostic_candidate_count: number
+          diagnostic_function_elapsed_ms: number
+          diagnostic_headers_elapsed_ms: number
+          diagnostic_parse_elapsed_ms: number
+          diagnostic_provider_called: boolean
+          diagnostic_provider_elapsed_ms: number
+          diagnostic_provider_http_status: number
+          diagnostic_provider_stage: string
+          diagnostic_terminal_error_code: string
+          diagnostic_timeout_limit_ms: number
+          diagnostic_timeout_stage: string
+          diagnostic_usage_present: boolean
+          diagnostic_validation_elapsed_ms: number
+        }
+        Returns: boolean
       }
       publish_procurement_research_results: {
         Args: {

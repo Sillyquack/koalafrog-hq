@@ -1,6 +1,6 @@
 begin;
 -- Run with Supabase CLI test harness. Synthetic JWT claims must be supplied by the harness.
-select plan(76);
+select plan(94);
 select has_table('public','workspaces','workspaces exists');
 select has_table('public','workspace_records','record store exists');
 select has_table('public','procurement_research_jobs','Procurement jobs exist');
@@ -14,6 +14,24 @@ select is(has_function_privilege('authenticated','public.begin_procurement_live_
 select is(has_function_privilege('anon','public.begin_procurement_live_invocation(uuid,uuid,integer)','EXECUTE'),false,'anonymous cannot request a live invocation');
 select is((select prosecdef from pg_proc where oid='public.begin_procurement_live_invocation(uuid,uuid,integer)'::regprocedure),false,'live invocation gate respects RLS as security invoker');
 select has_trigger('public','procurement_research_jobs','guard_procurement_live_invocation_state','managed invocation state trigger exists');
+select has_table('public','procurement_provider_diagnostics','Procurement provider diagnostics exist');
+select has_column('public','procurement_provider_diagnostics','provider_stage','Procurement provider stage exists');
+select has_column('public','procurement_provider_diagnostics','timeout_stage','Procurement timeout stage exists');
+select has_column('public','procurement_provider_diagnostics','provider_headers_at','Procurement provider header timestamp exists');
+select is((select relrowsecurity from pg_class where oid='public.procurement_provider_diagnostics'::regclass),true,'Procurement diagnostics RLS is enabled');
+select is(has_table_privilege('authenticated','public.procurement_provider_diagnostics','SELECT'),true,'owner role can read Procurement diagnostics');
+select is(has_table_privilege('authenticated','public.procurement_provider_diagnostics','INSERT'),false,'browser cannot insert Procurement diagnostics');
+select is(has_table_privilege('authenticated','public.procurement_provider_diagnostics','UPDATE'),false,'browser cannot update Procurement diagnostics');
+select is(has_table_privilege('authenticated','public.procurement_provider_diagnostics','DELETE'),false,'browser cannot delete Procurement diagnostics');
+select has_function('public','persist_procurement_provider_diagnostic',array['uuid','uuid','uuid','boolean','text','integer','integer','integer','integer','integer','integer','integer','text','text','integer','boolean','integer','text'],'trusted Procurement diagnostic writer exists');
+select is(has_function_privilege('service_role','public.persist_procurement_provider_diagnostic(uuid,uuid,uuid,boolean,text,integer,integer,integer,integer,integer,integer,integer,text,text,integer,boolean,integer,text)','EXECUTE'),true,'service role can persist Procurement diagnostics');
+select is(has_function_privilege('authenticated','public.persist_procurement_provider_diagnostic(uuid,uuid,uuid,boolean,text,integer,integer,integer,integer,integer,integer,integer,text,text,integer,boolean,integer,text)','EXECUTE'),false,'browser cannot forge Procurement diagnostics through RPC');
+select is(has_function_privilege('anon','public.persist_procurement_provider_diagnostic(uuid,uuid,uuid,boolean,text,integer,integer,integer,integer,integer,integer,integer,text,text,integer,boolean,integer,text)','EXECUTE'),false,'anonymous cannot persist Procurement diagnostics');
+select is(has_function_privilege('public','public.persist_procurement_provider_diagnostic(uuid,uuid,uuid,boolean,text,integer,integer,integer,integer,integer,integer,integer,text,text,integer,boolean,integer,text)','EXECUTE'),false,'public cannot persist Procurement diagnostics');
+select is((select prosecdef from pg_proc where oid='public.persist_procurement_provider_diagnostic(uuid,uuid,uuid,boolean,text,integer,integer,integer,integer,integer,integer,integer,text,text,integer,boolean,integer,text)'::regprocedure),true,'Procurement diagnostic writer is security definer');
+select is((select proowner::regrole::text from pg_proc where oid='public.persist_procurement_provider_diagnostic(uuid,uuid,uuid,boolean,text,integer,integer,integer,integer,integer,integer,integer,text,text,integer,boolean,integer,text)'::regprocedure),'postgres','Procurement diagnostic writer owner is postgres');
+select is((select proconfig[1] from pg_proc where oid='public.persist_procurement_provider_diagnostic(uuid,uuid,uuid,boolean,text,integer,integer,integer,integer,integer,integer,integer,text,text,integer,boolean,integer,text)'::regprocedure),'search_path=pg_catalog, public, pg_temp','Procurement diagnostic writer search path is fixed');
+select is(position('raw_response' in pg_get_functiondef('public.persist_procurement_provider_diagnostic(uuid,uuid,uuid,boolean,text,integer,integer,integer,integer,integer,integer,integer,text,text,integer,boolean,integer,text)'::regprocedure)),0,'Procurement diagnostic writer contract excludes raw provider output');
 select is(has_function_privilege('authenticated','public.accept_procurement_offer_candidate(uuid,uuid,uuid,boolean)','EXECUTE'),true,'authenticated owner may accept a candidate');
 select is(has_function_privilege('anon','public.accept_procurement_offer_candidate(uuid,uuid,uuid,boolean)','EXECUTE'),false,'anonymous cannot accept a candidate');
 select is((select prosecdef from pg_proc where oid='public.accept_procurement_offer_candidate(uuid,uuid,uuid,boolean)'::regprocedure),false,'candidate acceptance respects RLS as security invoker');

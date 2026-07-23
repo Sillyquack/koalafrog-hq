@@ -55,6 +55,21 @@ describe('Procurement provider timeout runtime',()=>{
   await expect(validateLate).rejects.toMatchObject({code:'PROVIDER_TIMEOUT',trace:{timeoutStage:'validation'}})
  })
 
+ it('rejects final completion after the deadline',async()=>{
+  let now=0
+  const late=invokeProcurementProvider({
+   request:async()=>response(),
+   validate,
+   timeoutMs:75_000,
+   now:()=>now,
+   candidateCount:value=>{now=75_001;return count(value)},
+  })
+  await expect(late).rejects.toMatchObject({
+   code:'PROVIDER_TIMEOUT',
+   trace:{timeoutStage:'completion',abortSource:'application_deadline'},
+  })
+ })
+
  it('keeps the first abort source immutable',async()=>{
   const caller=new AbortController(),pending=deferred<Response>()
   const deadlineFirst=invokeProcurementProvider({request:()=>pending.promise,validate,timeoutMs:75_000,callerSignal:caller.signal})

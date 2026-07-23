@@ -3,6 +3,7 @@ import{corsHeaders}from'npm:@supabase/supabase-js@^2/cors'
 import{buildLiveResearchPrompt,LIVE_RESEARCH_SCHEMA_VERSION,validateLiveResearchResponse,type LiveResearchRequest}from'../_shared/procurementLiveResearchContract.ts'
 import{authenticatedUserClientOptions}from'../_shared/authenticatedUserClient.ts'
 import{ProcurementProviderRuntimeError,invokeProcurementProvider,parseProcurementProviderTimeout,procurementProviderTraceLog}from'../_shared/procurementProviderRuntime.ts'
+import{persistProcurementProviderDiagnostic}from'../_shared/procurementProviderDiagnostics.ts'
 const jsonHeaders={...corsHeaders,'content-type':'application/json'}
 const safeError=(code:string,message:string,status=400)=>new Response(JSON.stringify({error:{code,message}}),{status,headers:jsonHeaders})
 const responseSchema={type:'object',additionalProperties:false,required:['schemaVersion','partial','candidates','providerNotes'],properties:{schemaVersion:{type:'integer',const:LIVE_RESEARCH_SCHEMA_VERSION},partial:{type:'boolean'},providerNotes:{type:'string'},candidates:{type:'array',maxItems:20,items:{type:'object',additionalProperties:false,required:['requestedItemId','supplierName','supplierType','productTitle','sourceUrl','packageQuantity','packageUnit','itemPrice','currency','moq','shippingCost','deliveryEstimateDays','stockStatus','coaAvailability','sdsAvailability','technicalDocumentAvailability','firstOrderDiscount','sourceDate','evidence','sourceNotes','confidence'],properties:{requestedItemId:{type:'string'},supplierName:{type:'string'},supplierType:{type:'string',enum:['manufacturer','distributor','specialist_cosmetic_supplier','marketplace','unknown']},productTitle:{type:'string'},sourceUrl:{type:'string'},packageQuantity:{type:['number','null']},packageUnit:{type:['string','null']},itemPrice:{type:['number','null']},currency:{type:['string','null']},moq:{type:['number','null']},shippingCost:{type:['number','null']},deliveryEstimateDays:{type:['integer','null']},stockStatus:{type:'string',enum:['unknown','in_stock','limited','backorder','out_of_stock']},coaAvailability:{type:'string',enum:['unknown','available','unavailable','partial']},sdsAvailability:{type:'string',enum:['unknown','available','unavailable','partial']},technicalDocumentAvailability:{type:'string',enum:['unknown','available','unavailable','partial']},firstOrderDiscount:{type:['number','null']},sourceDate:{type:'string'},sourceNotes:{type:'string'},confidence:{type:'string',enum:['low','medium','high','unknown']},evidence:{type:'array',items:{type:'object',additionalProperties:false,required:['field','state','sourceUrl','snippet'],properties:{field:{type:'string'},state:{type:'string',enum:['unknown','inferred','reported','verified']},sourceUrl:{type:['string','null']},snippet:{type:['string','null']}}}}}}}}}
@@ -51,14 +52,40 @@ Deno.serve(async request=>{
   return safeError(code,code==='LIVE_DAILY_LIMIT_REACHED'?'Live research daily limit reached.':code==='LIVE_JOB_ALREADY_INVOKED'?'This research job attempt was already invoked.':code==='LIVE_JOB_NOT_RUNNING'?'The research job is not running.':'Research job unavailable.',status)
  }
  console.info(JSON.stringify({event:'procurement_invocation_consumed',providerCalled:false,functionElapsedMs:Math.max(0,Math.round(performance.now()-functionStartedAt))}))
+ const serviceRoleKey=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+ const diagnosticClient=serviceRoleKey?createClient(
+  Deno.env.get('SUPABASE_URL')!,
+  serviceRoleKey,
+  {auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false}},
+ ):null
+ const persistDiagnostic=async(
+  trace:import('../_shared/procurementProviderRuntime.ts').ProcurementProviderTrace|null,
+  terminalErrorCode?:string|null,
+ )=>{
+  if(!diagnosticClient){
+   console.error(JSON.stringify({event:'procurement_diagnostic_persistence_failed',failure:'service_unavailable'}))
+   return false
+  }
+  return persistProcurementProviderDiagnostic(diagnosticClient,{
+   workspaceId:body.workspaceId,
+   jobId:body.jobId,
+   ownerId:user.data.user.id,
+   trace,
+   functionElapsedMs:performance.now()-functionStartedAt,
+   terminalErrorCode,
+  })
+ }
+ await persistDiagnostic(null)
  try{
   const output=await callOpenAI(body,key,model,parseProcurementProviderTimeout(Deno.env.get('PROCUREMENT_LIVE_TIMEOUT_MS')),request.signal)
   console.info(procurementProviderTraceLog(output.trace,'completed',performance.now()-functionStartedAt))
+  await persistDiagnostic(output.trace)
   return new Response(JSON.stringify(output.value),{headers:jsonHeaders})
  }catch(error){
   const runtime=error instanceof ProcurementProviderRuntimeError?error:undefined
   if(runtime)console.error(procurementProviderTraceLog(runtime.trace,'failed',performance.now()-functionStartedAt))
   else console.error(JSON.stringify({event:'procurement_provider_terminal',terminalOutcome:'failed',terminalErrorCode:'PROVIDER_FAILURE',providerCalled:true,functionElapsedMs:Math.max(0,Math.round(performance.now()-functionStartedAt))}))
+  await persistDiagnostic(runtime?.trace??null,runtime?.code??'PROVIDER_FAILURE')
   const code=runtime?.code==='PROVIDER_TIMEOUT'?'PROVIDER_TIMEOUT':runtime?.code==='PROVIDER_CALLER_ABORTED'?'PROVIDER_CANCELLED':runtime?.code==='PROVIDER_HTTP_ERROR'&&runtime.response?.status===429?'PROVIDER_RATE_LIMIT':runtime?.code==='PROVIDER_PARSE_ERROR'||runtime?.code==='PROVIDER_INVALID_RESPONSE'?'PROVIDER_INVALID_RESPONSE':'PROVIDER_FAILURE'
   const status=code==='PROVIDER_RATE_LIMIT'?429:code==='PROVIDER_CANCELLED'?499:502
   return safeError(code,code==='PROVIDER_CANCELLED'?'Live research request was cancelled.':'Live research provider could not complete this job.',status)

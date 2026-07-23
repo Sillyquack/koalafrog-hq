@@ -297,6 +297,18 @@ run("local Supabase Auth, RLS, RPC, Storage, and cutover security", () => {
     }
     const once=await createLiveJob(a,workspaceA,userAId,"running","once");
     expect((await a.rpc("begin_procurement_live_invocation",{candidate_workspace_id:workspaceA,candidate_job_id:once,maximum_daily_invocations:100})).error).toBeNull();
+    const safeDiagnostic={candidate_workspace_id:workspaceA,candidate_job_id:once,candidate_owner_id:userAId,diagnostic_provider_called:true,diagnostic_provider_stage:"provider_timeout_triggered",diagnostic_headers_elapsed_ms:null,diagnostic_body_elapsed_ms:null,diagnostic_parse_elapsed_ms:null,diagnostic_validation_elapsed_ms:null,diagnostic_provider_elapsed_ms:75000,diagnostic_function_elapsed_ms:75483,diagnostic_timeout_limit_ms:75000,diagnostic_timeout_stage:"response_headers",diagnostic_abort_source:"application_deadline",diagnostic_provider_http_status:null,diagnostic_usage_present:false,diagnostic_candidate_count:null,diagnostic_terminal_error_code:"PROVIDER_TIMEOUT"};
+    const trusted=admin as unknown as{rpc:(name:string,args:Record<string,unknown>)=>Promise<{data:unknown;error:unknown}>};
+    const persisted=await trusted.rpc("persist_procurement_provider_diagnostic",safeDiagnostic);
+    expect(persisted.error).toBeNull();
+    expect(persisted.data).toBe(true);
+    expect((await a.from("procurement_provider_diagnostics").select("timeout_stage,abort_source,provider_elapsed_ms").eq("job_id",once).single()).data).toEqual({timeout_stage:"response_headers",abort_source:"application_deadline",provider_elapsed_ms:75000});
+    expect((await b.from("procurement_provider_diagnostics").select("job_id").eq("job_id",once)).data).toEqual([]);
+    expect((await anonymous.from("procurement_provider_diagnostics").select("job_id").eq("job_id",once)).error).not.toBeNull();
+    expect((await a.from("procurement_provider_diagnostics").insert({job_id:once,workspace_id:workspaceA,owner_id:userAId})).error).not.toBeNull();
+    expect((await a.from("procurement_provider_diagnostics").update({timeout_stage:"completion"}).eq("job_id",once)).error).not.toBeNull();
+    expect((await a.rpc("persist_procurement_provider_diagnostic",safeDiagnostic)).error).not.toBeNull();
+    expect((await trusted.rpc("persist_procurement_provider_diagnostic",{...safeDiagnostic,candidate_owner_id:userBId})).data).toBe(false);
     expect((await a.rpc("begin_procurement_live_invocation",{candidate_workspace_id:workspaceA,candidate_job_id:once,maximum_daily_invocations:100})).error?.message).toContain("LIVE_JOB_ALREADY_INVOKED");
     expect((await a.from("procurement_research_jobs").update({provider_invocation_count:0,live_invocation_started_at:null}).eq("id",once)).error?.message).toContain("LIVE_INVOCATION_STATE_MANAGED");
     const concurrentJob=await createLiveJob(a,workspaceA,userAId,"running","concurrent");
