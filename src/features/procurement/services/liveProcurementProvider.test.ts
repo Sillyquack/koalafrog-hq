@@ -84,6 +84,17 @@ describe('live procurement provider authentication',()=>{
   }))
  })
 
+ it('recovers when the SDK network error context is not a Response',async()=>{
+  client.functions.invoke.mockResolvedValue({
+   data:null,error:{message:'network',context:{cause:'connection reset'}},
+  })
+  const provider=new OpenAIWebResearchProvider()
+  provider.prepareJob('job-1','workspace-1')
+  await expect(provider.discoverOffers(snapshot)).resolves.toEqual(expect.objectContaining({
+   asyncAccepted:true,providerNotes:'Research submission status is being reconciled.',
+  }))
+ })
+
  it('does not hide a definitive authenticated rejection',async()=>{
   client.functions.invoke.mockResolvedValue({
    data:null,error:{context:new Response(JSON.stringify({error:{code:'INVALID_INPUT',message:'Invalid.'}}),{status:400})},

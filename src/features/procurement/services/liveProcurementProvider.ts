@@ -23,9 +23,11 @@ export class OpenAIWebResearchProvider implements ProcurementResearchProvider{
   const input:LiveResearchRequest={schemaVersion:1,workspaceId:this.workspaceId,jobId:this.jobId,requestId:crypto.randomUUID(),deliveryCountry:snapshot.constraints.deliveryCountry,documentationRequirements:snapshot.constraints.documentationRequirements,preferredSuppliers:snapshot.constraints.preferredSuppliers,excludedSuppliers:snapshot.constraints.excludedSuppliers,items:snapshot.items.map(item=>({id:item.id,name:item.name,category:item.category,quantity:item.requested_quantity,unit:item.unit,requiredSpecifications:item.required_specifications,acceptableSubstitutes:item.acceptable_substitutes,neededBy:item.needed_by,priority:item.priority,notes:item.notes}))}
   const response=await supabase.functions.invoke('procurement-live-research',{headers:{Authorization:`Bearer ${accessToken}`},body:input})
   if(response.error){
-   const context=response.error.context as Response|undefined
-   const payload:{error?:{code?:string;message?:string}}=await context?.json().catch(()=>({}))??{}
-   const definitive=Boolean(context&&[400,401,403,404,409,422,429].includes(context.status))
+   const context=response.error.context
+   const responseContext=context instanceof Response?context:null
+   const payload:{error?:{code?:string;message?:string}}=responseContext
+    ?await responseContext.json().catch(()=>({})):{}
+   const definitive=Boolean(responseContext&&[400,401,403,404,409,422,429].includes(responseContext.status))
    if(!definitive){
     const state=await supabase.from('procurement_research_jobs')
      .select('status,provider_invocation_count,background_lifecycle_status')
