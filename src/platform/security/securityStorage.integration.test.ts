@@ -247,6 +247,38 @@ run("local Supabase Auth, RLS, RPC, Storage, and cutover security", () => {
     expect((await a.from("inventory_movements").select("id",{count:"exact",head:true})).count).toBe(beforeRaw);
   });
 
+  it("keeps Procurement acceptance, retries, duplicates, and cancellation workspace-safe",async()=>{
+    // Generated database types refresh after the additive migration is applied.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const a=userA as any,b=userB as any;
+    const requestA=await a.from("procurement_requests").insert({workspace_id:workspaceA,owner_id:userAId,title:"Transactional review",category:"raw_material",priority:"normal"}).select("id").single();
+    const requestB=await b.from("procurement_requests").insert({workspace_id:workspaceB,owner_id:userBId,title:"Other workspace",category:"raw_material",priority:"normal"}).select("id").single();
+    const itemA=await a.from("procurement_requested_items").insert({workspace_id:workspaceA,owner_id:userAId,procurement_request_id:requestA.data.id,name:"Jojoba",category:"carrier_oil",requested_quantity:1,unit:"kg",priority:"normal"}).select("id").single();
+    const itemB=await b.from("procurement_requested_items").insert({workspace_id:workspaceB,owner_id:userBId,procurement_request_id:requestB.data.id,name:"Wax",category:"wax",requested_quantity:1,unit:"kg",priority:"normal"}).select("id").single();
+    const jobA=await a.from("procurement_research_jobs").insert({workspace_id:workspaceA,owner_id:userAId,procurement_request_id:requestA.data.id,provider:"mock",status:"running",started_at:new Date().toISOString()}).select("id").single();
+    expect((await b.from("procurement_research_jobs").insert({workspace_id:workspaceB,owner_id:userBId,procurement_request_id:requestB.data.id,provider:"mock-retry",status:"queued",retry_of_job_id:jobA.data.id})).error).not.toBeNull();
+    const jobB=await b.from("procurement_research_jobs").insert({workspace_id:workspaceB,owner_id:userBId,procurement_request_id:requestB.data.id,provider:"mock",status:"running"}).select("id").single();
+    const baseCandidate={supplier_name:"Evidence supplier",product_title:"Jojoba 1 kg",source_url:"https://supplier.invalid/jojoba",package_quantity:1,package_unit:"kg",source_date:"2026-07-23"};
+    const candidateA=await a.from("procurement_offer_candidates").insert({workspace_id:workspaceA,owner_id:userAId,research_job_id:jobA.data.id,procurement_request_id:requestA.data.id,requested_item_id:itemA.data.id,...baseCandidate}).select("id").single();
+    expect((await b.from("procurement_offer_candidates").insert({workspace_id:workspaceB,owner_id:userBId,research_job_id:jobB.data.id,procurement_request_id:requestB.data.id,requested_item_id:itemB.data.id,...baseCandidate,duplicate_of_candidate_id:candidateA.data.id})).error).not.toBeNull();
+    const foreignSupplier=await b.from("suppliers").insert({workspace_id:workspaceB,owner_id:userBId,legal_name:"Foreign supplier",supplier_type:"raw_material",status:"research"}).select("id").single();
+    const beforeOffers=(await a.from("procurement_supplier_offers").select("id",{count:"exact",head:true})).count;
+    expect((await a.rpc("accept_procurement_offer_candidate",{candidate_workspace_id:workspaceA,candidate_id:candidateA.data.id,selected_supplier_id:foreignSupplier.data.id,create_supplier:false})).error).not.toBeNull();
+    expect((await a.from("procurement_supplier_offers").select("id",{count:"exact",head:true})).count).toBe(beforeOffers);
+    const concurrent=await Promise.all([
+      a.rpc("accept_procurement_offer_candidate",{candidate_workspace_id:workspaceA,candidate_id:candidateA.data.id,selected_supplier_id:null,create_supplier:true}),
+      a.rpc("accept_procurement_offer_candidate",{candidate_workspace_id:workspaceA,candidate_id:candidateA.data.id,selected_supplier_id:null,create_supplier:true}),
+    ]);
+    expect(concurrent.filter(result=>!result.error)).toHaveLength(1);
+    expect(concurrent.filter(result=>result.error)).toHaveLength(1);
+    expect((await a.from("procurement_supplier_offers").select("id",{count:"exact",head:true})).count).toBe((beforeOffers??0)+1);
+    expect((await a.from("procurement_research_jobs").update({status:"cancelled",cancellation_requested_at:new Date().toISOString(),completed_at:new Date().toISOString()}).eq("id",jobA.data.id)).error).toBeNull();
+    expect((await a.rpc("publish_procurement_research_results",{candidate_workspace_id:workspaceA,candidate_job_id:jobA.data.id,candidates:[],terminal_status:"completed",provider_request_id:"late"})).error).not.toBeNull();
+    expect((await a.from("procurement_research_jobs").select("status,result_count").eq("id",jobA.data.id).single()).data).toEqual({status:"cancelled",result_count:0});
+    expect((await b.from("procurement_research_jobs").update({status:"partial",completed_at:new Date().toISOString()}).eq("id",jobB.data.id)).error).toBeNull();
+    expect((await b.from("procurement_research_jobs").insert({workspace_id:workspaceB,owner_id:userBId,procurement_request_id:requestB.data.id,provider:"mock",status:"queued",retry_of_job_id:jobB.data.id})).error).toBeNull();
+  });
+
   it("enforces intelligence history ownership and cross-workspace integrity", async () => {
     const threadId=crypto.randomUUID(),runId=crypto.randomUUID(),now=new Date().toISOString();
     expect((await userA.from('intelligence_threads').insert({id:threadId,workspace_id:workspaceA,owner_user_id:userAId,mode:'scent_exploration',title:'A study',created_at:now,updated_at:now})).error).toBeNull();

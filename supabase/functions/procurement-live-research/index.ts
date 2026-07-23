@@ -1,6 +1,6 @@
 import{createClient}from'npm:@supabase/supabase-js@2'
 import{corsHeaders}from'npm:@supabase/supabase-js@^2/cors'
-import{buildLiveResearchPrompt,LIVE_RESEARCH_SCHEMA_VERSION,validateLiveResearchResponse,type LiveResearchRequest}from'../../../src/features/procurement/domain/liveResearchContract.ts'
+import{buildLiveResearchPrompt,LIVE_RESEARCH_SCHEMA_VERSION,validateLiveResearchResponse,type LiveResearchRequest}from'../_shared/procurementLiveResearchContract.ts'
 const jsonHeaders={...corsHeaders,'content-type':'application/json'}
 const safeError=(code:string,message:string,requestId:string,status=400)=>new Response(JSON.stringify({error:{code,message,requestId}}),{status,headers:jsonHeaders})
 const sleep=(ms:number)=>new Promise(resolve=>setTimeout(resolve,ms))

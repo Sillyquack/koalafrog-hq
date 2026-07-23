@@ -1,7 +1,7 @@
 import{describe,expect,it}from'vitest'
 import{buildLiveResearchPrompt,safeSourceUrl,validateLiveResearchResponse,type LiveResearchRequest}from'./liveResearchContract'
-const candidate={requestedItemId:'item-1',supplierName:'Established Oils AS',supplierType:'distributor',productTitle:'Refined jojoba oil 1 kg',sourceUrl:'https://supplier.test/products/jojoba',packageQuantity:1,packageUnit:'KG',itemPrice:249,currency:'nok',moq:1,shippingCost:null,deliveryEstimateDays:4,stockStatus:'in_stock',coaAvailability:'available',sdsAvailability:'available',technicalDocumentAvailability:'unknown',firstOrderDiscount:null,sourceDate:'2026-07-22',evidence:[{field:'coaAvailability',state:'reported',sourceUrl:'https://supplier.test/products/jojoba',snippet:'COA available on request.'},{field:'itemPrice',state:'verified',sourceUrl:'https://supplier.test/products/jojoba',snippet:'NOK 249.'}],sourceNotes:'Product page and commercial terms checked.',confidence:'high'}
-const response={schemaVersion:1,partial:true,candidates:[candidate],providerNotes:'Shipping unresolved.'}
+import response from'./fixtures/liveResearchResponse.v1.json'
+const candidate=response.candidates[0]
 describe('live research contract',()=>{
  it('normalizes a sanitized recorded response',()=>{const result=validateLiveResearchResponse(response,['item-1'],new Date('2026-07-23'));expect(result.candidates[0]).toMatchObject({currency:'NOK',packageUnit:'kg',confidence:'high',coaAvailability:'available'});expect(result.partial).toBe(true)})
  it('rejects malformed and unsafe provider output',()=>{expect(()=>validateLiveResearchResponse({schemaVersion:2},['item-1'])).toThrow('LIVE_RESPONSE_MALFORMED');expect(()=>validateLiveResearchResponse({...response,candidates:[{...candidate,sourceUrl:'http://localhost/private'}]},['item-1'])).toThrow('LIVE_CANDIDATE_0_UNSAFE')})

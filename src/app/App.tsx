@@ -40,12 +40,7 @@ import { DevelopmentPage } from '../features/development/DevelopmentPage'
 import { ExperimentReviewPage } from '../features/development/ExperimentReviewPage'
 import { DevelopmentExperimentPage } from '../features/development/DevelopmentExperimentPage'
 import { BiblePage } from '../features/knowledge/BiblePage'
-import { SuppliersPage } from '../features/procurement/SuppliersPage'
-import { SupplierDetailPage } from '../features/procurement/SupplierDetailPage'
-import { EquipmentPage } from '../features/procurement/EquipmentPage'
-import { EquipmentDetailPage } from '../features/procurement/EquipmentDetailPage'
-import { ProcurementPage } from '../features/procurement/ProcurementPage'
-import { ProcurementRequestPage } from '../features/procurement/ProcurementRequestPage'
+import { procurementRoutes } from '../features/procurement/procurementRoutes'
 import { ProductStudioPage } from '../features/product-studio/ProductStudioPage'
 import { BeardOilStudioPage } from '../features/product-studio/BeardOilStudioPage'
 import { BeardButterStudioPage } from '../features/product-studio/BeardButterStudioPage'
@@ -121,12 +116,7 @@ export function App() {
         <Route path="development" element={<DevelopmentPage />} />
         <Route path="development/new" element={<ExperimentReviewPage />} />
         <Route path="development/:id" element={<DevelopmentExperimentPage />} />
-        <Route path="suppliers" element={<SuppliersPage />} />
-        <Route path="suppliers/:id" element={<SupplierDetailPage />} />
-        <Route path="procurement" element={<ProcurementPage />} />
-        <Route path="procurement/:id" element={<ProcurementRequestPage />} />
-        <Route path="equipment" element={<EquipmentPage />} />
-        <Route path="equipment/:id" element={<EquipmentDetailPage />} />
+        {procurementRoutes.map(route=><Route key={route.path} {...route}/>)}
         {placeholderModules.map((module) => (
           <Route key={module.path} path={module.path} element={<PlaceholderPage module={module} />} />
         ))}
