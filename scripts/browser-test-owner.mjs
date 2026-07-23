@@ -15,8 +15,15 @@ if(process.argv[2]==='orphans'){
 }else if(process.argv[2]==='delete'){
   const id=process.argv[3]
   if(!id)throw new Error('Usage: node scripts/browser-test-owner.mjs delete <user-id>')
-  const removed=await admin.auth.admin.deleteUser(id)
-  if(removed.error)throw removed.error
+  if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id))throw new Error('Browser test owner ID must be a UUID.')
+  const cleanup=`begin;
+delete from public.procurement_recommendations where owner_id='${id}'::uuid;
+delete from public.procurement_offer_candidates where owner_id='${id}'::uuid;
+delete from public.procurement_research_jobs where owner_id='${id}'::uuid;
+delete from public.procurement_supplier_offers where owner_id='${id}'::uuid;
+delete from auth.users where id='${id}'::uuid;
+commit;`
+  execFileSync('docker',['exec','supabase_db_koalafrog-hq','psql','-U','postgres','-d','postgres','-v','ON_ERROR_STOP=1','-c',cleanup],{stdio:'inherit'})
   console.log(JSON.stringify({deleted:id}))
 }else{
   const email=`koalafrog-browser-${crypto.randomUUID()}@example.test`,password=`Local-${crypto.randomUUID()}-9a!`

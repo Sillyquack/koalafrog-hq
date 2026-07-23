@@ -3,15 +3,20 @@ import{expect,test,type Page}from'@playwright/test'
 import{addCompatibility,addEvidence,addRole,createIngredient,openKnowledge,owner,signIn}from'./ingredientKnowledge.helpers'
 
 const unique=(label:string)=>`${label} ${owner().runId.slice(0,8)}`
-async function assertNoOperationalWrites(){
+const operationalTables=['inventory_lots','inventory_movements','formulas','formula_versions','lab_batches','packaging_components','production_runs']as const
+async function operationalWriteCounts(){
  const credentials=owner(),client=createClient(credentials.url,credentials.publishableKey,{auth:{persistSession:false}})
  const auth=await client.auth.signInWithPassword({email:credentials.email,password:credentials.password})
  expect(auth.error).toBeNull()
- for(const table of['inventory_lots','inventory_movements','formulas','formula_versions','lab_batches','packaging_components','production_runs']){
+ return Object.fromEntries(await Promise.all(operationalTables.map(async table=>{
   const result=await client.from(table).select('id',{count:'exact',head:true})
   expect(result.error,table).toBeNull()
-  expect(result.count,table).toBe(0)
- }
+  return[table,result.count??0]as const
+ })))
+}
+async function assertNoOperationalWrites(baseline:Record<string,number>){
+ const current=await operationalWriteCounts()
+ for(const table of operationalTables)expect(current[table],table).toBe(baseline[table])
 }
 async function buildLinkedAggregate(page:Page,currentId:string,targetId:string,evidenceTitle:string){
  await openKnowledge(page,currentId)
@@ -32,6 +37,7 @@ async function buildLinkedAggregate(page:Page,currentId:string,targetId:string,e
 
 test('desktop full aggregate, persistence, and linked Evidence deletion',async({page})=>{
  await signIn(page)
+ const operationalBaseline=await operationalWriteCounts()
  const currentName=unique('Desktop current'),targetName=unique('Desktop target'),evidenceTitle=unique('Supplier specification')
  const currentId=await createIngredient(page,currentName),targetId=await createIngredient(page,targetName,'SIMMONDSIA CHINENSIS SEED OIL')
  await buildLinkedAggregate(page,currentId,targetId,evidenceTitle)
@@ -83,7 +89,7 @@ test('desktop full aggregate, persistence, and linked Evidence deletion',async({
  await expect(page.locator('#role-0-context')).toHaveValue('Anhydrous solid stick')
  await page.getByRole('button',{name:'Compatibility'}).click()
  await expect(page.locator('#compatibility-0-target')).toHaveValue(targetId)
- await assertNoOperationalWrites()
+ await assertNoOperationalWrites(operationalBaseline)
 })
 
 test('validation failure retains values and deliberate discard abandons them',async({page})=>{
