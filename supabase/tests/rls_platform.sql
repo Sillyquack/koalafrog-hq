@@ -1,6 +1,6 @@
 begin;
 -- Run with Supabase CLI test harness. Synthetic JWT claims must be supplied by the harness.
-select plan(53);
+select plan(61);
 select has_table('public','workspaces','workspaces exists');
 select has_table('public','workspace_records','record store exists');
 select is((select relrowsecurity from pg_class where oid='public.workspace_records'::regclass),true,'record store RLS is enabled');
@@ -32,6 +32,11 @@ select has_column('public','intelligence_analyses','failure_expected_category','
 select has_column('public','intelligence_analyses','failure_received_category','failure received category exists');
 select has_column('public','intelligence_analyses','failure_schema_version','failure schema version exists');
 select has_column('public','intelligence_analyses','failure_trace_version','failure trace version exists');
+select has_column('public','intelligence_analyses','provider_stage','provider stage exists');
+select has_column('public','intelligence_analyses','provider_failure_classification','provider failure classification exists');
+select has_column('public','intelligence_analyses','provider_timeout_budget_ms','provider timeout budget exists');
+select has_column('public','intelligence_analyses','provider_response_headers_received','provider headers flag exists');
+select is(has_column_privilege('authenticated','public.intelligence_analyses','provider_stage','UPDATE'),false,'browser cannot update provider trace');
 select is(has_column_privilege('authenticated','public.intelligence_analyses','failure_stage','INSERT'),false,'browser cannot insert failure diagnostics');
 select is(has_column_privilege('authenticated','public.intelligence_analyses','failure_stage','UPDATE'),false,'browser cannot update failure diagnostics');
 select is(has_column_privilege('authenticated','public.intelligence_analyses','provider_name','UPDATE'),false,'authenticated cannot directly rewrite provider provenance');
@@ -81,6 +86,21 @@ select is(
   (select prosecdef from pg_proc where oid='public.persist_beard_analysis_result(uuid,uuid,uuid,jsonb,jsonb,jsonb,jsonb)'::regprocedure),
   true,
   'persistence remains security definer'
+);
+select is(
+  (select prosecdef from pg_proc where oid='public.lookup_beard_analysis_support_diagnostic(uuid,text)'::regprocedure),
+  true,
+  'support lookup remains security definer'
+);
+select is(
+  (select proowner::regrole::text from pg_proc where oid='public.lookup_beard_analysis_support_diagnostic(uuid,text)'::regprocedure),
+  'postgres',
+  'support lookup owner remains postgres'
+);
+select is(
+  (select proconfig[1] from pg_proc where oid='public.lookup_beard_analysis_support_diagnostic(uuid,text)'::regprocedure),
+  'search_path=pg_catalog, public, pg_temp',
+  'support lookup search path remains fixed'
 );
 select is(
   (select proowner::regrole::text from pg_proc where oid='public.begin_beard_provider_attempt(uuid,uuid,text,text,text)'::regprocedure),

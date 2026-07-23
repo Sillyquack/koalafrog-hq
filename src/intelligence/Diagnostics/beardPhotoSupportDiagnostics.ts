@@ -33,6 +33,24 @@ export interface BeardPhotoSupportDiagnostic {
     schemaVersion: number
     semanticVersion: NullableString
   }
+  providerTrace: {
+    stage: NullableString
+    failureClassification: NullableString
+    timeoutSource: NullableString
+    timeoutBudgetMs: number | null
+    providerElapsedMs: number | null
+    edgeFunctionElapsedMs: number | null
+    requestDispatched: boolean | null
+    responseHeadersReceived: boolean | null
+    responseBodyCompleted: boolean | null
+    httpStatusClass: NullableString
+    abortSignalAborted: boolean | null
+    abortReasonCode: NullableString
+    transportErrorCategory: NullableString
+    providerRequestIdPresent: boolean | null
+    responsePresent: boolean | null
+    usagePresent: boolean | null
+  }
   attemptCount: number
   providerAttemptedAt: NullableString
   terminalAt: NullableString
@@ -91,6 +109,8 @@ export const isValidBeardPhotoSupportId = (value: string) => supportIdPattern.te
 const safePathPattern = /^\$(?:\.[A-Za-z][A-Za-z0-9]*|\[[0-9]+\])*$/
 const safeExpected = new Set(['object','array','string','number','integer','boolean','null','required','allowed enum','constant','unique id','known reference','valid observation key','unique observation key','safe text','non-calibrated grooming language','non-medical observation','non-sensitive observation','grooming-only recommendation','unambiguous safe language','completed response'])
 const safeReceived = new Set(['object','array','string','number','integer','boolean','null','missing','unexpected','duplicate','unknown reference','unsafe text','invalid observation key','incomplete','unknown','unsupported measurement claim','medical assertion','infection assertion','biological cause assertion','sensitive trait inference','personal inference','unsafe recommendation','ambiguous sensitive reference'])
+const providerStages = new Set(['provider_prepare_started','provider_dispatch_started','provider_dispatched','provider_response_headers_received','provider_response_body_started','provider_response_body_completed','provider_response_parsed','provider_timeout_triggered','provider_transport_failed','provider_http_error_received','provider_completed'])
+const providerClassifications = new Set(['PROVIDER_TIMEOUT_RESPONSE_HEADERS','PROVIDER_TIMEOUT_RESPONSE_BODY','PROVIDER_TRANSPORT_NETWORK','PROVIDER_HTTP_ERROR','PROVIDER_RESPONSE_PARSE_FAILED','PROVIDER_CALLER_ABORTED'])
 const exactKeys = (value: Record<string, unknown>, keys: string[]) =>
   Object.keys(value).length === keys.length && keys.every(key => Object.hasOwn(value, key))
 const record = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object' && !Array.isArray(value)
@@ -100,7 +120,7 @@ const nullableNumber = (value: unknown): value is number | null => value === nul
 export function validateBeardPhotoSupportDiagnostic(value: unknown): value is BeardPhotoSupportDiagnostic {
   if (!record(value) || !exactKeys(value, [
     'supportId','analysisId','status','errorCode','failureStage','ruleCode','jsonPath','validator',
-    'expectedCategory','receivedCategory','failureSchemaVersion','traceVersion','persistence','provenance',
+    'expectedCategory','receivedCategory','failureSchemaVersion','traceVersion','persistence','provenance','providerTrace',
     'attemptCount','providerAttemptedAt','terminalAt','cleanupState','cleanupCompletedAt',
     'resultPresent','providerUsagePresent',
   ])) return false
@@ -117,7 +137,24 @@ export function validateBeardPhotoSupportDiagnostic(value: unknown): value is Be
   if (!record(value.persistence) || !exactKeys(value.persistence, ['step','table','operation','sqlstate','constraint','entityType','entityIndex','diagnosticVersion'])) return false
   if (![value.persistence.step,value.persistence.table,value.persistence.operation,value.persistence.sqlstate,value.persistence.constraint,value.persistence.entityType,value.persistence.diagnosticVersion].every(nullableString) || !nullableNumber(value.persistence.entityIndex)) return false
   if (!record(value.provenance) || !exactKeys(value.provenance, ['provider','model','promptVersion','contractVersion','schemaVersion','semanticVersion'])) return false
-  return [value.provenance.provider,value.provenance.model,value.provenance.promptVersion,value.provenance.contractVersion,value.provenance.semanticVersion].every(nullableString) && [1,2].includes(value.provenance.schemaVersion as number)
+  if (![value.provenance.provider,value.provenance.model,value.provenance.promptVersion,value.provenance.contractVersion,value.provenance.semanticVersion].every(nullableString) || ![1,2].includes(value.provenance.schemaVersion as number)) return false
+  if (!record(value.providerTrace) || !exactKeys(value.providerTrace, [
+    'stage','failureClassification','timeoutSource','timeoutBudgetMs','providerElapsedMs',
+    'edgeFunctionElapsedMs','requestDispatched','responseHeadersReceived','responseBodyCompleted',
+    'httpStatusClass','abortSignalAborted','abortReasonCode','transportErrorCategory',
+    'providerRequestIdPresent','responsePresent','usagePresent',
+  ])) return false
+  const trace = value.providerTrace
+  if (![trace.stage,trace.failureClassification,trace.timeoutSource,trace.httpStatusClass,trace.abortReasonCode,trace.transportErrorCategory].every(nullableString)) return false
+  if (![trace.timeoutBudgetMs,trace.providerElapsedMs,trace.edgeFunctionElapsedMs].every(nullableNumber)) return false
+  if (trace.stage !== null && !providerStages.has(trace.stage as string)) return false
+  if (trace.failureClassification !== null && !providerClassifications.has(trace.failureClassification as string)) return false
+  if (trace.timeoutSource !== null && !['application_deadline','caller'].includes(trace.timeoutSource as string)) return false
+  if (trace.httpStatusClass !== null && !['2xx','4xx','5xx','other'].includes(trace.httpStatusClass as string)) return false
+  if (trace.abortReasonCode !== null && !['application_deadline','caller'].includes(trace.abortReasonCode as string)) return false
+  if (trace.transportErrorCategory !== null && trace.transportErrorCategory !== 'network') return false
+  if ([trace.timeoutBudgetMs,trace.providerElapsedMs,trace.edgeFunctionElapsedMs].some(item => item !== null && (!Number.isInteger(item) || Number(item) < 0))) return false
+  return [trace.requestDispatched,trace.responseHeadersReceived,trace.responseBodyCompleted,trace.abortSignalAborted,trace.providerRequestIdPresent,trace.responsePresent,trace.usagePresent].every(item => item === null || typeof item === 'boolean')
 }
 
 export function interpretBeardPhotoSupportRpcResponse(response: BeardPhotoSupportRpcResponse) {

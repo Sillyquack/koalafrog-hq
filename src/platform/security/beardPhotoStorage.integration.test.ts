@@ -294,7 +294,7 @@ run('beard photo temporary storage isolation', () => {
     expect(Object.keys(lookup.data as object).sort()).toEqual([
       'analysisId','attemptCount','cleanupCompletedAt','cleanupState','errorCode',
       'expectedCategory','failureSchemaVersion','failureStage','jsonPath','persistence',
-      'provenance','providerAttemptedAt','providerUsagePresent','receivedCategory',
+      'provenance','providerAttemptedAt','providerTrace','providerUsagePresent','receivedCategory',
       'resultPresent','ruleCode','status','supportId','terminalAt','traceVersion','validator',
     ].sort())
     expect(JSON.stringify(lookup.data)).not.toContain(providerText)
@@ -358,9 +358,19 @@ run('beard photo temporary storage isolation', () => {
     expect((await owner.from('intelligence_analyses').delete().eq('id', active.id)).error).not.toBeNull()
     expect((await owner.from('intelligence_analyses').update({ profile_id: crypto.randomUUID() }).eq('id', active.id)).error).not.toBeNull()
     expect((await admin.from('intelligence_analyses').insert(row('analyzing'))).error?.message).toContain('ANALYSIS_IN_PROGRESS')
-    expect((await owner.from('intelligence_analyses').update({ status: 'failed', error_code: 'PROVIDER_TIMEOUT' }).eq('id', active.id)).error).toBeNull()
-    const timedOut = await owner.from('intelligence_analyses').select('provider_name,model_name,provider_attempt_count,provider_attempted_at,status,error_code').eq('id', active.id).single()
-    expect(timedOut.data).toMatchObject({ provider_name: 'openai', model_name: 'gpt-5', provider_attempt_count: 1, status: 'failed', error_code: 'PROVIDER_TIMEOUT' })
+    expect((await admin.from('intelligence_analyses').update({
+      status: 'failed', error_code: 'PROVIDER_TIMEOUT',
+      provider_stage: 'provider_timeout_triggered',
+      provider_failure_classification: 'PROVIDER_TIMEOUT_RESPONSE_HEADERS',
+      provider_timeout_source: 'application_deadline', provider_timeout_budget_ms: 110000,
+      provider_elapsed_ms: 110001, edge_function_elapsed_ms: 111000,
+      provider_request_dispatched: true, provider_response_headers_received: false,
+      provider_response_body_completed: false, provider_abort_signal_aborted: true,
+      provider_abort_reason_code: 'application_deadline', provider_request_id_present: false,
+      provider_response_present: false, provider_trace_usage_present: false,
+    }).eq('id', active.id)).error).toBeNull()
+    const timedOut = await owner.from('intelligence_analyses').select('provider_name,model_name,provider_attempt_count,provider_attempted_at,status,error_code,provider_stage,provider_failure_classification').eq('id', active.id).single()
+    expect(timedOut.data).toMatchObject({ provider_name: 'openai', model_name: 'gpt-5', provider_attempt_count: 1, status: 'failed', error_code: 'PROVIDER_TIMEOUT', provider_stage: 'provider_timeout_triggered', provider_failure_classification: 'PROVIDER_TIMEOUT_RESPONSE_HEADERS' })
     expect(timedOut.data?.provider_attempted_at).toBeTruthy()
     const cleanedAt = new Date().toISOString()
     expect((await admin.from('intelligence_analysis_inputs').insert({
@@ -372,7 +382,21 @@ run('beard photo temporary storage isolation', () => {
     const cleanedLookup = await owner.rpc('lookup_beard_analysis_support_diagnostic', {
       candidate_workspace_id: workspaceId, candidate_support_id: active.correlation_id,
     })
-    expect(cleanedLookup.data).toMatchObject({ cleanupState: 'deleted' })
+    expect(cleanedLookup.data).toMatchObject({
+      cleanupState: 'deleted',
+      providerTrace: {
+        stage: 'provider_timeout_triggered',
+        failureClassification: 'PROVIDER_TIMEOUT_RESPONSE_HEADERS',
+        timeoutSource: 'application_deadline',
+        timeoutBudgetMs: 110000,
+        requestDispatched: true,
+        responseHeadersReceived: false,
+        responseBodyCompleted: false,
+        providerRequestIdPresent: false,
+        responsePresent: false,
+        usagePresent: false,
+      },
+    })
     expect(new Date((cleanedLookup.data as { cleanupCompletedAt: string }).cleanupCompletedAt).toISOString()).toBe(cleanedAt)
     for (let index = 0; index < 2; index += 1) {
       expect((await admin.from('intelligence_analyses').insert(row('failed'))).error).toBeNull()

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { lookupBeardPhotoSupportDiagnostic, type BeardPhotoSupportDiagnostic } from '../../../intelligence/Diagnostics/beardPhotoSupportDiagnostics'
 
 const shown = (value: string | number | null) => value ?? 'Unavailable'
+const shownFlag = (value: boolean | null) => value === null ? 'Unavailable' : value ? 'Yes' : 'No'
 
 export function BeardPhotoSupportDiagnosticPanel({workspaceId,supportId}:{workspaceId:string;supportId:string}) {
   const [diagnostic,setDiagnostic]=useState<BeardPhotoSupportDiagnostic>()
@@ -28,6 +29,10 @@ export function BeardPhotoSupportDiagnosticPanel({workspaceId,supportId}:{worksp
       <div><dt>Versions</dt><dd>Schema {diagnostic.provenance.schemaVersion} · {shown(diagnostic.provenance.contractVersion)} · {shown(diagnostic.provenance.promptVersion)} · {shown(diagnostic.provenance.semanticVersion)}</dd></div>
       <div><dt>Provider attempts</dt><dd>{diagnostic.attemptCount}</dd></div>
       <div><dt>Provider attempted</dt><dd>{shown(diagnostic.providerAttemptedAt)}</dd></div>
+      <div><dt>Provider stage</dt><dd>{shown(diagnostic.providerTrace.stage)}</dd></div>
+      <div><dt>Provider classification</dt><dd>{shown(diagnostic.providerTrace.failureClassification)}</dd></div>
+      <div><dt>Timeout source / budget</dt><dd>{shown(diagnostic.providerTrace.timeoutSource)} · {shown(diagnostic.providerTrace.timeoutBudgetMs)}{diagnostic.providerTrace.timeoutBudgetMs === null ? '' : ' ms'}</dd></div>
+      <div><dt>Provider / function elapsed</dt><dd>{shown(diagnostic.providerTrace.providerElapsedMs)} · {shown(diagnostic.providerTrace.edgeFunctionElapsedMs)}{diagnostic.providerTrace.edgeFunctionElapsedMs === null ? '' : ' ms'}</dd></div>
       <div><dt>Terminal time</dt><dd>{shown(diagnostic.terminalAt)}</dd></div>
       <div><dt>Image cleanup</dt><dd>{shown(diagnostic.cleanupState)}{diagnostic.cleanupCompletedAt?` · ${diagnostic.cleanupCompletedAt}`:''}</dd></div>
     </dl>
@@ -43,6 +48,13 @@ export function BeardPhotoSupportDiagnosticPanel({workspaceId,supportId}:{worksp
       <div><dt>Persistence diagnostic</dt><dd>{shown(diagnostic.persistence.diagnosticVersion)}</dd></div>
       <div><dt>Result stored</dt><dd>{diagnostic.resultPresent?'Yes':'No'}</dd></div>
       <div><dt>Provider usage stored</dt><dd>{diagnostic.providerUsagePresent?'Yes':'No'}</dd></div>
+      <div><dt>Request dispatched</dt><dd>{shownFlag(diagnostic.providerTrace.requestDispatched)}</dd></div>
+      <div><dt>Headers received</dt><dd>{shownFlag(diagnostic.providerTrace.responseHeadersReceived)}</dd></div>
+      <div><dt>Body completed</dt><dd>{shownFlag(diagnostic.providerTrace.responseBodyCompleted)}</dd></div>
+      <div><dt>HTTP status class</dt><dd>{shown(diagnostic.providerTrace.httpStatusClass)}</dd></div>
+      <div><dt>Abort reason</dt><dd>{shown(diagnostic.providerTrace.abortReasonCode)}</dd></div>
+      <div><dt>Transport category</dt><dd>{shown(diagnostic.providerTrace.transportErrorCategory)}</dd></div>
+      <div><dt>Provider request ID present</dt><dd>{shownFlag(diagnostic.providerTrace.providerRequestIdPresent)}</dd></div>
     </dl></details>
   </section>
 }
