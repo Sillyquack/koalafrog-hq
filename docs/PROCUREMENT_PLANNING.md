@@ -82,35 +82,49 @@ Known limitations: the provider cannot prove every web statement, source pages m
 
 ### Background live-research execution
 
-Long-running web research now uses OpenAI Responses background mode. The
-JWT-protected `procurement-live-research` function atomically consumes one live
-invocation, submits exactly one `background: true` response, stores its opaque
-operation ID in the service-only `procurement_background_operations` table,
-and returns a safe `202` acknowledgement. The browser never receives or polls
-the provider operation and can be closed without stopping research.
+Long-running web research uses OpenAI Responses background mode through a
+durable distributed lifecycle. Before the provider call, the JWT-protected
+`procurement-live-research` function creates one private submission intent and
+atomically consumes the job's invocation gate. It uses the intent's stable
+`X-Client-Request-Id`, submits exactly one `background: true` response, attaches
+the opaque operation ID idempotently, and returns a safe `202`. Recovery may
+retry attachment and processing, but never provider submission.
 
 OpenAI terminal events arrive at `procurement-live-research-webhook`. This
 machine endpoint has gateway JWT verification disabled because OpenAI cannot
 present a Supabase user JWT; it instead requires the raw-body Standard
 Webhooks signature and a timestamp within five minutes using the server-only
 `OPENAI_WEBHOOK_SECRET`. User initiation retains `verify_jwt=true`. The webhook
-matches only an already attached operation, retrieves a completed response
-once, applies the same strict contract and provenance normalization, and calls
-a service-role-only finalization RPC. The RPC locks both operation and job,
-deduplicates terminal delivery, discards results after cancellation or another
-terminal transition, and publishes candidates plus terminal job state in one
-transaction. No provider output, prompt, operation ID, webhook ID, API key, or
-webhook secret is exposed to authenticated browser roles or retained in
-diagnostics/exports.
+durably inserts safe event metadata before returning `200`. An event that
+arrives before attachment remains `unmatched_pending` rather than being lost.
+Webhook and reconciliation use the same terminal processor, strict contract,
+provenance normalization, lease claim, and service-role-only finalization RPC.
+The RPC locks operation then job, deduplicates terminal delivery, discards
+results after cancellation or another terminal transition, and publishes
+candidates plus terminal job state in one transaction.
 
-Deployment requires `OPENAI_WEBHOOK_SECRET` in addition to the existing
-server-only secrets, an OpenAI project webhook subscribed to terminal Response
-events, and deployment of both functions. The webhook function deliberately
-uses `verify_jwt=false`; all other Procurement function access remains JWT
-verified. OpenAI background mode temporarily stores response data to support
-asynchronous retrieval, so this design is not suitable for an OpenAI Zero Data
-Retention project. Invalid/missing output becomes a safe failed job. Cancellation
-prevents publication but does not currently call the provider cancel endpoint.
+`procurement-live-research-reconcile` is the browser-independent recovery path.
+It is protected by `PROCUREMENT_RECONCILER_SECRET`, processes a bounded batch of
+due operations, polls attached Responses, processes stored early webhooks,
+reclaims expired leases, and applies durable exponential backoff. Retrieval
+404/408/409/429/5xx, network errors, and temporary database failures are
+transient. Malformed successfully retrieved output is terminal. Work expires
+after 12 processing attempts or 48 hours; an unbound ambiguous submission is
+ended after 30 minutes without automatic resubmission.
+
+Deployment requires `OPENAI_WEBHOOK_SECRET` and
+`PROCUREMENT_RECONCILER_SECRET` in addition to the existing server-only
+secrets, an OpenAI project webhook subscribed to terminal Response events,
+deployment of all three functions, and a two-minute Supabase Cron invocation of
+the reconciler using a Vault-held URL and secret. The webhook and reconciler
+deliberately use `verify_jwt=false` but fail closed on their dedicated secrets;
+user initiation retains `verify_jwt=true`. OpenAI background mode temporarily
+stores response data to support asynchronous retrieval. Cancellation prevents
+publication but does not currently call the provider cancel endpoint.
+
+The complete invariants, residual provider-response ambiguity, failure taxonomy,
+lock order, scheduler design, and runbook are recorded in
+`docs/adr/PROCUREMENT_BACKGROUND_RESEARCH_DURABILITY.md`.
 
 ## Implementation and integration status
 
