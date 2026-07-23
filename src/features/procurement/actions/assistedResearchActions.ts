@@ -11,6 +11,7 @@ export async function runResearch(workspaceId:string,request:ProcurementRequest,
   await procurementActions.updateResearchJob(job.id,{status:'running',started_at:new Date().toISOString(),error_code:null,error_details:null,attempt_count:1})
   const items=data.requestedItems.filter(item=>item.procurement_request_id===request.id)
   const result=await provider.discoverOffers({request,items,offers:data.offers.filter(offer=>items.some(item=>item.id===offer.requested_item_id)),constraints})
+  if(result.asyncAccepted)return job.id
   const candidates=result.findings.map(finding=>({...mapFinding(finding,items.find(item=>item.id===finding.requestedItemId)!),research_job_id:job.id,procurement_request_id:request.id}))
   await procurementActions.publishResearchResults(workspaceId,job.id,candidates,result.partial?'partial':'completed',provider.requestMetadata?.().providerRequestId??null)
   return job.id

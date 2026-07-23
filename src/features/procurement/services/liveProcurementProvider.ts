@@ -1,4 +1,4 @@
-import{freshnessFromSourceDate,validateLiveResearchResponse,type LiveResearchRequest}from'../domain/liveResearchContract'
+import type{LiveResearchRequest}from'../domain/liveResearchContract'
 import{supabase}from'../../../platform/supabase/client'
 import type{ProcurementResearchProvider,ProcurementResearchSnapshot,ResearchFinding,ResearchResult}from'./procurementResearchService'
 
@@ -24,14 +24,9 @@ export class OpenAIWebResearchProvider implements ProcurementResearchProvider{
   const response=await supabase.functions.invoke('procurement-live-research',{headers:{Authorization:`Bearer ${accessToken}`},body:input})
   if(response.error){const context=response.error.context as Response|undefined;const payload:{error?:{code?:string;message?:string}}=await context?.json().catch(()=>({}))??{};throw new LiveProviderError(payload.error?.code??'PROVIDER_FAILURE',payload.error?.message??'Live research could not be completed.')}
   const raw=response.data as Record<string,unknown>
-  this.providerRequestId=typeof raw.providerRequestId==='string'?raw.providerRequestId:undefined
-  const result=validateLiveResearchResponse(raw,snapshot.items.map(item=>item.id))
-  return{partial:result.partial,providerNotes:result.providerNotes,findings:result.candidates.map(candidate=>this.mapCandidate(candidate))}
+  if(raw.accepted!==true||raw.status!=='running')throw new LiveProviderError('PROVIDER_INVALID_RESPONSE','Live research did not acknowledge the background job.')
+  return{partial:false,providerNotes:'Background research accepted.',findings:[],asyncAccepted:true}
  }
  async refreshOffer():Promise<ResearchFinding>{throw new LiveProviderError('REFRESH_NOT_AVAILABLE','Live offer refresh is not available in this first provider slice.')}
  sourceAttribution(finding:ResearchFinding){return{url:finding.sourceUrl,date:finding.sourceDate,notes:finding.sourceNotes}}
- private mapCandidate(candidate:ReturnType<typeof validateLiveResearchResponse>['candidates'][number]):ResearchFinding{
-  const fieldEvidence=Object.fromEntries(candidate.evidence.map(evidence=>[evidence.field,{state:evidence.state,sourceUrl:evidence.sourceUrl,snippet:evidence.snippet}]))
-  return{requestedItemId:candidate.requestedItemId,supplierName:candidate.supplierName,productTitle:candidate.productTitle,sourceUrl:candidate.sourceUrl,packageQuantity:candidate.packageQuantity,packageUnit:candidate.packageUnit,itemPrice:candidate.itemPrice,currency:candidate.currency,moq:candidate.moq,shippingCost:candidate.shippingCost,deliveryEstimateDays:candidate.deliveryEstimateDays,stockStatus:candidate.stockStatus,coaAvailability:candidate.coaAvailability,sdsAvailability:candidate.sdsAvailability,technicalDocumentAvailability:candidate.technicalDocumentAvailability,firstOrderDiscount:candidate.firstOrderDiscount,sourceDate:candidate.sourceDate,evidenceSnippets:candidate.evidence.flatMap(evidence=>evidence.snippet?[evidence.snippet]:[]),sourceNotes:candidate.sourceNotes,confidence:candidate.confidence,freshness:freshnessFromSourceDate(candidate.sourceDate),fieldStates:Object.fromEntries(candidate.evidence.map(evidence=>[evidence.field,evidence.state])),fieldEvidence,isMarketplaceListing:candidate.supplierType==='marketplace'}
- }
 }

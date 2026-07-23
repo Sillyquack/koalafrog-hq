@@ -40,14 +40,12 @@ test('owner creates a procurement request and requested item without placing an 
 
  await page.route('**/functions/v1/procurement-live-research',async route=>{
   expect(route.request().headers().authorization).toMatch(/^Bearer [^\s]+$/)
-  const body=route.request().postDataJSON() as{items:Array<{id:string}>}
-  await route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({schemaVersion:1,partial:false,providerNotes:'Sanitized E2E fixture.',providerRequestId:'req_sanitized',requestId:'local-e2e',candidates:[{requestedItemId:body.items[0].id,supplierName:'Live Fixture Supplier',supplierType:'specialist_cosmetic_supplier',productTitle:'Live jojoba oil 1 kg',sourceUrl:'https://supplier.test/jojoba',packageQuantity:1,packageUnit:'kg',itemPrice:310,currency:'NOK',moq:1,shippingCost:65,deliveryEstimateDays:5,stockStatus:'in_stock',coaAvailability:'available',sdsAvailability:'unknown',technicalDocumentAvailability:'unknown',firstOrderDiscount:null,sourceDate:'2026-07-23',evidence:[{field:'itemPrice',state:'verified',sourceUrl:'https://supplier.test/jojoba',snippet:'NOK 310 per kg.'},{field:'coaAvailability',state:'reported',sourceUrl:'https://supplier.test/jojoba',snippet:'COA available on request.'}],sourceNotes:'Stubbed live-provider fixture.',confidence:'high'}]})})
+  await route.fulfill({status:202,contentType:'application/json',body:JSON.stringify({accepted:true,status:'running'})})
  })
  await page.getByLabel('Provider').selectOption('live')
  await page.getByLabel('I understand live research sends this request to an approved external provider. Results may be incomplete and require review.').check()
  await page.getByRole('button',{name:'Start research'}).click()
- await expect(page.getByText('Live jojoba oil 1 kg')).toBeVisible()
  await expect(page.locator('.research-job').getByText('Live web research')).toBeVisible()
- await page.getByText('Field provenance').click()
- await expect(page.getByText(/reported/)).toBeVisible()
+ await expect(page.locator('.research-job').getByText('running',{exact:true})).toBeVisible()
+ await expect(page.getByText(/resp_|provider operation/i)).toHaveCount(0)
 })

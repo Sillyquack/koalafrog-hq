@@ -21,7 +21,7 @@ describe('live procurement provider authentication',()=>{
  beforeEach(()=>{
   vi.clearAllMocks()
   client.auth.getSession.mockResolvedValue({data:{session:{access_token:'test-user-jwt'}},error:null})
-  client.functions.invoke.mockResolvedValue({data:{schemaVersion:1,partial:false,candidates:[],providerNotes:'Authenticated fixture.'},error:null})
+  client.functions.invoke.mockResolvedValue({data:{accepted:true,status:'running'},error:null})
  })
 
  it('propagates the current session bearer token through the shared client',async()=>{
@@ -34,6 +34,15 @@ describe('live procurement provider authentication',()=>{
   expect(client.functions.invoke).toHaveBeenCalledWith('procurement-live-research',expect.objectContaining({
    headers:{Authorization:'Bearer test-user-jwt'},
   }))
+ })
+
+ it('returns only a durable background acknowledgement and exposes no provider operation id',async()=>{
+  client.functions.invoke.mockResolvedValue({data:{accepted:true,status:'running',providerOperationId:'resp_must_not_escape'},error:null})
+  const provider=new OpenAIWebResearchProvider()
+  provider.prepareJob('job-1','workspace-1')
+  const result=await provider.discoverOffers(snapshot)
+  expect(result).toEqual(expect.objectContaining({asyncAccepted:true,findings:[]}))
+  expect(result).not.toHaveProperty('providerOperationId')
  })
 
  it('fails closed before invocation when no authenticated session exists',async()=>{

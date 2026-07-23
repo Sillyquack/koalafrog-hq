@@ -1,6 +1,6 @@
 begin;
 -- Run with Supabase CLI test harness. Synthetic JWT claims must be supplied by the harness.
-select plan(94);
+select plan(106);
 select has_table('public','workspaces','workspaces exists');
 select has_table('public','workspace_records','record store exists');
 select has_table('public','procurement_research_jobs','Procurement jobs exist');
@@ -32,6 +32,18 @@ select is((select prosecdef from pg_proc where oid='public.persist_procurement_p
 select is((select proowner::regrole::text from pg_proc where oid='public.persist_procurement_provider_diagnostic(uuid,uuid,uuid,boolean,text,integer,integer,integer,integer,integer,integer,integer,text,text,integer,boolean,integer,text)'::regprocedure),'postgres','Procurement diagnostic writer owner is postgres');
 select is((select proconfig[1] from pg_proc where oid='public.persist_procurement_provider_diagnostic(uuid,uuid,uuid,boolean,text,integer,integer,integer,integer,integer,integer,integer,text,text,integer,boolean,integer,text)'::regprocedure),'search_path=pg_catalog, public, pg_temp','Procurement diagnostic writer search path is fixed');
 select is(position('raw_response' in pg_get_functiondef('public.persist_procurement_provider_diagnostic(uuid,uuid,uuid,boolean,text,integer,integer,integer,integer,integer,integer,integer,text,text,integer,boolean,integer,text)'::regprocedure)),0,'Procurement diagnostic writer contract excludes raw provider output');
+select has_table('public','procurement_background_operations','server-only Procurement background operations exist');
+select is((select relrowsecurity from pg_class where oid='public.procurement_background_operations'::regclass),true,'background operations RLS is enabled');
+select is(has_table_privilege('authenticated','public.procurement_background_operations','SELECT'),false,'browser cannot read provider operation ids');
+select is(has_table_privilege('authenticated','public.procurement_background_operations','INSERT'),false,'browser cannot attach provider operations');
+select is(has_table_privilege('authenticated','public.procurement_background_operations','UPDATE'),false,'browser cannot finalize provider operations');
+select has_function('public','attach_procurement_background_operation',array['uuid','uuid','uuid','text','text'],'service-only operation attachment exists');
+select has_function('public','finalize_procurement_background_operation',array['text','text','text','jsonb','boolean','text','text'],'atomic background finalizer exists');
+select is(has_function_privilege('service_role','public.attach_procurement_background_operation(uuid,uuid,uuid,text,text)','EXECUTE'),true,'service role may attach provider operation');
+select is(has_function_privilege('authenticated','public.attach_procurement_background_operation(uuid,uuid,uuid,text,text)','EXECUTE'),false,'browser cannot attach provider operation through RPC');
+select is(has_function_privilege('service_role','public.finalize_procurement_background_operation(text,text,text,jsonb,boolean,text,text)','EXECUTE'),true,'service role may finalize provider operation');
+select is(has_function_privilege('authenticated','public.finalize_procurement_background_operation(text,text,text,jsonb,boolean,text,text)','EXECUTE'),false,'browser cannot publish background results through RPC');
+select is((select proconfig[1] from pg_proc where oid='public.finalize_procurement_background_operation(text,text,text,jsonb,boolean,text,text)'::regprocedure),'search_path=pg_catalog, public, pg_temp','background finalizer search path is fixed');
 select is(has_function_privilege('authenticated','public.accept_procurement_offer_candidate(uuid,uuid,uuid,boolean)','EXECUTE'),true,'authenticated owner may accept a candidate');
 select is(has_function_privilege('anon','public.accept_procurement_offer_candidate(uuid,uuid,uuid,boolean)','EXECUTE'),false,'anonymous cannot accept a candidate');
 select is((select prosecdef from pg_proc where oid='public.accept_procurement_offer_candidate(uuid,uuid,uuid,boolean)'::regprocedure),false,'candidate acceptance respects RLS as security invoker');
