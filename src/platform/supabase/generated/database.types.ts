@@ -5139,6 +5139,56 @@ export type Database = {
           },
         ]
       }
+      procurement_background_operations: {
+        Row: {
+          attached_at: string
+          job_id: string
+          owner_id: string
+          provider: string
+          provider_operation_id: string
+          provider_status: string
+          published_at: string | null
+          terminal_at: string | null
+          terminal_event_id: string | null
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          attached_at?: string
+          job_id: string
+          owner_id: string
+          provider: string
+          provider_operation_id: string
+          provider_status: string
+          published_at?: string | null
+          terminal_at?: string | null
+          terminal_event_id?: string | null
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          attached_at?: string
+          job_id?: string
+          owner_id?: string
+          provider?: string
+          provider_operation_id?: string
+          provider_status?: string
+          published_at?: string | null
+          terminal_at?: string | null
+          terminal_event_id?: string | null
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "procurement_background_operations_workspace_id_job_id_fkey"
+            columns: ["workspace_id", "job_id"]
+            isOneToOne: false
+            referencedRelation: "procurement_research_jobs"
+            referencedColumns: ["workspace_id", "id"]
+          },
+        ]
+      }
       procurement_offer_candidates: {
         Row: {
           accepted_offer_id: string | null
@@ -8351,6 +8401,16 @@ export type Database = {
           supplier_id: string
         }[]
       }
+      attach_procurement_background_operation: {
+        Args: {
+          candidate_job_id: string
+          candidate_owner_id: string
+          candidate_provider_operation_id: string
+          candidate_provider_status: string
+          candidate_workspace_id: string
+        }
+        Returns: boolean
+      }
       begin_beard_provider_attempt: {
         Args: {
           candidate_analysis_id: string
@@ -8426,6 +8486,18 @@ export type Database = {
       }
       create_product_studio_purchase_plan: {
         Args: { concept_id: string; lines: Json }
+        Returns: string
+      }
+      finalize_procurement_background_operation: {
+        Args: {
+          candidate_candidates?: Json
+          candidate_error_code?: string
+          candidate_error_details?: string
+          candidate_event_id: string
+          candidate_partial?: boolean
+          candidate_provider_operation_id: string
+          candidate_provider_status: string
+        }
         Returns: string
       }
       import_procurement_snapshot: {

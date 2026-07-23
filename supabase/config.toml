@@ -5,3 +5,11 @@ enabled = true
 major_version = 15
 [storage]
 enabled = true
+
+[functions.procurement-live-research]
+verify_jwt = true
+
+# OpenAI cannot present a Supabase user JWT. This machine endpoint accepts only
+# a valid Standard Webhooks signature checked against OPENAI_WEBHOOK_SECRET.
+[functions.procurement-live-research-webhook]
+verify_jwt = false
