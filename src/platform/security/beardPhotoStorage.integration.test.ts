@@ -109,6 +109,9 @@ run('beard photo temporary storage isolation', () => {
       candidate_model: 'gpt-5',
       candidate_prompt_version: 'beard-photo-analysis-v4',
     })).data).toBe(true)
+    expect((await owner.from('intelligence_analyses')
+      .select('semantic_rule_version').eq('id', analysisId).single()).data)
+      .toMatchObject({ semantic_rule_version: 'beard-semantic-safety-v4' })
     const observationKeys = ['front_density_distribution', 'side_symmetry_difference']
     const recommendationIds = [crypto.randomUUID(), crypto.randomUUID()]
     const observations = observationKeys.map(observationKey => ({
@@ -151,7 +154,13 @@ run('beard photo temporary storage isolation', () => {
     expect(relationships.data?.every(item => recommendationIds.includes(item.recommendation_id) && internalIds.has(item.observation_id))).toBe(true)
     expect((await owner.rpc('lookup_beard_analysis_support_diagnostic', {
       candidate_workspace_id: workspaceId, candidate_support_id: correlationId,
-    })).data).toMatchObject({ status: 'completed', errorCode: null, resultPresent: true, supportId: correlationId })
+    })).data).toMatchObject({
+      status: 'completed',
+      errorCode: null,
+      resultPresent: true,
+      supportId: correlationId,
+      provenance: { semanticVersion: 'beard-semantic-safety-v4' },
+    })
     expect((await owner.from('intelligence_observations').insert({})).error).not.toBeNull()
     expect((await owner.from('intelligence_recommendation_observations').insert({})).error).not.toBeNull()
   })
@@ -280,7 +289,7 @@ run('beard photo temporary storage isolation', () => {
       errorCode: 'RESULT_PERSISTENCE_FAILED', cleanupState: 'cleanup_required',
       resultPresent: false, providerUsagePresent: false, attemptCount: 1,
       persistence: { step: 'relationship_insert', table: 'intelligence_recommendation_observations', operation: 'insert', sqlstate: '23505', constraint: 'intelligence_recommendation_observations_pkey', entityType: 'relationship', entityIndex: 1, diagnosticVersion: 'beard-persistence-diagnostic-v1' },
-      provenance: { provider: 'openai', model: 'gpt-5', promptVersion: 'beard-photo-analysis-v4', contractVersion: 'beard-photo-result-contract-v2', schemaVersion: 2, semanticVersion: 'beard-semantic-safety-v3' },
+      provenance: { provider: 'openai', model: 'gpt-5', promptVersion: 'beard-photo-analysis-v4', contractVersion: 'beard-photo-result-contract-v2', schemaVersion: 2, semanticVersion: 'beard-semantic-safety-v4' },
     })
     expect(Object.keys(lookup.data as object).sort()).toEqual([
       'analysisId','attemptCount','cleanupCompletedAt','cleanupState','errorCode',
@@ -332,7 +341,16 @@ run('beard photo temporary storage isolation', () => {
     expect((await owner.rpc('begin_beard_provider_attempt', attempt)).data).toBe(true)
     expect((await owner.rpc('begin_beard_provider_attempt', attempt)).data).toBe(false)
     const provenance = await owner.from('intelligence_analyses').select('provider_name,model_name,provider_attempt_count,provider_attempted_at,semantic_rule_version,status').eq('id', active.id).single()
-    expect(provenance.data).toMatchObject({ provider_name: 'openai', model_name: 'gpt-5', provider_attempt_count: 1, semantic_rule_version: 'beard-semantic-safety-v3', status: 'analyzing' })
+    expect(provenance.data).toMatchObject({ provider_name: 'openai', model_name: 'gpt-5', provider_attempt_count: 1, semantic_rule_version: 'beard-semantic-safety-v4', status: 'analyzing' })
+    expect((await admin.from('intelligence_analyses').update({
+      semantic_rule_version: 'beard-semantic-safety-unknown',
+    }).eq('id', active.id)).error).not.toBeNull()
+    expect((await admin.from('intelligence_analyses').update({
+      semantic_rule_version: 'beard-semantic-safety-v3',
+    }).eq('id', active.id)).error).toBeNull()
+    expect((await admin.from('intelligence_analyses').update({
+      semantic_rule_version: 'beard-semantic-safety-v4',
+    }).eq('id', active.id)).error).toBeNull()
     expect(provenance.data?.provider_attempted_at).toBeTruthy()
     expect((await owner.from('intelligence_analyses').update({ failure_stage: 'SemanticValidation' }).eq('id', active.id)).error).not.toBeNull()
     expect((await owner.from('intelligence_analyses').insert({ ...row('failed'), failure_rule_code: 'SEM-0001' })).error).not.toBeNull()

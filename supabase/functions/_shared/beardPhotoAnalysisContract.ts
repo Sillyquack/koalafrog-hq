@@ -10,6 +10,8 @@ export const BEARD_PHOTO_CONTRACT_VERSION =
   "beard-photo-result-contract-v2" as const;
 export const BEARD_PHOTO_PROMPT_VERSION = "beard-photo-analysis-v4" as const;
 export const BEARD_PHOTO_SEMANTIC_RULE_VERSION =
+  "beard-semantic-safety-v4" as const;
+export const BEARD_PHOTO_SEMANTIC_RULE_VERSION_V3 =
   "beard-semantic-safety-v3" as const;
 export const beardPhotoViews = [
   "front",
@@ -322,8 +324,11 @@ export function validateBeardPhotoContract(
   return validationSuccess(value);
 }
 
-export function validateBeardPhotoSemantics(
+function validateBeardPhotoSemanticsVersion(
   value: BeardPhotoAnalysisResult,
+  semanticVersion:
+    | typeof BEARD_PHOTO_SEMANTIC_RULE_VERSION_V3
+    | typeof BEARD_PHOTO_SEMANTIC_RULE_VERSION,
 ): ValidationTrace<BeardPhotoAnalysisResult> {
   type FieldRole =
     | "observation"
@@ -334,10 +339,14 @@ export function validateBeardPhotoSemantics(
     /\b\d+(?:\.\d+)?\s*(?:mm|millimet(?:er|re)s?)\b/i;
   const guardReference =
     /\bguard\b|\b(?:length map|recipe)\b.{0,80}\b(?:setting|guard)\b|\b(?:existing|current|recorded|saved|user[- ]supplied)\b.{0,80}\b(?:setting|guard)\b/i;
+  const guardReferenceV4 =
+    /\b(?:guards?(?:\s+setting)?|combs?|(?:clipper|trimmer)\s+attachments?|attachments?|(?:numbered|length|longer|shorter|trimmer)\s+settings?|one\s+setting\s+shorter|equipment\s+instruction|tool[- ]setting\s+proposal)\b|\b(?:length map|recipe)\b.{0,80}\b(?:setting|guard|comb|attachment|fullness|length)\b|\b(?:existing|current|recorded|saved|user[- ]supplied|workspace[- ]known|preferred)\b.{0,80}\b(?:setting|guard|comb|attachment|tool|fullness|length)\b/i;
   const visualMeasurementAssertion =
     /\b(?:photo|image|visually|visible|appears?|shows?|indicates?|confirms?|measures?|measurement|growth|beard|length)\b.{0,100}\b\d+(?:\.\d+)?\s*(?:mm|millimet(?:er|re)s?)\b|\b\d+(?:\.\d+)?\s*(?:mm|millimet(?:er|re)s?)\b.{0,100}\b(?:beard|growth|length|measures?|measurement|visible|visually|photo|image)\b/i;
   const exactResultGuarantee =
     /\b(?:will|would|shall|guarantee[sd]?|ensure[sd]?|leave[sd]?|produce[sd]?|result(?:s|ed)? in)\b.{0,80}\b(?:exactly|precisely|objective(?:ly)?)?\s*\d+(?:\.\d+)?\s*(?:mm|millimet(?:er|re)s?)\b|\b(?:exactly|precisely)\s*\d+(?:\.\d+)?\s*(?:mm|millimet(?:er|re)s?)\b.{0,80}\b(?:leave|remaining|physical beard|result)\b/i;
+  const unsupportedPhysicalMeasurementV4 =
+    /\b(?:measured from|calculated? from|used to calculate)\b.{0,80}\b(?:photo|image|hair|beard|dimension|length)\b|\b(?:photo|image|photograph)\b.{0,100}\b(?:proves?|confirms?|shows?|calculate[sd]?|measures?|measured)\b.{0,100}\b(?:exact|length|dimension|growth|density|symmetr|shorter|longer)\b|\b(?:beard|hair|cheek|chin|left side|right side)\b.{0,100}\b\d+(?:\.\d+)?\s*(?:mm|millimet(?:er|re)s?|percent|%|hairs?\s+per\s+square\s+centimet(?:er|re))\b|\b\d+(?:\.\d+)?\s*(?:mm|millimet(?:er|re)s?)\s+per\s+day\b|\b(?:density|symmetr|dimension|growth)\b.{0,100}\b(?:exactly|precisely|greater|less|shorter|longer|measures?|measurement)\b.{0,100}\b\d+(?:\.\d+)?\s*(?:percent|%|mm|millimet(?:er|re)s?|hairs?\s+per\s+square\s+centimet(?:er|re))\b/i;
   const limitationAction =
     /\b(?:cannot|can't|can not|could not|unable to|not possible to|do not|does not|don't|doesn't|is not|isn't|are not|aren't|no)\b.{0,100}\b(?:diagnos|determin|establish|infer|identify|confirm|assess|conclude|measure|estimate|calibrat)|\b(?:diagnos|determin|establish|infer|identify|confirm|assess|conclude|measure|estimate|calibrat)[a-z]*\b.{0,100}\b(?:cannot|can't|can not|could not|unable|not possible|is not|isn't|are not|aren't|unknown|unavailable)\b/i;
   const professionalGuidance =
@@ -367,7 +376,7 @@ export function validateBeardPhotoSemantics(
       jsonPath: path,
       expected,
       received,
-      validator: BEARD_PHOTO_SEMANTIC_RULE_VERSION,
+      validator: semanticVersion,
       stage: "SemanticValidation",
     });
   const check = (value: string, path: string, role: FieldRole) => {
@@ -376,13 +385,20 @@ export function validateBeardPhotoSemantics(
     ).map((clause) => clause.trim()).filter(Boolean);
     for (const clause of clauses) {
       const guardClause = clause.replace(/\bbeard studio\b|\blength map\b/gi, "workspace");
+      const activeGuardReference = semanticVersion ===
+          BEARD_PHOTO_SEMANTIC_RULE_VERSION
+        ? guardReferenceV4
+        : guardReference;
       const permittedGuardInstruction = role === "guard_strategy" &&
-        guardReference.test(clause) &&
+        activeGuardReference.test(clause) &&
         !visualMeasurementAssertion.test(guardClause) &&
-        !exactResultGuarantee.test(clause);
+        !exactResultGuarantee.test(clause) &&
+        !(semanticVersion === BEARD_PHOTO_SEMANTIC_RULE_VERSION &&
+          unsupportedPhysicalMeasurementV4.test(clause));
       if (
-        exactMeasurement.test(clause) &&
-        !permittedGuardInstruction &&
+        ((exactMeasurement.test(clause) && !permittedGuardInstruction) ||
+          (semanticVersion === BEARD_PHOTO_SEMANTIC_RULE_VERSION &&
+            unsupportedPhysicalMeasurementV4.test(clause))) &&
         !(role === "limitation" && limitationAction.test(clause))
       ) {
         return fail(
@@ -521,4 +537,22 @@ export function validateBeardPhotoSemantics(
     }
   }
   return validationSuccess(value);
+}
+
+export function validateBeardPhotoSemanticsV3(
+  value: BeardPhotoAnalysisResult,
+): ValidationTrace<BeardPhotoAnalysisResult> {
+  return validateBeardPhotoSemanticsVersion(
+    value,
+    BEARD_PHOTO_SEMANTIC_RULE_VERSION_V3,
+  );
+}
+
+export function validateBeardPhotoSemantics(
+  value: BeardPhotoAnalysisResult,
+): ValidationTrace<BeardPhotoAnalysisResult> {
+  return validateBeardPhotoSemanticsVersion(
+    value,
+    BEARD_PHOTO_SEMANTIC_RULE_VERSION,
+  );
 }

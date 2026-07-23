@@ -1,6 +1,6 @@
 begin;
 -- Run with Supabase CLI test harness. Synthetic JWT claims must be supplied by the harness.
-select plan(41);
+select plan(53);
 select has_table('public','workspaces','workspaces exists');
 select has_table('public','workspace_records','record store exists');
 select is((select relrowsecurity from pg_class where oid='public.workspace_records'::regclass),true,'record store RLS is enabled');
@@ -42,5 +42,65 @@ select is(has_function_privilege('authenticated','public.lookup_beard_analysis_s
 select is(has_function_privilege('anon','public.lookup_beard_analysis_support_diagnostic(uuid,text)','EXECUTE'),false,'anonymous cannot execute support lookup');
 select is(has_function_privilege('public','public.lookup_beard_analysis_support_diagnostic(uuid,text)','EXECUTE'),false,'public cannot execute support lookup');
 select is(has_function_privilege('service_role','public.lookup_beard_analysis_support_diagnostic(uuid,text)','EXECUTE'),false,'service role lookup is not browser-facing infrastructure');
+select matches(
+  pg_get_constraintdef((select oid from pg_constraint where conname='intelligence_analyses_semantic_rule_version_check')),
+  'beard-semantic-safety-v2',
+  'semantic constraint retains v2'
+);
+select matches(
+  pg_get_constraintdef((select oid from pg_constraint where conname='intelligence_analyses_semantic_rule_version_check')),
+  'beard-semantic-safety-v3',
+  'semantic constraint retains v3'
+);
+select matches(
+  pg_get_constraintdef((select oid from pg_constraint where conname='intelligence_analyses_semantic_rule_version_check')),
+  'beard-semantic-safety-v4',
+  'semantic constraint admits v4'
+);
+select matches(
+  pg_get_constraintdef((select oid from pg_constraint where conname='intelligence_analyses_failure_validator_check')),
+  'beard-semantic-safety-v4',
+  'failure validator constraint admits v4'
+);
+select matches(
+  pg_get_functiondef('public.begin_beard_provider_attempt(uuid,uuid,text,text,text)'::regprocedure),
+  'semantic_rule_version=''beard-semantic-safety-v4''',
+  'provider attempt records semantic v4'
+);
+select matches(
+  pg_get_functiondef('public.persist_beard_analysis_result(uuid,uuid,uuid,jsonb,jsonb,jsonb,jsonb)'::regprocedure),
+  'semantic_rule_version=''beard-semantic-safety-v4''',
+  'persistence requires semantic v4'
+);
+select is(
+  (select prosecdef from pg_proc where oid='public.begin_beard_provider_attempt(uuid,uuid,text,text,text)'::regprocedure),
+  true,
+  'provider attempt remains security definer'
+);
+select is(
+  (select prosecdef from pg_proc where oid='public.persist_beard_analysis_result(uuid,uuid,uuid,jsonb,jsonb,jsonb,jsonb)'::regprocedure),
+  true,
+  'persistence remains security definer'
+);
+select is(
+  (select proowner::regrole::text from pg_proc where oid='public.begin_beard_provider_attempt(uuid,uuid,text,text,text)'::regprocedure),
+  'postgres',
+  'provider attempt owner remains postgres'
+);
+select is(
+  (select proowner::regrole::text from pg_proc where oid='public.persist_beard_analysis_result(uuid,uuid,uuid,jsonb,jsonb,jsonb,jsonb)'::regprocedure),
+  'postgres',
+  'persistence owner remains postgres'
+);
+select is(
+  (select proconfig[1] from pg_proc where oid='public.begin_beard_provider_attempt(uuid,uuid,text,text,text)'::regprocedure),
+  'search_path=pg_catalog, public, pg_temp',
+  'provider attempt search path remains fixed'
+);
+select is(
+  (select proconfig[1] from pg_proc where oid='public.persist_beard_analysis_result(uuid,uuid,uuid,jsonb,jsonb,jsonb,jsonb)'::regprocedure),
+  'search_path=pg_catalog, public, pg_temp',
+  'persistence search path remains fixed'
+);
 select * from finish();
 rollback;

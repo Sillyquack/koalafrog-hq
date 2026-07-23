@@ -4,6 +4,7 @@ import {
   validateBeardPhotoContract,
   validateReadableHistoricalBeardPhotoResult,
   validateBeardPhotoSemantics,
+  validateBeardPhotoSemanticsV3,
 } from "../supabase/functions/_shared/beardPhotoAnalysisContract";
 import { toDurableBeardFailureDiagnostic } from "../supabase/functions/_shared/beardPhotoFailureDiagnostics";
 import type { ValidationFailure } from "../src/intelligence/Diagnostics/ValidationTrace";
@@ -268,7 +269,7 @@ describe("Beard diagnostics adapters", () => {
     for (const fixture of fixtures) {
       const value = base();
       fixture.mutate(value);
-      const result = validateBeardPhotoSemantics(value);
+      const result = validateBeardPhotoSemanticsV3(value);
       expect(result.success, fixture.name).toBe(fixture.success);
       if (!fixture.success) {
         expect(result, fixture.name).toMatchObject({
@@ -294,6 +295,7 @@ describe("Beard diagnostics adapters", () => {
   ])("allows guard instructions and workspace context: %s", (strategy) => {
     const value = base();
     value.recommendations[0].proposedGuardStrategy = strategy;
+    expect(validateBeardPhotoSemanticsV3(value).success).toBe(true);
     expect(validateBeardPhotoSemantics(value).success).toBe(true);
   });
 
@@ -332,7 +334,7 @@ describe("Beard diagnostics adapters", () => {
       success: false,
       ruleCode: "SEM-0001",
       jsonPath: path,
-      validator: "beard-semantic-safety-v3",
+      validator: "beard-semantic-safety-v4",
     });
     expect(JSON.stringify(result)).not.toContain(statement);
   });

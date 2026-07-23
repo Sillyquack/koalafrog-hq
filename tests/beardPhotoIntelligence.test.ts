@@ -13,6 +13,8 @@ const persistenceDiagnostics = readFileSync('supabase/migrations/20260722110000_
 const observationKeysMigration = readFileSync('supabase/migrations/20260722130000_beard_observation_keys.sql', 'utf8')
 const supportDiagnosticMigration = readFileSync('supabase/migrations/20260722190000_beard_support_diagnostic_lookup.sql', 'utf8')
 const supportDiagnosticRepair = readFileSync('supabase/migrations/20260723044918_fix_beard_support_diagnostic_rpc.sql', 'utf8')
+const semanticV4Migration = readFileSync('supabase/migrations/20260723060732_beard_semantic_safety_v4.sql', 'utf8')
+const semanticV4Lookup = semanticV4Migration.slice(semanticV4Migration.indexOf('create or replace function public.lookup_beard_analysis_support_diagnostic'))
 const runtime = readFileSync('supabase/functions/_shared/beardPhotoRuntime.ts', 'utf8')
 
 describe('beard photo intelligence boundaries', () => {
@@ -55,6 +57,9 @@ describe('beard photo intelligence boundaries', () => {
     expect(observationKeysMigration).toContain("candidate_prompt_version <> 'beard-photo-analysis-v4'")
     expect(semanticV3Constraints).toContain("'beard-semantic-safety-v2'")
     expect(semanticV3Constraints).toContain("'beard-semantic-safety-v3'")
+    expect(semanticV4Migration).toContain("'beard-semantic-safety-v4'")
+    expect(semanticV4Migration).toContain("semantic_rule_version='beard-semantic-safety-v4'")
+    expect(semanticV4Migration).toContain("and semantic_rule_version='beard-semantic-safety-v4'")
     expect(edge.indexOf('begin_beard_provider_attempt')).toBeLessThan(edge.indexOf('.download('))
     expect(edge).toContain('status: "staging"')
   })
@@ -131,6 +136,9 @@ describe('beard photo intelligence boundaries', () => {
     expect(persistenceDiagnostics).not.toMatch(/message_text|pg_exception_detail|pg_exception_hint/i)
     expect(persistenceDiagnostics).toMatch(/revoke all on function public\.persist_beard_analysis_result[\s\S]*from public,anon,authenticated/)
     expect(persistenceDiagnostics).toMatch(/grant execute on function public\.persist_beard_analysis_result[\s\S]*to service_role/)
+    expect(semanticV4Migration).toMatch(/revoke all on function public\.persist_beard_analysis_result[\s\S]*from public,anon,authenticated/)
+    expect(semanticV4Migration).toMatch(/grant execute on function public\.persist_beard_analysis_result[\s\S]*to service_role/)
+    expect(semanticV4Migration).not.toMatch(/message_text|pg_exception_detail|pg_exception_hint/i)
   })
 
   it('maps provider keys to server ids and normalized relationships without browser writes', () => {
@@ -162,5 +170,8 @@ describe('beard photo intelligence boundaries', () => {
     expect(supportDiagnosticRepair).toMatch(/grant execute on function public\.lookup_beard_analysis_support_diagnostic\(uuid,text\)[\s\S]*to authenticated/)
     expect(supportDiagnosticRepair).toContain("notify pgrst, 'reload schema'")
     expect(supportDiagnosticRepair).not.toMatch(/create function|replace function|update public\.|insert into public\.|delete from public\./i)
+    expect(semanticV4Migration).toContain("'semanticVersion',case when a.semantic_rule_version in (")
+    expect(semanticV4Migration).toContain("'beard-semantic-safety-v4'")
+    expect(semanticV4Lookup).not.toMatch(/object_path|mime_type|byte_size|statement|reason|context_manifest/)
   })
 })
