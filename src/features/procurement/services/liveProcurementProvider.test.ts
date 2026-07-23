@@ -3,6 +3,7 @@ import{beforeEach,describe,expect,it,vi}from'vitest'
 const client=vi.hoisted(()=>({
  auth:{getSession:vi.fn()},
  functions:{invoke:vi.fn()},
+ from:vi.fn(),
 }))
 
 vi.mock('../../../platform/supabase/client',()=>({supabase:client}))
@@ -22,6 +23,11 @@ describe('live procurement provider authentication',()=>{
   vi.clearAllMocks()
   client.auth.getSession.mockResolvedValue({data:{session:{access_token:'test-user-jwt'}},error:null})
   client.functions.invoke.mockResolvedValue({data:{accepted:true,status:'running'},error:null})
+  client.from.mockReturnValue({
+   select:()=>({eq:()=>({eq:()=>({maybeSingle:vi.fn().mockResolvedValue({
+    data:{status:'running',provider_invocation_count:1,background_lifecycle_status:'submitted'},error:null,
+   })})})}),
+  })
  })
 
  it('propagates the current session bearer token through the shared client',async()=>{
@@ -67,5 +73,24 @@ describe('live procurement provider authentication',()=>{
   await provider.discoverOffers(snapshot)
 
   expect([log,info,warn,error].flatMap(spy=>spy.mock.calls.flat())).not.toContain('test-user-jwt')
+ })
+
+ it('recovers a lost acknowledgement from server-owned job state',async()=>{
+  client.functions.invoke.mockResolvedValue({data:null,error:{context:undefined}})
+  const provider=new OpenAIWebResearchProvider()
+  provider.prepareJob('job-1','workspace-1')
+  await expect(provider.discoverOffers(snapshot)).resolves.toEqual(expect.objectContaining({
+   asyncAccepted:true,providerNotes:'Research submission status is being reconciled.',
+  }))
+ })
+
+ it('does not hide a definitive authenticated rejection',async()=>{
+  client.functions.invoke.mockResolvedValue({
+   data:null,error:{context:new Response(JSON.stringify({error:{code:'INVALID_INPUT',message:'Invalid.'}}),{status:400})},
+  })
+  const provider=new OpenAIWebResearchProvider()
+  provider.prepareJob('job-1','workspace-1')
+  await expect(provider.discoverOffers(snapshot)).rejects.toEqual(expect.objectContaining({code:'INVALID_INPUT'}))
+  expect(client.from).not.toHaveBeenCalled()
  })
 })

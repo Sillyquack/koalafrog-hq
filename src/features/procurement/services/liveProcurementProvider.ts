@@ -22,7 +22,21 @@ export class OpenAIWebResearchProvider implements ProcurementResearchProvider{
   if(sessionResult.error||!accessToken)throw new LiveProviderError('AUTHENTICATION_REQUIRED','Your authenticated session is unavailable. Sign in again before starting live research.')
   const input:LiveResearchRequest={schemaVersion:1,workspaceId:this.workspaceId,jobId:this.jobId,requestId:crypto.randomUUID(),deliveryCountry:snapshot.constraints.deliveryCountry,documentationRequirements:snapshot.constraints.documentationRequirements,preferredSuppliers:snapshot.constraints.preferredSuppliers,excludedSuppliers:snapshot.constraints.excludedSuppliers,items:snapshot.items.map(item=>({id:item.id,name:item.name,category:item.category,quantity:item.requested_quantity,unit:item.unit,requiredSpecifications:item.required_specifications,acceptableSubstitutes:item.acceptable_substitutes,neededBy:item.needed_by,priority:item.priority,notes:item.notes}))}
   const response=await supabase.functions.invoke('procurement-live-research',{headers:{Authorization:`Bearer ${accessToken}`},body:input})
-  if(response.error){const context=response.error.context as Response|undefined;const payload:{error?:{code?:string;message?:string}}=await context?.json().catch(()=>({}))??{};throw new LiveProviderError(payload.error?.code??'PROVIDER_FAILURE',payload.error?.message??'Live research could not be completed.')}
+  if(response.error){
+   const context=response.error.context as Response|undefined
+   const payload:{error?:{code?:string;message?:string}}=await context?.json().catch(()=>({}))??{}
+   const definitive=Boolean(context&&[400,401,403,404,409,422,429].includes(context.status))
+   if(!definitive){
+    const state=await supabase.from('procurement_research_jobs')
+     .select('status,provider_invocation_count,background_lifecycle_status')
+     .eq('id',this.jobId).eq('workspace_id',this.workspaceId).maybeSingle()
+    if(!state.error&&state.data?.status==='running'&&
+      (state.data.provider_invocation_count===1||state.data.background_lifecycle_status)){
+     return{partial:false,providerNotes:'Research submission status is being reconciled.',findings:[],asyncAccepted:true}
+    }
+   }
+   throw new LiveProviderError(payload.error?.code??'PROVIDER_FAILURE',payload.error?.message??'Live research could not be completed.')
+  }
   const raw=response.data as Record<string,unknown>
   if(raw.accepted!==true||raw.status!=='running')throw new LiveProviderError('PROVIDER_INVALID_RESPONSE','Live research did not acknowledge the background job.')
   return{partial:false,providerNotes:'Background research accepted.',findings:[],asyncAccepted:true}
