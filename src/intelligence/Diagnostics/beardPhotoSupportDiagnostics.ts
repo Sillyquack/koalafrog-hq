@@ -58,6 +58,10 @@ export interface BeardPhotoSupportRpcResponse {
   status?: number
 }
 
+interface BeardPhotoSupportRpcClient {
+  rpc(name: string, args: Record<string, string>): Promise<BeardPhotoSupportRpcResponse>
+}
+
 export class BeardPhotoSupportRpcFailure extends Error {
   readonly code: Exclude<BeardPhotoSupportRpcCode, 'SUPPORT_RPC_NOT_FOUND'>
   readonly metadata: Readonly<{
@@ -129,10 +133,12 @@ export function interpretBeardPhotoSupportRpcResponse(response: BeardPhotoSuppor
 
 export async function lookupBeardPhotoSupportDiagnostic(workspaceId: string, supportId: string) {
   if (!supabase || !isValidBeardPhotoSupportId(supportId)) return undefined
-  const rpc = supabase.rpc as unknown as (name: string, args: Record<string,string>) => Promise<BeardPhotoSupportRpcResponse>
-  const response = await rpc('lookup_beard_analysis_support_diagnostic', {
-    candidate_workspace_id: workspaceId,
-    candidate_support_id: supportId,
-  })
+  const response = await (supabase as unknown as BeardPhotoSupportRpcClient).rpc(
+    'lookup_beard_analysis_support_diagnostic',
+    {
+      candidate_workspace_id: workspaceId,
+      candidate_support_id: supportId,
+    },
+  )
   return interpretBeardPhotoSupportRpcResponse(response).diagnostic
 }
