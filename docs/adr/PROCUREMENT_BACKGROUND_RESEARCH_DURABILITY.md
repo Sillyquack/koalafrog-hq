@@ -64,8 +64,9 @@ then inserts candidates and updates terminal state in one transaction. A second
 processor sees a terminal row and returns `duplicate`.
 
 Transient retrieval statuses are 404, 408, 409, 429, and 5xx, plus network,
-body, and temporary storage failures. Durable exponential backoff is bounded at
-six hours. Processing expires after 12 attempts or 48 hours. Malformed
+body, timeout, and temporary storage failures. Each retrieval has a 20-second
+transport timeout. Durable exponential backoff is bounded at six hours.
+Processing expires after 12 attempts or 48 hours. Malformed
 successfully retrieved output is terminal and publishes nothing.
 
 ## Scheduler

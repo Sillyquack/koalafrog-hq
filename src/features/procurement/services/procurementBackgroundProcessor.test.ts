@@ -38,13 +38,17 @@ describe('background terminal processor',()=>{
  })
 
  it('reschedules network failure and preserves the durable event',async()=>{
-  const db=database()
+  const db=database(),fetcher=vi.fn(async(_input:RequestInfo|URL,init?:RequestInit)=>{
+   expect(init?.signal).toBeInstanceOf(AbortSignal)
+   throw new DOMException('timed out','TimeoutError')
+  })
   const result=await processProcurementBackgroundOperation({
    database:db,providerKey:'secret',operation,eventId:'evt_test',
    eventType:'response.completed',source:'webhook',
-   fetcher:vi.fn(async()=>{throw new TypeError('network')}),
+   fetcher,
   })
   expect(result.kind).toBe('rescheduled')
+  expect(fetcher).toHaveBeenCalledOnce()
   expect(db.calls.some(call=>call.name==='mark_procurement_background_webhook_retry')).toBe(true)
  })
 

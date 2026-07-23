@@ -3,6 +3,7 @@ import{freshnessFromSourceDate,validateLiveResearchResponse}from'./procurementLi
 export const BACKGROUND_BATCH_SIZE=20
 export const BACKGROUND_MAX_ATTEMPTS=12
 export const BACKGROUND_MAX_AGE_MS=48*60*60*1000
+export const BACKGROUND_RETRIEVAL_TIMEOUT_MS=20_000
 
 export type TerminalSource='webhook'|'reconciler'|'cancellation'|'expiry'|'submission'
 export type ProcessingOutcome=

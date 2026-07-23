@@ -1,5 +1,5 @@
 import{
- BACKGROUND_MAX_AGE_MS,BACKGROUND_MAX_ATTEMPTS,normalizedCandidateRows,
+ BACKGROUND_MAX_AGE_MS,BACKGROUND_MAX_ATTEMPTS,BACKGROUND_RETRIEVAL_TIMEOUT_MS,normalizedCandidateRows,
  outputText,reconciliationDelaySeconds,retryableRetrievalStatus,
  terminalStatusFromEvent,type ProcessingOutcome,type TerminalSource,
 }from'./procurementBackgroundLifecycle.ts'
@@ -111,7 +111,10 @@ export async function processProcurementBackgroundOperation(options:{
  try{
   response=await(options.fetcher??fetch)(
    `https://api.openai.com/v1/responses/${encodeURIComponent(operation.provider_operation_id)}`,
-   {headers:{authorization:`Bearer ${providerKey}`}},
+   {
+    headers:{authorization:`Bearer ${providerKey}`},
+    signal:AbortSignal.timeout(BACKGROUND_RETRIEVAL_TIMEOUT_MS),
+   },
   )
  }catch{
   if(age>=BACKGROUND_MAX_AGE_MS||operation.reconciliation_attempt_count>=BACKGROUND_MAX_ATTEMPTS){
