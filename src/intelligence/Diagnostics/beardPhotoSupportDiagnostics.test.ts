@@ -16,6 +16,7 @@ const safeDiagnostic = () => ({
   traceVersion: 'intelligence-failure-trace-v1',
   persistence: {step:null,table:null,operation:null,sqlstate:null,constraint:null,entityType:null,entityIndex:null,diagnosticVersion:null},
   provenance: {provider:'openai',model:'gpt-5',promptVersion:'beard-photo-analysis-v4',contractVersion:'beard-photo-result-contract-v2',schemaVersion:2,semanticVersion:'beard-semantic-safety-v3'},
+  providerTrace: {stage:'provider_timeout_triggered',failureClassification:'PROVIDER_TIMEOUT_RESPONSE_HEADERS',timeoutSource:'application_deadline',timeoutBudgetMs:110000,providerElapsedMs:110001,edgeFunctionElapsedMs:111000,requestDispatched:true,responseHeadersReceived:false,responseBodyCompleted:false,httpStatusClass:null,abortSignalAborted:true,abortReasonCode:'application_deadline',transportErrorCategory:null,providerRequestIdPresent:false,responsePresent:false,usagePresent:false},
   attemptCount: 1, providerAttemptedAt: '2026-07-22T18:16:20Z',
   terminalAt: '2026-07-22T18:17:22Z', cleanupState: 'deleted',
   cleanupCompletedAt: '2026-07-22T18:17:23Z', resultPresent: false,
@@ -25,7 +26,7 @@ const safeDiagnostic = () => ({
 describe('owner-safe beard support diagnostic contract', () => {
   it('accepts the explicit metadata-only response and historical nulls', () => {
     expect(validateBeardPhotoSupportDiagnostic(safeDiagnostic())).toBe(true)
-    const historical = {...safeDiagnostic(),failureStage:null,ruleCode:null,jsonPath:null,validator:null,expectedCategory:null,receivedCategory:null,failureSchemaVersion:null,traceVersion:null,provenance:{...safeDiagnostic().provenance,contractVersion:null,semanticVersion:null}}
+    const historical = {...safeDiagnostic(),failureStage:null,ruleCode:null,jsonPath:null,validator:null,expectedCategory:null,receivedCategory:null,failureSchemaVersion:null,traceVersion:null,provenance:{...safeDiagnostic().provenance,contractVersion:null,semanticVersion:null},providerTrace:Object.fromEntries(Object.keys(safeDiagnostic().providerTrace).map(key=>[key,null]))}
     expect(validateBeardPhotoSupportDiagnostic(historical)).toBe(true)
     expect(validateBeardPhotoSupportDiagnostic({...safeDiagnostic(),status:'completed',errorCode:null,resultPresent:true})).toBe(true)
     expect(validateBeardPhotoSupportDiagnostic({...safeDiagnostic(),status:'completed_cleanup_required',errorCode:null,resultPresent:true,cleanupState:'cleanup_required'})).toBe(true)
@@ -40,6 +41,7 @@ describe('owner-safe beard support diagnostic contract', () => {
   it('rejects nested provider content and invalid structural paths', () => {
     expect(validateBeardPhotoSupportDiagnostic({...safeDiagnostic(),provenance:{...safeDiagnostic().provenance,prompt:'private prompt'}})).toBe(false)
     expect(validateBeardPhotoSupportDiagnostic({...safeDiagnostic(),jsonPath:'$.observations[left_cheek_private]'})).toBe(false)
+    expect(validateBeardPhotoSupportDiagnostic({...safeDiagnostic(),providerTrace:{...safeDiagnostic().providerTrace,failureClassification:'raw provider exception'}})).toBe(false)
   })
 
   it('classifies null as unavailable metadata without treating it as transport failure', () => {

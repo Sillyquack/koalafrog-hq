@@ -1,10 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   BEARD_PROVIDER_TIMEOUT_DEFAULT_MS,
-  ProviderDeadlineError,
+  ProviderInvocationError,
   beardStageLog,
+  invokeProviderJson,
   parseBeardProviderTimeout,
-  withProviderDeadline,
 } from './beardPhotoRuntime'
 
 describe('beard provider runtime policy', () => {
@@ -19,30 +19,103 @@ describe('beard provider runtime policy', () => {
     }
   })
 
-  it('allows a deterministic 46 second provider response without retrying', async () => {
+  it.each([
+    ['network failure before headers', () => Promise.reject(new TypeError('network')), 'PROVIDER_TRANSPORT_NETWORK'],
+    ['HTTP 429', () => Promise.resolve(new Response('', { status: 429 })), 'PROVIDER_HTTP_ERROR'],
+    ['HTTP 500', () => Promise.resolve(new Response('', { status: 500 })), 'PROVIDER_HTTP_ERROR'],
+    ['malformed JSON', () => Promise.resolve(new Response('{', { status: 200 })), 'PROVIDER_RESPONSE_PARSE_FAILED'],
+  ])('classifies %s without exposing raw errors', async (_label, request, classification) => {
+    let calls = 0
+    const rejected = await invokeProviderJson({
+      request: signal => {
+        expect(signal.aborted).toBe(false)
+        calls += 1
+        return request()
+      },
+      timeoutMs: 60_000,
+    }).catch(error => error)
+    expect(rejected).toBeInstanceOf(ProviderInvocationError)
+    expect(rejected.classification).toBe(classification)
+    expect(rejected.trace.requestDispatched).toBe(true)
+    expect(calls).toBe(1)
+    expect(JSON.stringify(rejected.trace)).not.toMatch(/authorization|header value|response body|stack|secret|token/i)
+  })
+
+  it('distinguishes a headers timeout from a stalled response body', async () => {
+    vi.useFakeTimers()
+    let headerSignal: AbortSignal | undefined
+    const headers = invokeProviderJson({
+      request: signal => {
+        headerSignal = signal
+        return new Promise((_resolve, reject) => signal.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')), { once: true }))
+      },
+      timeoutMs: 60_000,
+    })
+    const headersRejected = expect(headers).rejects.toMatchObject({
+      classification: 'PROVIDER_TIMEOUT_RESPONSE_HEADERS',
+      trace: { elapsedMs: 60_000, responseHeadersReceived: false, responseBodyCompleted: false, timeoutSource: 'application_deadline' },
+    })
+    await vi.advanceTimersByTimeAsync(60_000)
+    await headersRejected
+    expect(headerSignal?.aborted).toBe(true)
+
+    let bodySignal: AbortSignal | undefined
+    const body = invokeProviderJson({
+      request: signal => {
+        bodySignal = signal
+        const response = new Response('{}')
+        Object.defineProperty(response, 'text', { value: () => new Promise((_resolve, reject) => signal.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')), { once: true })) })
+        return Promise.resolve(response)
+      },
+      timeoutMs: 60_000,
+    })
+    const bodyRejected = expect(body).rejects.toMatchObject({
+      classification: 'PROVIDER_TIMEOUT_RESPONSE_BODY',
+      trace: { elapsedMs: 60_000, responseHeadersReceived: true, responseBodyCompleted: false, timeoutSource: 'application_deadline' },
+    })
+    await vi.advanceTimersByTimeAsync(60_000)
+    await bodyRejected
+    expect(bodySignal?.aborted).toBe(true)
+  })
+
+  it('accepts a valid response just before the deadline and cancels no second attempt', async () => {
     vi.useFakeTimers()
     let calls = 0
-    const request = withProviderDeadline(async () => {
-      calls += 1
-      await new Promise(resolve => setTimeout(resolve, 46_000))
-      return 'validated response'
-    }, BEARD_PROVIDER_TIMEOUT_DEFAULT_MS)
-    await vi.advanceTimersByTimeAsync(46_000)
-    await expect(request).resolves.toBe('validated response')
+    const request = invokeProviderJson({
+      request: async () => {
+        calls += 1
+        await new Promise(resolve => setTimeout(resolve, 59_999))
+        return new Response('{"ok":true}', { headers: { 'x-request-id': 'redacted-by-presence-flag' } })
+      },
+      timeoutMs: 60_000,
+    })
+    await vi.advanceTimersByTimeAsync(59_999)
+    await expect(request).resolves.toMatchObject({
+      json: { ok: true },
+      trace: {
+        stage: 'provider_completed',
+        requestDispatched: true,
+        responseHeadersReceived: true,
+        responseBodyCompleted: true,
+        providerRequestIdPresent: true,
+        elapsedMs: 59_999,
+      },
+    })
     expect(calls).toBe(1)
   })
 
-  it('aborts once at the configured deadline and never retries', async () => {
-    vi.useFakeTimers()
-    let calls = 0
-    const request = withProviderDeadline(signal => new Promise((_resolve, reject) => {
-      calls += 1
-      signal.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')), { once: true })
-    }), 60_000)
-    const rejected = expect(request).rejects.toBeInstanceOf(ProviderDeadlineError)
-    await vi.advanceTimersByTimeAsync(60_000)
-    await rejected
-    expect(calls).toBe(1)
+  it('classifies caller cancellation separately from the application deadline', async () => {
+    const caller = new AbortController()
+    const request = invokeProviderJson({
+      callerSignal: caller.signal,
+      request: signal => new Promise((_resolve, reject) => signal.addEventListener('abort', () => reject(new DOMException('cancelled', 'AbortError')), { once: true })),
+      timeoutMs: 60_000,
+    })
+    caller.abort()
+    await expect(request).rejects.toMatchObject({
+      classification: 'PROVIDER_CALLER_ABORTED',
+      trace: { timeoutSource: 'caller', abortReasonCode: 'caller' },
+    })
   })
 
   it('formats only allowlisted safe lifecycle metadata', () => {
