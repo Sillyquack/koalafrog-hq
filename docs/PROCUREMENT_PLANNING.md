@@ -55,8 +55,12 @@ Operational controls:
 - `OPENAI_API_KEY` is required and must be configured as a Supabase Function secret.
 - `OPENAI_PROCUREMENT_MODEL` defaults to `gpt-5.6`.
 - `PROCUREMENT_LIVE_TIMEOUT_MS` defaults to 30 seconds.
-- `PROCUREMENT_LIVE_DAILY_LIMIT` defaults to five jobs per owner per rolling 24 hours.
+- `PROCUREMENT_LIVE_DAILY_LIMIT` defaults to five permitted live invocations per owner per rolling 24 hours.
 - A partial unique index prevents concurrent `queued` or `running` jobs for the same workspace, request, and provider. These are the only active states. `partial`, `completed`, `failed`, and `cancelled` are terminal snapshots; partial and failed jobs may be retried as a new job whose `retry_of_job_id` preserves lineage. Provider calls make at most three attempts, use bounded exponential backoff, honor `Retry-After`, and emit controlled timeout/rate-limit errors.
+
+Before any paid call, the Edge Function invokes the owner-scoped `begin_procurement_live_invocation` transaction. It serializes the rolling owner limit, locks the job, requires the exact `running` state and live provider, and atomically consumes the job's single invocation slot. Counts use permitted invocations from the preceding 24 hours rather than created jobs. Managed invocation columns cannot be reset through ordinary authenticated table writes.
+
+Provider source dates are accepted only when they are real, non-future `YYYY-MM-DD` calendar dates. Valid historical dates are preserved for freshness calculation; invalid, impossible, missing, or future dates conservatively fall back to the server's current date. A field remains `verified` only when its normalized evidence includes both a safe HTTP(S) source URL and a non-empty snippet; an explicit but unsupported verified claim is downgraded to `reported`.
 
 Local setup uses `supabase secrets set PROCUREMENT_LIVE_RESEARCH_ENABLED=true OPENAI_API_KEY=...` plus the optional variables above, followed by serving/deploying `procurement-live-research`. No live-provider secret belongs in `.env.local`, browser storage, exports, or Procurement records.
 

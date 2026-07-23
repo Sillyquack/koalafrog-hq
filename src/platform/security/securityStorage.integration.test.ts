@@ -279,6 +279,51 @@ run("local Supabase Auth, RLS, RPC, Storage, and cutover security", () => {
     expect((await b.from("procurement_research_jobs").insert({workspace_id:workspaceB,owner_id:userBId,procurement_request_id:requestB.data.id,provider:"mock",status:"queued",retry_of_job_id:jobB.data.id})).error).toBeNull();
   });
 
+  it("atomically permits one bounded live invocation per running owned job",async()=>{
+    // Generated database types refresh after the additive migration is applied.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const a=userA as any,b=userB as any;
+    const createLiveJob=async(client:typeof a,workspaceId:string,ownerId:string,status:string,label:string)=>{
+      const request=await client.from("procurement_requests").insert({workspace_id:workspaceId,owner_id:ownerId,title:`Live gate ${label}`,category:"raw_material",priority:"normal"}).select("id").single();
+      expect(request.error).toBeNull();
+      const job=await client.from("procurement_research_jobs").insert({workspace_id:workspaceId,owner_id:ownerId,procurement_request_id:request.data.id,provider:"openai-web-search-v1",status,started_at:status==="running"?new Date().toISOString():null,completed_at:["partial","completed","failed","cancelled"].includes(status)?new Date().toISOString():null}).select("id").single();
+      expect(job.error).toBeNull();
+      return job.data.id as string;
+    };
+    for(const status of["queued","partial","completed","failed","cancelled"]){
+      const jobId=await createLiveJob(a,workspaceA,userAId,status,status);
+      const denied=await a.rpc("begin_procurement_live_invocation",{candidate_workspace_id:workspaceA,candidate_job_id:jobId,maximum_daily_invocations:100});
+      expect(denied.error?.message).toContain("LIVE_JOB_NOT_RUNNING");
+    }
+    const once=await createLiveJob(a,workspaceA,userAId,"running","once");
+    expect((await a.rpc("begin_procurement_live_invocation",{candidate_workspace_id:workspaceA,candidate_job_id:once,maximum_daily_invocations:100})).error).toBeNull();
+    expect((await a.rpc("begin_procurement_live_invocation",{candidate_workspace_id:workspaceA,candidate_job_id:once,maximum_daily_invocations:100})).error?.message).toContain("LIVE_JOB_ALREADY_INVOKED");
+    expect((await a.from("procurement_research_jobs").update({provider_invocation_count:0,live_invocation_started_at:null}).eq("id",once)).error?.message).toContain("LIVE_INVOCATION_STATE_MANAGED");
+    const concurrentJob=await createLiveJob(a,workspaceA,userAId,"running","concurrent");
+    const concurrent=await Promise.all([
+      a.rpc("begin_procurement_live_invocation",{candidate_workspace_id:workspaceA,candidate_job_id:concurrentJob,maximum_daily_invocations:100}),
+      a.rpc("begin_procurement_live_invocation",{candidate_workspace_id:workspaceA,candidate_job_id:concurrentJob,maximum_daily_invocations:100}),
+    ]);
+    expect(concurrent.filter(result=>!result.error)).toHaveLength(1);
+    expect(concurrent.filter(result=>result.error?.message.includes("LIVE_JOB_ALREADY_INVOKED"))).toHaveLength(1);
+    const ownerLimitOne=await createLiveJob(a,workspaceA,userAId,"running","owner-limit-one");
+    const ownerLimitTwo=await createLiveJob(a,workspaceA,userAId,"running","owner-limit-two");
+    const ownerLimitRace=await Promise.all([
+      a.rpc("begin_procurement_live_invocation",{candidate_workspace_id:workspaceA,candidate_job_id:ownerLimitOne,maximum_daily_invocations:3}),
+      a.rpc("begin_procurement_live_invocation",{candidate_workspace_id:workspaceA,candidate_job_id:ownerLimitTwo,maximum_daily_invocations:3}),
+    ]);
+    expect(ownerLimitRace.filter(result=>!result.error)).toHaveLength(1);
+    expect(ownerLimitRace.filter(result=>result.error?.message.includes("LIVE_DAILY_LIMIT_REACHED"))).toHaveLength(1);
+
+    const limitedOne=await createLiveJob(b,workspaceB,userBId,"running","limit-one");
+    const limitedTwo=await createLiveJob(b,workspaceB,userBId,"running","limit-two");
+    const limitedThree=await createLiveJob(b,workspaceB,userBId,"running","limit-three");
+    expect((await a.rpc("begin_procurement_live_invocation",{candidate_workspace_id:workspaceB,candidate_job_id:limitedOne,maximum_daily_invocations:2})).error?.message).toContain("LIVE_JOB_UNAVAILABLE");
+    expect((await b.rpc("begin_procurement_live_invocation",{candidate_workspace_id:workspaceB,candidate_job_id:limitedOne,maximum_daily_invocations:2})).error).toBeNull();
+    expect((await b.rpc("begin_procurement_live_invocation",{candidate_workspace_id:workspaceB,candidate_job_id:limitedTwo,maximum_daily_invocations:2})).error).toBeNull();
+    expect((await b.rpc("begin_procurement_live_invocation",{candidate_workspace_id:workspaceB,candidate_job_id:limitedThree,maximum_daily_invocations:2})).error?.message).toContain("LIVE_DAILY_LIMIT_REACHED");
+  });
+
   it("enforces intelligence history ownership and cross-workspace integrity", async () => {
     const threadId=crypto.randomUUID(),runId=crypto.randomUUID(),now=new Date().toISOString();
     expect((await userA.from('intelligence_threads').insert({id:threadId,workspace_id:workspaceA,owner_user_id:userAId,mode:'scent_exploration',title:'A study',created_at:now,updated_at:now})).error).toBeNull();
