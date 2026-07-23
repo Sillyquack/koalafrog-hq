@@ -2816,6 +2816,452 @@ export type Database = {
           },
         ]
       }
+      intelligence_analyses: {
+        Row: {
+          analysis_type: string
+          completed_at: string | null
+          context_manifest: Json
+          contract_version: string | null
+          correlation_id: string
+          created_at: string
+          edge_function_elapsed_ms: number | null
+          error_code: string | null
+          failure_expected_category: string | null
+          failure_json_path: string | null
+          failure_received_category: string | null
+          failure_rule_code: string | null
+          failure_schema_version: number | null
+          failure_stage: string | null
+          failure_trace_version: string | null
+          failure_validator: string | null
+          id: string
+          idempotency_key: string
+          model_name: string | null
+          owner_user_id: string
+          persistence_failure_constraint: string | null
+          persistence_failure_diagnostic_version: string | null
+          persistence_failure_entity_index: number | null
+          persistence_failure_entity_type: string | null
+          persistence_failure_operation: string | null
+          persistence_failure_sqlstate: string | null
+          persistence_failure_step: string | null
+          persistence_failure_table: string | null
+          profile_id: string
+          prompt_version: string
+          provider_abort_reason_code: string | null
+          provider_abort_signal_aborted: boolean | null
+          provider_attempt_count: number
+          provider_attempted_at: string | null
+          provider_elapsed_ms: number | null
+          provider_failure_classification: string | null
+          provider_http_status_class: string | null
+          provider_name: string | null
+          provider_request_dispatched: boolean | null
+          provider_request_id_present: boolean | null
+          provider_response_body_completed: boolean | null
+          provider_response_headers_received: boolean | null
+          provider_response_present: boolean | null
+          provider_stage: string | null
+          provider_timeout_budget_ms: number | null
+          provider_timeout_source: string | null
+          provider_trace_usage_present: boolean | null
+          provider_transport_error_category: string | null
+          provider_usage: Json | null
+          result_payload: Json | null
+          schema_version: number
+          semantic_rule_version: string | null
+          source_module: string
+          status: string
+          workspace_id: string
+        }
+        Insert: {
+          analysis_type: string
+          completed_at?: string | null
+          context_manifest?: Json
+          contract_version?: string | null
+          correlation_id: string
+          created_at?: string
+          edge_function_elapsed_ms?: number | null
+          error_code?: string | null
+          failure_expected_category?: string | null
+          failure_json_path?: string | null
+          failure_received_category?: string | null
+          failure_rule_code?: string | null
+          failure_schema_version?: number | null
+          failure_stage?: string | null
+          failure_trace_version?: string | null
+          failure_validator?: string | null
+          id: string
+          idempotency_key: string
+          model_name?: string | null
+          owner_user_id: string
+          persistence_failure_constraint?: string | null
+          persistence_failure_diagnostic_version?: string | null
+          persistence_failure_entity_index?: number | null
+          persistence_failure_entity_type?: string | null
+          persistence_failure_operation?: string | null
+          persistence_failure_sqlstate?: string | null
+          persistence_failure_step?: string | null
+          persistence_failure_table?: string | null
+          profile_id: string
+          prompt_version: string
+          provider_abort_reason_code?: string | null
+          provider_abort_signal_aborted?: boolean | null
+          provider_attempt_count?: number
+          provider_attempted_at?: string | null
+          provider_elapsed_ms?: number | null
+          provider_failure_classification?: string | null
+          provider_http_status_class?: string | null
+          provider_name?: string | null
+          provider_request_dispatched?: boolean | null
+          provider_request_id_present?: boolean | null
+          provider_response_body_completed?: boolean | null
+          provider_response_headers_received?: boolean | null
+          provider_response_present?: boolean | null
+          provider_stage?: string | null
+          provider_timeout_budget_ms?: number | null
+          provider_timeout_source?: string | null
+          provider_trace_usage_present?: boolean | null
+          provider_transport_error_category?: string | null
+          provider_usage?: Json | null
+          result_payload?: Json | null
+          schema_version: number
+          semantic_rule_version?: string | null
+          source_module: string
+          status: string
+          workspace_id: string
+        }
+        Update: {
+          analysis_type?: string
+          completed_at?: string | null
+          context_manifest?: Json
+          contract_version?: string | null
+          correlation_id?: string
+          created_at?: string
+          edge_function_elapsed_ms?: number | null
+          error_code?: string | null
+          failure_expected_category?: string | null
+          failure_json_path?: string | null
+          failure_received_category?: string | null
+          failure_rule_code?: string | null
+          failure_schema_version?: number | null
+          failure_stage?: string | null
+          failure_trace_version?: string | null
+          failure_validator?: string | null
+          id?: string
+          idempotency_key?: string
+          model_name?: string | null
+          owner_user_id?: string
+          persistence_failure_constraint?: string | null
+          persistence_failure_diagnostic_version?: string | null
+          persistence_failure_entity_index?: number | null
+          persistence_failure_entity_type?: string | null
+          persistence_failure_operation?: string | null
+          persistence_failure_sqlstate?: string | null
+          persistence_failure_step?: string | null
+          persistence_failure_table?: string | null
+          profile_id?: string
+          prompt_version?: string
+          provider_abort_reason_code?: string | null
+          provider_abort_signal_aborted?: boolean | null
+          provider_attempt_count?: number
+          provider_attempted_at?: string | null
+          provider_elapsed_ms?: number | null
+          provider_failure_classification?: string | null
+          provider_http_status_class?: string | null
+          provider_name?: string | null
+          provider_request_dispatched?: boolean | null
+          provider_request_id_present?: boolean | null
+          provider_response_body_completed?: boolean | null
+          provider_response_headers_received?: boolean | null
+          provider_response_present?: boolean | null
+          provider_stage?: string | null
+          provider_timeout_budget_ms?: number | null
+          provider_timeout_source?: string | null
+          provider_trace_usage_present?: boolean | null
+          provider_transport_error_category?: string | null
+          provider_usage?: Json | null
+          result_payload?: Json | null
+          schema_version?: number
+          semantic_rule_version?: string | null
+          source_module?: string
+          status?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "intelligence_analyses_profile_id_workspace_id_fkey"
+            columns: ["profile_id", "workspace_id"]
+            isOneToOne: false
+            referencedRelation: "beard_profiles"
+            referencedColumns: ["id", "workspace_id"]
+          },
+          {
+            foreignKeyName: "intelligence_analyses_workspace_id_owner_user_id_fkey"
+            columns: ["workspace_id", "owner_user_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id", "owner_id"]
+          },
+        ]
+      }
+      intelligence_analysis_inputs: {
+        Row: {
+          analysis_id: string
+          bucket: string
+          byte_size: number
+          cleaned_at: string | null
+          cleanup_state: string
+          created_at: string
+          id: string
+          mime_type: string
+          object_path: string
+          owner_user_id: string
+          view: string
+          workspace_id: string
+        }
+        Insert: {
+          analysis_id: string
+          bucket: string
+          byte_size: number
+          cleaned_at?: string | null
+          cleanup_state?: string
+          created_at?: string
+          id: string
+          mime_type: string
+          object_path: string
+          owner_user_id: string
+          view: string
+          workspace_id: string
+        }
+        Update: {
+          analysis_id?: string
+          bucket?: string
+          byte_size?: number
+          cleaned_at?: string | null
+          cleanup_state?: string
+          created_at?: string
+          id?: string
+          mime_type?: string
+          object_path?: string
+          owner_user_id?: string
+          view?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "intelligence_analysis_inputs_workspace_id_analysis_id_fkey"
+            columns: ["workspace_id", "analysis_id"]
+            isOneToOne: false
+            referencedRelation: "intelligence_analyses"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "intelligence_analysis_inputs_workspace_id_owner_user_id_fkey"
+            columns: ["workspace_id", "owner_user_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id", "owner_id"]
+          },
+        ]
+      }
+      intelligence_observations: {
+        Row: {
+          analysis_id: string
+          category: string
+          confidence: number
+          created_at: string
+          evidence_description: string
+          id: string
+          limitations: string[]
+          owner_user_id: string
+          provenance: string
+          provider_observation_key: string | null
+          related_beard_zones: string[]
+          statement: string
+          supporting_views: string[]
+          workspace_id: string
+        }
+        Insert: {
+          analysis_id: string
+          category: string
+          confidence: number
+          created_at?: string
+          evidence_description: string
+          id: string
+          limitations?: string[]
+          owner_user_id: string
+          provenance: string
+          provider_observation_key?: string | null
+          related_beard_zones?: string[]
+          statement: string
+          supporting_views: string[]
+          workspace_id: string
+        }
+        Update: {
+          analysis_id?: string
+          category?: string
+          confidence?: number
+          created_at?: string
+          evidence_description?: string
+          id?: string
+          limitations?: string[]
+          owner_user_id?: string
+          provenance?: string
+          provider_observation_key?: string | null
+          related_beard_zones?: string[]
+          statement?: string
+          supporting_views?: string[]
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "intelligence_observations_workspace_id_analysis_id_fkey"
+            columns: ["workspace_id", "analysis_id"]
+            isOneToOne: false
+            referencedRelation: "intelligence_analyses"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "intelligence_observations_workspace_id_owner_user_id_fkey"
+            columns: ["workspace_id", "owner_user_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id", "owner_id"]
+          },
+        ]
+      }
+      intelligence_recommendation_observations: {
+        Row: {
+          analysis_id: string
+          created_at: string
+          observation_id: string
+          owner_user_id: string
+          recommendation_id: string
+          workspace_id: string
+        }
+        Insert: {
+          analysis_id: string
+          created_at?: string
+          observation_id: string
+          owner_user_id: string
+          recommendation_id: string
+          workspace_id: string
+        }
+        Update: {
+          analysis_id?: string
+          created_at?: string
+          observation_id?: string
+          owner_user_id?: string
+          recommendation_id?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "intelligence_recommendation_o_analysis_id_recommendation_i_fkey"
+            columns: ["analysis_id", "recommendation_id"]
+            isOneToOne: false
+            referencedRelation: "intelligence_recommendations"
+            referencedColumns: ["analysis_id", "id"]
+          },
+          {
+            foreignKeyName: "intelligence_recommendation_obs_analysis_id_observation_id_fkey"
+            columns: ["analysis_id", "observation_id"]
+            isOneToOne: false
+            referencedRelation: "intelligence_observations"
+            referencedColumns: ["analysis_id", "id"]
+          },
+          {
+            foreignKeyName: "intelligence_recommendation_obs_workspace_id_owner_user_id_fkey"
+            columns: ["workspace_id", "owner_user_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id", "owner_id"]
+          },
+          {
+            foreignKeyName: "intelligence_recommendation_obser_workspace_id_analysis_id_fkey"
+            columns: ["workspace_id", "analysis_id"]
+            isOneToOne: false
+            referencedRelation: "intelligence_analyses"
+            referencedColumns: ["workspace_id", "id"]
+          },
+        ]
+      }
+      intelligence_recommendations: {
+        Row: {
+          affected_zones: string[]
+          analysis_id: string
+          confidence: number
+          created_at: string
+          expected_benefit: string
+          id: string
+          owner_user_id: string
+          priority: string
+          proposed_guard_strategy: string | null
+          provenance: string
+          reason: string
+          review_status: string
+          supporting_observation_ids: string[]
+          title: string
+          tool_constraints: string[]
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          affected_zones?: string[]
+          analysis_id: string
+          confidence: number
+          created_at?: string
+          expected_benefit: string
+          id: string
+          owner_user_id: string
+          priority: string
+          proposed_guard_strategy?: string | null
+          provenance: string
+          reason: string
+          review_status?: string
+          supporting_observation_ids: string[]
+          title: string
+          tool_constraints?: string[]
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          affected_zones?: string[]
+          analysis_id?: string
+          confidence?: number
+          created_at?: string
+          expected_benefit?: string
+          id?: string
+          owner_user_id?: string
+          priority?: string
+          proposed_guard_strategy?: string | null
+          provenance?: string
+          reason?: string
+          review_status?: string
+          supporting_observation_ids?: string[]
+          title?: string
+          tool_constraints?: string[]
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "intelligence_recommendations_workspace_id_analysis_id_fkey"
+            columns: ["workspace_id", "analysis_id"]
+            isOneToOne: false
+            referencedRelation: "intelligence_analyses"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "intelligence_recommendations_workspace_id_owner_user_id_fkey"
+            columns: ["workspace_id", "owner_user_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id", "owner_id"]
+          },
+        ]
+      }
       intelligence_runs: {
         Row: {
           cached_input_tokens: number | null
@@ -4690,6 +5136,582 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "workspaces"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      procurement_offer_candidates: {
+        Row: {
+          accepted_offer_id: string | null
+          coa_availability: string
+          confidence: string
+          created_at: string
+          currency: string | null
+          delivery_estimate_days: number | null
+          duplicate_of_candidate_id: string | null
+          evidence_snippets: string[]
+          field_evidence: Json
+          field_states: Json
+          first_order_discount: number | null
+          freshness: string
+          id: string
+          is_marketplace_listing: boolean
+          item_price: number | null
+          matched_supplier_id: string | null
+          merged_into_offer_id: string | null
+          moq: number | null
+          owner_id: string
+          package_quantity: number | null
+          package_unit: string | null
+          procurement_request_id: string
+          product_title: string
+          requested_item_id: string
+          research_job_id: string
+          review_notes: string
+          review_status: string
+          reviewed_at: string | null
+          sds_availability: string
+          shipping_cost: number | null
+          source_date: string
+          source_notes: string
+          source_url: string
+          stock_status: string
+          supplier_name: string
+          technical_document_availability: string
+          unresolved_fields: string[]
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          accepted_offer_id?: string | null
+          coa_availability?: string
+          confidence?: string
+          created_at?: string
+          currency?: string | null
+          delivery_estimate_days?: number | null
+          duplicate_of_candidate_id?: string | null
+          evidence_snippets?: string[]
+          field_evidence?: Json
+          field_states?: Json
+          first_order_discount?: number | null
+          freshness?: string
+          id?: string
+          is_marketplace_listing?: boolean
+          item_price?: number | null
+          matched_supplier_id?: string | null
+          merged_into_offer_id?: string | null
+          moq?: number | null
+          owner_id: string
+          package_quantity?: number | null
+          package_unit?: string | null
+          procurement_request_id: string
+          product_title: string
+          requested_item_id: string
+          research_job_id: string
+          review_notes?: string
+          review_status?: string
+          reviewed_at?: string | null
+          sds_availability?: string
+          shipping_cost?: number | null
+          source_date: string
+          source_notes?: string
+          source_url: string
+          stock_status?: string
+          supplier_name: string
+          technical_document_availability?: string
+          unresolved_fields?: string[]
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          accepted_offer_id?: string | null
+          coa_availability?: string
+          confidence?: string
+          created_at?: string
+          currency?: string | null
+          delivery_estimate_days?: number | null
+          duplicate_of_candidate_id?: string | null
+          evidence_snippets?: string[]
+          field_evidence?: Json
+          field_states?: Json
+          first_order_discount?: number | null
+          freshness?: string
+          id?: string
+          is_marketplace_listing?: boolean
+          item_price?: number | null
+          matched_supplier_id?: string | null
+          merged_into_offer_id?: string | null
+          moq?: number | null
+          owner_id?: string
+          package_quantity?: number | null
+          package_unit?: string | null
+          procurement_request_id?: string
+          product_title?: string
+          requested_item_id?: string
+          research_job_id?: string
+          review_notes?: string
+          review_status?: string
+          reviewed_at?: string | null
+          sds_availability?: string
+          shipping_cost?: number | null
+          source_date?: string
+          source_notes?: string
+          source_url?: string
+          stock_status?: string
+          supplier_name?: string
+          technical_document_availability?: string
+          unresolved_fields?: string[]
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "procurement_offer_candidates_duplicate_workspace_fkey"
+            columns: ["workspace_id", "duplicate_of_candidate_id"]
+            isOneToOne: false
+            referencedRelation: "procurement_offer_candidates"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "procurement_offer_candidates_workspace_id_accepted_offer_i_fkey"
+            columns: ["workspace_id", "accepted_offer_id"]
+            isOneToOne: false
+            referencedRelation: "procurement_supplier_offers"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "procurement_offer_candidates_workspace_id_matched_supplier_fkey"
+            columns: ["workspace_id", "matched_supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "procurement_offer_candidates_workspace_id_merged_into_offe_fkey"
+            columns: ["workspace_id", "merged_into_offer_id"]
+            isOneToOne: false
+            referencedRelation: "procurement_supplier_offers"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "procurement_offer_candidates_workspace_id_procurement_requ_fkey"
+            columns: ["workspace_id", "procurement_request_id"]
+            isOneToOne: false
+            referencedRelation: "procurement_requests"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "procurement_offer_candidates_workspace_id_requested_item_i_fkey"
+            columns: [
+              "workspace_id",
+              "requested_item_id",
+              "procurement_request_id",
+            ]
+            isOneToOne: false
+            referencedRelation: "procurement_requested_items"
+            referencedColumns: ["workspace_id", "id", "procurement_request_id"]
+          },
+          {
+            foreignKeyName: "procurement_offer_candidates_workspace_id_research_job_id_fkey"
+            columns: ["workspace_id", "research_job_id"]
+            isOneToOne: false
+            referencedRelation: "procurement_research_jobs"
+            referencedColumns: ["workspace_id", "id"]
+          },
+        ]
+      }
+      procurement_recommendations: {
+        Row: {
+          created_at: string
+          id: string
+          owner_id: string
+          procurement_request_id: string
+          rationale: string
+          recommended_purchase_quantity: number | null
+          requested_item_id: string
+          status: string
+          summary: string
+          supplier_offer_id: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          owner_id: string
+          procurement_request_id: string
+          rationale?: string
+          recommended_purchase_quantity?: number | null
+          requested_item_id: string
+          status?: string
+          summary: string
+          supplier_offer_id: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          owner_id?: string
+          procurement_request_id?: string
+          rationale?: string
+          recommended_purchase_quantity?: number | null
+          requested_item_id?: string
+          status?: string
+          summary?: string
+          supplier_offer_id?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "procurement_recommendations_workspace_id_procurement_reque_fkey"
+            columns: ["workspace_id", "procurement_request_id"]
+            isOneToOne: false
+            referencedRelation: "procurement_requests"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "procurement_recommendations_workspace_id_requested_item_id_fkey"
+            columns: [
+              "workspace_id",
+              "requested_item_id",
+              "procurement_request_id",
+            ]
+            isOneToOne: false
+            referencedRelation: "procurement_requested_items"
+            referencedColumns: ["workspace_id", "id", "procurement_request_id"]
+          },
+          {
+            foreignKeyName: "procurement_recommendations_workspace_id_supplier_offer_id_fkey"
+            columns: ["workspace_id", "supplier_offer_id", "requested_item_id"]
+            isOneToOne: false
+            referencedRelation: "procurement_supplier_offers"
+            referencedColumns: ["workspace_id", "id", "requested_item_id"]
+          },
+        ]
+      }
+      procurement_requested_items: {
+        Row: {
+          acceptable_substitutes: string[]
+          category: string
+          created_at: string
+          display_order: number
+          id: string
+          intended_formula_ids: string[]
+          intended_product_ids: string[]
+          name: string
+          needed_by: string | null
+          notes: string
+          owner_id: string
+          priority: string
+          procurement_request_id: string
+          requested_quantity: number
+          required_specifications: string[]
+          unit: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          acceptable_substitutes?: string[]
+          category: string
+          created_at?: string
+          display_order?: number
+          id?: string
+          intended_formula_ids?: string[]
+          intended_product_ids?: string[]
+          name: string
+          needed_by?: string | null
+          notes?: string
+          owner_id: string
+          priority?: string
+          procurement_request_id: string
+          requested_quantity: number
+          required_specifications?: string[]
+          unit: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          acceptable_substitutes?: string[]
+          category?: string
+          created_at?: string
+          display_order?: number
+          id?: string
+          intended_formula_ids?: string[]
+          intended_product_ids?: string[]
+          name?: string
+          needed_by?: string | null
+          notes?: string
+          owner_id?: string
+          priority?: string
+          procurement_request_id?: string
+          requested_quantity?: number
+          required_specifications?: string[]
+          unit?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "procurement_requested_items_workspace_id_procurement_reque_fkey"
+            columns: ["workspace_id", "procurement_request_id"]
+            isOneToOne: false
+            referencedRelation: "procurement_requests"
+            referencedColumns: ["workspace_id", "id"]
+          },
+        ]
+      }
+      procurement_requests: {
+        Row: {
+          category: string
+          created_at: string
+          id: string
+          needed_by: string | null
+          notes: string
+          owner_id: string
+          priority: string
+          revision: number
+          status: string
+          title: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          id?: string
+          needed_by?: string | null
+          notes?: string
+          owner_id: string
+          priority?: string
+          revision?: number
+          status?: string
+          title: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          id?: string
+          needed_by?: string | null
+          notes?: string
+          owner_id?: string
+          priority?: string
+          revision?: number
+          status?: string
+          title?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "procurement_requests_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      procurement_research_jobs: {
+        Row: {
+          attempt_count: number
+          cancellation_requested_at: string | null
+          completed_at: string | null
+          correlation_id: string
+          created_at: string
+          error_code: string | null
+          error_details: string | null
+          id: string
+          live_invocation_started_at: string | null
+          owner_id: string
+          procurement_request_id: string
+          provider: string
+          provider_invocation_count: number
+          provider_request_id: string | null
+          provider_stopped_at: string | null
+          result_count: number
+          retry_of_job_id: string | null
+          reviewed_count: number
+          started_at: string | null
+          status: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          attempt_count?: number
+          cancellation_requested_at?: string | null
+          completed_at?: string | null
+          correlation_id?: string
+          created_at?: string
+          error_code?: string | null
+          error_details?: string | null
+          id?: string
+          live_invocation_started_at?: string | null
+          owner_id: string
+          procurement_request_id: string
+          provider: string
+          provider_invocation_count?: number
+          provider_request_id?: string | null
+          provider_stopped_at?: string | null
+          result_count?: number
+          retry_of_job_id?: string | null
+          reviewed_count?: number
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          attempt_count?: number
+          cancellation_requested_at?: string | null
+          completed_at?: string | null
+          correlation_id?: string
+          created_at?: string
+          error_code?: string | null
+          error_details?: string | null
+          id?: string
+          live_invocation_started_at?: string | null
+          owner_id?: string
+          procurement_request_id?: string
+          provider?: string
+          provider_invocation_count?: number
+          provider_request_id?: string | null
+          provider_stopped_at?: string | null
+          result_count?: number
+          retry_of_job_id?: string | null
+          reviewed_count?: number
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "procurement_research_jobs_retry_workspace_fkey"
+            columns: ["workspace_id", "retry_of_job_id"]
+            isOneToOne: false
+            referencedRelation: "procurement_research_jobs"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "procurement_research_jobs_workspace_id_procurement_request_fkey"
+            columns: ["workspace_id", "procurement_request_id"]
+            isOneToOne: false
+            referencedRelation: "procurement_requests"
+            referencedColumns: ["workspace_id", "id"]
+          },
+        ]
+      }
+      procurement_supplier_offers: {
+        Row: {
+          certification_claims: string[]
+          coa_availability: string
+          confidence: string
+          country_code: string | null
+          created_at: string
+          currency: string | null
+          date_checked: string
+          delivery_estimate_days: number | null
+          first_order_discount: number | null
+          id: string
+          item_price: number | null
+          moq: number | null
+          notes: string
+          owner_id: string
+          package_quantity: number
+          package_unit: string
+          product_title: string
+          product_url: string | null
+          requested_item_id: string
+          sds_availability: string
+          shipping_cost: number | null
+          source_supplier_product_domain: string | null
+          source_supplier_product_id: string | null
+          stock_status: string
+          supplier_id: string
+          tax_duty_estimate: number | null
+          technical_document_availability: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          certification_claims?: string[]
+          coa_availability?: string
+          confidence?: string
+          country_code?: string | null
+          created_at?: string
+          currency?: string | null
+          date_checked: string
+          delivery_estimate_days?: number | null
+          first_order_discount?: number | null
+          id?: string
+          item_price?: number | null
+          moq?: number | null
+          notes?: string
+          owner_id: string
+          package_quantity: number
+          package_unit: string
+          product_title: string
+          product_url?: string | null
+          requested_item_id: string
+          sds_availability?: string
+          shipping_cost?: number | null
+          source_supplier_product_domain?: string | null
+          source_supplier_product_id?: string | null
+          stock_status?: string
+          supplier_id: string
+          tax_duty_estimate?: number | null
+          technical_document_availability?: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          certification_claims?: string[]
+          coa_availability?: string
+          confidence?: string
+          country_code?: string | null
+          created_at?: string
+          currency?: string | null
+          date_checked?: string
+          delivery_estimate_days?: number | null
+          first_order_discount?: number | null
+          id?: string
+          item_price?: number | null
+          moq?: number | null
+          notes?: string
+          owner_id?: string
+          package_quantity?: number
+          package_unit?: string
+          product_title?: string
+          product_url?: string | null
+          requested_item_id?: string
+          sds_availability?: string
+          shipping_cost?: number | null
+          source_supplier_product_domain?: string | null
+          source_supplier_product_id?: string | null
+          stock_status?: string
+          supplier_id?: string
+          tax_duty_estimate?: number | null
+          technical_document_availability?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "procurement_supplier_offers_workspace_id_requested_item_id_fkey"
+            columns: ["workspace_id", "requested_item_id"]
+            isOneToOne: false
+            referencedRelation: "procurement_requested_items"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "procurement_supplier_offers_workspace_id_supplier_id_fkey"
+            columns: ["workspace_id", "supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["workspace_id", "id"]
           },
         ]
       }
@@ -7234,6 +8256,36 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_procurement_offer_candidate: {
+        Args: {
+          candidate_id: string
+          candidate_workspace_id: string
+          create_supplier?: boolean
+          selected_supplier_id?: string
+        }
+        Returns: {
+          offer_id: string
+          supplier_id: string
+        }[]
+      }
+      begin_beard_provider_attempt: {
+        Args: {
+          candidate_analysis_id: string
+          candidate_model: string
+          candidate_prompt_version: string
+          candidate_provider: string
+          candidate_workspace_id: string
+        }
+        Returns: boolean
+      }
+      begin_procurement_live_invocation: {
+        Args: {
+          candidate_job_id: string
+          candidate_workspace_id: string
+          maximum_daily_invocations: number
+        }
+        Returns: string
+      }
       commit_lab_consumption: {
         Args: { batch_id: string; commits: Json }
         Returns: Json
@@ -7293,10 +8345,18 @@ export type Database = {
         Args: { concept_id: string; lines: Json }
         Returns: string
       }
+      import_procurement_snapshot: {
+        Args: { candidate_workspace_id: string; payload: Json }
+        Returns: undefined
+      }
       import_v9_relational: { Args: { payload: Json }; Returns: Json }
       import_v9_relational_pre_ingredient_knowledge: {
         Args: { payload: Json }
         Returns: Json
+      }
+      is_active_owned_workspace: {
+        Args: { candidate_workspace_id: string }
+        Returns: boolean
       }
       kf_convert_quantity: {
         Args: { from_unit: string; q: number; to_unit: string }
@@ -7309,6 +8369,10 @@ export type Database = {
       kf_packaging_balance: {
         Args: { lot_id: string; wid: string }
         Returns: number
+      }
+      lookup_beard_analysis_support_diagnostic: {
+        Args: { candidate_support_id: string; candidate_workspace_id: string }
+        Returns: Json
       }
       mark_packaging_supplier_product_preferred:
         | {
@@ -7340,6 +8404,28 @@ export type Database = {
             }
             Returns: undefined
           }
+      persist_beard_analysis_result: {
+        Args: {
+          candidate_analysis_id: string
+          candidate_correlation_id: string
+          candidate_observations: Json
+          candidate_provider_usage?: Json
+          candidate_recommendations: Json
+          candidate_result: Json
+          candidate_workspace_id: string
+        }
+        Returns: Json
+      }
+      publish_procurement_research_results: {
+        Args: {
+          candidate_job_id: string
+          candidate_workspace_id: string
+          candidates: Json
+          provider_request_id?: string
+          terminal_status: string
+        }
+        Returns: number
+      }
       record_scent_memory_checkpoint: {
         Args: {
           checkpoint: Json
@@ -7422,10 +8508,6 @@ export type Database = {
         }
       }
       save_beard_studio_workspace: { Args: { payload: Json }; Returns: Json }
-      save_beard_studio_workspace_unchecked: {
-        Args: { payload: Json }
-        Returns: Json
-      }
       save_ingredient_knowledge_aggregate: {
         Args: { aggregate: Json; expected_updated_at?: string }
         Returns: Json

@@ -17,9 +17,10 @@ import { toDurableBeardFailureDiagnostic } from "../_shared/beardPhotoFailureDia
 import {
   beardStageLog,
   InvalidProviderTimeoutError,
+  invokeProviderJson,
   parseBeardProviderTimeout,
-  ProviderDeadlineError,
-  withProviderDeadline,
+  ProviderInvocationError,
+  type ProviderInvocationTrace,
 } from "../_shared/beardPhotoRuntime.ts";
 import {
   executeValidation,
@@ -253,14 +254,42 @@ interface VisionAnalysisProvider {
       correlationId: string;
       trace: IntelligenceTraceBuilder;
       reporter: TraceReporter;
+      callerSignal: AbortSignal;
     },
   ): Promise<{ result: BeardPhotoAnalysisResult; usage?: unknown }>;
 }
 class ProviderError extends Error {
-  constructor(public code: string, public diagnostic?: ValidationFailure) {
+  constructor(
+    public code: string,
+    public diagnostic?: ValidationFailure,
+    public providerTrace?: ProviderInvocationTrace,
+  ) {
     super(code);
   }
 }
+const toDurableProviderTrace = (
+  trace: ProviderInvocationTrace | undefined,
+  edgeFunctionElapsedMs: number,
+) => trace
+  ? {
+    provider_stage: trace.stage,
+    provider_failure_classification: trace.failureClassification,
+    provider_timeout_source: trace.timeoutSource,
+    provider_timeout_budget_ms: trace.timeoutBudgetMs,
+    provider_elapsed_ms: trace.elapsedMs,
+    edge_function_elapsed_ms: Math.max(0, Math.round(edgeFunctionElapsedMs)),
+    provider_request_dispatched: trace.requestDispatched,
+    provider_response_headers_received: trace.responseHeadersReceived,
+    provider_response_body_completed: trace.responseBodyCompleted,
+    provider_http_status_class: trace.httpStatusClass,
+    provider_abort_signal_aborted: trace.abortSignalAborted,
+    provider_abort_reason_code: trace.abortReasonCode,
+    provider_transport_error_category: trace.transportErrorCategory,
+    provider_request_id_present: trace.providerRequestIdPresent,
+    provider_response_present: trace.responsePresent,
+    provider_trace_usage_present: trace.usagePresent,
+  }
+  : {};
 class OpenAIBeardVisionProvider implements VisionAnalysisProvider {
   id = "openai";
   capabilities = { imageInput: true as const, structuredOutput: true as const };
@@ -280,6 +309,7 @@ class OpenAIBeardVisionProvider implements VisionAnalysisProvider {
       correlationId: string;
       trace: IntelligenceTraceBuilder;
       reporter: TraceReporter;
+      callerSignal: AbortSignal;
     },
   ) {
     const finish = (
@@ -288,9 +318,11 @@ class OpenAIBeardVisionProvider implements VisionAnalysisProvider {
       metadata: Parameters<IntelligenceTraceBuilder["finish"]>[2] = {},
     ) => request.reporter.report(request.trace.finish(stage, result, metadata));
     let response: Response;
+    let raw: any;
+    let providerTrace: ProviderInvocationTrace | undefined;
     try {
-      response = await withProviderDeadline(
-        (signal) =>
+      const invocation = await invokeProviderJson({
+        request: (signal) =>
           fetch("https://api.openai.com/v1/responses", {
             method: "POST",
             signal,
@@ -339,21 +371,55 @@ class OpenAIBeardVisionProvider implements VisionAnalysisProvider {
               },
             }),
           }),
-        this.timeoutMs,
-      );
+        timeoutMs: this.timeoutMs,
+        callerSignal: request.callerSignal,
+      });
+      response = invocation.response;
+      raw = invocation.json;
+      providerTrace = invocation.trace;
     } catch (error) {
+      const invocationError = error instanceof ProviderInvocationError
+        ? error
+        : undefined;
       finish("ProviderInvocation", "failed", {
-        ruleCode: error instanceof ProviderDeadlineError
+        ruleCode: invocationError?.classification.startsWith("PROVIDER_TIMEOUT")
           ? intelligenceRuleCodes.providerTimeout
           : intelligenceRuleCodes.invalidHttpEnvelope,
         validator: "openai-responses",
         provider: this.id,
         model: this.model,
       });
+      if (invocationError?.classification === "PROVIDER_HTTP_ERROR") {
+        response = invocationError.response!;
+        const code = response.status === 429
+          ? "PROVIDER_RATE_LIMIT"
+          : response.status === 401 || response.status === 403
+          ? "PROVIDER_NOT_CONFIGURED"
+          : response.status >= 500
+          ? "PROVIDER_FAILURE"
+          : "PROVIDER_REFUSAL";
+        throw new ProviderError(code, undefined, invocationError.trace);
+      }
       throw new ProviderError(
-        error instanceof ProviderDeadlineError
+        invocationError?.classification.startsWith("PROVIDER_TIMEOUT")
           ? "PROVIDER_TIMEOUT"
+          : invocationError?.classification === "PROVIDER_CALLER_ABORTED"
+          ? "NETWORK_FAILURE"
+          : invocationError?.classification === "PROVIDER_RESPONSE_PARSE_FAILED"
+          ? "INVALID_ENVELOPE"
           : "NETWORK_FAILURE",
+        invocationError?.classification === "PROVIDER_RESPONSE_PARSE_FAILED"
+          ? {
+            success: false,
+            ruleCode: intelligenceRuleCodes.invalidHttpEnvelope,
+            jsonPath: "$",
+            expected: "object",
+            received: "unknown",
+            validator: "responses-envelope",
+            stage: "EnvelopeParsing",
+          }
+          : undefined,
+        invocationError?.trace,
       );
     }
     finish("ProviderInvocation", "succeeded", {
@@ -366,24 +432,6 @@ class OpenAIBeardVisionProvider implements VisionAnalysisProvider {
         model: this.model,
       }),
     );
-    if (!response.ok) {
-      finish("ProviderResponse", "failed", {
-        ruleCode: response.status === 429
-          ? intelligenceRuleCodes.providerTimeout
-          : intelligenceRuleCodes.invalidHttpEnvelope,
-        validator: "openai-responses",
-        provider: this.id,
-        model: this.model,
-      });
-      if (response.status === 429) {
-        throw new ProviderError("PROVIDER_RATE_LIMIT");
-      }
-      if (response.status === 401 || response.status === 403) {
-        throw new ProviderError("PROVIDER_NOT_CONFIGURED");
-      }
-      if (response.status >= 500) throw new ProviderError("PROVIDER_FAILURE");
-      throw new ProviderError("PROVIDER_REFUSAL");
-    }
     finish("ProviderResponse", "succeeded", {
       provider: this.id,
       model: this.model,
@@ -394,30 +442,6 @@ class OpenAIBeardVisionProvider implements VisionAnalysisProvider {
         model: this.model,
       }),
     );
-    let raw: any;
-    try {
-      raw = await response.json();
-    } catch {
-      const diagnostic: ValidationFailure = {
-        success: false,
-        ruleCode: intelligenceRuleCodes.invalidHttpEnvelope,
-        jsonPath: "$",
-        expected: "object",
-        received: "unknown",
-        validator: "responses-envelope",
-        stage: "EnvelopeParsing",
-      };
-      finish("EnvelopeParsing", "failed", {
-        ruleCode: diagnostic.ruleCode,
-        jsonPath: diagnostic.jsonPath,
-        expectedType: diagnostic.expected,
-        receivedType: diagnostic.received,
-        validator: diagnostic.validator,
-        provider: this.id,
-        model: this.model,
-      });
-      throw new ProviderError("INVALID_ENVELOPE", diagnostic);
-    }
     if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
       const diagnostic: ValidationFailure = {
         success: false,
@@ -437,7 +461,7 @@ class OpenAIBeardVisionProvider implements VisionAnalysisProvider {
         provider: this.id,
         model: this.model,
       });
-      throw new ProviderError("INVALID_ENVELOPE", diagnostic);
+      throw new ProviderError("INVALID_ENVELOPE", diagnostic, providerTrace);
     }
     if (raw.status === "incomplete") {
       const diagnostic: ValidationFailure = {
@@ -458,7 +482,7 @@ class OpenAIBeardVisionProvider implements VisionAnalysisProvider {
         provider: this.id,
         model: this.model,
       });
-      throw new ProviderError("PROVIDER_INCOMPLETE", diagnostic);
+      throw new ProviderError("PROVIDER_INCOMPLETE", diagnostic, providerTrace);
     }
     finish("EnvelopeParsing", "succeeded", {
       provider: this.id,
@@ -489,7 +513,7 @@ class OpenAIBeardVisionProvider implements VisionAnalysisProvider {
         received: "unexpected",
         validator: "responses-refusal",
         stage: "ProviderResponse",
-      });
+      }, providerTrace);
     }
     const text = raw.output?.flatMap((x: any) => x.content ?? []).find((
       x: any,
@@ -519,7 +543,7 @@ class OpenAIBeardVisionProvider implements VisionAnalysisProvider {
         provider: this.id,
         model: this.model,
       });
-      throw new ProviderError("MISSING_OUTPUT_TEXT", diagnostic);
+      throw new ProviderError("MISSING_OUTPUT_TEXT", diagnostic, providerTrace);
     }
     let parsed: unknown;
     try {
@@ -543,7 +567,7 @@ class OpenAIBeardVisionProvider implements VisionAnalysisProvider {
         provider: this.id,
         model: this.model,
       });
-      throw new ProviderError("INVALID_JSON", diagnostic);
+      throw new ProviderError("INVALID_JSON", diagnostic, providerTrace);
     }
     finish("JsonParsing", "succeeded", {
       provider: this.id,
@@ -585,6 +609,7 @@ class OpenAIBeardVisionProvider implements VisionAnalysisProvider {
           ? "UNKNOWN_VALIDATION_FAILURE"
           : "SCHEMA_VALIDATION_FAILED",
         schemaValidation,
+        providerTrace,
       );
     }
     finish("SchemaValidation", "succeeded", {
@@ -619,6 +644,7 @@ class OpenAIBeardVisionProvider implements VisionAnalysisProvider {
           ? "UNKNOWN_VALIDATION_FAILURE"
           : "CONTRACT_VALIDATION_FAILED",
         contractValidation,
+        providerTrace,
       );
     }
     finish("ContractValidation", "succeeded", {
@@ -652,6 +678,7 @@ class OpenAIBeardVisionProvider implements VisionAnalysisProvider {
           ? "UNKNOWN_VALIDATION_FAILURE"
           : "SEMANTIC_VALIDATION_FAILED",
         semanticValidation,
+        providerTrace,
       );
     }
     finish("SemanticValidation", "succeeded", {
@@ -667,7 +694,7 @@ class OpenAIBeardVisionProvider implements VisionAnalysisProvider {
         received: "unknown",
         validator: "legacy-beard-validator",
         stage: "ContractValidation",
-      });
+      }, providerTrace);
     }
     return {
       result: typed,
@@ -1114,6 +1141,7 @@ Deno.serve(async (req) => {
       images,
       trace,
       reporter,
+      callerSignal: req.signal,
     });
     stage("provider_response_received", {
       provider: provider.id,
@@ -1164,6 +1192,10 @@ Deno.serve(async (req) => {
       completed_at: new Date().toISOString(),
       ...toDurableBeardFailureDiagnostic(
         error instanceof ProviderError ? error.diagnostic : undefined,
+      ),
+      ...toDurableProviderTrace(
+        error instanceof ProviderError ? error.providerTrace : undefined,
+        Date.now() - requestStartedAt,
       ),
     }).eq("id", body.analysisId).eq("workspace_id", body.workspaceId).eq(
       "owner_user_id",

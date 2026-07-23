@@ -14,6 +14,7 @@ const observationKeysMigration = readFileSync('supabase/migrations/2026072213000
 const supportDiagnosticMigration = readFileSync('supabase/migrations/20260722190000_beard_support_diagnostic_lookup.sql', 'utf8')
 const supportDiagnosticRepair = readFileSync('supabase/migrations/20260723044918_fix_beard_support_diagnostic_rpc.sql', 'utf8')
 const semanticV4Migration = readFileSync('supabase/migrations/20260723060732_beard_semantic_safety_v4.sql', 'utf8')
+const providerTraceMigration = readFileSync('supabase/migrations/20260723125652_beard_provider_timeout_observability.sql', 'utf8')
 const semanticV4Lookup = semanticV4Migration.slice(semanticV4Migration.indexOf('create or replace function public.lookup_beard_analysis_support_diagnostic'))
 const runtime = readFileSync('supabase/functions/_shared/beardPhotoRuntime.ts', 'utf8')
 
@@ -31,7 +32,7 @@ describe('beard photo intelligence boundaries', () => {
     expect(runtime).toContain('BEARD_PROVIDER_TIMEOUT_DEFAULT_MS = 110_000')
     expect(runtime).toContain('BEARD_PROVIDER_TIMEOUT_MIN_MS = 60_000')
     expect(runtime).toContain('BEARD_PROVIDER_TIMEOUT_MAX_MS = 120_000')
-    expect(runtime).toContain('controller.abort()')
+    expect(runtime).toContain('controller.abort(source)')
     expect(edge).toContain('OPENAI_BEARD_VISION_TIMEOUT_MS')
     expect(edge).toMatch(/store: false/)
     expect(edge).toContain('Deno.env.get("OPENAI_BEARD_VISION_MODEL")')
@@ -95,11 +96,15 @@ describe('beard photo intelligence boundaries', () => {
     expect(semanticMigration).toMatch(/revoke insert\([\s\S]*failure_stage[\s\S]*from authenticated/)
     expect(semanticMigration).toMatch(/revoke update\([\s\S]*failure_stage[\s\S]*from authenticated/)
     expect(semanticMigration).not.toMatch(/update public\.intelligence_analyses[\s\S]*failure_json_path=/)
+    expect(providerTraceMigration).toContain('provider_failure_classification')
+    expect(providerTraceMigration).toContain("'providerTrace',jsonb_build_object(")
+    expect(providerTraceMigration).toMatch(/revoke all on function public\.lookup_beard_analysis_support_diagnostic\([\s\S]*from public,anon,service_role/)
+    expect(providerTraceMigration).not.toMatch(/add column (?:request_body|prompt_text|image_data|image_url|filename|signed_url|raw_endpoint|raw_exception|stack_trace|response_body|actual_provider_request_id)\b/i)
   })
 
   it('logs only the safe stage envelope and never sensitive request material', () => {
     expect(edge).toContain('console.info(beardStageLog')
-    expect(runtime).not.toMatch(/filename|objectPath|prompt|responseBody|authorization|email|apiKey|imageData/i)
+    expect(runtime).not.toMatch(/filename|objectPath|promptText|responseBodyContent|authorization|email|apiKey|imageData/i)
     expect(edge).not.toMatch(/console\.(?:log|debug|warn|error)/)
     expect(edge).not.toMatch(/console\.info\((?!beardStageLog)/)
   })
@@ -110,12 +115,13 @@ describe('beard photo intelligence boundaries', () => {
     expect(edge).not.toMatch(/retry\s*[:=]|for\s*\([^)]*retry/i)
   })
 
-  it('returns the timeout support ID and always reaches cleanup after provider execution', () => {
+  it('forwards incoming cancellation and always reaches cleanup after provider execution', () => {
     expect(edge).toContain('error instanceof ProviderError')
     expect(edge).toMatch(/safeError\([\s\S]*correlationId/)
     expect(edge.indexOf('provider.analyzeBeardPhotos')).toBeLessThan(edge.indexOf('const removed = await client.storage'))
     expect(edge.indexOf('status: "failed"')).toBeLessThan(edge.indexOf('const removed = await client.storage'))
-    expect(edge).not.toContain('req.signal')
+    expect(edge).toContain('callerSignal: req.signal')
+    expect(edge).toContain('callerSignal: request.callerSignal')
   })
 
   it('persists no partial domain result when semantic validation fails and still reaches cleanup', () => {
