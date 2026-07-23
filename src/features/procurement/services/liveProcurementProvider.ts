@@ -17,8 +17,11 @@ export class OpenAIWebResearchProvider implements ProcurementResearchProvider{
  async discoverOffers(snapshot:ProcurementResearchSnapshot):Promise<ResearchResult>{
   if(!supabase)throw new LiveProviderError('PROVIDER_NOT_CONFIGURED','The hosted workspace connection is required for live research.')
   if(!this.jobId||!this.workspaceId)throw new LiveProviderError('JOB_UNAVAILABLE','The live research job was not prepared.')
+  const sessionResult=await supabase.auth.getSession()
+  const accessToken=sessionResult.data.session?.access_token
+  if(sessionResult.error||!accessToken)throw new LiveProviderError('AUTHENTICATION_REQUIRED','Your authenticated session is unavailable. Sign in again before starting live research.')
   const input:LiveResearchRequest={schemaVersion:1,workspaceId:this.workspaceId,jobId:this.jobId,requestId:crypto.randomUUID(),deliveryCountry:snapshot.constraints.deliveryCountry,documentationRequirements:snapshot.constraints.documentationRequirements,preferredSuppliers:snapshot.constraints.preferredSuppliers,excludedSuppliers:snapshot.constraints.excludedSuppliers,items:snapshot.items.map(item=>({id:item.id,name:item.name,category:item.category,quantity:item.requested_quantity,unit:item.unit,requiredSpecifications:item.required_specifications,acceptableSubstitutes:item.acceptable_substitutes,neededBy:item.needed_by,priority:item.priority,notes:item.notes}))}
-  const response=await supabase.functions.invoke('procurement-live-research',{body:input})
+  const response=await supabase.functions.invoke('procurement-live-research',{headers:{Authorization:`Bearer ${accessToken}`},body:input})
   if(response.error){const context=response.error.context as Response|undefined;const payload:{error?:{code?:string;message?:string}}=await context?.json().catch(()=>({}))??{};throw new LiveProviderError(payload.error?.code??'PROVIDER_FAILURE',payload.error?.message??'Live research could not be completed.')}
   const raw=response.data as Record<string,unknown>
   this.providerRequestId=typeof raw.providerRequestId==='string'?raw.providerRequestId:undefined
