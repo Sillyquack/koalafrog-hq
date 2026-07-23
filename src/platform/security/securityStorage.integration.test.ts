@@ -168,6 +168,12 @@ run("local Supabase Auth, RLS, RPC, Storage, and cutover security", () => {
       "equipment_policies",
       "equipment_service_events",
       "process_equipment_requirements",
+      "procurement_requests",
+      "procurement_requested_items",
+      "procurement_supplier_offers",
+      "procurement_recommendations",
+      "procurement_research_jobs",
+      "procurement_offer_candidates",
     ];
     for (const table of tables) {
       const anon = await anonymous
@@ -215,6 +221,30 @@ run("local Supabase Auth, RLS, RPC, Storage, and cutover security", () => {
     expect(orderedRetry.data).toBe(ordered.data);
     expect((await userA.from("inventory_movements").select("id", { count: "exact", head: true })).count).toBe(beforeRaw);
     expect((await userA.from("packaging_inventory_movements").select("id", { count: "exact", head: true })).count).toBe(beforePackaging);
+  });
+
+  it("isolates request research and records ordered status without purchasing or stock writes", async () => {
+    // Generated database types refresh after the additive migration is applied.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const a=userA as any,b=userB as any;
+    const beforeImport=(await a.from("procurement_requests").select("id",{count:"exact",head:true})).count;
+    const importRequest=crypto.randomUUID(),now=new Date().toISOString();
+    const failedImport=await a.rpc("import_procurement_snapshot",{candidate_workspace_id:workspaceA,payload:{requests:[{id:importRequest,title:"Atomic import",status:"needed",category:"raw_material",priority:"normal",needed_by:null,notes:"",revision:1,created_at:now,updated_at:now}],requestedItems:[{id:crypto.randomUUID(),procurement_request_id:crypto.randomUUID(),name:"Disconnected",category:"raw_material",requested_quantity:1,unit:"kg",intended_product_ids:[],intended_formula_ids:[],required_specifications:[],acceptable_substitutes:[],priority:"normal",needed_by:null,notes:"",display_order:0,created_at:now,updated_at:now}],offers:[],recommendations:[]}});
+    expect(failedImport.error).not.toBeNull();
+    expect((await a.from("procurement_requests").select("id",{count:"exact",head:true})).count).toBe(beforeImport);
+    const supplier=await a.from("suppliers").insert({workspace_id:workspaceA,owner_id:userAId,legal_name:"Research supplier",supplier_type:"raw_material",status:"research"}).select("id").single();
+    expect(supplier.error).toBeNull();
+    const beforeRaw=(await a.from("inventory_movements").select("id",{count:"exact",head:true})).count;
+    const request=await a.from("procurement_requests").insert({workspace_id:workspaceA,owner_id:userAId,title:"Pilot oils",status:"needed",category:"raw_material",priority:"high"}).select("id").single();
+    expect(request.error).toBeNull();
+    const item=await a.from("procurement_requested_items").insert({workspace_id:workspaceA,owner_id:userAId,procurement_request_id:request.data.id,name:"Jojoba",category:"carrier_oil",requested_quantity:2,unit:"kg",priority:"high"}).select("id").single();
+    expect(item.error).toBeNull();
+    const offer=await a.from("procurement_supplier_offers").insert({workspace_id:workspaceA,owner_id:userAId,requested_item_id:item.data.id,supplier_id:supplier.data.id,product_title:"Jojoba 1 kg",package_quantity:1,package_unit:"kg",item_price:250,currency:"NOK",date_checked:"2026-07-23"}).select("id").single();
+    expect(offer.error).toBeNull();
+    expect((await a.from("procurement_recommendations").insert({workspace_id:workspaceA,owner_id:userAId,procurement_request_id:request.data.id,requested_item_id:item.data.id,supplier_offer_id:offer.data.id,summary:"Owner-reviewed choice",status:"recommended"})).error).toBeNull();
+    expect((await b.from("procurement_requests").select("id").eq("id",request.data.id)).data).toEqual([]);
+    expect((await a.from("procurement_requests").update({status:"ordered"}).eq("id",request.data.id)).error).toBeNull();
+    expect((await a.from("inventory_movements").select("id",{count:"exact",head:true})).count).toBe(beforeRaw);
   });
 
   it("enforces intelligence history ownership and cross-workspace integrity", async () => {

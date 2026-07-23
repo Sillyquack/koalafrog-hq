@@ -44,6 +44,8 @@ import { SuppliersPage } from '../features/procurement/SuppliersPage'
 import { SupplierDetailPage } from '../features/procurement/SupplierDetailPage'
 import { EquipmentPage } from '../features/procurement/EquipmentPage'
 import { EquipmentDetailPage } from '../features/procurement/EquipmentDetailPage'
+import { ProcurementPage } from '../features/procurement/ProcurementPage'
+import { ProcurementRequestPage } from '../features/procurement/ProcurementRequestPage'
 import { ProductStudioPage } from '../features/product-studio/ProductStudioPage'
 import { BeardOilStudioPage } from '../features/product-studio/BeardOilStudioPage'
 import { BeardButterStudioPage } from '../features/product-studio/BeardButterStudioPage'
@@ -121,6 +123,8 @@ export function App() {
         <Route path="development/:id" element={<DevelopmentExperimentPage />} />
         <Route path="suppliers" element={<SuppliersPage />} />
         <Route path="suppliers/:id" element={<SupplierDetailPage />} />
+        <Route path="procurement" element={<ProcurementPage />} />
+        <Route path="procurement/:id" element={<ProcurementRequestPage />} />
         <Route path="equipment" element={<EquipmentPage />} />
         <Route path="equipment/:id" element={<EquipmentDetailPage />} />
         {placeholderModules.map((module) => (
