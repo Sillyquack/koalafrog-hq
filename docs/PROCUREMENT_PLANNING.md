@@ -37,7 +37,7 @@ Candidates retain source URL/date, evidence snippets, freshness, confidence, per
 
 ## Phase 3: live provider
 
-The first live adapter is `openai-web-search-v1`. The browser creates an owner-scoped Research Job and passes a versioned, structured request to the authenticated `procurement-live-research` Supabase Edge Function. The function alone can read `OPENAI_API_KEY`; it invokes the OpenAI Responses API with web search and strict JSON-schema output. It returns candidates to the existing review inbox and has no offer-acceptance, ordering, checkout, credential-storage, inventory, or payment capability. The deterministic provider remains the default for demos and automated tests.
+The first live adapter is `openai-web-search-v1`. The browser creates an owner-scoped Research Job and passes a versioned, structured request to the authenticated `procurement-live-research` Supabase Edge Function. The function alone can read `OPENAI_API_KEY`; it starts one OpenAI Responses background request with web search and strict JSON-schema output, then returns a safe acknowledgement. A signed server webhook validates and publishes terminal results to the existing review inbox. Neither function has offer-acceptance, ordering, checkout, credential-storage, inventory, or payment capability. The deterministic provider remains the default for demos and automated tests.
 
 Trust boundaries are explicit:
 
@@ -54,7 +54,7 @@ Operational controls:
 - `PROCUREMENT_LIVE_RESEARCH_ENABLED=true` enables the server function.
 - `OPENAI_API_KEY` is required and must be configured as a Supabase Function secret.
 - `OPENAI_PROCUREMENT_MODEL` defaults to `gpt-5.6`.
-- `PROCUREMENT_LIVE_TIMEOUT_MS` defaults to 75 seconds and accepts only 30–120 seconds.
+- Background submission has a fixed 30-second transport boundary; the long-running provider task is not tied to that request.
 - `PROCUREMENT_LIVE_DAILY_LIMIT` defaults to five permitted live invocations per owner per rolling 24 hours.
 - A partial unique index prevents concurrent `queued` or `running` jobs for the same workspace, request, and provider. These are the only active states. `partial`, `completed`, `failed`, and `cancelled` are terminal snapshots; partial and failed jobs may be retried as a new job whose `retry_of_job_id` preserves lineage. Each job makes exactly one provider call with no automatic retry. A human retry creates a new job and preserves lineage.
 
@@ -62,9 +62,9 @@ Before any paid call, the Edge Function invokes the owner-scoped `begin_procurem
 
 Provider source dates are accepted only when they are real, non-future `YYYY-MM-DD` calendar dates. Valid historical dates are preserved for freshness calculation; invalid, impossible, missing, or future dates conservatively fall back to the server's current date. A field remains `verified` only when its normalized evidence includes both a safe HTTP(S) source URL and a non-empty snippet; an explicit but unsupported verified claim is downgraded to `reported`.
 
-Local setup uses `supabase secrets set PROCUREMENT_LIVE_RESEARCH_ENABLED=true OPENAI_API_KEY=...` plus the optional variables above, followed by serving/deploying `procurement-live-research`. No live-provider secret belongs in `.env.local`, browser storage, exports, or Procurement records.
+Local setup uses server-side `PROCUREMENT_LIVE_RESEARCH_ENABLED`, `OPENAI_API_KEY`, and `OPENAI_WEBHOOK_SECRET` secrets plus the optional variables above, followed by serving/deploying both Procurement research functions. Never put real secret values in shell history, `.env.local`, browser storage, exports, or Procurement records.
 
-Cancellation is deliberately honest: the current synchronous provider call cannot be reliably terminated after it starts. Cancelling records `cancellation_requested_at` and makes the job terminal, but leaves `provider_stopped_at` null unless a future executor can prove termination. The transactional publication RPC locks the job and accepts results only while it is still `running`, so late responses cannot publish candidates or overwrite a cancelled job.
+Cancellation is deliberately honest: cancelling records `cancellation_requested_at` and makes the Koalafrog job terminal, but this slice does not call OpenAI's cancel endpoint. The atomic finalizer consumes and discards any later terminal event, so late responses cannot publish candidates or overwrite a cancelled job.
 
 ### Durable provider diagnostics
 
@@ -79,6 +79,52 @@ Procurement is currently Supabase-only. The route requires `VITE_WORKSPACE_REPOS
 The deployment-safe live contract lives under `supabase/functions/_shared` and is re-exported to browser code so the server schema and client validation cannot drift. Deploy the Edge Function with the listed server secrets and keep its feature flag off until the approved provider account, limits, and monitoring are ready.
 
 Known limitations: the provider cannot prove every web statement, source pages may change after checking, delivery/tax/duty often require a destination-specific quote, refresh is not yet exposed, cancellation cannot stop an in-flight provider request, and no raw response is retained for replay. Phase 4 should introduce a durable background worker with provider-aware cancellation, source re-checking, destination-aware freight/tax services, operator-visible usage metrics, and a reviewed refresh workflow while preserving the no-purchase boundary.
+
+### Background live-research execution
+
+Long-running web research uses OpenAI Responses background mode through a
+durable distributed lifecycle. Before the provider call, the JWT-protected
+`procurement-live-research` function creates one private submission intent and
+atomically consumes the job's invocation gate. It uses the intent's stable
+`X-Client-Request-Id`, submits exactly one `background: true` response, attaches
+the opaque operation ID idempotently, and returns a safe `202`. Recovery may
+retry attachment and processing, but never provider submission.
+
+OpenAI terminal events arrive at `procurement-live-research-webhook`. This
+machine endpoint has gateway JWT verification disabled because OpenAI cannot
+present a Supabase user JWT; it instead requires the raw-body Standard
+Webhooks signature and a timestamp within five minutes using the server-only
+`OPENAI_WEBHOOK_SECRET`. User initiation retains `verify_jwt=true`. The webhook
+durably inserts safe event metadata before returning `200`. An event that
+arrives before attachment remains `unmatched_pending` rather than being lost.
+Webhook and reconciliation use the same terminal processor, strict contract,
+provenance normalization, lease claim, and service-role-only finalization RPC.
+The RPC locks operation then job, deduplicates terminal delivery, discards
+results after cancellation or another terminal transition, and publishes
+candidates plus terminal job state in one transaction.
+
+`procurement-live-research-reconcile` is the browser-independent recovery path.
+It is protected by `PROCUREMENT_RECONCILER_SECRET`, processes a bounded batch of
+due operations, polls attached Responses, processes stored early webhooks,
+reclaims expired leases, and applies durable exponential backoff. Retrieval
+404/408/409/429/5xx, network errors, and temporary database failures are
+transient. Malformed successfully retrieved output is terminal. Work expires
+after 12 processing attempts or 48 hours; an unbound ambiguous submission is
+ended after 30 minutes without automatic resubmission.
+
+Deployment requires `OPENAI_WEBHOOK_SECRET` and
+`PROCUREMENT_RECONCILER_SECRET` in addition to the existing server-only
+secrets, an OpenAI project webhook subscribed to terminal Response events,
+deployment of all three functions, and a two-minute Supabase Cron invocation of
+the reconciler using a Vault-held URL and secret. The webhook and reconciler
+deliberately use `verify_jwt=false` but fail closed on their dedicated secrets;
+user initiation retains `verify_jwt=true`. OpenAI background mode temporarily
+stores response data to support asynchronous retrieval. Cancellation prevents
+publication but does not currently call the provider cancel endpoint.
+
+The complete invariants, residual provider-response ambiguity, failure taxonomy,
+lock order, scheduler design, and runbook are recorded in
+`docs/adr/PROCUREMENT_BACKGROUND_RESEARCH_DURABILITY.md`.
 
 ## Implementation and integration status
 

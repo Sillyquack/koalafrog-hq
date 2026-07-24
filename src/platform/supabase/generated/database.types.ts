@@ -5139,6 +5139,158 @@ export type Database = {
           },
         ]
       }
+      procurement_background_operations: {
+        Row: {
+          acknowledgement_returned_at: string | null
+          attempt_id: string
+          client_request_id: string
+          generation: number
+          intent_created_at: string
+          job_id: string
+          last_reconciled_at: string | null
+          last_safe_failure_code: string | null
+          lease_acquired_at: string | null
+          lease_expires_at: string | null
+          lease_owner: string | null
+          next_reconciliation_at: string
+          owner_id: string
+          processing_stage: string | null
+          provider: string
+          provider_attached_at: string | null
+          provider_operation_id: string | null
+          provider_status: string | null
+          published_at: string | null
+          reconciliation_attempt_count: number
+          row_version: number
+          submission_completed_at: string | null
+          submission_started_at: string | null
+          submission_state: string
+          terminal_at: string | null
+          terminal_code: string | null
+          terminal_source: string | null
+          transient_failure_count: number
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          acknowledgement_returned_at?: string | null
+          attempt_id?: string
+          client_request_id?: string
+          generation?: number
+          intent_created_at?: string
+          job_id: string
+          last_reconciled_at?: string | null
+          last_safe_failure_code?: string | null
+          lease_acquired_at?: string | null
+          lease_expires_at?: string | null
+          lease_owner?: string | null
+          next_reconciliation_at?: string
+          owner_id: string
+          processing_stage?: string | null
+          provider: string
+          provider_attached_at?: string | null
+          provider_operation_id?: string | null
+          provider_status?: string | null
+          published_at?: string | null
+          reconciliation_attempt_count?: number
+          row_version?: number
+          submission_completed_at?: string | null
+          submission_started_at?: string | null
+          submission_state: string
+          terminal_at?: string | null
+          terminal_code?: string | null
+          terminal_source?: string | null
+          transient_failure_count?: number
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          acknowledgement_returned_at?: string | null
+          attempt_id?: string
+          client_request_id?: string
+          generation?: number
+          intent_created_at?: string
+          job_id?: string
+          last_reconciled_at?: string | null
+          last_safe_failure_code?: string | null
+          lease_acquired_at?: string | null
+          lease_expires_at?: string | null
+          lease_owner?: string | null
+          next_reconciliation_at?: string
+          owner_id?: string
+          processing_stage?: string | null
+          provider?: string
+          provider_attached_at?: string | null
+          provider_operation_id?: string | null
+          provider_status?: string | null
+          published_at?: string | null
+          reconciliation_attempt_count?: number
+          row_version?: number
+          submission_completed_at?: string | null
+          submission_started_at?: string | null
+          submission_state?: string
+          terminal_at?: string | null
+          terminal_code?: string | null
+          terminal_source?: string | null
+          transient_failure_count?: number
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "procurement_background_operations_workspace_id_job_id_fkey"
+            columns: ["workspace_id", "job_id"]
+            isOneToOne: false
+            referencedRelation: "procurement_research_jobs"
+            referencedColumns: ["workspace_id", "id"]
+          },
+        ]
+      }
+      procurement_background_webhook_inbox: {
+        Row: {
+          created_at: string
+          event_id: string
+          last_safe_error_code: string | null
+          next_attempt_at: string
+          processed_at: string | null
+          processing_attempt_count: number
+          processing_state: string
+          provider_operation_id: string
+          received_at: string
+          signature_verified_at: string
+          terminal_event_type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          event_id: string
+          last_safe_error_code?: string | null
+          next_attempt_at?: string
+          processed_at?: string | null
+          processing_attempt_count?: number
+          processing_state?: string
+          provider_operation_id: string
+          received_at?: string
+          signature_verified_at?: string
+          terminal_event_type: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          event_id?: string
+          last_safe_error_code?: string | null
+          next_attempt_at?: string
+          processed_at?: string | null
+          processing_attempt_count?: number
+          processing_state?: string
+          provider_operation_id?: string
+          received_at?: string
+          signature_verified_at?: string
+          terminal_event_type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       procurement_offer_candidates: {
         Row: {
           accepted_offer_id: string | null
@@ -5600,6 +5752,8 @@ export type Database = {
       procurement_research_jobs: {
         Row: {
           attempt_count: number
+          background_lifecycle_status: string | null
+          background_status_updated_at: string | null
           cancellation_requested_at: string | null
           completed_at: string | null
           correlation_id: string
@@ -5624,6 +5778,8 @@ export type Database = {
         }
         Insert: {
           attempt_count?: number
+          background_lifecycle_status?: string | null
+          background_status_updated_at?: string | null
           cancellation_requested_at?: string | null
           completed_at?: string | null
           correlation_id?: string
@@ -5648,6 +5804,8 @@ export type Database = {
         }
         Update: {
           attempt_count?: number
+          background_lifecycle_status?: string | null
+          background_status_updated_at?: string | null
           cancellation_requested_at?: string | null
           completed_at?: string | null
           correlation_id?: string
@@ -8351,6 +8509,19 @@ export type Database = {
           supplier_id: string
         }[]
       }
+      acknowledge_procurement_background_submission: {
+        Args: { candidate_attempt_id: string }
+        Returns: boolean
+      }
+      attach_procurement_background_operation: {
+        Args: {
+          candidate_attempt_id: string
+          candidate_owner_id: string
+          candidate_provider_operation_id: string
+          candidate_provider_status: string
+        }
+        Returns: string
+      }
       begin_beard_provider_attempt: {
         Args: {
           candidate_analysis_id: string
@@ -8361,6 +8532,19 @@ export type Database = {
         }
         Returns: boolean
       }
+      begin_procurement_background_submission: {
+        Args: {
+          candidate_job_id: string
+          candidate_owner_id: string
+          candidate_workspace_id: string
+          maximum_daily_invocations: number
+        }
+        Returns: {
+          attempt_id: string
+          client_request_id: string
+          submission_state: string
+        }[]
+      }
       begin_procurement_live_invocation: {
         Args: {
           candidate_job_id: string
@@ -8368,6 +8552,15 @@ export type Database = {
           maximum_daily_invocations: number
         }
         Returns: string
+      }
+      claim_procurement_background_operation: {
+        Args: {
+          candidate_attempt_id: string
+          candidate_stage: string
+          candidate_worker_id: string
+          lease_seconds?: number
+        }
+        Returns: boolean
       }
       commit_lab_consumption: {
         Args: { batch_id: string; commits: Json }
@@ -8428,6 +8621,20 @@ export type Database = {
         Args: { concept_id: string; lines: Json }
         Returns: string
       }
+      finalize_procurement_background_operation: {
+        Args: {
+          candidate_attempt_id: string
+          candidate_candidates?: Json
+          candidate_error_code?: string
+          candidate_error_details?: string
+          candidate_event_id: string
+          candidate_partial?: boolean
+          candidate_provider_status: string
+          candidate_terminal_source?: string
+          candidate_worker_id: string
+        }
+        Returns: string
+      }
       import_procurement_snapshot: {
         Args: { candidate_workspace_id: string; payload: Json }
         Returns: undefined
@@ -8470,6 +8677,18 @@ export type Database = {
             }
             Returns: undefined
           }
+      mark_procurement_background_submission_ambiguous: {
+        Args: { candidate_attempt_id: string; safe_failure_code: string }
+        Returns: boolean
+      }
+      mark_procurement_background_webhook_retry: {
+        Args: {
+          candidate_event_id: string
+          delay_seconds: number
+          safe_failure_code: string
+        }
+        Returns: boolean
+      }
       mark_purchase_plan_external_order: {
         Args: { idempotency: string; plan_id: string }
         Returns: string
@@ -8613,10 +8832,32 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      reschedule_procurement_background_operation: {
+        Args: {
+          candidate_attempt_id: string
+          candidate_worker_id: string
+          delay_seconds: number
+          increment_failure?: boolean
+          safe_failure_code: string
+        }
+        Returns: boolean
+      }
       save_beard_studio_workspace: { Args: { payload: Json }; Returns: Json }
       save_ingredient_knowledge_aggregate: {
         Args: { aggregate: Json; expected_updated_at?: string }
         Returns: Json
+      }
+      start_procurement_background_submission: {
+        Args: { candidate_attempt_id: string }
+        Returns: boolean
+      }
+      store_procurement_background_webhook: {
+        Args: {
+          candidate_event_id: string
+          candidate_event_type: string
+          candidate_provider_operation_id: string
+        }
+        Returns: string
       }
       transition_development_experiment: {
         Args: {

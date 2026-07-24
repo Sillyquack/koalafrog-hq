@@ -279,61 +279,76 @@ run("local Supabase Auth, RLS, RPC, Storage, and cutover security", () => {
     expect((await b.from("procurement_research_jobs").insert({workspace_id:workspaceB,owner_id:userBId,procurement_request_id:requestB.data.id,provider:"mock",status:"queued",retry_of_job_id:jobB.data.id})).error).toBeNull();
   });
 
-  it("atomically permits one bounded live invocation per running owned job",async()=>{
-    // Generated database types refresh after the additive migration is applied.
+  it("enforces the durable background lifecycle, leases, and exactly-once finalization",async()=>{
+    // Service-only lifecycle RPCs are intentionally absent from browser clients.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const a=userA as any,b=userB as any;
-    const createLiveJob=async(client:typeof a,workspaceId:string,ownerId:string,status:string,label:string)=>{
-      const request=await client.from("procurement_requests").insert({workspace_id:workspaceId,owner_id:ownerId,title:`Live gate ${label}`,category:"raw_material",priority:"normal"}).select("id").single();
+    const trusted=admin as any,a=userA as any;
+    const createLiveJob=async(status="running",label:string=crypto.randomUUID())=>{
+      const request=await a.from("procurement_requests").insert({workspace_id:workspaceA,owner_id:userAId,title:`Durable ${label}`,category:"raw_material",priority:"normal"}).select("id").single();
       expect(request.error).toBeNull();
-      const job=await client.from("procurement_research_jobs").insert({workspace_id:workspaceId,owner_id:ownerId,procurement_request_id:request.data.id,provider:"openai-web-search-v1",status,started_at:status==="running"?new Date().toISOString():null,completed_at:["partial","completed","failed","cancelled"].includes(status)?new Date().toISOString():null}).select("id").single();
+      const job=await a.from("procurement_research_jobs").insert({workspace_id:workspaceA,owner_id:userAId,procurement_request_id:request.data.id,provider:"openai-web-search-v1",status,started_at:status==="running"?new Date().toISOString():null,completed_at:status==="failed"?new Date().toISOString():null}).select("id").single();
       expect(job.error).toBeNull();
       return job.data.id as string;
     };
-    for(const status of["queued","partial","completed","failed","cancelled"]){
-      const jobId=await createLiveJob(a,workspaceA,userAId,status,status);
-      const denied=await a.rpc("begin_procurement_live_invocation",{candidate_workspace_id:workspaceA,candidate_job_id:jobId,maximum_daily_invocations:100});
-      expect(denied.error?.message).toContain("LIVE_JOB_NOT_RUNNING");
-    }
-    const once=await createLiveJob(a,workspaceA,userAId,"running","once");
-    expect((await a.rpc("begin_procurement_live_invocation",{candidate_workspace_id:workspaceA,candidate_job_id:once,maximum_daily_invocations:100})).error).toBeNull();
-    const safeDiagnostic={candidate_workspace_id:workspaceA,candidate_job_id:once,candidate_owner_id:userAId,diagnostic_provider_called:true,diagnostic_provider_stage:"provider_timeout_triggered",diagnostic_headers_elapsed_ms:null,diagnostic_body_elapsed_ms:null,diagnostic_parse_elapsed_ms:null,diagnostic_validation_elapsed_ms:null,diagnostic_provider_elapsed_ms:75000,diagnostic_function_elapsed_ms:75483,diagnostic_timeout_limit_ms:75000,diagnostic_timeout_stage:"response_headers",diagnostic_abort_source:"application_deadline",diagnostic_provider_http_status:null,diagnostic_usage_present:false,diagnostic_candidate_count:null,diagnostic_terminal_error_code:"PROVIDER_TIMEOUT"};
-    const trusted=admin as unknown as{rpc:(name:string,args:Record<string,unknown>)=>Promise<{data:unknown;error:unknown}>};
-    const persisted=await trusted.rpc("persist_procurement_provider_diagnostic",safeDiagnostic);
-    expect(persisted.error).toBeNull();
-    expect(persisted.data).toBe(true);
-    expect((await a.from("procurement_provider_diagnostics").select("timeout_stage,abort_source,provider_elapsed_ms").eq("job_id",once).single()).data).toEqual({timeout_stage:"response_headers",abort_source:"application_deadline",provider_elapsed_ms:75000});
-    expect((await b.from("procurement_provider_diagnostics").select("job_id").eq("job_id",once)).data).toEqual([]);
-    expect((await anonymous.from("procurement_provider_diagnostics").select("job_id").eq("job_id",once)).error).not.toBeNull();
-    expect((await a.from("procurement_provider_diagnostics").insert({job_id:once,workspace_id:workspaceA,owner_id:userAId})).error).not.toBeNull();
-    expect((await a.from("procurement_provider_diagnostics").update({timeout_stage:"completion"}).eq("job_id",once)).error).not.toBeNull();
-    expect((await a.rpc("persist_procurement_provider_diagnostic",safeDiagnostic)).error).not.toBeNull();
-    expect((await trusted.rpc("persist_procurement_provider_diagnostic",{...safeDiagnostic,candidate_owner_id:userBId})).data).toBe(false);
-    expect((await a.rpc("begin_procurement_live_invocation",{candidate_workspace_id:workspaceA,candidate_job_id:once,maximum_daily_invocations:100})).error?.message).toContain("LIVE_JOB_ALREADY_INVOKED");
-    expect((await a.from("procurement_research_jobs").update({provider_invocation_count:0,live_invocation_started_at:null}).eq("id",once)).error?.message).toContain("LIVE_INVOCATION_STATE_MANAGED");
-    const concurrentJob=await createLiveJob(a,workspaceA,userAId,"running","concurrent");
-    const concurrent=await Promise.all([
-      a.rpc("begin_procurement_live_invocation",{candidate_workspace_id:workspaceA,candidate_job_id:concurrentJob,maximum_daily_invocations:100}),
-      a.rpc("begin_procurement_live_invocation",{candidate_workspace_id:workspaceA,candidate_job_id:concurrentJob,maximum_daily_invocations:100}),
-    ]);
-    expect(concurrent.filter(result=>!result.error)).toHaveLength(1);
-    expect(concurrent.filter(result=>result.error?.message.includes("LIVE_JOB_ALREADY_INVOKED"))).toHaveLength(1);
-    const ownerLimitOne=await createLiveJob(a,workspaceA,userAId,"running","owner-limit-one");
-    const ownerLimitTwo=await createLiveJob(a,workspaceA,userAId,"running","owner-limit-two");
-    const ownerLimitRace=await Promise.all([
-      a.rpc("begin_procurement_live_invocation",{candidate_workspace_id:workspaceA,candidate_job_id:ownerLimitOne,maximum_daily_invocations:3}),
-      a.rpc("begin_procurement_live_invocation",{candidate_workspace_id:workspaceA,candidate_job_id:ownerLimitTwo,maximum_daily_invocations:3}),
-    ]);
-    expect(ownerLimitRace.filter(result=>!result.error)).toHaveLength(1);
-    expect(ownerLimitRace.filter(result=>result.error?.message.includes("LIVE_DAILY_LIMIT_REACHED"))).toHaveLength(1);
+    const failed=await createLiveJob("failed","terminal");
+    expect((await trusted.rpc("begin_procurement_background_submission",{candidate_workspace_id:workspaceA,candidate_job_id:failed,candidate_owner_id:userAId,maximum_daily_invocations:100})).error?.message).toContain("LIVE_JOB_NOT_RUNNING");
+    expect((await a.rpc("begin_procurement_live_invocation",{candidate_workspace_id:workspaceA,candidate_job_id:failed,maximum_daily_invocations:100})).error).not.toBeNull();
 
-    const limitedOne=await createLiveJob(b,workspaceB,userBId,"running","limit-one");
-    const limitedTwo=await createLiveJob(b,workspaceB,userBId,"running","limit-two");
-    const limitedThree=await createLiveJob(b,workspaceB,userBId,"running","limit-three");
-    expect((await a.rpc("begin_procurement_live_invocation",{candidate_workspace_id:workspaceB,candidate_job_id:limitedOne,maximum_daily_invocations:2})).error?.message).toContain("LIVE_JOB_UNAVAILABLE");
-    expect((await b.rpc("begin_procurement_live_invocation",{candidate_workspace_id:workspaceB,candidate_job_id:limitedOne,maximum_daily_invocations:2})).error).toBeNull();
-    expect((await b.rpc("begin_procurement_live_invocation",{candidate_workspace_id:workspaceB,candidate_job_id:limitedTwo,maximum_daily_invocations:2})).error).toBeNull();
-    expect((await b.rpc("begin_procurement_live_invocation",{candidate_workspace_id:workspaceB,candidate_job_id:limitedThree,maximum_daily_invocations:2})).error?.message).toContain("LIVE_DAILY_LIMIT_REACHED");
+    const jobId=await createLiveJob();
+    const beginArgs={candidate_workspace_id:workspaceA,candidate_job_id:jobId,candidate_owner_id:userAId,maximum_daily_invocations:100};
+    const first=await trusted.rpc("begin_procurement_background_submission",beginArgs);
+    const second=await trusted.rpc("begin_procurement_background_submission",beginArgs);
+    expect(first.error).toBeNull();
+    expect(second.data).toEqual(first.data);
+    const intent=first.data[0] as{attempt_id:string};
+    expect((await trusted.from("procurement_background_operations").select("attempt_id").eq("job_id",jobId)).data).toHaveLength(1);
+    expect((await a.from("procurement_background_operations").select("attempt_id")).error).not.toBeNull();
+    expect((await a.from("procurement_background_webhook_inbox").select("event_id")).error).not.toBeNull();
+    expect((await a.from("procurement_research_jobs").update({background_lifecycle_status:"completed"}).eq("id",jobId)).error?.message).toContain("BACKGROUND_LIFECYCLE_STATE_MANAGED");
+
+    const starts=await Promise.all([
+      trusted.rpc("start_procurement_background_submission",{candidate_attempt_id:intent.attempt_id}),
+      trusted.rpc("start_procurement_background_submission",{candidate_attempt_id:intent.attempt_id}),
+    ]);
+    expect(starts.filter((result:{data:boolean})=>result.data===true)).toHaveLength(1);
+    expect(starts.filter((result:{data:boolean})=>result.data===false)).toHaveLength(1);
+    const attached=await trusted.rpc("attach_procurement_background_operation",{candidate_attempt_id:intent.attempt_id,candidate_owner_id:userAId,candidate_provider_operation_id:"resp_durable_one",candidate_provider_status:"queued"});
+    expect(attached.data).toBe("attached");
+    expect((await trusted.rpc("attach_procurement_background_operation",{candidate_attempt_id:intent.attempt_id,candidate_owner_id:userAId,candidate_provider_operation_id:"resp_durable_one",candidate_provider_status:"queued"})).data).toBe("duplicate");
+    expect((await trusted.rpc("attach_procurement_background_operation",{candidate_attempt_id:intent.attempt_id,candidate_owner_id:userAId,candidate_provider_operation_id:"resp_conflict",candidate_provider_status:"queued"})).error?.message).toContain("BACKGROUND_OPERATION_CONFLICT");
+    await trusted.rpc("store_procurement_background_webhook",{candidate_event_id:"evt_terminal_primary",candidate_provider_operation_id:"resp_durable_one",candidate_event_type:"response.completed"});
+    await trusted.rpc("store_procurement_background_webhook",{candidate_event_id:"evt_terminal_late",candidate_provider_operation_id:"resp_durable_one",candidate_event_type:"response.completed"});
+
+    const earlyJob=await createLiveJob("running","early");
+    const early=(await trusted.rpc("begin_procurement_background_submission",{candidate_workspace_id:workspaceA,candidate_job_id:earlyJob,candidate_owner_id:userAId,maximum_daily_invocations:100})).data[0] as{attempt_id:string};
+    expect((await trusted.rpc("store_procurement_background_webhook",{candidate_event_id:"evt_early",candidate_provider_operation_id:"resp_early",candidate_event_type:"response.completed"})).data).toBe("stored");
+    expect((await trusted.from("procurement_background_webhook_inbox").select("processing_state").eq("event_id","evt_early").single()).data?.processing_state).toBe("unmatched_pending");
+    await trusted.rpc("start_procurement_background_submission",{candidate_attempt_id:early.attempt_id});
+    await trusted.rpc("attach_procurement_background_operation",{candidate_attempt_id:early.attempt_id,candidate_owner_id:userAId,candidate_provider_operation_id:"resp_early",candidate_provider_status:"in_progress"});
+    expect((await trusted.from("procurement_background_webhook_inbox").select("processing_state").eq("event_id","evt_early").single()).data?.processing_state).toBe("received");
+    expect((await trusted.rpc("store_procurement_background_webhook",{candidate_event_id:"evt_early",candidate_provider_operation_id:"resp_early",candidate_event_type:"response.completed"})).error).toBeNull();
+
+    const workerA=crypto.randomUUID(),workerB=crypto.randomUUID();
+    const claims=await Promise.all([
+      trusted.rpc("claim_procurement_background_operation",{candidate_attempt_id:intent.attempt_id,candidate_worker_id:workerA,candidate_stage:"test",lease_seconds:30}),
+      trusted.rpc("claim_procurement_background_operation",{candidate_attempt_id:intent.attempt_id,candidate_worker_id:workerB,candidate_stage:"test",lease_seconds:30}),
+    ]);
+    expect(claims.filter((result:{data:boolean})=>result.data===true)).toHaveLength(1);
+    const winner=claims[0].data?workerA:workerB;
+    const terminalArgs={candidate_attempt_id:intent.attempt_id,candidate_worker_id:winner,candidate_event_id:"evt_terminal_primary",candidate_provider_status:"completed",candidate_candidates:[],candidate_partial:false,candidate_error_code:null,candidate_error_details:null,candidate_terminal_source:"webhook"};
+    const finalized=await Promise.all([
+      trusted.rpc("finalize_procurement_background_operation",terminalArgs),
+      trusted.rpc("finalize_procurement_background_operation",terminalArgs),
+    ]);
+    expect(finalized.map((result:{data:string})=>result.data).sort()).toEqual(["duplicate","finalized"]);
+    expect((await a.from("procurement_research_jobs").select("status,result_count").eq("id",jobId).single()).data).toEqual({status:"completed",result_count:0});
+    expect((await trusted.from("procurement_background_webhook_inbox").select("event_id,processing_state").in("event_id",["evt_terminal_primary","evt_terminal_late"]).order("event_id")).data).toEqual([
+      {event_id:"evt_terminal_late",processing_state:"duplicate"},
+      {event_id:"evt_terminal_primary",processing_state:"processed"},
+    ]);
+    expect((await trusted.rpc("store_procurement_background_webhook",{candidate_event_id:"evt_after_terminal",candidate_provider_operation_id:"resp_durable_one",candidate_event_type:"response.completed"})).data).toBe("stored");
+    expect((await trusted.from("procurement_background_webhook_inbox").select("processing_state").eq("event_id","evt_after_terminal").single()).data?.processing_state).toBe("duplicate");
+    expect((await trusted.rpc("begin_procurement_background_submission",{...beginArgs,candidate_owner_id:userBId})).error?.message).toContain("LIVE_JOB_UNAVAILABLE");
   });
 
   it("enforces intelligence history ownership and cross-workspace integrity", async () => {

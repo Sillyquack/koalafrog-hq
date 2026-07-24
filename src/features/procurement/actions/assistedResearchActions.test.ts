@@ -1,4 +1,4 @@
-import{describe,expect,it,vi}from'vitest'
+import{beforeEach,describe,expect,it,vi}from'vitest'
 
 const actions=vi.hoisted(()=>({
  createResearchJob:vi.fn(),
@@ -16,6 +16,7 @@ const request:ProcurementRequest={id:'request-1',title:'Jojoba',status:'research
 const data={researchJobs:[],requestedItems:[{id:'item-1',procurement_request_id:'request-1'}],offers:[]}as unknown as ProcurementData
 
 describe('assisted research terminal safety',()=>{
+ beforeEach(()=>vi.clearAllMocks())
  it('does not publish candidates or retry after a provider timeout',async()=>{
   actions.createResearchJob.mockResolvedValue({id:'job-1'})
   actions.updateResearchJob.mockResolvedValue(undefined)
@@ -27,6 +28,19 @@ describe('assisted research terminal safety',()=>{
 
   expect(discoverOffers).toHaveBeenCalledOnce()
   expect(actions.publishResearchResults).not.toHaveBeenCalled()
-  expect(actions.failResearchJob).toHaveBeenCalledWith('job-1',expect.objectContaining({error_code:'PROVIDER_TIMEOUT'}))
+ expect(actions.failResearchJob).toHaveBeenCalledWith('job-1',expect.objectContaining({error_code:'PROVIDER_TIMEOUT'}))
+ })
+
+ it('leaves an acknowledged background job running without client publication',async()=>{
+  actions.createResearchJob.mockResolvedValue({id:'job-1'})
+  actions.updateResearchJob.mockResolvedValue(undefined)
+  const discoverOffers=vi.fn().mockResolvedValue({findings:[],partial:false,asyncAccepted:true})
+  const provider={id:'openai-web-search-v1',prepareJob:vi.fn(),discoverOffers}as unknown as ProcurementResearchProvider
+
+  await expect(runResearch('workspace-1',request,data,provider)).resolves.toBe('job-1')
+
+  expect(discoverOffers).toHaveBeenCalledOnce()
+  expect(actions.publishResearchResults).not.toHaveBeenCalled()
+  expect(actions.failResearchJob).not.toHaveBeenCalled()
  })
 })
