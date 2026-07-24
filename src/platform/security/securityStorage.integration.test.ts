@@ -302,8 +302,16 @@ run("local Supabase Auth, RLS, RPC, Storage, and cutover security", () => {
     expect(second.data).toEqual(first.data);
     const intent=first.data[0] as{attempt_id:string};
     expect((await trusted.from("procurement_background_operations").select("attempt_id").eq("job_id",jobId)).data).toHaveLength(1);
+    expect((await trusted.from("procurement_background_operations").insert({})).error?.code).toBe("42501");
+    expect((await trusted.from("procurement_background_operations").update({processing_stage:"forged"}).eq("attempt_id",intent.attempt_id)).error?.code).toBe("42501");
+    expect((await trusted.from("procurement_background_operations").delete().eq("attempt_id",intent.attempt_id)).error?.code).toBe("42501");
+    expect((await trusted.from("procurement_background_webhook_inbox").insert({})).error?.code).toBe("42501");
+    expect((await trusted.from("procurement_background_webhook_inbox").update({processing_state:"processed"}).eq("event_id","evt_none")).error?.code).toBe("42501");
+    expect((await trusted.from("procurement_background_webhook_inbox").delete().eq("event_id","evt_none")).error?.code).toBe("42501");
     expect((await a.from("procurement_background_operations").select("attempt_id")).error).not.toBeNull();
     expect((await a.from("procurement_background_webhook_inbox").select("event_id")).error).not.toBeNull();
+    expect((await anonymous.from("procurement_background_operations").select("attempt_id")).error).not.toBeNull();
+    expect((await anonymous.from("procurement_background_webhook_inbox").select("event_id")).error).not.toBeNull();
     expect((await a.from("procurement_research_jobs").update({background_lifecycle_status:"completed"}).eq("id",jobId)).error?.message).toContain("BACKGROUND_LIFECYCLE_STATE_MANAGED");
 
     const starts=await Promise.all([
@@ -327,6 +335,9 @@ run("local Supabase Auth, RLS, RPC, Storage, and cutover security", () => {
     await trusted.rpc("attach_procurement_background_operation",{candidate_attempt_id:early.attempt_id,candidate_owner_id:userAId,candidate_provider_operation_id:"resp_early",candidate_provider_status:"in_progress"});
     expect((await trusted.from("procurement_background_webhook_inbox").select("processing_state").eq("event_id","evt_early").single()).data?.processing_state).toBe("received");
     expect((await trusted.rpc("store_procurement_background_webhook",{candidate_event_id:"evt_early",candidate_provider_operation_id:"resp_early",candidate_event_type:"response.completed"})).error).toBeNull();
+    const retryWorker=crypto.randomUUID();
+    expect((await trusted.rpc("claim_procurement_background_operation",{candidate_attempt_id:early.attempt_id,candidate_worker_id:retryWorker,candidate_stage:"retry_test",lease_seconds:30})).data).toBe(true);
+    expect((await trusted.rpc("reschedule_procurement_background_operation",{candidate_attempt_id:early.attempt_id,candidate_worker_id:retryWorker,safe_failure_code:"BACKGROUND_RETRIEVAL_TRANSIENT",delay_seconds:30,increment_failure:true})).data).toBe(true);
 
     const workerA=crypto.randomUUID(),workerB=crypto.randomUUID();
     const claims=await Promise.all([

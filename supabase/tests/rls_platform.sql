@@ -1,6 +1,6 @@
 begin;
 -- Run with Supabase CLI test harness. Synthetic JWT claims must be supplied by the harness.
-select plan(123);
+select plan(216);
 select has_table('public','workspaces','workspaces exists');
 select has_table('public','workspace_records','record store exists');
 select has_table('public','procurement_research_jobs','Procurement jobs exist');
@@ -61,6 +61,123 @@ select is((select prosecdef from pg_proc where oid='public.finalize_procurement_
 select is((select proconfig[1] from pg_proc where oid='public.finalize_procurement_background_operation(uuid,uuid,text,text,jsonb,boolean,text,text,text)'::regprocedure),'search_path=pg_catalog, public, pg_temp','background finalizer search path is fixed');
 select is((select proconfig[1] from pg_proc where oid='public.begin_procurement_background_submission(uuid,uuid,uuid,integer)'::regprocedure),'search_path=pg_catalog, public, pg_temp','submission intent search path is fixed');
 select is((select proconfig[1] from pg_proc where oid='public.store_procurement_background_webhook(text,text,text)'::regprocedure),'search_path=pg_catalog, public, pg_temp','webhook intake search path is fixed');
+select is(
+  has_table_privilege(role_name,table_name,privilege_name),
+  role_name='service_role' and privilege_name='SELECT',
+  format('%s %s privilege on %s matches the RPC-only boundary',role_name,privilege_name,table_name)
+)
+from unnest(array['anon','authenticated','service_role']) as role_name
+cross join unnest(array[
+  'public.procurement_background_operations',
+  'public.procurement_background_webhook_inbox'
+]) as table_name
+cross join unnest(array[
+  'SELECT','INSERT','UPDATE','DELETE','TRUNCATE','REFERENCES','TRIGGER'
+]) as privilege_name;
+select is(
+  has_function_privilege(role_name,function_signature,'EXECUTE'),
+  role_name='service_role',
+  format('%s lifecycle RPC access to %s matches the service-only boundary',role_name,function_signature)
+)
+from unnest(array['anon','authenticated','service_role']) as role_name
+cross join unnest(array[
+  'public.begin_procurement_background_submission(uuid,uuid,uuid,integer)',
+  'public.start_procurement_background_submission(uuid)',
+  'public.attach_procurement_background_operation(uuid,uuid,text,text)',
+  'public.mark_procurement_background_submission_ambiguous(uuid,text)',
+  'public.acknowledge_procurement_background_submission(uuid)',
+  'public.store_procurement_background_webhook(text,text,text)',
+  'public.claim_procurement_background_operation(uuid,uuid,text,integer)',
+  'public.reschedule_procurement_background_operation(uuid,uuid,text,integer,boolean)',
+  'public.finalize_procurement_background_operation(uuid,uuid,text,text,jsonb,boolean,text,text,text)',
+  'public.mark_procurement_background_webhook_retry(text,text,integer)'
+]) as function_signature;
+select is(
+  (select proconfig[1] from pg_proc where oid=function_signature::regprocedure),
+  'search_path=pg_catalog, public, pg_temp',
+  format('%s retains a fixed search path',function_signature)
+)
+from unnest(array[
+  'public.begin_procurement_background_submission(uuid,uuid,uuid,integer)',
+  'public.start_procurement_background_submission(uuid)',
+  'public.attach_procurement_background_operation(uuid,uuid,text,text)',
+  'public.mark_procurement_background_submission_ambiguous(uuid,text)',
+  'public.acknowledge_procurement_background_submission(uuid)',
+  'public.store_procurement_background_webhook(text,text,text)',
+  'public.claim_procurement_background_operation(uuid,uuid,text,integer)',
+  'public.reschedule_procurement_background_operation(uuid,uuid,text,integer,boolean)',
+  'public.finalize_procurement_background_operation(uuid,uuid,text,text,jsonb,boolean,text,text,text)',
+  'public.mark_procurement_background_webhook_retry(text,text,integer)'
+]) as function_signature;
+select is(
+  (
+    select count(*)
+    from information_schema.columns
+    where table_schema='public'
+      and table_name in (select table_name from information_schema.views where table_schema='public')
+      and column_name in ('provider_operation_id','event_id','client_request_id','lease_owner')
+  ),
+  0::bigint,
+  'owner-facing public views expose no internal lifecycle identifiers'
+);
+set local role service_role;
+select lives_ok(
+  'select attempt_id from public.procurement_background_operations limit 0',
+  'service role may directly read background operations'
+);
+select lives_ok(
+  'select event_id from public.procurement_background_webhook_inbox limit 0',
+  'service role may directly read webhook metadata'
+);
+select throws_ok(
+  'insert into public.procurement_background_operations default values',
+  '42501',
+  'permission denied for table procurement_background_operations',
+  'service role cannot directly insert background operations'
+);
+select throws_ok(
+  'update public.procurement_background_operations set updated_at=clock_timestamp() where false',
+  '42501',
+  'permission denied for table procurement_background_operations',
+  'service role cannot directly update background operations'
+);
+select throws_ok(
+  'delete from public.procurement_background_operations where false',
+  '42501',
+  'permission denied for table procurement_background_operations',
+  'service role cannot directly delete background operations'
+);
+select throws_ok(
+  'truncate table public.procurement_background_operations',
+  '42501',
+  'permission denied for table procurement_background_operations',
+  'service role cannot truncate background operations'
+);
+select throws_ok(
+  'insert into public.procurement_background_webhook_inbox default values',
+  '42501',
+  'permission denied for table procurement_background_webhook_inbox',
+  'service role cannot directly insert webhook metadata'
+);
+select throws_ok(
+  'update public.procurement_background_webhook_inbox set updated_at=clock_timestamp() where false',
+  '42501',
+  'permission denied for table procurement_background_webhook_inbox',
+  'service role cannot directly update webhook metadata'
+);
+select throws_ok(
+  'delete from public.procurement_background_webhook_inbox where false',
+  '42501',
+  'permission denied for table procurement_background_webhook_inbox',
+  'service role cannot directly delete webhook metadata'
+);
+select throws_ok(
+  'truncate table public.procurement_background_webhook_inbox',
+  '42501',
+  'permission denied for table procurement_background_webhook_inbox',
+  'service role cannot truncate webhook metadata'
+);
+reset role;
 select is(has_function_privilege('authenticated','public.accept_procurement_offer_candidate(uuid,uuid,uuid,boolean)','EXECUTE'),true,'authenticated owner may accept a candidate');
 select is(has_function_privilege('anon','public.accept_procurement_offer_candidate(uuid,uuid,uuid,boolean)','EXECUTE'),false,'anonymous cannot accept a candidate');
 select is((select prosecdef from pg_proc where oid='public.accept_procurement_offer_candidate(uuid,uuid,uuid,boolean)'::regprocedure),false,'candidate acceptance respects RLS as security invoker');

@@ -126,6 +126,21 @@ The complete invariants, residual provider-response ambiguity, failure taxonomy,
 lock order, scheduler design, and runbook are recorded in
 `docs/adr/PROCUREMENT_BACKGROUND_RESEARCH_DURABILITY.md`.
 
+### Production privilege-hardening checkpoint
+
+The durable background migration was applied to production with live research
+disabled. Post-migration verification found that Supabase public-schema
+defaults had retained direct `service_role` mutation privileges on the two
+private lifecycle tables. Production continuation stopped before deploying the
+durable functions, webhook, or scheduler, and no provider call occurred.
+
+The forward `procurement_background_rpc_boundary` migration removes those
+direct writes while retaining internal-table reads and service-only lifecycle
+RPC execution. After it is merged and applied, production rollout resumes at
+post-migration privilege verification. Live research remains disabled until
+that verification, function deployment, webhook setup, scheduler setup, and
+negative authentication checks are complete.
+
 ## Implementation and integration status
 
 - Phase 1 is implemented: request dashboard/detail, manual Offers, recommendations, workflow states, versioned JSON and Offer CSV interchange, landed-cost calculations, seed data, tests, and owner-scoped relational persistence.
