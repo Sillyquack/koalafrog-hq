@@ -1,5 +1,5 @@
 import{
- BACKGROUND_MAX_AGE_MS,BACKGROUND_MAX_ATTEMPTS,BACKGROUND_RETRIEVAL_TIMEOUT_MS,normalizedCandidateRows,
+ BACKGROUND_MAX_CONSECUTIVE_RETRIEVAL_FAILURES,BACKGROUND_RETRIEVAL_TIMEOUT_MS,normalizedCandidateRows,
  outputText,reconciliationDelaySeconds,retryableRetrievalStatus,
  terminalStatusFromEvent,type ProcessingOutcome,type TerminalSource,
 }from'./procurementBackgroundLifecycle.ts'
@@ -18,6 +18,7 @@ interface Operation{
  submission_state:string
  intent_created_at:string
  reconciliation_attempt_count:number
+ transient_failure_count:number
 }
 
 const safeLog=(event:string,detail:Record<string,unknown>={})=>
@@ -45,6 +46,14 @@ async function reschedule(
  }
  return{kind:'rescheduled',code}as const
 }
+
+const retrievalExhausted=(operation:Operation)=>
+ operation.transient_failure_count+1>=BACKGROUND_MAX_CONSECUTIVE_RETRIEVAL_FAILURES
+
+const retrievalExpired=(database:Database,operation:Operation,workerId:string,eventId:string|null)=>
+ finalize(database,operation,workerId,eventId,'failed','expiry',[],false,
+  'BACKGROUND_RESPONSE_RETENTION_EXHAUSTED',
+  'Background response could not be retrieved within the provider retention window.')
 
 async function finalize(
  database:Database,
@@ -117,19 +126,13 @@ export async function processProcurementBackgroundOperation(options:{
    },
   )
  }catch{
-  if(age>=BACKGROUND_MAX_AGE_MS||operation.reconciliation_attempt_count>=BACKGROUND_MAX_ATTEMPTS){
-   return finalize(database,operation,workerId,eventId,'failed','expiry',[],false,
-    'BACKGROUND_RECONCILIATION_EXHAUSTED','Background response retrieval could not be recovered.')
-  }
+  if(retrievalExhausted(operation))return retrievalExpired(database,operation,workerId,eventId)
   return reschedule(database,operation,workerId,eventId,'BACKGROUND_RETRIEVAL_TRANSIENT')
  }
 
  if(!response.ok){
   if(retryableRetrievalStatus(response.status)){
-   if(age>=BACKGROUND_MAX_AGE_MS||operation.reconciliation_attempt_count>=BACKGROUND_MAX_ATTEMPTS){
-    return finalize(database,operation,workerId,eventId,'failed','expiry',[],false,
-     'BACKGROUND_RECONCILIATION_EXHAUSTED','Background response retrieval could not be recovered.')
-   }
+   if(retrievalExhausted(operation))return retrievalExpired(database,operation,workerId,eventId)
    return reschedule(database,operation,workerId,eventId,
     response.status===404?'BACKGROUND_PROVIDER_MISSING':'BACKGROUND_RETRIEVAL_TRANSIENT')
   }
@@ -139,6 +142,7 @@ export async function processProcurementBackgroundOperation(options:{
 
  let providerResponse:unknown
  try{providerResponse=await response.json()}catch{
+  if(retrievalExhausted(operation))return retrievalExpired(database,operation,workerId,eventId)
   return reschedule(database,operation,workerId,eventId,'BACKGROUND_RETRIEVAL_TRANSIENT')
  }
  const providerStatus=String((providerResponse as{status?:unknown}).status??'')

@@ -2,7 +2,8 @@
 
 ## Status
 
-Accepted for the unmerged `feat/procurement-background-research` implementation.
+Accepted. Production migrations and functions are deployed with live research
+disabled. Retention-window hardening remains pending review and deployment.
 
 ## Problem
 
@@ -65,18 +66,74 @@ processor sees a terminal row and returns `duplicate`.
 
 Transient retrieval statuses are 404, 408, 409, 429, and 5xx, plus network,
 body, timeout, and temporary storage failures. Each retrieval has a 20-second
-transport timeout. Durable exponential backoff is bounded at six hours.
-Processing expires after 12 attempts or 48 hours. Malformed
-successfully retrieved output is terminal and publishes nothing.
+transport timeout. OpenAI documents only roughly ten minutes of temporary
+background Response retention, so retry delay is capped at 60 seconds and four
+consecutive failed retrievals end in safe local expiry. A successful `queued`
+or `in_progress` poll resets that failure budget. Malformed successfully
+retrieved output is terminal and publishes nothing.
+
+This is intentionally different from operation age. A legitimate background
+Response may run for tens of minutes; successful running polls remain eligible,
+while a continuous retrieval outage is bounded inside provider retention.
 
 ## Scheduler
 
 `procurement-live-research-reconcile` is a service worker protected by the
-dedicated `PROCUREMENT_RECONCILER_SECRET`. It processes at most 20 due operations
+dedicated `PROCUREMENT_RECONCILER_SECRET`. It processes at most 5 due operations
 per invocation and never calls the Responses create endpoint. Production should
-invoke it every two minutes through Supabase Cron plus `pg_net`, with the URL and
-secret stored in Vault. Scheduler installation is an explicit deployment step,
-not part of this source-only task.
+invoke it every minute through one Supabase Cron job plus `pg_net`, with the URL
+and secret stored in Vault. Scheduler installation is an explicit deployment
+step, not part of this source-only task.
+
+## OpenAI webhook decision
+
+Official OpenAI documentation says a dashboard endpoint can subscribe to “one
+or more event types.” The current Koalafrog project dashboard was observed on
+2026-07-24 to expose only one selected event type and reject another endpoint
+using the same URL. The public OpenAI API specification contains no webhook
+endpoint management resource. Official documentation found in this review does
+not document wildcard subscriptions, duplicate-URL rules, ordinary edit-secret
+semantics, event ordering, or account/browser rollout differences.
+
+The existing `response.completed` endpoint remains unchanged. Reconciliation is
+authoritative and polls every attached nonterminal operation for `completed`,
+`failed`, `incomplete`, and `cancelled`; webhooks accelerate processing. If the
+existing endpoint can later select all four terminal events without rotating
+its secret, that is useful resilience, but four URL aliases are not justified.
+
+Official sources reviewed:
+
+- <https://developers.openai.com/api/docs/guides/webhooks>
+- <https://developers.openai.com/api/docs/guides/background>
+- <https://platform.openai.com/docs/api-reference/webhook-events>
+
+## Terminal recovery matrix
+
+| Provider outcome | Webhook required | Reconciler action | Local result |
+| --- | --- | --- | --- |
+| `completed` | No | GET, validate, atomic finalize | candidates published once |
+| `failed` | No | GET sees `failed` | safe failed job |
+| `incomplete` | No | GET sees `incomplete` | safe failed job |
+| `cancelled` | No | GET sees `cancelled` | cancelled job |
+| `queued` / `in_progress` | No | reschedule; reset failures | remains active |
+| terminal but GET unavailable | No | retry at 15–60 seconds | recover or safe-expire |
+| terminal after local cancellation | No | finalizer discards | no candidates |
+
+## Failure modes
+
+| Failure | Recovery/invariant |
+| --- | --- |
+| Lost/delayed webhook | next reconciliation polls the Response |
+| Early webhook | `unmatched_pending` until provider attachment |
+| Duplicate webhook | inbox and finalizer are idempotent |
+| Webhook/reconciler race | lease plus row lock; loser is busy/duplicate |
+| Scheduler overlap | lease prevents duplicate processing |
+| Missed scheduler run | later run processes overdue rows |
+| Transient GET failure | bounded retry inside retention |
+| Expired GET | safe terminal expiry; never resubmit |
+| Interrupted worker | 60-second lease is reclaimable |
+| Ambiguous submission | never resubmit; safe failure after 30 minutes |
+| Local cancellation | terminal provider result is discarded |
 
 ## Cancellation
 

@@ -39,7 +39,7 @@ Deno.serve(async request=>{
  }
 
  const operation=await database.from('procurement_background_operations')
-  .select('attempt_id,job_id,workspace_id,provider_operation_id,submission_state,intent_created_at,reconciliation_attempt_count')
+  .select('attempt_id,job_id,workspace_id,provider_operation_id,submission_state,intent_created_at,reconciliation_attempt_count,transient_failure_count')
   .eq('provider_operation_id',event.responseId).maybeSingle()
  if(operation.error)return reply(200,'stored_pending')
  if(!operation.data)return reply(200,'stored_pending')

@@ -24,7 +24,7 @@ Deno.serve(async request=>{
   auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false},
  })
  const due=await database.from('procurement_background_operations')
-  .select('attempt_id,job_id,workspace_id,provider_operation_id,submission_state,intent_created_at,reconciliation_attempt_count')
+  .select('attempt_id,job_id,workspace_id,provider_operation_id,submission_state,intent_created_at,reconciliation_attempt_count,transient_failure_count')
   .is('terminal_at',null).lte('next_reconciliation_at',new Date().toISOString())
   .order('next_reconciliation_at',{ascending:true}).limit(BACKGROUND_BATCH_SIZE)
  if(due.error)return reply(503,{status:'storage_error'})

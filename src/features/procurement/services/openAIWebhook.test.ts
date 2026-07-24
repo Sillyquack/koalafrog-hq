@@ -19,6 +19,30 @@ describe('OpenAI webhook boundary',()=>{
   await expect(verifyOpenAIWebhook(body,headers,secret,1401)).resolves.toBe(false)
  })
 
+ it('fails closed for missing, malformed, stale, and non-matching signatures',async()=>{
+  const secret=`whsec_${btoa('test-secret-value')}`,body='{}'
+  await expect(verifyOpenAIWebhook(body,new Headers(),secret,1000)).resolves.toBe(false)
+  await expect(verifyOpenAIWebhook(body,new Headers({
+   'webhook-id':'wh_test','webhook-timestamp':'not-a-time','webhook-signature':'v1,broken',
+  }),secret,1000)).resolves.toBe(false)
+  const staleTimestamp='400'
+  const stale=new Headers({
+   'webhook-id':'wh_test','webhook-timestamp':staleTimestamp,
+   'webhook-signature':`v1,${await signature(body,'wh_test',staleTimestamp,secret)}`,
+  })
+  await expect(verifyOpenAIWebhook(body,stale,secret,1000)).resolves.toBe(false)
+ })
+
+ it('accepts any matching v1 signature during secret rotation',async()=>{
+  const secret=`whsec_${btoa('test-secret-value')}`,body='{}',timestamp='1000',id='wh_test'
+  const valid=await signature(body,id,timestamp,secret)
+  const headers=new Headers({
+   'webhook-id':id,'webhook-timestamp':timestamp,
+   'webhook-signature':`v1,${btoa('wrong')} v1,${valid}`,
+  })
+  await expect(verifyOpenAIWebhook(body,headers,secret,1000)).resolves.toBe(true)
+ })
+
  it('accepts only supported response events with safe opaque ids',()=>{
   expect(parseOpenAIResponseEvent({id:'evt_123',type:'response.completed',data:{id:'resp_456'}})).toEqual({id:'evt_123',type:'response.completed',responseId:'resp_456'})
   expect(parseOpenAIResponseEvent({id:'evt_123',type:'other',data:{id:'resp_456'}})).toBeNull()

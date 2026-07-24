@@ -1,9 +1,12 @@
 import{describe,expect,it}from'vitest'
 import{
- reconciliationDelaySeconds,retryableRetrievalStatus,terminalStatusFromEvent,
+ BACKGROUND_BATCH_SIZE,reconciliationDelaySeconds,retryableRetrievalStatus,terminalStatusFromEvent,
 }from'../../../../supabase/functions/_shared/procurementBackgroundLifecycle'
 
 describe('durable Procurement background lifecycle policy',()=>{
+ it('bounds one serial reconciler invocation below the Edge wall-clock budget',()=>{
+  expect(BACKGROUND_BATCH_SIZE*20_000).toBeLessThan(150_000)
+ })
  it('classifies only retry-safe retrieval statuses as transient',()=>{
   for(const status of[404,408,409,429,500,502,503,504]){
    expect(retryableRetrievalStatus(status)).toBe(true)
@@ -16,9 +19,9 @@ describe('durable Procurement background lifecycle policy',()=>{
  it('uses deterministic bounded exponential backoff with jitter',()=>{
   const delays=Array.from({length:20},(_,attempt)=>reconciliationDelaySeconds(attempt,'attempt-a'))
   expect(delays[0]).toBeGreaterThanOrEqual(15)
-  expect(delays.at(-1)).toBeLessThanOrEqual(21_600)
+  expect(delays.at(-1)).toBeLessThanOrEqual(60)
   expect(reconciliationDelaySeconds(4,'attempt-a')).toBe(reconciliationDelaySeconds(4,'attempt-a'))
-  expect(delays[4]).toBeGreaterThan(delays[1])
+  expect(delays[2]).toBeGreaterThan(delays[0])
  })
 
  it('maps authenticated terminal events without accepting arbitrary types',()=>{

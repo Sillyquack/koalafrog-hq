@@ -106,16 +106,18 @@ candidates plus terminal job state in one transaction.
 `procurement-live-research-reconcile` is the browser-independent recovery path.
 It is protected by `PROCUREMENT_RECONCILER_SECRET`, processes a bounded batch of
 due operations, polls attached Responses, processes stored early webhooks,
-reclaims expired leases, and applies durable exponential backoff. Retrieval
+reclaims expired leases, and applies durable bounded retry. Retrieval
 404/408/409/429/5xx, network errors, and temporary database failures are
-transient. Malformed successfully retrieved output is terminal. Work expires
-after 12 processing attempts or 48 hours; an unbound ambiguous submission is
-ended after 30 minutes without automatic resubmission.
+transient. Malformed successfully retrieved output is terminal. OpenAI retains
+background Response data for roughly ten minutes, so pending hardening uses a
+one-minute scheduler, 15–60 second retry delay, and safe expiry after four
+consecutive failed retrievals. Successful running polls reset that budget. An
+unbound ambiguous submission ends after 30 minutes without resubmission.
 
 Deployment requires `OPENAI_WEBHOOK_SECRET` and
 `PROCUREMENT_RECONCILER_SECRET` in addition to the existing server-only
 secrets, an OpenAI project webhook subscribed to terminal Response events,
-deployment of all three functions, and a two-minute Supabase Cron invocation of
+deployment of all three functions, and a one-minute Supabase Cron invocation of
 the reconciler using a Vault-held URL and secret. The webhook and reconciler
 deliberately use `verify_jwt=false` but fail closed on their dedicated secrets;
 user initiation retains `verify_jwt=true`. OpenAI background mode temporarily
@@ -131,15 +133,38 @@ lock order, scheduler design, and runbook are recorded in
 The durable background migration was applied to production with live research
 disabled. Post-migration verification found that Supabase public-schema
 defaults had retained direct `service_role` mutation privileges on the two
-private lifecycle tables. Production continuation stopped before deploying the
-durable functions, webhook, or scheduler, and no provider call occurred.
+private lifecycle tables. The forward boundary migration corrected this before
+the three durable functions were deployed. The scheduler and webhook secret are
+still absent, and no provider call occurred.
 
 The forward `procurement_background_rpc_boundary` migration removes those
 direct writes while retaining internal-table reads and service-only lifecycle
-RPC execution. After it is merged and applied, production rollout resumes at
-post-migration privilege verification. Live research remains disabled until
-that verification, function deployment, webhook setup, scheduler setup, and
-negative authentication checks are complete.
+RPC execution. Live research remains disabled until retention hardening is
+reviewed and deployed, webhook setup and scheduler setup are complete, and
+negative authentication checks pass.
+
+### 2026-07-24 webhook and retention investigation
+
+Production still has both Procurement migrations and all three expected
+functions. Live research remains disabled, `OPENAI_WEBHOOK_SECRET` is absent,
+no scheduler extensions are installed, and read-only counts found no lifecycle
+operations, webhook events, active jobs, candidates, supplier offers,
+recommendations, purchase plans, or inventory movements.
+
+The OpenAI dashboard exposes one selected event on the existing endpoint and
+rejects a second endpoint with the same URL. Official documentation says one
+endpoint can subscribe to “one or more event types,” but documents no wildcard,
+public endpoint-management API, duplicate-URL rule, or edit-secret behavior.
+Keep the existing `response.completed` endpoint unchanged until multi-selection
+is available or OpenAI clarifies the discrepancy.
+
+The architecture is polling-primary and webhooks are optional acceleration. The
+reconciler retrieves every attached nonterminal operation and terminalizes
+completed, failed, incomplete, and cancelled Responses. A local hardening PR is
+required because the former six-hour backoff and 48-hour expiry exceeded
+OpenAI's roughly ten-minute temporary retention. Scheduler creation, webhook
+secret configuration, deployment, and a controlled smoke test remain manual
+gates. See `docs/runbooks/PROCUREMENT_BACKGROUND_RESEARCH_PRODUCTION.md`.
 
 ## Implementation and integration status
 
