@@ -48,12 +48,40 @@ lookup. The local intent nevertheless makes the ambiguity visible and bounded.
 Webhook inbox state is:
 
 ```text
-received/unmatched_pending → processing → processed
-                         ↘ transient_failure ↗
+                         exact attachment inside 15 minutes
+unmatched_pending ─────────────────────────────────────────→ received
+        │                                                       │
+        └── 15-minute expiry sweep → permanently_rejected       ├→ processing
+                                                                ├→ transient_failure
+                                                                └→ processed/duplicate
 ```
 
 Only event ID, response ID, event type, timestamps, counters, and safe codes are
 stored. No raw body or result content is retained.
+
+### Bounded unmatched webhook lifecycle
+
+A correctly signed event can still be unrelated to any Koalafrog operation.
+Leaving such an event in `unmatched_pending` forever would make the durable
+inbox an unbounded nonterminal queue. A service-role-only database RPC therefore
+terminalizes at most 25 unmatched rows per reconciler invocation after a
+15-minute grace period. The RPC performs one atomic `FOR UPDATE SKIP LOCKED`
+update and returns only a count; event and provider identifiers never leave
+Postgres during the sweep.
+
+Fifteen minutes accommodates an early webhook, ordinary attachment latency, a
+brief database or deployment interruption, and several one-minute scheduler
+runs. At or beyond that boundary, exact attachment does not reopen the event:
+the row becomes `permanently_rejected` with the safe code
+`UNMATCHED_WEBHOOK_EXPIRED`. The attached provider operation remains recoverable
+through authoritative polling. This keeps terminal transitions monotonic and
+avoids allowing an old event to publish results.
+
+Replays of the same event ID remain idempotent and do not reopen terminal rows.
+Attachment continues to use the exact globally unique provider operation ID;
+there is no workspace search or fuzzy association. Terminal inbox rows are
+retained as minimal audit metadata. Destructive purge is a separate retention
+policy and is not part of this lifecycle fix.
 
 ## Processing and concurrency
 
@@ -80,10 +108,13 @@ while a continuous retrieval outage is bounded inside provider retention.
 
 `procurement-live-research-reconcile` is a service worker protected by the
 dedicated `PROCUREMENT_RECONCILER_SECRET`. It processes at most 5 due operations
-per invocation and never calls the Responses create endpoint. Production should
-invoke it every minute through one Supabase Cron job plus `pg_net`, with the URL
-and secret stored in Vault. Scheduler installation is an explicit deployment
-step, not part of this source-only task.
+per invocation and first terminalizes at most 25 expired unmatched inbox rows.
+The two workloads are independently bounded, and a sweep failure is logged with
+a safe code without starving operation recovery. The worker never calls the
+Responses create endpoint. Production should invoke it every minute through one
+Supabase Cron job plus `pg_net`, with the URL and secret stored in Vault.
+Scheduler installation is an explicit deployment step, not part of this
+source-only task.
 
 ## OpenAI webhook decision
 
@@ -124,7 +155,7 @@ Official sources reviewed:
 | Failure | Recovery/invariant |
 | --- | --- |
 | Lost/delayed webhook | next reconciliation polls the Response |
-| Early webhook | `unmatched_pending` until provider attachment |
+| Early webhook | exact attachment within 15 minutes; otherwise safe permanent rejection and polling |
 | Duplicate webhook | inbox and finalizer are idempotent |
 | Webhook/reconciler race | lease plus row lock; loser is busy/duplicate |
 | Scheduler overlap | lease prevents duplicate processing |
@@ -186,3 +217,6 @@ effective privileges with `has_table_privilege` plus behavioral denial checks.
 - expired operation: preserve the audit row. The owner may explicitly create a
   new research job after the original reaches safe terminal failure.
 - stuck lease: it is reclaimable after expiry; do not edit internal rows.
+- unmatched webhook accumulation: inspect aggregate state/age counts. More than
+  25 due rows for two consecutive one-minute runs indicates arrival pressure or
+  scheduler failure; do not delete rows manually.

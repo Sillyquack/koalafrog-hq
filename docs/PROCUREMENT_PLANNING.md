@@ -145,11 +145,13 @@ negative authentication checks pass.
 
 ### 2026-07-24 webhook and retention investigation
 
-Production still has both Procurement migrations and all three expected
-functions. Live research remains disabled, `OPENAI_WEBHOOK_SECRET` is absent,
-no scheduler extensions are installed, and read-only counts found no lifecycle
-operations, webhook events, active jobs, candidates, supplier offers,
-recommendations, purchase plans, or inventory movements.
+Production has all three Procurement background migrations and all three
+expected functions. Live research remains disabled,
+`OPENAI_WEBHOOK_SECRET` is configured, no scheduler extensions are installed,
+and no provider operation, active background job, candidate, supplier offer,
+recommendation, purchase plan, or inventory mutation exists. Two
+signature-verified `response.completed` rows are known OpenAI dashboard test
+artifacts and remain unattached.
 
 The OpenAI dashboard exposes one selected event on the existing endpoint and
 rejects a second endpoint with the same URL. Official documentation says one
@@ -165,6 +167,21 @@ required because the former six-hour backoff and 48-hour expiry exceeded
 OpenAI's roughly ten-minute temporary retention. Scheduler creation, webhook
 secret configuration, deployment, and a controlled smoke test remain manual
 gates. See `docs/runbooks/PROCUREMENT_BACKGROUND_RESEARCH_PRODUCTION.md`.
+
+### 2026-07-24 unmatched webhook lifecycle blocker
+
+Production rollout remains paused and live research remains disabled. The two
+officially signed dashboard events proved that the endpoint and signing secret
+are operational, but also exposed that permanently unrelated
+`unmatched_pending` rows had no expiry path. The scheduler remains absent while
+the focused `fix/procurement-unmatched-webhook-lifecycle` change is reviewed.
+
+The forward fix gives verified early events a 15-minute exact-attachment grace
+window, then terminalizes still-unattached rows in bounded server-only batches
+as `permanently_rejected`. Polling remains authoritative, terminal events never
+reopen, and the existing synthetic rows will transition through the generic
+lifecycle after migration and reconciler deployment. No production row is
+targeted or manually deleted.
 
 ## Implementation and integration status
 
