@@ -1,8 +1,10 @@
 import{freshnessFromSourceDate,validateLiveResearchResponse}from'./procurementLiveResearchContract.ts'
 
-export const BACKGROUND_BATCH_SIZE=20
-export const BACKGROUND_MAX_ATTEMPTS=12
-export const BACKGROUND_MAX_AGE_MS=48*60*60*1000
+export const BACKGROUND_BATCH_SIZE=5
+// OpenAI retains background Response data for roughly ten minutes. With the
+// production scheduler running every minute, four consecutive failed
+// retrievals keep the final attempt inside that provider window.
+export const BACKGROUND_MAX_CONSECUTIVE_RETRIEVAL_FAILURES=4
 export const BACKGROUND_RETRIEVAL_TIMEOUT_MS=20_000
 
 export type TerminalSource='webhook'|'reconciler'|'cancellation'|'expiry'|'submission'
@@ -15,12 +17,12 @@ export const retryableRetrievalStatus=(status:number)=>
  status===404||status===408||status===409||status===429||status>=500
 
 export function reconciliationDelaySeconds(attempt:number,seed=''){
- const bounded=Math.max(0,Math.min(attempt,8))
- const base=Math.min(30*2**bounded,6*60*60)
+ const bounded=Math.max(0,Math.min(attempt,2))
+ const base=Math.min(15*2**bounded,60)
  let hash=0
  for(const character of seed)hash=(hash*31+character.charCodeAt(0))>>>0
  const jitter=Math.round(base*((hash%21)-10)/100)
- return Math.max(15,Math.min(base+jitter,6*60*60))
+ return Math.max(15,Math.min(base+jitter,60))
 }
 
 export const terminalStatusFromEvent=(type:string)=>
