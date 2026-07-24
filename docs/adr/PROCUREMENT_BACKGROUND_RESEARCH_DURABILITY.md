@@ -94,6 +94,31 @@ coarse lifecycle label. Provider IDs, webhook IDs, prompts, raw output, keys,
 JWTs, signed URLs, and supplier result content are excluded from diagnostics and
 logs.
 
+### Private-table privilege boundary
+
+Production verification after the durable migration exposed a Supabase
+public-schema default: newly created tables can retain broad `service_role`
+table privileges even when a migration explicitly grants only `SELECT`. Direct
+`service_role` writes would bypass the validation, locking, and idempotency
+rules owned by the lifecycle RPCs.
+
+The forward `procurement_background_rpc_boundary` migration therefore revokes
+all privileges on both internal tables from `public`, `anon`, `authenticated`,
+and `service_role`, then grants only `SELECT` to `service_role`. The effective
+matrix is:
+
+| Role | SELECT | INSERT/UPDATE/DELETE/TRUNCATE/REFERENCES/TRIGGER |
+| --- | --- | --- |
+| `anon` | No | No |
+| `authenticated` | No | No |
+| `service_role` | Yes | No |
+
+All mutations remain available to `service_role` only through the fixed-search-
+path `SECURITY DEFINER` lifecycle RPCs. Future private server-owned tables must
+follow the same migration pattern: revoke every default role privilege
+immediately after creation, minimally re-grant required access, and test the
+effective privileges with `has_table_privilege` plus behavioral denial checks.
+
 ## Operational runbook
 
 - `submission_ambiguous`: wait for the 30-minute reconciliation horizon; never
