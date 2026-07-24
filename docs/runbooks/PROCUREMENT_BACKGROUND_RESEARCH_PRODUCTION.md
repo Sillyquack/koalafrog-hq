@@ -136,6 +136,52 @@ candidates, supplier offers, recommendations, purchase plans, and inventory
 movements. Check function versions, secret names, cron count, and Vault secret
 names. Never select decrypted values.
 
+### Unmatched webhook lifecycle
+
+Verified events that arrive before exact provider attachment remain
+`unmatched_pending` for 15 minutes. Each reconciler invocation atomically
+terminalizes at most 25 expired, still-unattached rows as
+`permanently_rejected` with `UNMATCHED_WEBHOOK_EXPIRED`. The sweep returns only
+an aggregate count and uses row locks with `SKIP LOCKED`, so overlapping
+reconcilers cannot terminalize the same row twice.
+
+Exact attachment inside the grace window changes the event to `received`.
+Attachment at or after the boundary does not reopen it; provider polling remains
+the correctness path. Replays never reopen terminal rows. Keep terminal rows as
+minimal audit evidence and never manually delete or rewrite them.
+
+Inspect safely:
+
+```sql
+select processing_state,count(*) as event_count,
+       min(received_at) as oldest_received_at
+from public.procurement_background_webhook_inbox
+group by processing_state
+order by processing_state;
+```
+
+Alert when unmatched rows older than 15 minutes remain after two consecutive
+one-minute scheduler runs, when more than 25 rows become due per minute, or when
+`BACKGROUND_WEBHOOK_SWEEP_FAILED` repeats. Check scheduler health, the
+reconciler deployment, RPC privileges, and database logs using safe codes only.
+Do not inspect event IDs, provider IDs, payloads, headers, or signatures.
+
+Deployment verification for this lifecycle:
+
+1. Apply the forward unmatched-webhook migration.
+2. Deploy the reviewed reconciler version.
+3. Confirm the expiry RPC is executable only by `service_role`.
+4. Confirm browser roles still cannot read or mutate the inbox.
+5. Invoke one authenticated empty reconciliation through the protected
+   mechanism and verify aggregate `expiredUnmatched`, `processed`, and
+   `sweepStatus` fields only.
+6. Confirm the known signed dashboard test artifacts transition naturally; do
+   not target them with a data migration or manual update.
+
+Rollback keeps live research disabled. If the new worker is unhealthy, roll
+back the function while preserving the forward schema and audit rows. Never
+reopen permanently rejected events; polling handles any attached operation.
+
 ## Controlled smoke-test gate
 
 Do not proceed until the retention migration and functions are deployed, the
@@ -148,6 +194,8 @@ correlation and timestamps, not provider IDs or raw output.
 - Stuck job: check cron health, due count, lease age, safe failure code, and
   consecutive retrieval failures. Never reset the provider gate.
 - Lost webhook: reconciliation must terminalize it.
+- Unmatched accumulation: restore the one-minute reconciler, verify the bounded
+  sweep RPC, and allow batches to drain. Never delete inbox history manually.
 - Scheduler outage: restore the one named job. If an outage approached ten
   minutes with active operations, expect safe expiry; never auto-resubmit.
 - Duplicate publication: verify one operation per job, one terminal timestamp,

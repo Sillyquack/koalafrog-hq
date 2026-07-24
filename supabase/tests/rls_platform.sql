@@ -1,6 +1,6 @@
 begin;
 -- Run with Supabase CLI test harness. Synthetic JWT claims must be supplied by the harness.
-select plan(216);
+select plan(251);
 select has_table('public','workspaces','workspaces exists');
 select has_table('public','workspace_records','record store exists');
 select has_table('public','procurement_research_jobs','Procurement jobs exist');
@@ -90,7 +90,8 @@ cross join unnest(array[
   'public.claim_procurement_background_operation(uuid,uuid,text,integer)',
   'public.reschedule_procurement_background_operation(uuid,uuid,text,integer,boolean)',
   'public.finalize_procurement_background_operation(uuid,uuid,text,text,jsonb,boolean,text,text,text)',
-  'public.mark_procurement_background_webhook_retry(text,text,integer)'
+  'public.mark_procurement_background_webhook_retry(text,text,integer)',
+  'public.expire_procurement_unmatched_webhooks(integer)'
 ]) as function_signature;
 select is(
   (select proconfig[1] from pg_proc where oid=function_signature::regprocedure),
@@ -107,7 +108,8 @@ from unnest(array[
   'public.claim_procurement_background_operation(uuid,uuid,text,integer)',
   'public.reschedule_procurement_background_operation(uuid,uuid,text,integer,boolean)',
   'public.finalize_procurement_background_operation(uuid,uuid,text,text,jsonb,boolean,text,text,text)',
-  'public.mark_procurement_background_webhook_retry(text,text,integer)'
+  'public.mark_procurement_background_webhook_retry(text,text,integer)',
+  'public.expire_procurement_unmatched_webhooks(integer)'
 ]) as function_signature;
 select is(
   (
@@ -119,6 +121,362 @@ select is(
   ),
   0::bigint,
   'owner-facing public views expose no internal lifecycle identifiers'
+);
+select has_index(
+  'public','procurement_background_webhook_inbox',
+  'procurement_webhook_unmatched_expiry',
+  'unmatched webhook expiry work has a partial due index'
+);
+select has_function(
+  'public','expire_procurement_unmatched_webhooks',array['integer'],
+  'bounded unmatched webhook expiry RPC exists'
+);
+select is(
+  has_function_privilege(
+    'service_role',
+    'public.expire_procurement_unmatched_webhooks(integer)',
+    'EXECUTE'
+  ),
+  true,
+  'service role may run bounded unmatched webhook expiry'
+);
+select is(
+  has_function_privilege(
+    'authenticated',
+    'public.expire_procurement_unmatched_webhooks(integer)',
+    'EXECUTE'
+  ),
+  false,
+  'browser cannot expire unmatched webhook metadata'
+);
+select is(
+  has_function_privilege(
+    'anon',
+    'public.expire_procurement_unmatched_webhooks(integer)',
+    'EXECUTE'
+  ),
+  false,
+  'anonymous cannot expire unmatched webhook metadata'
+);
+select is(
+  has_function_privilege(
+    'public',
+    'public.expire_procurement_unmatched_webhooks(integer)',
+    'EXECUTE'
+  ),
+  false,
+  'public cannot expire unmatched webhook metadata'
+);
+select is(
+  (
+    select prosecdef
+    from pg_proc
+    where oid='public.expire_procurement_unmatched_webhooks(integer)'::regprocedure
+  ),
+  true,
+  'unmatched webhook expiry is security definer'
+);
+select is(
+  (
+    select proconfig[1]
+    from pg_proc
+    where oid='public.expire_procurement_unmatched_webhooks(integer)'::regprocedure
+  ),
+  'search_path=pg_catalog, public, pg_temp',
+  'unmatched webhook expiry search path is fixed'
+);
+select has_trigger(
+  'public','procurement_background_webhook_inbox',
+  'guard_procurement_webhook_terminal_state',
+  'terminal webhook inbox states have a monotonic transition guard'
+);
+select throws_ok(
+  'select public.expire_procurement_unmatched_webhooks(0)',
+  'P0001',
+  'BACKGROUND_WEBHOOK_BATCH_INVALID',
+  'unmatched webhook expiry rejects an empty batch'
+);
+select throws_ok(
+  'select public.expire_procurement_unmatched_webhooks(101)',
+  'P0001',
+  'BACKGROUND_WEBHOOK_BATCH_INVALID',
+  'unmatched webhook expiry rejects an unbounded batch'
+);
+insert into public.procurement_background_webhook_inbox(
+  event_id,provider_operation_id,terminal_event_type,received_at,
+  signature_verified_at,processing_state,next_attempt_at
+) values
+  (
+    'evt_pgtap_expired_a','resp_pgtap_expired_a','response.completed',
+    clock_timestamp()-interval '16 minutes',clock_timestamp()-interval '16 minutes',
+    'unmatched_pending',clock_timestamp()-interval '16 minutes'
+  ),
+  (
+    'evt_pgtap_expired_b','resp_pgtap_expired_b','response.failed',
+    clock_timestamp()-interval '16 minutes',clock_timestamp()-interval '16 minutes',
+    'unmatched_pending',clock_timestamp()-interval '16 minutes'
+  ),
+  (
+    'evt_pgtap_fresh','resp_pgtap_fresh','response.completed',
+    clock_timestamp(),clock_timestamp(),'unmatched_pending',clock_timestamp()
+  );
+select is(
+  public.expire_procurement_unmatched_webhooks(1),
+  1,
+  'unmatched webhook expiry respects its batch limit'
+);
+select is(
+  (
+    select count(*)::integer
+    from public.procurement_background_webhook_inbox
+    where event_id like 'evt_pgtap_expired_%'
+      and processing_state='permanently_rejected'
+  ),
+  1,
+  'only one expired webhook terminalizes in the first bounded batch'
+);
+select is(
+  (
+    select processing_state
+    from public.procurement_background_webhook_inbox
+    where event_id='evt_pgtap_fresh'
+  ),
+  'unmatched_pending',
+  'an unmatched webhook inside the grace period remains pending'
+);
+select is(
+  public.expire_procurement_unmatched_webhooks(25),
+  1,
+  'the remaining expired webhook terminalizes on the next sweep'
+);
+select is(
+  public.expire_procurement_unmatched_webhooks(25),
+  0,
+  'repeated unmatched webhook expiry is idempotent'
+);
+select is(
+  (
+    select count(*)::integer
+    from public.procurement_background_webhook_inbox
+    where event_id like 'evt_pgtap_expired_%'
+      and processing_state='permanently_rejected'
+      and last_safe_error_code='UNMATCHED_WEBHOOK_EXPIRED'
+      and processed_at is not null
+  ),
+  2,
+  'expired webhook rows retain only the safe terminal reason'
+);
+update public.procurement_background_webhook_inbox
+set processing_state='received'
+where event_id like 'evt_pgtap_expired_%';
+select is(
+  (
+    select count(*)::integer
+    from public.procurement_background_webhook_inbox
+    where event_id like 'evt_pgtap_expired_%'
+      and processing_state='permanently_rejected'
+  ),
+  2,
+  'terminal webhook rows cannot reopen'
+);
+select is(
+  public.store_procurement_background_webhook(
+    'evt_pgtap_expired_a','resp_pgtap_expired_a','response.completed'
+  ),
+  'duplicate',
+  'replay after expiry remains idempotent'
+);
+select is(
+  (
+    select processing_state
+    from public.procurement_background_webhook_inbox
+    where event_id='evt_pgtap_expired_a'
+  ),
+  'permanently_rejected',
+  'replay after expiry does not reopen the terminal row'
+);
+select throws_ok(
+  $sql$
+    select public.store_procurement_background_webhook(
+      'evt_pgtap_unsupported','resp_pgtap_unsupported','response.created'
+    )
+  $sql$,
+  'P0001',
+  'BACKGROUND_WEBHOOK_INVALID',
+  'unsupported webhook events remain rejected'
+);
+select is(
+  (
+    select count(*)::integer
+    from public.procurement_background_operations
+    where provider_operation_id like 'resp_pgtap_%'
+  ),
+  0,
+  'unmatched expiry creates no provider operation'
+);
+insert into auth.users(id,email,created_at,updated_at)
+values(
+  '10000000-0000-4000-8000-000000000001',
+  'webhook-lifecycle-pgtap@example.invalid',
+  clock_timestamp(),clock_timestamp()
+);
+insert into public.workspaces(id,owner_id,name,lifecycle_state)
+values(
+  '20000000-0000-4000-8000-000000000001',
+  '10000000-0000-4000-8000-000000000001',
+  'Webhook lifecycle pgTAP','active'
+);
+insert into public.procurement_requests(
+  id,workspace_id,owner_id,title
+) values
+  (
+    '30000000-0000-4000-8000-000000000001',
+    '20000000-0000-4000-8000-000000000001',
+    '10000000-0000-4000-8000-000000000001',
+    'Webhook lifecycle pgTAP fresh'
+  ),
+  (
+    '30000000-0000-4000-8000-000000000002',
+    '20000000-0000-4000-8000-000000000001',
+    '10000000-0000-4000-8000-000000000001',
+    'Webhook lifecycle pgTAP expired'
+  );
+insert into public.procurement_research_jobs(
+  id,workspace_id,owner_id,procurement_request_id,provider,status,started_at
+) values
+  (
+    '40000000-0000-4000-8000-000000000001',
+    '20000000-0000-4000-8000-000000000001',
+    '10000000-0000-4000-8000-000000000001',
+    '30000000-0000-4000-8000-000000000002',
+    'openai-web-search-v1','running',clock_timestamp()
+  ),
+  (
+    '40000000-0000-4000-8000-000000000002',
+    '20000000-0000-4000-8000-000000000001',
+    '10000000-0000-4000-8000-000000000001',
+    '30000000-0000-4000-8000-000000000001',
+    'openai-web-search-v1','running',clock_timestamp()
+  );
+insert into public.procurement_background_operations(
+  attempt_id,job_id,workspace_id,owner_id,provider,submission_state
+) values
+  (
+    '50000000-0000-4000-8000-000000000001',
+    '40000000-0000-4000-8000-000000000001',
+    '20000000-0000-4000-8000-000000000001',
+    '10000000-0000-4000-8000-000000000001',
+    'openai-web-search-v1','submitting'
+  ),
+  (
+    '50000000-0000-4000-8000-000000000002',
+    '40000000-0000-4000-8000-000000000002',
+    '20000000-0000-4000-8000-000000000001',
+    '10000000-0000-4000-8000-000000000001',
+    'openai-web-search-v1','submitting'
+  );
+insert into public.procurement_background_webhook_inbox(
+  event_id,provider_operation_id,terminal_event_type,received_at,
+  signature_verified_at,processing_state,next_attempt_at
+) values
+  (
+    'evt_pgtap_attach_fresh','resp_pgtap_attach_fresh','response.completed',
+    clock_timestamp(),clock_timestamp(),'unmatched_pending',clock_timestamp()
+  ),
+  (
+    'evt_pgtap_attach_expired','resp_pgtap_attach_expired','response.completed',
+    clock_timestamp()-interval '15 minutes',clock_timestamp()-interval '15 minutes',
+    'unmatched_pending',clock_timestamp()-interval '15 minutes'
+  );
+select is(
+  public.attach_procurement_background_operation(
+    '50000000-0000-4000-8000-000000000001',
+    '10000000-0000-4000-8000-000000000001',
+    'resp_pgtap_attach_fresh','in_progress'
+  ),
+  'attached',
+  'exact attachment inside the grace period succeeds'
+);
+select is(
+  (
+    select processing_state
+    from public.procurement_background_webhook_inbox
+    where event_id='evt_pgtap_attach_fresh'
+  ),
+  'received',
+  'exact attachment inside the grace period activates the early event'
+);
+select is(
+  public.attach_procurement_background_operation(
+    '50000000-0000-4000-8000-000000000002',
+    '10000000-0000-4000-8000-000000000001',
+    'resp_pgtap_attach_expired','in_progress'
+  ),
+  'attached',
+  'provider attachment remains available at the webhook expiry boundary'
+);
+select is(
+  (
+    select processing_state
+    from public.procurement_background_webhook_inbox
+    where event_id='evt_pgtap_attach_expired'
+  ),
+  'permanently_rejected',
+  'attachment at the expiry boundary does not reopen the old event'
+);
+select is(
+  (
+    select last_safe_error_code
+    from public.procurement_background_webhook_inbox
+    where event_id='evt_pgtap_attach_expired'
+  ),
+  'UNMATCHED_WEBHOOK_EXPIRED',
+  'late exact attachment records only the safe terminal reason'
+);
+select is(
+  public.attach_procurement_background_operation(
+    '50000000-0000-4000-8000-000000000002',
+    '10000000-0000-4000-8000-000000000001',
+    'resp_pgtap_attach_expired','in_progress'
+  ),
+  'duplicate',
+  'duplicate exact attachment remains idempotent'
+);
+select throws_ok(
+  $sql$
+    select public.attach_procurement_background_operation(
+      '50000000-0000-4000-8000-000000000001',
+      '10000000-0000-4000-8000-000000000001',
+      'resp_pgtap_attachment_conflict','queued'
+    )
+  $sql$,
+  'P0001',
+  'BACKGROUND_OPERATION_CONFLICT',
+  'an intent cannot attach a conflicting provider operation'
+);
+select throws_ok(
+  $sql$
+    select public.attach_procurement_background_operation(
+      '50000000-0000-4000-8000-000000000001',
+      '10000000-0000-4000-8000-000000000099',
+      'resp_pgtap_attach_fresh','queued'
+    )
+  $sql$,
+  'P0001',
+  'BACKGROUND_OPERATION_UNAVAILABLE',
+  'attachment cannot cross owner or workspace boundaries'
+);
+select is(
+  (
+    select count(*)::integer
+    from public.procurement_offer_candidates
+    where research_job_id in(
+      '40000000-0000-4000-8000-000000000001',
+      '40000000-0000-4000-8000-000000000002'
+    )
+  ),
+  0,
+  'early or expired attachment publishes no candidate'
 );
 set local role service_role;
 select lives_ok(

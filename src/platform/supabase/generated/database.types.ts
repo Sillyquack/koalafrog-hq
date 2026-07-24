@@ -8621,6 +8621,10 @@ export type Database = {
         Args: { concept_id: string; lines: Json }
         Returns: string
       }
+      expire_procurement_unmatched_webhooks: {
+        Args: { maximum_rows?: number }
+        Returns: number
+      }
       finalize_procurement_background_operation: {
         Args: {
           candidate_attempt_id: string
