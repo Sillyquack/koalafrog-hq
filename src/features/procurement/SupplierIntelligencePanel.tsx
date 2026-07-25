@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { procurementActions } from './actions/procurementActions'
-import type { ProcurementData, Supplier } from './domain/procurement'
+import type { ProcurementData } from './domain/procurement'
 
 const numberOrNull = (value: FormDataEntryValue | null) =>
   value == null || value === '' ? null : Number(value)
