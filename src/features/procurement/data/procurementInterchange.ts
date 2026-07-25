@@ -1,14 +1,19 @@
-import type { ProcurementData, ProcurementRecommendation, ProcurementRequest, RequestedItem, SupplierOffer } from '../domain/procurement'
+import type { ProcurementCartScenario, ProcurementCartScenarioItem, ProcurementData, ProcurementRecommendation, ProcurementRequest, RequestedItem, SupplierDiscount, SupplierOffer, SupplierShippingRule } from '../domain/procurement'
 
 export const PROCUREMENT_EXPORT_VERSION=1
-export interface ProcurementExport{version:1;exportedAt:string;requests:ProcurementRequest[];requestedItems:RequestedItem[];offers:SupplierOffer[];recommendations:ProcurementRecommendation[]}
-export function exportProcurement(data:ProcurementData):ProcurementExport{return{version:PROCUREMENT_EXPORT_VERSION,exportedAt:new Date().toISOString(),requests:data.requests,requestedItems:data.requestedItems,offers:data.offers,recommendations:data.recommendations}}
+export interface ProcurementExport{version:1;exportedAt:string;requests:ProcurementRequest[];requestedItems:RequestedItem[];offers:SupplierOffer[];recommendations:ProcurementRecommendation[];supplierDiscounts:SupplierDiscount[];supplierShippingRules:SupplierShippingRule[];cartScenarios:ProcurementCartScenario[];cartScenarioItems:ProcurementCartScenarioItem[]}
+export function exportProcurement(data:ProcurementData):ProcurementExport{return{version:PROCUREMENT_EXPORT_VERSION,exportedAt:new Date().toISOString(),requests:data.requests,requestedItems:data.requestedItems,offers:data.offers,recommendations:data.recommendations,supplierDiscounts:data.supplierDiscounts,supplierShippingRules:data.supplierShippingRules,cartScenarios:data.cartScenarios,cartScenarioItems:data.cartScenarioItems}}
 const safeUrl=(value:unknown)=>{if(value==null||value==='')return true;try{const url=new URL(String(value));return url.protocol==='https:'||url.protocol==='http:'}catch{return false}}
 export function parseProcurementJson(text:string):ProcurementExport{
  const value=JSON.parse(text) as Partial<ProcurementExport>
  if(value.version!==1||!Array.isArray(value.requests)||!Array.isArray(value.requestedItems)||!Array.isArray(value.offers)||!Array.isArray(value.recommendations))throw new Error('Unsupported or invalid Procurement JSON.')
+ value.supplierDiscounts??=[]
+ value.supplierShippingRules??=[]
+ value.cartScenarios??=[]
+ value.cartScenarioItems??=[]
  const requestIds=new Set(value.requests.map(x=>x.id)),itemIds=new Set(value.requestedItems.map(x=>x.id)),offerIds=new Set(value.offers.map(x=>x.id))
- if(value.requests.some(x=>!x.id||!x.title||!['needed','researching','recommended','ordered','received'].includes(x.status))||value.requestedItems.some(x=>!x.id||!requestIds.has(x.procurement_request_id)||!x.name||!(Number(x.requested_quantity)>0))||value.offers.some(x=>!x.id||!itemIds.has(x.requested_item_id)||!x.supplier_id||!x.product_title||!(Number(x.package_quantity)>0)||!safeUrl(x.product_url))||value.recommendations.some(x=>!x.id||!requestIds.has(x.procurement_request_id)||!itemIds.has(x.requested_item_id)||!offerIds.has(x.supplier_offer_id)))throw new Error('Procurement JSON contains invalid or disconnected records.')
+ const discountIds=new Set(value.supplierDiscounts.map(x=>x.id)),ruleIds=new Set(value.supplierShippingRules.map(x=>x.id)),scenarioIds=new Set(value.cartScenarios.map(x=>x.id))
+ if(value.requests.some(x=>!x.id||!x.title||!['needed','researching','recommended','ordered','received'].includes(x.status))||value.requestedItems.some(x=>!x.id||!requestIds.has(x.procurement_request_id)||!x.name||!(Number(x.requested_quantity)>0))||value.offers.some(x=>!x.id||!itemIds.has(x.requested_item_id)||!x.supplier_id||!x.product_title||!(Number(x.package_quantity)>0)||!safeUrl(x.product_url))||value.recommendations.some(x=>!x.id||!requestIds.has(x.procurement_request_id)||!itemIds.has(x.requested_item_id)||!offerIds.has(x.supplier_offer_id))||value.supplierDiscounts.some(x=>!x.id||!x.supplier_id||!safeUrl(x.source_url))||value.supplierShippingRules.some(x=>!x.id||!x.supplier_id||!safeUrl(x.source_url))||value.cartScenarios.some(x=>!x.id||!x.supplier_id||(x.discount_id!=null&&!discountIds.has(x.discount_id))||(x.shipping_rule_id!=null&&!ruleIds.has(x.shipping_rule_id)))||value.cartScenarioItems.some(x=>!x.id||!scenarioIds.has(x.scenario_id)||!offerIds.has(x.supplier_offer_id)||!itemIds.has(x.requested_item_id)))throw new Error('Procurement JSON contains invalid or disconnected records.')
  return value as ProcurementExport
 }
 const escape=(value:unknown)=>{const text=Array.isArray(value)?value.join('|'):value==null?'':String(value);return `"${text.replaceAll('"','""')}"`}
