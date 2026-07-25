@@ -9,7 +9,7 @@ const textOrNull = (value: FormDataEntryValue | null) =>
 
 const cardStyle = {
   display: 'grid',
-  gap: '10px',
+  gap: '14px',
   padding: '16px',
   border: '1px solid var(--line)',
   borderRadius: '8px',
@@ -20,6 +20,13 @@ const metricStyle = {
   display: 'grid',
   gap: '3px',
   minWidth: 0,
+} as const
+
+const groupStyle = {
+  display: 'grid',
+  gap: '10px',
+  paddingTop: '14px',
+  borderTop: '1px solid var(--line)',
 } as const
 
 export function SupplierIntelligencePanel({
@@ -53,6 +60,12 @@ export function SupplierIntelligencePanel({
   }, [supplier])
 
   if (!data.suppliers.length || !supplier) return null
+
+  const discounts = data.supplierDiscounts.filter((item) => item.supplier_id === supplier.id)
+  const currentDiscounts = discounts.filter((item) => ['available', 'planned', 'unknown'].includes(item.status))
+  const shippingRules = data.supplierShippingRules.filter((item) => item.supplier_id === supplier.id)
+  const currentShippingRules = shippingRules.filter((item) => ['active', 'needs_verification'].includes(item.status))
+  const offers = data.offers.filter((item) => item.supplier_id === supplier.id)
 
   const save = async (form: HTMLFormElement) => {
     const value = new FormData(form)
@@ -91,7 +104,7 @@ export function SupplierIntelligencePanel({
         <div>
           <span className="eyebrow">Supplier knowledge</span>
           <h2 id="supplier-intelligence-title" style={{ margin: '5px 0' }}>Supplier intelligence</h2>
-          <p>Keep the commercial and operational context behind supplier decisions in one place.</p>
+          <p>Identity, operating terms, commercial context and decision evidence in one supplier profile.</p>
         </div>
         <label style={{ minWidth: '220px' }}>
           Supplier
@@ -114,10 +127,10 @@ export function SupplierIntelligencePanel({
 
       {!editing && (
         <div style={cardStyle}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '14px', alignItems: 'flex-start' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '14px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
             <div>
-              <strong style={{ fontSize: '16px' }}>{name}</strong>
-              <p style={{ margin: '4px 0 0', color: 'var(--muted)', fontSize: '10px' }}>
+              <strong style={{ fontSize: '18px' }}>{name}</strong>
+              <p style={{ margin: '4px 0 0', color: 'var(--muted)', fontSize: '11px' }}>
                 {supplier.country_code || 'Country unknown'} · {supplier.supplier_type || 'Type unknown'} · {currency}
               </p>
             </div>
@@ -137,11 +150,40 @@ export function SupplierIntelligencePanel({
             <div style={metricStyle}><small>Internal rating</small><strong>{supplier.internal_rating == null ? 'Not rated' : `${supplier.internal_rating}/5`}</strong></div>
           </div>
 
-          {supplier.internal_notes && (
+          <div style={groupStyle}>
+            <div>
+              <span className="eyebrow">Commercial</span>
+              <h3 style={{ margin: '4px 0' }}>Purchasing context</h3>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: '12px' }}>
+              <div style={metricStyle}><small>Current discounts</small><strong>{currentDiscounts.length}</strong><span>{discounts.length - currentDiscounts.length} historical</span></div>
+              <div style={metricStyle}><small>Current shipping rules</small><strong>{currentShippingRules.length}</strong><span>{shippingRules.length - currentShippingRules.length} historical</span></div>
+              <div style={metricStyle}><small>Recorded offers</small><strong>{offers.length}</strong><span>Accepted supplier research offers</span></div>
+            </div>
+          </div>
+
+          <div style={groupStyle}>
+            <div>
+              <span className="eyebrow">Documentation</span>
+              <h3 style={{ margin: '4px 0' }}>Evidence readiness</h3>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(130px,1fr))', gap: '12px' }}>
+              {['COA', 'SDS', 'IFRA', 'Allergen sheet', 'Certificates', 'Batch traceability'].map((label) => (
+                <div key={label} style={metricStyle}><small>{label}</small><strong>Not recorded</strong></div>
+              ))}
+            </div>
+            <small style={{ color: 'var(--muted)' }}>Structured documentation fields will be added in the next database slice. Nothing is inferred from supplier notes.</small>
+          </div>
+
+          <div style={groupStyle}>
+            <div>
+              <span className="eyebrow">Decision record</span>
+              <h3 style={{ margin: '4px 0' }}>Internal notes</h3>
+            </div>
             <p style={{ margin: 0, whiteSpace: 'pre-wrap', color: 'var(--muted)', lineHeight: 1.6 }}>
-              {supplier.internal_notes}
+              {supplier.internal_notes || 'No supplier decision notes recorded.'}
             </p>
-          )}
+          </div>
 
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
             <button type="button" className="button primary" onClick={() => setEditing(true)}>Edit supplier profile</button>
