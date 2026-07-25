@@ -65,6 +65,14 @@ export function PurchasingIntelligencePanel({
     () => data.supplierShippingRules.filter((item) => item.supplier_id === supplierId),
     [data.supplierShippingRules, supplierId],
   )
+  const currentRules = useMemo(
+    () => rules.filter((item) => item.status === 'active' || item.status === 'needs_verification'),
+    [rules],
+  )
+  const historicalRules = useMemo(
+    () => rules.filter((item) => item.status === 'inactive' || item.status === 'expired'),
+    [rules],
+  )
   const offers = data.offers.filter(
     (item) => item.supplier_id === supplierId && item.item_price != null && item.currency,
   )
@@ -393,7 +401,11 @@ export function PurchasingIntelligencePanel({
             <div className="section-header">
               <div>
                 <h3>Shipping rules</h3>
-                <p>{rules.length ? `${rules.length} saved rule${rules.length === 1 ? '' : 's'}` : 'No saved shipping rules'}</p>
+                <p>
+                  {rules.length
+                    ? `${currentRules.length} current · ${historicalRules.length} archived`
+                    : 'No saved shipping rules'}
+                </p>
               </div>
               <button
                 type="button"
@@ -405,7 +417,13 @@ export function PurchasingIntelligencePanel({
             </div>
 
             <div style={{ display: 'grid', gap: '10px', marginBottom: '18px' }}>
-              {rules.map((rule) => (
+              {currentRules.length === 0 && (
+                <p style={{ margin: 0, color: 'var(--muted)', fontSize: '10px' }}>
+                  No current shipping rules.
+                </p>
+              )}
+
+              {currentRules.map((rule) => (
                 <div
                   key={rule.id}
                   ref={savedRecordId === rule.id ? savedRecordRef : undefined}
@@ -424,10 +442,42 @@ export function PurchasingIntelligencePanel({
                   <small>Checked {dateLabel(rule.verified_at)}</small>
                   <div style={actionRowStyle}>
                     <button type="button" className="button ghost" onClick={() => { setEditingRule(rule); setRuleFormOpen(true) }}>Edit</button>
-                    {rule.status !== 'inactive' && <button type="button" className="button ghost" onClick={() => void archiveRule(rule)}>Archive</button>}
+                    <button type="button" className="button ghost" onClick={() => void archiveRule(rule)}>Archive</button>
                   </div>
                 </div>
               ))}
+
+              {historicalRules.length > 0 && (
+                <details>
+                  <summary>
+                    Archived and inactive rules ({historicalRules.length})
+                  </summary>
+                  <div style={{ display: 'grid', gap: '10px', marginTop: '10px' }}>
+                    {historicalRules.map((rule) => (
+                      <div
+                        key={rule.id}
+                        ref={savedRecordId === rule.id ? savedRecordRef : undefined}
+                        tabIndex={savedRecordId === rule.id ? -1 : undefined}
+                        style={cardStyle}
+                      >
+                        <div style={cardHeaderStyle}>
+                          <div>
+                            <strong>{rule.destination_country_code || rule.destination_region || 'Destination unknown'}</strong>
+                            <p style={{ margin: '4px 0 0', color: 'var(--muted)', fontSize: '10px' }}>
+                              Shipping {money(rule.flat_rate, rule.currency ?? currency)} · Tax {money(rule.tax_estimate, rule.currency ?? currency)} · Duty {money(rule.duty_estimate, rule.currency ?? currency)}
+                            </p>
+                          </div>
+                          <span className="status-pill">{rule.status}</span>
+                        </div>
+                        <small>Checked {dateLabel(rule.verified_at)}</small>
+                        <div style={actionRowStyle}>
+                          <button type="button" className="button ghost" onClick={() => { setEditingRule(rule); setRuleFormOpen(true) }}>Edit</button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              )}
             </div>
 
             {ruleFormOpen && (
