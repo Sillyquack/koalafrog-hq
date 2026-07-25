@@ -1,6 +1,6 @@
 begin;
 -- Run with Supabase CLI test harness. Synthetic JWT claims must be supplied by the harness.
-select plan(251);
+select plan(270);
 select has_table('public','workspaces','workspaces exists');
 select has_table('public','workspace_records','record store exists');
 select has_table('public','procurement_research_jobs','Procurement jobs exist');
@@ -659,5 +659,24 @@ select is(
   'search_path=pg_catalog, public, pg_temp',
   'persistence search path remains fixed'
 );
+select has_table('public','procurement_supplier_discounts','supplier discounts exist');
+select has_table('public','procurement_supplier_shipping_rules','supplier shipping rules exist');
+select has_table('public','procurement_cart_scenarios','cart scenarios exist');
+select has_table('public','procurement_cart_scenario_items','cart scenario items exist');
+select has_column('public','procurement_supplier_shipping_rules','tax_estimate','shipping tax estimate remains explicit');
+select has_column('public','procurement_supplier_shipping_rules','duty_estimate','shipping duty estimate remains explicit');
+select is((select relrowsecurity from pg_class where oid='public.procurement_supplier_discounts'::regclass),true,'discount RLS enabled');
+select is((select relrowsecurity from pg_class where oid='public.procurement_supplier_shipping_rules'::regclass),true,'shipping rule RLS enabled');
+select is((select relrowsecurity from pg_class where oid='public.procurement_cart_scenarios'::regclass),true,'cart scenario RLS enabled');
+select is((select relrowsecurity from pg_class where oid='public.procurement_cart_scenario_items'::regclass),true,'cart item RLS enabled');
+select is(has_table_privilege('anon','public.procurement_supplier_discounts','SELECT'),false,'anon cannot read discounts');
+select is(has_table_privilege('anon','public.procurement_supplier_shipping_rules','SELECT'),false,'anon cannot read shipping rules');
+select is(has_table_privilege('anon','public.procurement_cart_scenarios','SELECT'),false,'anon cannot read cart scenarios');
+select is(has_table_privilege('anon','public.procurement_cart_scenario_items','SELECT'),false,'anon cannot read cart items');
+select fk_ok('public','procurement_cart_scenario_items','procurement_cart_scenario_items_workspace_id_scenario_id_fkey','public','procurement_cart_scenarios','cart items require a scenario');
+select col_type_is('public','procurement_supplier_discounts','status','text','discount status is constrained text');
+select has_function('public','import_procurement_purchasing_snapshot',array['uuid','jsonb'],'atomic purchasing-intelligence import exists');
+select is(has_function_privilege('authenticated','public.import_procurement_purchasing_snapshot(uuid,jsonb)','EXECUTE'),true,'owner may import purchasing intelligence');
+select is(has_function_privilege('anon','public.import_procurement_purchasing_snapshot(uuid,jsonb)','EXECUTE'),false,'anon cannot import purchasing intelligence');
 select * from finish();
 rollback;

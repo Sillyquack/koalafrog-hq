@@ -13,6 +13,18 @@ The request-centred workspace adds four owner-scoped relational aggregates:
 
 Supplier Offer shipping, tax/duty, delivery, MOQ, document availability and confidence are nullable or explicitly unknown. Calculations never coerce an incomplete landed estimate into a complete total. Quantity conversion is intentionally limited to compatible mass, volume, or piece units; density-based conversion remains unknown until a trustworthy density boundary is introduced.
 
+## Purchasing Intelligence
+
+Purchasing Intelligence is owner-reviewed planning support inside Procurement. It records `SupplierDiscount` commercial terms, destination-specific `SupplierShippingRule` evidence, a single-supplier `ProcurementCartScenario`, and its immutable source references through `ProcurementCartScenarioItem` rows. It does not create a second supplier identity.
+
+The calculator separates merchandise subtotal, eligible discount, shipping, tax, duty, payment fee, and additional fee. `knownTotal` adds only values that are actually recorded. `landedTotal` remains null until every required cost component is known; the interface labels each missing component as unknown rather than displaying zero. Savings means the eligible order discount versus undiscounted merchandise and is not a purchasing recommendation.
+
+A first-order discount can be available or planned only while it is within its validity dates, meets its minimum order, matches the cart currency and supplier, and has no recorded use. A used, expired, invalid, unknown, already-used first-order, or otherwise ineligible term contributes no discount. Percentage and fixed discounts are capped by the recorded maximum discount and never exceed merchandise.
+
+Shipping evidence is destination-specific. An Oliemeesters statement for the EU or “rest of EU” is not evidence of delivery terms to Norway: a Norway (`NO`) cart therefore keeps shipping unknown until a reviewed Norway rule or manual estimate exists. The reviewed 5% `5KORTING` first-order example belongs in owner data or test fixtures only; it is not inserted into production seed data without owner-supplied source evidence.
+
+This slice never places orders, performs checkout, stores payment credentials, mutates inventory, or treats a low price as an automatic recommendation. Current limitations include manual evidence entry, one supplier and one discount per cart scenario, no exchange-rate conversion, no density conversion, and no automatic tax or customs calculation.
+
 Portable JSON exports are versioned and include requests, items, offers and recommendations. CSV is deliberately an offer interchange format, with stable identifier columns for the requested item and Supplier. JSON imports pass through the authenticated repository into one RLS-respecting database transaction, so a failed import cannot leave a partial aggregate. Binaries and credentials are never part of these formats.
 
 ## Future research-agent boundary

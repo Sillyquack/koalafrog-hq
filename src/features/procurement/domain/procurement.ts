@@ -23,7 +23,7 @@ export interface ProcurementRecommendation{id:string;procurement_request_id:stri
 
 export type SupplierDiscountStatus='available'|'planned'|'used'|'expired'|'invalid'|'unknown'
 export interface SupplierDiscount{id:string;supplier_id:string;name:string;discount_type:'percentage'|'fixed_amount'|'free_shipping'|'other';percentage:number|null;fixed_amount:number|null;currency:string|null;coupon_code:string|null;minimum_order_value:number|null;maximum_discount:number|null;first_purchase_only:boolean;requires_newsletter:boolean;valid_from:string|null;expires_at:string|null;status:SupplierDiscountStatus;source_url:string|null;evidence_notes:string;verified_at:string|null;used_at:string|null;created_at:string;updated_at:string}
-export interface SupplierShippingRule{id:string;supplier_id:string;destination_country_code:string|null;destination_region:string|null;shipping_method:string|null;currency:string|null;flat_rate:number|null;free_shipping_threshold:number|null;minimum_order_value:number|null;delivery_estimate_min_days:number|null;delivery_estimate_max_days:number|null;tax_handling:'unknown'|'included'|'excluded'|'destination_checkout'|'import_due';duty_handling:'unknown'|'included'|'excluded'|'import_due';status:'active'|'needs_verification'|'inactive'|'expired';source_url:string|null;evidence_notes:string;verified_at:string|null;created_at:string;updated_at:string}
+export interface SupplierShippingRule{id:string;supplier_id:string;destination_country_code:string|null;destination_region:string|null;shipping_method:string|null;currency:string|null;flat_rate:number|null;free_shipping_threshold:number|null;minimum_order_value:number|null;delivery_estimate_min_days:number|null;delivery_estimate_max_days:number|null;tax_handling:'unknown'|'included'|'excluded'|'destination_checkout'|'import_due';duty_handling:'unknown'|'included'|'excluded'|'import_due';tax_estimate:number|null;duty_estimate:number|null;status:'active'|'needs_verification'|'inactive'|'expired';source_url:string|null;evidence_notes:string;verified_at:string|null;created_at:string;updated_at:string}
 export interface ProcurementCartScenario{id:string;supplier_id:string;name:string;destination_country_code:string;currency:string;shipping_rule_id:string|null;discount_id:string|null;manual_shipping_cost:number|null;manual_tax_estimate:number|null;manual_duty_estimate:number|null;payment_fee:number|null;additional_cost:number|null;status:'draft'|'ready_for_review'|'selected'|'superseded'|'archived';notes:string;calculated_at:string|null;created_at:string;updated_at:string}
 export interface ProcurementCartScenarioItem{id:string;scenario_id:string;supplier_offer_id:string;requested_item_id:string;package_count:number;unit_price:number;line_discount:number;display_order:number;notes:string;created_at:string;updated_at:string}
 
@@ -58,24 +58,31 @@ export function calculateCartScenario(input:{scenario:ProcurementCartScenario;it
   const merchandise=input.items.reduce((sum,item)=>sum+item.package_count*item.unit_price-Math.min(item.line_discount,item.package_count*item.unit_price),0)
   const discount=input.discount
   const now=input.now??new Date()
-  const discountEligible=Boolean(discount&&['available','planned'].includes(discount.status)&&(!discount.valid_from||new Date(discount.valid_from)<=now)&&(!discount.expires_at||new Date(discount.expires_at)>now)&&(discount.minimum_order_value==null||merchandise>=discount.minimum_order_value))
+  const discountCurrencyMatches=!discount?.currency||discount.currency===input.scenario.currency
+  const firstPurchaseAvailable=!discount?.first_purchase_only||discount.used_at==null
+  const discountEligible=Boolean(discount&&discount.supplier_id===input.scenario.supplier_id&&['available','planned'].includes(discount.status)&&firstPurchaseAvailable&&discountCurrencyMatches&&(!discount.valid_from||new Date(discount.valid_from)<=now)&&(!discount.expires_at||new Date(discount.expires_at)>now)&&(discount.minimum_order_value==null||merchandise>=discount.minimum_order_value))
   let orderDiscount=0
   if(discountEligible&&discount){
     if(discount.discount_type==='percentage'&&discount.percentage!=null)orderDiscount=merchandise*discount.percentage/100
-    if(discount.discount_type==='fixed_amount'&&discount.fixed_amount!=null&&discount.currency===input.scenario.currency)orderDiscount=discount.fixed_amount
+    if(discount.discount_type==='fixed_amount'&&discount.fixed_amount!=null)orderDiscount=discount.fixed_amount
     if(discount.maximum_discount!=null)orderDiscount=Math.min(orderDiscount,discount.maximum_discount)
     orderDiscount=Math.min(orderDiscount,merchandise)
   }
   const discountedMerchandise=merchandise-orderDiscount
   const rule=input.shippingRule
-  const freeShippingByRule=Boolean(rule?.free_shipping_threshold!=null&&discountedMerchandise>=rule.free_shipping_threshold)
+  const destinationMatches=Boolean(rule&&rule.supplier_id===input.scenario.supplier_id&&rule.status==='active'&&rule.currency===input.scenario.currency&&(
+    rule.destination_country_code===input.scenario.destination_country_code||
+    (!rule.destination_country_code&&rule.destination_region==='NO'&&input.scenario.destination_country_code==='NO')
+  ))
+  const applicableRule=destinationMatches?rule:null
+  const freeShippingByRule=Boolean(applicableRule?.free_shipping_threshold!=null&&discountedMerchandise>=applicableRule.free_shipping_threshold)
   const freeShippingByDiscount=Boolean(discountEligible&&discount?.discount_type==='free_shipping')
-  const shipping=input.scenario.manual_shipping_cost??(freeShippingByRule||freeShippingByDiscount?0:rule?.flat_rate??null)
-  const components={merchandise,orderDiscount,discountedMerchandise,shipping,tax:input.scenario.manual_tax_estimate,duty:input.scenario.manual_duty_estimate,paymentFee:input.scenario.payment_fee,additional:input.scenario.additional_cost}
+  const shipping=input.scenario.manual_shipping_cost??(freeShippingByRule||freeShippingByDiscount?0:applicableRule?.flat_rate??null)
+  const components={merchandise,orderDiscount,discountedMerchandise,shipping,tax:input.scenario.manual_tax_estimate??applicableRule?.tax_estimate??null,duty:input.scenario.manual_duty_estimate??applicableRule?.duty_estimate??null,paymentFee:input.scenario.payment_fee,additional:input.scenario.additional_cost}
   const nullableCosts=[['shipping',shipping],['tax',components.tax],['duty',components.duty],['paymentFee',components.paymentFee],['additional',components.additional]] as const
   const missing=nullableCosts.filter(([,value])=>value==null).map(([name])=>name)
   const knownTotal=discountedMerchandise+nullableCosts.reduce((sum,[,value])=>sum+Number(value??0),0)
-  return{components,discountEligible,freeShipping:freeShippingByRule||freeShippingByDiscount,missing,knownTotal,complete:missing.length===0}
+  return{components,discountEligible,shippingRuleApplicable:destinationMatches,freeShipping:freeShippingByRule||freeShippingByDiscount,missing,knownTotal,landedTotal:missing.length===0?knownTotal:null,savings:orderDiscount,complete:missing.length===0}
 }
 
 export const procurementRequestTransitions:Record<ProcurementRequestStatus,ProcurementRequestStatus[]>={needed:['researching'],researching:['needed','recommended'],recommended:['researching','ordered'],ordered:['received'],received:[]}
