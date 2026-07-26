@@ -5,6 +5,8 @@ import { PageHeader } from '../../components/ui/PageHeader'
 import { procurementActions } from './actions/procurementActions'
 import { SupplierIntelligencePanel } from './SupplierIntelligencePanel'
 import { PurchasingIntelligencePanel } from './PurchasingIntelligencePanel'
+import { SupplierDocumentationPanel } from './SupplierDocumentationPanel'
+import { SupplierHistoryPanel } from './SupplierHistoryPanel'
 import { useProcurement } from './useProcurement'
 
 export function SuppliersPage() {
@@ -115,6 +117,8 @@ export function SuppliersPage() {
           </aside>
           <div className="supplier-workspace-detail">
             <SupplierIntelligencePanel key={selectedSupplierId} data={data} supplierId={selectedSupplierId} refresh={refresh} />
+            {workspace&&<SupplierDocumentationPanel key={`documentation-${selectedSupplierId}`} workspaceId={workspace.workspaceId} data={data} supplierId={selectedSupplierId} refresh={refresh}/>}
+            {workspace&&<SupplierHistoryPanel key={`history-${selectedSupplierId}`} workspaceId={workspace.workspaceId} data={data} supplierId={selectedSupplierId} refresh={refresh}/>}
             {workspace && (
               <PurchasingIntelligencePanel
                 key={`commercial-${selectedSupplierId}`}

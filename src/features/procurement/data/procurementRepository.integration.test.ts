@@ -5,7 +5,7 @@ import type { Database } from '../../../platform/supabase/generated/database.typ
 import { executeWorkspaceAction } from '../../../platform/actions/workspaceActionExecutor'
 import { SupabaseWorkspaceRepository } from '../../../platform/repository/supabaseWorkspaceRepository'
 import { compareQuotes, quoteArithmetic } from '../domain/procurement'
-import { createContact, createQuote, linkSupplierProduct, loadProcurement, updateRecord } from './procurementRepository'
+import { createContact, createQuote, createSupplierDocument, createSupplierEvent, linkSupplierProduct, loadProcurement, markExternalOrder, updateRecord } from './procurementRepository'
 
 const url = import.meta.env.VITE_SUPABASE_TEST_URL as string | undefined
 const serviceKey = import.meta.env.VITE_SUPABASE_TEST_SERVICE_ROLE_KEY as string | undefined
@@ -59,6 +59,15 @@ run('Procurement production hydration against local Supabase', () => {
     await expect(updateRecord('suppliers',supplier.data.id,supplier.data.revision,{trading_name:'Stale edit'})).rejects.toThrow('changed')
     await createContact(workspaceId,{supplier_id:supplier.data.id,name:'Procurement Contact',email:'contact@example.test',notes:'',is_primary:true})
     await createQuote(workspaceId,{supplier_id:supplier.data.id,quote_reference:'Q-WORKFLOW',quote_date:'2026-07-16',currency:'NOK',status:'draft',internal_notes:''})
+    const supplierDocument=await createSupplierDocument(workspaceId,{supplier_id:supplier.data.id,document_type:'coa',capability_state:'available_on_request',verification_state:'unverified',checked_date:'2026-07-16',notes:'Ask with each lot.',scope_type:'supplier_wide'})
+    await updateRecord('supplier_document_records',supplierDocument.id,supplierDocument.revision,{verification_state:'pending_review'})
+    await expect(updateRecord('supplier_document_records',supplierDocument.id,supplierDocument.revision,{verification_state:'verified'})).rejects.toThrow('changed')
+    const supplierEvent=await createSupplierEvent(workspaceId,{supplier_id:supplier.data.id,event_type:'communication',occurred_at:'2026-07-16T12:00:00Z',title:'Requested dispatch update',description:'Email sent.',expected_at:null})
+    await updateRecord('supplier_events',supplierEvent.id,supplierEvent.revision,{description:'Reply received.'})
+    await expect(updateRecord('supplier_events',supplierEvent.id,supplierEvent.revision,{description:'Stale rewrite'})).rejects.toThrow('changed')
+    const purchasePlan=await supabase!.from('purchase_plans').insert({...owned,supplier_id:supplier.data.id,title:'History purchase',status:'approved_internal',purpose:'Integration evidence'}).select('id').single()
+    if(purchasePlan.error)throw purchasePlan.error
+    await markExternalOrder(purchasePlan.data.id)
     await linkSupplierProduct('supplier_products','supplier-product-procurement',supplier.data.id,now)
 
     const workspaceRepository=new SupabaseWorkspaceRepository(),beforePreference=await workspaceRepository.load(ownerId)
@@ -72,8 +81,10 @@ run('Procurement production hydration against local Supabase', () => {
     const otherEmail=`koalafrog-other-${crypto.randomUUID()}@example.test`,otherPassword=`Local-${crypto.randomUUID()}-9a!`,otherCreated=await admin.auth.admin.createUser({email:otherEmail,password:otherPassword,email_confirm:true})
     if(otherCreated.error)throw otherCreated.error
     createdUsers.push(otherCreated.data.user.id)
-    const otherClient=createClient<Database>(url!,anonKey!,{auth:{persistSession:false}})
+    const otherClient=createClient(url!,anonKey!,{auth:{persistSession:false}})
     expect((await otherClient.auth.signInWithPassword({email:otherEmail,password:otherPassword})).error).toBeNull()
+    expect((await otherClient.from('supplier_document_records').select('id').eq('supplier_id',supplier.data.id)).data).toEqual([])
+    expect((await otherClient.from('supplier_events').select('id').eq('supplier_id',supplier.data.id)).data).toEqual([])
     expect((await otherClient.rpc('mark_supplier_product_preferred',{p_product_id:'supplier-product-procurement',p_expected_updated_at:now})).error?.message).toContain('unavailable')
 
     const orderedLines = await supabase!.from('supplier_quote_lines').select('*').eq('workspace_id', workspaceId).order('created_at', { ascending: false })
@@ -92,6 +103,10 @@ run('Procurement production hydration against local Supabase', () => {
     expect(data.suppliers.find(item=>item.id===supplier.data.id)?.trading_name).toBe('Hydration Trading')
     expect(data.contacts.find(item=>item.supplier_id===supplier.data.id)?.name).toBe('Procurement Contact')
     expect(data.quotes.find(item=>item.quote_reference==='Q-WORKFLOW')?.status).toBe('draft')
+    expect(data.supplierDocuments.find(item=>item.id===supplierDocument.id)).toMatchObject({supplier_id:supplier.data.id,capability_state:'available_on_request',verification_state:'pending_review',evidence_url:null})
+    expect(data.supplierEvents.find(item=>item.id===supplierEvent.id)).toMatchObject({supplier_id:supplier.data.id,event_type:'communication',description:'Reply received.'})
+    expect(data.supplierEvents.some(item=>item.event_type==='quote_received'&&item.supplier_quote_id===quote.data.id)).toBe(true)
+    expect(data.supplierEvents.some(item=>item.event_type==='purchase_placed'&&item.purchase_plan_id===purchasePlan.data.id)).toBe(true)
     const linkedProduct=await supabase!.from('supplier_products').select('supplier_id,price,notes').eq('id','supplier-product-procurement').single()
     expect(linkedProduct.data).toMatchObject({supplier_id:supplier.data.id,price:245,notes:'Historical offer'})
     expect((await supabase!.from('inventory_lots').select('supplier_product_id,internal_lot_number').eq('id','lot-procurement').single()).data).toEqual({supplier_product_id:'supplier-product-procurement',internal_lot_number:'KF-PROC-LOT'})
