@@ -8,7 +8,6 @@ import {exportProcurement,parseProcurementJson} from './data/procurementIntercha
 import type {ProcurementPriority,ProcurementRequestStatus} from './domain/procurement'
 import {useProcurement} from './useProcurement'
 import {PurchasingIntelligencePanel} from './PurchasingIntelligencePanel'
-import {SupplierIntelligencePanel} from './SupplierIntelligencePanel'
 
 const statuses:ProcurementRequestStatus[]=['needed','researching','recommended','ordered','received']
 const priorities:ProcurementPriority[]=['low','normal','high','urgent']
@@ -41,7 +40,6 @@ export function ProcurementPage(){
    <label className="wide">Notes<textarea name="notes" rows={2}/></label><button className="button primary">Save request</button>
   </form>}
   {message&&<p className="form-message" role="status">{message}</p>}
-  <SupplierIntelligencePanel data={data} refresh={refresh}/>
   {workspace&&<PurchasingIntelligencePanel workspaceId={workspace.workspaceId} data={data} refresh={refresh}/>} 
   <section className="procurement-filters" aria-label="Filter procurement requests">
    <label><Search size={14}/><span className="visually-hidden">Search</span><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search requests"/></label>
