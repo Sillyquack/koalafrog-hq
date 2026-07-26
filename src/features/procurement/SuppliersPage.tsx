@@ -4,6 +4,7 @@ import { useSearchParams } from 'react-router-dom'
 import { PageHeader } from '../../components/ui/PageHeader'
 import { procurementActions } from './actions/procurementActions'
 import { SupplierIntelligencePanel } from './SupplierIntelligencePanel'
+import { PurchasingIntelligencePanel } from './PurchasingIntelligencePanel'
 import { useProcurement } from './useProcurement'
 
 export function SuppliersPage() {
@@ -112,7 +113,19 @@ export function SuppliersPage() {
               {!visible.length && <p className="supplier-picker-empty">No suppliers match this search.</p>}
             </div>
           </aside>
-          <SupplierIntelligencePanel key={selectedSupplierId} data={data} supplierId={selectedSupplierId} refresh={refresh} />
+          <div className="supplier-workspace-detail">
+            <SupplierIntelligencePanel key={selectedSupplierId} data={data} supplierId={selectedSupplierId} refresh={refresh} />
+            {workspace && (
+              <PurchasingIntelligencePanel
+                key={`commercial-${selectedSupplierId}`}
+                workspaceId={workspace.workspaceId}
+                data={data}
+                refresh={refresh}
+                selectedSupplierId={selectedSupplierId}
+                view="supplier"
+              />
+            )}
+          </div>
         </div>
       )}
     </div>

@@ -38,12 +38,16 @@ export function PurchasingIntelligencePanel({
   workspaceId,
   data,
   refresh,
+  selectedSupplierId,
+  view = 'procurement',
 }: {
   workspaceId: string
   data: ProcurementData
   refresh: () => Promise<void>
+  selectedSupplierId?: string
+  view?: 'procurement' | 'supplier'
 }) {
-  const [supplierId, setSupplierId] = useState(data.suppliers[0]?.id ?? '')
+  const [supplierId, setSupplierId] = useState(selectedSupplierId ?? data.suppliers[0]?.id ?? '')
   const [editingDiscount, setEditingDiscount] = useState<SupplierDiscount | null>(null)
   const [editingRule, setEditingRule] = useState<SupplierShippingRule | null>(null)
   const [discountFormOpen, setDiscountFormOpen] = useState(false)
@@ -193,11 +197,11 @@ export function PurchasingIntelligencePanel({
       currency: textOrNull(value.get('currency'))?.toUpperCase() ?? null,
       flat_rate: numberOrNull(value.get('flat_rate')),
       free_shipping_threshold: numberOrNull(value.get('free_shipping_threshold')),
-      minimum_order_value: null,
-      delivery_estimate_min_days: null,
-      delivery_estimate_max_days: null,
-      tax_handling: value.get('tax_estimate') === '' ? 'unknown' : 'excluded',
-      duty_handling: value.get('duty_estimate') === '' ? 'unknown' : 'excluded',
+      minimum_order_value: numberOrNull(value.get('minimum_order_value')),
+      delivery_estimate_min_days: numberOrNull(value.get('delivery_estimate_min_days')),
+      delivery_estimate_max_days: numberOrNull(value.get('delivery_estimate_max_days')),
+      tax_handling: value.get('tax_handling'),
+      duty_handling: value.get('duty_handling'),
       tax_estimate: numberOrNull(value.get('tax_estimate')),
       duty_estimate: numberOrNull(value.get('duty_estimate')),
       status: value.get('status'),
@@ -290,14 +294,14 @@ export function PurchasingIntelligencePanel({
   if (!data.suppliers.length) return null
 
   return (
-    <section className="purchasing-intelligence" aria-labelledby="purchasing-intelligence-title">
+    <section className={`purchasing-intelligence ${view === 'supplier' ? 'supplier-commercial-workspace' : 'procurement-cart-workspace'}`} aria-labelledby="purchasing-intelligence-title">
       <header>
         <div>
-          <span className="eyebrow">Planning only</span>
-          <h2 id="purchasing-intelligence-title">Purchasing intelligence</h2>
-          <p>Review supplier terms and estimate a cart. This does not order, pay, or change inventory.</p>
+          <span className="eyebrow">{view === 'supplier' ? 'Canonical supplier records' : 'Planning only'}</span>
+          <h2 id="purchasing-intelligence-title">{view === 'supplier' ? 'Commercial Terms & Shipping' : 'Cart scenarios'}</h2>
+          <p>{view === 'supplier' ? 'Maintain this supplier’s explicit commercial terms and destination-specific shipping rules. Missing facts remain unknown.' : 'Compare a supplier cart using canonical terms and shipping rules. This does not order, pay, or change inventory.'}</p>
         </div>
-        <label>
+        {view === 'procurement' && <label>
           Supplier
           <select
             value={supplierId}
@@ -316,13 +320,13 @@ export function PurchasingIntelligencePanel({
               </option>
             ))}
           </select>
-        </label>
+        </label>}
       </header>
 
       {message && <p className="form-message" role="status">{message}</p>}
 
       <div className="purchasing-columns">
-        <section className="panel">
+        {view === 'supplier' && <section className="panel supplier-commercial-terms">
           <div className="section-header">
             <div>
               <h3>Commercial terms</h3>
@@ -436,6 +440,7 @@ export function PurchasingIntelligencePanel({
                       <p style={{ margin: '4px 0 0', color: 'var(--muted)', fontSize: '10px' }}>
                         Shipping {money(rule.flat_rate, rule.currency ?? currency)} · Tax {money(rule.tax_estimate, rule.currency ?? currency)} · Duty {money(rule.duty_estimate, rule.currency ?? currency)}
                       </p>
+                      <small>{rule.shipping_method || 'Method / Incoterm unknown'} · VAT {rule.tax_handling.replaceAll('_', ' ')} · Customs / duty {rule.duty_handling.replaceAll('_', ' ')}</small>
                     </div>
                     <span className="status-pill">{rule.status}</span>
                   </div>
@@ -489,9 +494,15 @@ export function PurchasingIntelligencePanel({
                 <h3 style={{ gridColumn: '1 / -1' }}>{editingRule ? 'Edit shipping rule' : 'Add shipping rule'}</h3>
                 <label>Country<input name="destination_country_code" maxLength={2} placeholder="NO" defaultValue={editingRule?.destination_country_code ?? ''} /></label>
                 <label>Region<input name="destination_region" placeholder="Norway, EU…" defaultValue={editingRule?.destination_region ?? ''} /></label>
+                <label>Shipping method / Incoterm<input name="shipping_method" defaultValue={editingRule?.shipping_method ?? ''} placeholder="DAP / DDU" /></label>
                 <label>Fixed shipping<input name="flat_rate" type="number" min="0" step="any" defaultValue={editingRule?.flat_rate ?? ''} /></label>
                 <label>Free over<input name="free_shipping_threshold" type="number" min="0" step="any" defaultValue={editingRule?.free_shipping_threshold ?? ''} /></label>
+                <label>Minimum order value<input name="minimum_order_value" type="number" min="0" step="any" defaultValue={editingRule?.minimum_order_value ?? ''} /></label>
                 <label>Currency<input name="currency" maxLength={3} defaultValue={editingRule?.currency ?? currency} /></label>
+                <label>Delivery from, days<input name="delivery_estimate_min_days" type="number" min="0" step="1" defaultValue={editingRule?.delivery_estimate_min_days ?? ''} /></label>
+                <label>Delivery to, days<input name="delivery_estimate_max_days" type="number" min="0" step="1" defaultValue={editingRule?.delivery_estimate_max_days ?? ''} /></label>
+                <label>VAT handling<select name="tax_handling" defaultValue={editingRule?.tax_handling ?? 'unknown'}><option value="unknown">Unknown</option><option value="included">Included</option><option value="excluded">Excluded</option><option value="destination_checkout">Destination checkout</option><option value="import_due">Import due</option></select></label>
+                <label>Customs / duty handling<select name="duty_handling" defaultValue={editingRule?.duty_handling ?? 'unknown'}><option value="unknown">Unknown</option><option value="included">Included</option><option value="excluded">Excluded</option><option value="import_due">Import due</option></select></label>
                 <label>Tax estimate<input name="tax_estimate" type="number" min="0" step="any" defaultValue={editingRule?.tax_estimate ?? ''} /></label>
                 <label>Duty estimate<input name="duty_estimate" type="number" min="0" step="any" defaultValue={editingRule?.duty_estimate ?? ''} /></label>
                 <label>Status<select name="status" defaultValue={editingRule?.status ?? 'needs_verification'}>{['active', 'needs_verification', 'inactive', 'expired'].map((status) => <option key={status}>{status}</option>)}</select></label>
@@ -505,9 +516,10 @@ export function PurchasingIntelligencePanel({
               </form>
             )}
           </div>
-        </section>
+        </section>}
 
-        <section className="panel cart-scenario">
+        {view === 'procurement' && <section className="panel cart-scenario">
+          <p className="supplier-record-link">Terms and shipping rules are maintained in <a href={`/suppliers?supplier=${supplierId}`}>Suppliers</a>.</p>
           <h3>Cart scenario</h3>
           <label>Accepted supplier offer<select value={offerId} onChange={(event) => setOfferId(event.target.value)}><option value="">Select offer</option>{offers.map((item) => <option key={item.id} value={item.id}>{item.product_title} · {money(item.item_price, item.currency!)}</option>)}</select></label>
           <label>Package count<input value={packageCount} onChange={(event) => setPackageCount(Math.max(1, Number(event.target.value)))} type="number" min="1" step="1" /></label>
@@ -516,7 +528,7 @@ export function PurchasingIntelligencePanel({
           <dl><div><dt>Merchandise</dt><dd>{money(preview.components.merchandise, currency)}</dd></div><div><dt>Discount</dt><dd>{money(preview.components.orderDiscount, currency)}</dd></div><div><dt>Shipping</dt><dd>{money(preview.components.shipping, currency)}</dd></div><div><dt>Tax</dt><dd>{money(preview.components.tax, currency)}</dd></div><div><dt>Duty</dt><dd>{money(preview.components.duty, currency)}</dd></div><div><dt>Payment fee</dt><dd>{money(preview.components.paymentFee, currency)}</dd></div><div><dt>Additional fee</dt><dd>{money(preview.components.additional, currency)}</dd></div><div><dt>Known total</dt><dd>{money(preview.knownTotal, currency)}</dd></div><div><dt>Complete landed total</dt><dd>{money(preview.landedTotal, currency)}</dd></div></dl>
           <p className={preview.complete ? 'complete' : 'unknown'}>{preview.complete ? 'Complete estimate' : `Incomplete · unknown: ${preview.missing.join(', ') || 'none'}`}</p>
           <button className="button primary" disabled={!offer} onClick={() => void saveScenario()}>Save scenario</button>
-        </section>
+        </section>}
       </div>
     </section>
   )

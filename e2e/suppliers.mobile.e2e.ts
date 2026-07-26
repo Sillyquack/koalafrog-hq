@@ -13,6 +13,8 @@ test('Suppliers list and selected profile remain usable at 390px', async ({ page
   }
   await expect(page.locator('.supplier-picker')).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Supplier intelligence' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Commercial Terms & Shipping' })).toBeVisible()
+  await expect(page.locator('.supplier-commercial-workspace').getByLabel('Supplier')).toHaveCount(0)
 
   const workspaceWidth = await page.locator('.suppliers-workspace').evaluate((element) => element.scrollWidth)
   expect(workspaceWidth).toBeLessThanOrEqual(390)
@@ -27,4 +29,6 @@ test('Suppliers list and selected profile remain usable at 390px', async ({ page
   await expect(page.getByRole('heading', { name: 'Edit supplier profile' })).toBeVisible()
   const editWidth = await page.locator('.supplier-intelligence').evaluate((element) => element.scrollWidth)
   expect(editWidth).toBeLessThanOrEqual(390)
+  const commercialWidth = await page.locator('.supplier-commercial-workspace').evaluate((element) => element.scrollWidth)
+  expect(commercialWidth).toBeLessThanOrEqual(390)
 })
