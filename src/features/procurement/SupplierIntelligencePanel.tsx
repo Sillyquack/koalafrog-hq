@@ -31,12 +31,13 @@ const groupStyle = {
 
 export function SupplierIntelligencePanel({
   data,
+  supplierId,
   refresh,
 }: {
   data: ProcurementData
+  supplierId: string
   refresh: () => Promise<void>
 }) {
-  const [supplierId, setSupplierId] = useState(data.suppliers[0]?.id ?? '')
   const [editing, setEditing] = useState(false)
   const [message, setMessage] = useState('')
   const supplier = data.suppliers.find((item) => item.id === supplierId)
@@ -59,7 +60,9 @@ export function SupplierIntelligencePanel({
     return { completed, total: fields.length, percent: Math.round((completed / fields.length) * 100) }
   }, [supplier])
 
-  if (!data.suppliers.length || !supplier) return null
+  if (!supplier) {
+    return <section className="panel supplier-intelligence" role="alert"><h2>Supplier unavailable</h2><p>Select another supplier or refresh the workspace.</p></section>
+  }
 
   const discounts = data.supplierDiscounts.filter((item) => item.supplier_id === supplier.id)
   const currentDiscounts = discounts.filter((item) => ['available', 'planned', 'unknown'].includes(item.status))
@@ -99,28 +102,13 @@ export function SupplierIntelligencePanel({
   const currency = supplier.default_currency ?? 'Unknown'
 
   return (
-    <section className="panel" style={{ margin: '22px 0' }} aria-labelledby="supplier-intelligence-title">
+    <section className="panel supplier-intelligence" aria-labelledby="supplier-intelligence-title">
       <div className="section-header">
         <div>
           <span className="eyebrow">Supplier knowledge</span>
           <h2 id="supplier-intelligence-title" style={{ margin: '5px 0' }}>Supplier intelligence</h2>
           <p>Identity, operating terms, commercial context and decision evidence in one supplier profile.</p>
         </div>
-        <label style={{ minWidth: '220px' }}>
-          Supplier
-          <select
-            value={supplierId}
-            onChange={(event) => {
-              setSupplierId(event.target.value)
-              setEditing(false)
-              setMessage('')
-            }}
-          >
-            {data.suppliers.map((item) => (
-              <option key={item.id} value={item.id}>{item.trading_name || item.legal_name}</option>
-            ))}
-          </select>
-        </label>
       </div>
 
       {message && <p className="form-message" role="status">{message}</p>}
@@ -186,7 +174,7 @@ export function SupplierIntelligencePanel({
           </div>
 
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            <button type="button" className="button primary" onClick={() => setEditing(true)}>Edit supplier profile</button>
+            <button type="button" className="button primary" onClick={() => { setEditing(true); setMessage('') }}>Edit supplier profile</button>
             {supplier.website_url && <a className="button ghost" href={supplier.website_url} target="_blank" rel="noreferrer">Open supplier website</a>}
           </div>
         </div>
