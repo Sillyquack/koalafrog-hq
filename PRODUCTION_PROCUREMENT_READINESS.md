@@ -127,3 +127,19 @@ Production readiness should create or link existing procurement requested items 
 - External-order line progress and receiving handoff need integration with existing purchase-plan and inventory actions.
 
 These limitations are blocking where relevant; the UI must never label an incomplete draft as ready for approval.
+
+## Durable purchasing specifications and Supplier Product matching
+
+Each persisted requirement can now produce a versioned purchasing specification from the canonical Ingredient, requirement, inventory-gap snapshot, and stored source records. Every field carries an explicit semantic state (`confirmed`, `preferred`, `unknown`, `not applicable`, or `blocked`); missing grade, organic, form, storage, shelf-life, and substitution facts remain unknown. SDS is the transparent default required document and COA a preferred document, without treating links or marketing claims as verified evidence.
+
+Supplier Products retain their existing workspace-constrained Ingredient association. Because that legacy association did not preserve acceptance history, `supplier_product_ingredient_mappings` now records candidate/accepted/rejected/retired history, acceptance method, actor/time, provenance, notes, and a compatibility snapshot. Only one accepted canonical mapping may be active per Supplier Product. Accepting a mapping and selecting it for one requirement are separate RPC actions.
+
+Candidate generation is explicit and deterministic. It reads stored Supplier Products, Suppliers, product verification, package/MOQ, availability, price, and last-verified dates; it never calls a provider or mutates canonical product text. Existing accepted procurement research remains the canonical research intake and acceptance path. This slice does not create a parallel provider or research-candidate system.
+
+Classifications distinguish exact, preference deviation, needs review, incompatible, insufficient evidence, stale, unavailable, unit incompatible, package too small/excessive, and missing mapping. Reasons and warnings are persisted. Freshness rule version `1.0.0` treats 0–30 days as current, 31–90 as aging, over 90 as stale, and absent timestamps as unknown. Price, stock, product specification, documentation, shipping eligibility, and commercial terms remain separate fields.
+
+Package calculations permit only mg/g/kg and ml/L families, with count isolated. They use integer package counts, respect MOQ, cover the persisted gap, and show purchased quantity and surplus. No density, mass-volume, or count-content assumption is made.
+
+Selections and per-requirement rejections persist independently. Clear selection, needs-research, and owner rejection do not retire a Supplier Product, approve a purchase plan, mark a discount used, create an order, or alter stock. Owner-scoped read policies and RPC-only writes enforce authentication, workspace ownership, row locks, revision checks, cross-workspace foreign keys, fixed search paths, and transactional rollback.
+
+Deliberate exclusions remain basket optimization, scenario persistence, purchase-plan approval, external ordering, receiving, inventory creation, provider calls, deployment, and remote migration application. Product-specific documents are represented by existing Supplier Product verification snapshots; richer binary/document-to-product linkage remains a future evidence-model refinement.

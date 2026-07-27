@@ -13,8 +13,12 @@ describe('durable Production Readiness UI contract',()=>{
   it('supports create, reopen, save, regenerate, revision feedback, requirements, gaps, and explicit cancellation',()=>{
     for(const operation of ['createProductionRound','listProductionRounds','loadProductionRound','saveProductionRound','regenerateProductionRound','cancelProductionRound'])expect(page).toContain(operation)
     expect(page).toContain('Draft revision')
-    expect(page).toContain('Requirements and inventory gap')
+    expect(page).toContain('Purchasing specifications and Supplier Product matches')
     expect(page).toContain("window.confirm('Cancel this production procurement round?")
+  })
+  it('shows specifications, durable candidate actions, documentation, freshness, package count, and surplus',()=>{
+    for(const value of ['Purchasing specification','Generate candidates','Accept mapping','Select','Reject','Needs research','Clear selection','Documentation: SDS','Freshness: price','packs · purchased','surplus'])expect(page).toContain(value)
+    expect(page).toContain('rel="noopener noreferrer"')
   })
   it('distinguishes unknown, zero, and not-calculated states accessibly',()=>{
     expect(page).toContain("'Unknown'")
