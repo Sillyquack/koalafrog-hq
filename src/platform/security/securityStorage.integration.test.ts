@@ -209,16 +209,28 @@ run("local Supabase Auth, RLS, RPC, Storage, and cutover security", () => {
 
     const beforeRaw = (await userA.from("inventory_movements").select("id", { count: "exact", head: true })).count;
     const beforePackaging = (await userA.from("packaging_inventory_movements").select("id", { count: "exact", head: true })).count;
-    const plan = await userA.from("purchase_plans").insert({
+    expect((await userA.from("purchase_plans").insert({
       workspace_id: workspaceA, owner_id: userAId, title: "Controlled plan",
       status: "approved_internal", purpose: "Test", creation_key: crypto.randomUUID(),
-    }).select("id").single();
+    })).error).not.toBeNull();
+    const supplier=await userA.from("suppliers").insert({workspace_id:workspaceA,owner_id:userAId,legal_name:"Order supplier",supplier_type:"raw_material",status:"active"}).select("id").single();
+    expect(supplier.error).toBeNull();
+    const plan = await admin.from("purchase_plans").insert({
+      workspace_id: workspaceA, owner_id: userAId, supplier_id:supplier.data!.id, title: "Controlled plan",
+      status: "approved", purpose: "Test", creation_key: crypto.randomUUID(),
+    }).select("id,status").single();
     expect(plan.error).toBeNull();
+    expect((await admin.from("purchase_plan_lines").insert({workspace_id:workspaceA,owner_id:userAId,purchase_plan_id:plan.data!.id,inventory_domain:"raw_material",description:"Snapshot line",planned_quantity:1,unit:"kg"})).error).toBeNull();
     const orderKey = crypto.randomUUID();
-    const ordered = await userA.rpc("mark_purchase_plan_external_order", { plan_id: plan.data!.id, idempotency: orderKey });
-    const orderedRetry = await userA.rpc("mark_purchase_plan_external_order", { plan_id: plan.data!.id, idempotency: orderKey });
+    const ordered = await userA.rpc("create_purchase_order_from_plan", { target_plan_id: plan.data!.id, candidate_handoff_key: orderKey });
+    const orderedRetry = await userA.rpc("create_purchase_order_from_plan", { target_plan_id: plan.data!.id, candidate_handoff_key: orderKey });
     expect(ordered.error).toBeNull();
     expect(orderedRetry.data).toBe(ordered.data);
+    expect((await userA.from("purchase_orders").update({status:"fulfilled"}).eq("id",ordered.data)).error).not.toBeNull();
+    expect((await userA.from("supplier_events").insert({workspace_id:workspaceA,owner_id:userAId,supplier_id:supplier.data!.id,event_type:"purchase_placed",occurred_at:new Date().toISOString(),title:"Forged order event",purchase_order_id:ordered.data})).error?.message).toContain("PURCHASE_ORDER_EVENT_LINK_RPC_ONLY");
+    expect((await userB.rpc("create_purchase_order_from_plan",{target_plan_id:plan.data!.id,candidate_handoff_key:crypto.randomUUID()})).error).not.toBeNull();
+    expect((await anonymous.rpc("create_purchase_order_from_plan",{target_plan_id:plan.data!.id,candidate_handoff_key:crypto.randomUUID()})).error).not.toBeNull();
+    expect((await userA.from("purchase_plans").select("status").eq("id",plan.data!.id).single()).data?.status).toBe("approved");
     expect((await userA.from("inventory_movements").select("id", { count: "exact", head: true })).count).toBe(beforeRaw);
     expect((await userA.from("packaging_inventory_movements").select("id", { count: "exact", head: true })).count).toBe(beforePackaging);
   });
