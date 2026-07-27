@@ -7,14 +7,33 @@ import {
   type BeardPhotoAnalysisResult,
   type BeardPhotoView,
   beardPhotoViews,
+  normalizeBeardPhotoRecommendationIds,
   requiredBeardPhotoViews,
   validateBeardPhotoAnalysisResult,
   validateBeardPhotoContract,
   validateBeardPhotoSemantics,
 } from "../_shared/beardPhotoAnalysisContract.ts";
 import { beardPhotoSystemPrompt } from "../_shared/beardPhotoPrompt.ts";
-import { toDurableBeardFailureDiagnostic } from "../_shared/beardPhotoFailureDiagnostics.ts";
 import {
+  BEARD_GUARD_NORMALIZER_VERSION,
+  normalizeBeardGuardStrategies,
+} from "../_shared/beardGuardStrategy.ts";
+import {
+  BEARD_OBSERVATION_KEY_NORMALIZER_VERSION,
+  beardObservationKeyCollisionLog,
+  normalizeBeardObservationKeys,
+} from "../_shared/beardObservationKeys.ts";
+import {
+  beardSemanticFailureCode,
+  toDurableBeardFailureDiagnostic,
+} from "../_shared/beardPhotoFailureDiagnostics.ts";
+import {
+  BeardResponsesExtractionError,
+  extractBeardResponsesResult,
+  type BeardResponsesStructuralDiagnostic,
+} from "../_shared/beardResponsesExtraction.ts";
+import {
+  beardProviderHttpErrorLog,
   beardStageLog,
   InvalidProviderTimeoutError,
   invokeProviderJson,
@@ -113,7 +132,7 @@ const outputItem = {
     provenance: { type: "string", const: "ai" },
   },
 };
-const resultSchema = (
+export const beardPhotoProviderResultSchema = (
   meta: {
     analysisId: string;
     provider: string;
@@ -228,7 +247,66 @@ const resultSchema = (
           },
           affectedZones: { type: "array", items: { type: "string" } },
           toolConstraints: { type: "array", items: { type: "string" } },
-          proposedGuardStrategy: { type: ["string", "null"] },
+          proposedGuardStrategy: {
+            anyOf: [
+              { type: "string" },
+              { type: "null" },
+              {
+                type: "object",
+                additionalProperties: false,
+                required: [
+                  "strategyType", "region", "guardMm", "guardRangeMm",
+                  "relativeInstruction", "uncertainty", "freeformTechnique",
+                ],
+                properties: {
+                  strategyType: {
+                    type: "string",
+                    enum: [
+                      "guard_setting", "guard_range", "relative_guard",
+                      "longest_first", "no_numeric_setting",
+                    ],
+                  },
+                  region: {
+                    type: ["string", "null"],
+                    enum: [
+                      "cheeks", "sides", "chin", "moustache", "neckline",
+                      "overall", null,
+                    ],
+                  },
+                  guardMm: { type: ["number", "null"] },
+                  guardRangeMm: {
+                    anyOf: [
+                      { type: "null" },
+                      {
+                        type: "object",
+                        additionalProperties: false,
+                        required: ["min", "max"],
+                        properties: {
+                          min: { type: "number" },
+                          max: { type: "number" },
+                        },
+                      },
+                    ],
+                  },
+                  relativeInstruction: {
+                    type: ["string", "null"],
+                    enum: [
+                      "longer_than_sides", "shorter_than_chin",
+                      "longest_first", "reduce_gradually", null,
+                    ],
+                  },
+                  uncertainty: {
+                    type: "string",
+                    enum: ["starting_point", "adjust_after_each_pass"],
+                  },
+                  freeformTechnique: {
+                    type: ["string", "null"],
+                    enum: ["shorten_gradually", null],
+                  },
+                },
+              },
+            ],
+          },
           status: { type: "string", const: "undecided" },
           provenance: { type: "string", const: "ai" },
         },
@@ -263,6 +341,7 @@ class ProviderError extends Error {
     public code: string,
     public diagnostic?: ValidationFailure,
     public providerTrace?: ProviderInvocationTrace,
+    public extractionDiagnostic?: BeardResponsesStructuralDiagnostic,
   ) {
     super(code);
   }
@@ -289,6 +368,11 @@ const toDurableProviderTrace = (
     provider_response_present: trace.responsePresent,
     provider_trace_usage_present: trace.usagePresent,
   }
+  : {};
+const toDurableExtractionDiagnostic = (
+  diagnostic: BeardResponsesStructuralDiagnostic | undefined,
+) => diagnostic
+  ? { provider_extraction_diagnostic: diagnostic }
   : {};
 class OpenAIBeardVisionProvider implements VisionAnalysisProvider {
   id = "openai";
@@ -333,6 +417,8 @@ class OpenAIBeardVisionProvider implements VisionAnalysisProvider {
             body: JSON.stringify({
               model: this.model,
               store: false,
+              reasoning: { effort: "low" },
+              max_output_tokens: 6_000,
               input: [{ role: "system", content: beardPhotoSystemPrompt }, {
                 role: "user",
                 content: [
@@ -357,11 +443,12 @@ class OpenAIBeardVisionProvider implements VisionAnalysisProvider {
                 ],
               }],
               text: {
+                verbosity: "low",
                 format: {
                   type: "json_schema",
                   name: "beard_photo_analysis",
                   strict: true,
-                  schema: resultSchema({
+                  schema: beardPhotoProviderResultSchema({
                     analysisId: request.analysisId,
                     provider: this.id,
                     model: this.model,
@@ -392,12 +479,20 @@ class OpenAIBeardVisionProvider implements VisionAnalysisProvider {
       if (invocationError?.classification === "PROVIDER_HTTP_ERROR") {
         response = invocationError.response!;
         const code = response.status === 429
-          ? "PROVIDER_RATE_LIMIT"
+          ? invocationError.httpError?.category ??
+            "PROVIDER_RATE_LIMIT_UNKNOWN"
           : response.status === 401 || response.status === 403
           ? "PROVIDER_NOT_CONFIGURED"
           : response.status >= 500
           ? "PROVIDER_FAILURE"
           : "PROVIDER_REFUSAL";
+        console.info(beardProviderHttpErrorLog({
+          correlationId: request.correlationId,
+          analysisId: request.analysisId,
+          provider: this.id,
+          model: this.model,
+          diagnostic: invocationError.httpError,
+        }));
         throw new ProviderError(code, undefined, invocationError.trace);
       }
       throw new ProviderError(
@@ -442,28 +537,10 @@ class OpenAIBeardVisionProvider implements VisionAnalysisProvider {
         model: this.model,
       }),
     );
-    if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
-      const diagnostic: ValidationFailure = {
-        success: false,
-        ruleCode: intelligenceRuleCodes.invalidHttpEnvelope,
-        jsonPath: "$",
-        expected: "object",
-        received: "unknown",
-        validator: "responses-envelope",
-        stage: "EnvelopeParsing",
-      };
-      finish("EnvelopeParsing", "failed", {
-        ruleCode: diagnostic.ruleCode,
-        jsonPath: diagnostic.jsonPath,
-        expectedType: diagnostic.expected,
-        receivedType: diagnostic.received,
-        validator: diagnostic.validator,
-        provider: this.id,
-        model: this.model,
-      });
-      throw new ProviderError("INVALID_ENVELOPE", diagnostic, providerTrace);
-    }
-    if (raw.status === "incomplete") {
+    if (
+      raw && typeof raw === "object" && !Array.isArray(raw) &&
+      (raw as Record<string, unknown>).status === "incomplete"
+    ) {
       const diagnostic: ValidationFailure = {
         success: false,
         ruleCode: intelligenceRuleCodes.providerIncomplete,
@@ -484,91 +561,78 @@ class OpenAIBeardVisionProvider implements VisionAnalysisProvider {
       });
       throw new ProviderError("PROVIDER_INCOMPLETE", diagnostic, providerTrace);
     }
+    let parsed: unknown;
+    let extractionDiagnostic: BeardResponsesStructuralDiagnostic | undefined;
+    try {
+      const extracted = extractBeardResponsesResult(raw);
+      parsed = extracted.result;
+      extractionDiagnostic = extracted.diagnostic;
+    } catch (error) {
+      const extractionError = error instanceof BeardResponsesExtractionError
+        ? error
+        : undefined;
+      const code = extractionError?.code ??
+        "PROVIDER_RESPONSE_PARSE_INTERNAL_ERROR";
+      const structural = extractionError?.diagnostic;
+      const diagnostic: ValidationFailure = {
+        success: false,
+        ruleCode: code === "PROVIDER_OUTPUT_REFUSAL"
+          ? intelligenceRuleCodes.providerRefusal
+          : code === "PROVIDER_OUTPUT_JSON_INVALID"
+          ? intelligenceRuleCodes.invalidJson
+          : code === "PROVIDER_OUTPUT_TEXT_MISSING"
+          ? intelligenceRuleCodes.missingOutputText
+          : code === "PROVIDER_RESPONSE_ENVELOPE_INVALID"
+          ? intelligenceRuleCodes.invalidHttpEnvelope
+          : intelligenceRuleCodes.unexpectedValidatorException,
+        jsonPath: code === "PROVIDER_RESPONSE_ENVELOPE_INVALID"
+          ? "$"
+          : "$.output[0].content[0]",
+        expected: code === "PROVIDER_OUTPUT_TEXT_MISSING"
+          ? "string"
+          : "object",
+        received: structural?.receivedCategory ?? "unknown",
+        validator: code === "PROVIDER_RESPONSE_ENVELOPE_INVALID"
+          ? "responses-envelope"
+          : "responses-output",
+        stage: code === "PROVIDER_RESPONSE_ENVELOPE_INVALID"
+          ? "EnvelopeParsing"
+          : "JsonParsing",
+      };
+      if (diagnostic.stage === "JsonParsing") {
+        request.reporter.report(
+          request.trace.start("JsonParsing", {
+            provider: this.id,
+            model: this.model,
+          }),
+        );
+      }
+      finish(diagnostic.stage, "failed", {
+        ruleCode: diagnostic.ruleCode,
+        jsonPath: diagnostic.jsonPath,
+        expectedType: diagnostic.expected,
+        receivedType: diagnostic.received,
+        validator: diagnostic.validator,
+        provider: this.id,
+        model: this.model,
+      });
+      throw new ProviderError(
+        code,
+        diagnostic,
+        providerTrace,
+        structural,
+      );
+    }
     finish("EnvelopeParsing", "succeeded", {
       provider: this.id,
       model: this.model,
     });
-    const refusal = raw.output?.flatMap((x: any) => x.content ?? []).find((
-      x: any,
-    ) => x.type === "refusal");
-    if (refusal) {
-      request.reporter.report(request.trace.add({
-        stage: "ProviderResponse",
-        result: "failed",
-        ruleCode: intelligenceRuleCodes.providerRefusal,
-        jsonPath: "$.output[0].content[0]",
-        expectedType: "completed response",
-        receivedType: "unexpected",
-        validator: "responses-refusal",
-        provider: this.id,
-        model: this.model,
-        elapsedMs: 0,
-        timestamp: new Date().toISOString(),
-      }));
-      throw new ProviderError("PROVIDER_REFUSAL", {
-        success: false,
-        ruleCode: intelligenceRuleCodes.providerRefusal,
-        jsonPath: "$.output[0].content[0]",
-        expected: "completed response",
-        received: "unexpected",
-        validator: "responses-refusal",
-        stage: "ProviderResponse",
-      }, providerTrace);
-    }
-    const text = raw.output?.flatMap((x: any) => x.content ?? []).find((
-      x: any,
-    ) => x.type === "output_text")?.text;
     request.reporter.report(
       request.trace.start("JsonParsing", {
         provider: this.id,
         model: this.model,
       }),
     );
-    if (typeof text !== "string" || text.length === 0) {
-      const diagnostic: ValidationFailure = {
-        success: false,
-        ruleCode: intelligenceRuleCodes.missingOutputText,
-        jsonPath: "$.output[0].content[0].text",
-        expected: "string",
-        received: "missing",
-        validator: "responses-output",
-        stage: "JsonParsing",
-      };
-      finish("JsonParsing", "failed", {
-        ruleCode: diagnostic.ruleCode,
-        jsonPath: diagnostic.jsonPath,
-        expectedType: diagnostic.expected,
-        receivedType: diagnostic.received,
-        validator: diagnostic.validator,
-        provider: this.id,
-        model: this.model,
-      });
-      throw new ProviderError("MISSING_OUTPUT_TEXT", diagnostic, providerTrace);
-    }
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(text);
-    } catch {
-      const diagnostic: ValidationFailure = {
-        success: false,
-        ruleCode: intelligenceRuleCodes.invalidJson,
-        jsonPath: "$",
-        expected: "object",
-        received: "unknown",
-        validator: "json-parser",
-        stage: "JsonParsing",
-      };
-      finish("JsonParsing", "failed", {
-        ruleCode: diagnostic.ruleCode,
-        jsonPath: diagnostic.jsonPath,
-        expectedType: diagnostic.expected,
-        receivedType: diagnostic.received,
-        validator: diagnostic.validator,
-        provider: this.id,
-        model: this.model,
-      });
-      throw new ProviderError("INVALID_JSON", diagnostic, providerTrace);
-    }
     finish("JsonParsing", "succeeded", {
       provider: this.id,
       model: this.model,
@@ -585,7 +649,7 @@ class OpenAIBeardVisionProvider implements VisionAnalysisProvider {
       () =>
         validateStructuredValue(
           parsed,
-          resultSchema({
+          beardPhotoProviderResultSchema({
             analysisId: request.analysisId,
             provider: this.id,
             model: this.model,
@@ -606,17 +670,51 @@ class OpenAIBeardVisionProvider implements VisionAnalysisProvider {
       throw new ProviderError(
         schemaValidation.ruleCode ===
             intelligenceRuleCodes.unexpectedValidatorException
-          ? "UNKNOWN_VALIDATION_FAILURE"
-          : "SCHEMA_VALIDATION_FAILED",
+          ? "PROVIDER_RESPONSE_PARSE_INTERNAL_ERROR"
+          : "PROVIDER_OUTPUT_SCHEMA_MISMATCH",
         schemaValidation,
         providerTrace,
+        extractionDiagnostic,
       );
     }
     finish("SchemaValidation", "succeeded", {
       provider: this.id,
       model: this.model,
     });
-    const typed = parsed as BeardPhotoAnalysisResult;
+    const providerTyped = normalizeBeardPhotoRecommendationIds(
+      parsed as BeardPhotoAnalysisResult,
+    );
+    const normalizedGuards = normalizeBeardGuardStrategies(providerTyped);
+    if (!normalizedGuards.success) {
+      throw new ProviderError("SEMANTIC_VALIDATION_FAILED", {
+        success: false,
+        ruleCode: intelligenceRuleCodes.unsupportedExactMeasurement,
+        jsonPath:
+          `$.recommendations[${normalizedGuards.recommendationIndex}].proposedGuardStrategy`,
+        expected: "non-calibrated grooming language",
+        received: "unsupported measurement claim",
+        validator: BEARD_GUARD_NORMALIZER_VERSION,
+        stage: "SemanticValidation",
+      }, providerTrace, extractionDiagnostic);
+    }
+    const normalizedObservationKeys = normalizeBeardObservationKeys(
+      normalizedGuards.result,
+    );
+    if (!normalizedObservationKeys.success) {
+      const { collision } = normalizedObservationKeys;
+      console.info(beardObservationKeyCollisionLog(collision));
+      throw new ProviderError(collision.code, {
+        success: false,
+        ruleCode: intelligenceRuleCodes.duplicateObservationId,
+        jsonPath:
+          `$.${collision.second.section}[${collision.second.index}].observationKey`,
+        expected: "unique observation key",
+        received: "duplicate",
+        validator: BEARD_OBSERVATION_KEY_NORMALIZER_VERSION,
+        stage: "ContractValidation",
+      }, providerTrace, extractionDiagnostic);
+    }
+    const typed = normalizedObservationKeys.result;
     request.reporter.report(
       request.trace.start("ContractValidation", {
         provider: this.id,
@@ -645,6 +743,7 @@ class OpenAIBeardVisionProvider implements VisionAnalysisProvider {
           : "CONTRACT_VALIDATION_FAILED",
         contractValidation,
         providerTrace,
+        extractionDiagnostic,
       );
     }
     finish("ContractValidation", "succeeded", {
@@ -673,12 +772,10 @@ class OpenAIBeardVisionProvider implements VisionAnalysisProvider {
         model: this.model,
       });
       throw new ProviderError(
-        semanticValidation.ruleCode ===
-            intelligenceRuleCodes.unexpectedValidatorException
-          ? "UNKNOWN_VALIDATION_FAILURE"
-          : "SEMANTIC_VALIDATION_FAILED",
+        beardSemanticFailureCode(semanticValidation),
         semanticValidation,
         providerTrace,
+        extractionDiagnostic,
       );
     }
     finish("SemanticValidation", "succeeded", {
@@ -694,7 +791,7 @@ class OpenAIBeardVisionProvider implements VisionAnalysisProvider {
         received: "unknown",
         validator: "legacy-beard-validator",
         stage: "ContractValidation",
-      }, providerTrace);
+      }, providerTrace, extractionDiagnostic);
     }
     return {
       result: typed,
@@ -1096,8 +1193,7 @@ Deno.serve(async (req) => {
       provider: provider.id,
       model: provider.model,
     }));
-    const images = [] as Array<{ view: BeardPhotoView; dataUrl: string }>;
-    for (const input of body.inputs) {
+    const images = await Promise.all(body.inputs.map(async (input) => {
       const downloaded = await client.storage.from(BUCKET).download(
         input.objectPath,
       );
@@ -1108,14 +1204,14 @@ Deno.serve(async (req) => {
       if (bytes.byteLength !== input.byteSize) {
         throw new ProviderError("INVALID_IMAGE");
       }
-      images.push({
+      return {
         view: input.view,
         dataUrl: `${input.mimeType};base64,${toBase64(bytes)}`.replace(
           /^image/,
           "data:image",
         ),
-      });
-    }
+      };
+    }));
     traceComplete("ImageRetrieval", "succeeded", {
       provider: provider.id,
       model: provider.model,
@@ -1185,28 +1281,48 @@ Deno.serve(async (req) => {
       ? error.code
       : "UNEXPECTED_ERROR";
     result = undefined;
+    const diagnostic = toDurableBeardFailureDiagnostic(
+      error instanceof ProviderError ? error.diagnostic : undefined,
+    );
+    const extractionDiagnostic = toDurableExtractionDiagnostic(
+      error instanceof ProviderError ? error.extractionDiagnostic : undefined,
+    );
+    const providerDiagnostic = toDurableProviderTrace(
+      error instanceof ProviderError ? error.providerTrace : undefined,
+      Date.now() - requestStartedAt,
+    );
     const terminalFailure = await trustedClient.from("intelligence_analyses")
       .update({
       status: "failed",
       error_code: errorCode,
       completed_at: new Date().toISOString(),
-      ...toDurableBeardFailureDiagnostic(
-        error instanceof ProviderError ? error.diagnostic : undefined,
-      ),
-      ...toDurableProviderTrace(
-        error instanceof ProviderError ? error.providerTrace : undefined,
-        Date.now() - requestStartedAt,
-      ),
+      ...diagnostic,
+      ...extractionDiagnostic,
+      ...providerDiagnostic,
     }).eq("id", body.analysisId).eq("workspace_id", body.workspaceId).eq(
       "owner_user_id",
       userId,
-    ).eq("correlation_id", correlationId);
-    if (terminalFailure.error) {
-      await client.from("intelligence_analyses").update({
+    ).eq("correlation_id", correlationId).select("id").maybeSingle();
+    if (terminalFailure.error || !terminalFailure.data) {
+      const minimumFailure = await trustedClient.from("intelligence_analyses")
+        .update({
         status: "failed",
         error_code: errorCode,
         completed_at: new Date().toISOString(),
-      }).eq("id", body.analysisId).eq("workspace_id", body.workspaceId);
+      }).eq("id", body.analysisId).eq("workspace_id", body.workspaceId).eq(
+        "owner_user_id",
+        userId,
+      ).eq("correlation_id", correlationId).select("id").maybeSingle();
+      if (!minimumFailure.error && minimumFailure.data) {
+        await trustedClient.from("intelligence_analyses").update({
+          ...diagnostic,
+          ...extractionDiagnostic,
+          ...providerDiagnostic,
+        }).eq("id", body.analysisId).eq("workspace_id", body.workspaceId).eq(
+          "owner_user_id",
+          userId,
+        ).eq("correlation_id", correlationId);
+      }
     }
   }
   traceInstant("CleanupDeleteRequested", "succeeded", {
@@ -1347,7 +1463,10 @@ Deno.serve(async (req) => {
       "Beard photo analysis could not be completed.",
       correlationId,
     ),
-    errorCode === "PROVIDER_RATE_LIMIT"
+    errorCode?.startsWith("PROVIDER_RATE_LIMIT_") ||
+      errorCode === "PROVIDER_QUOTA_EXHAUSTED" ||
+      errorCode === "PROVIDER_BILLING_LIMIT" ||
+      errorCode === "PROVIDER_MODEL_LIMIT"
       ? 429
       : errorCode === "PROVIDER_NOT_CONFIGURED"
       ? 503

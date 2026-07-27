@@ -8,7 +8,7 @@ import {
 export const BEARD_PHOTO_SCHEMA_VERSION = 2 as const;
 export const BEARD_PHOTO_CONTRACT_VERSION =
   "beard-photo-result-contract-v2" as const;
-export const BEARD_PHOTO_PROMPT_VERSION = "beard-photo-analysis-v4" as const;
+export const BEARD_PHOTO_PROMPT_VERSION = "beard-photo-analysis-v6" as const;
 export const BEARD_PHOTO_SEMANTIC_RULE_VERSION =
   "beard-semantic-safety-v4" as const;
 export const BEARD_PHOTO_SEMANTIC_RULE_VERSION_V3 =
@@ -87,6 +87,20 @@ const keys = (v: Record<string, unknown>, allowed: string[]) =>
 const strings = (v: unknown) =>
   Array.isArray(v) && v.every((x) => typeof x === "string");
 const text = (v: unknown) => typeof v === "string";
+export const beardPhotoUuidPattern =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+export function normalizeBeardPhotoRecommendationIds(
+  value: BeardPhotoAnalysisResult,
+  createId: () => string = () => crypto.randomUUID(),
+): BeardPhotoAnalysisResult {
+  return {
+    ...value,
+    recommendations: value.recommendations.map((recommendation) => ({
+      ...recommendation,
+      id: createId(),
+    })),
+  };
+}
 export const beardObservationKeyPattern = /^[a-z][a-z0-9_]{2,63}$/;
 const views = (v: unknown) =>
   Array.isArray(v) &&
@@ -132,7 +146,8 @@ function validRecommendation(
     "proposedGuardStrategy",
     "status",
     "provenance",
-  ]) && text(v.title) && text(v.reason) &&
+  ]) && typeof v.id === "string" && beardPhotoUuidPattern.test(v.id) &&
+    text(v.title) && text(v.reason) &&
     typeof v.confidence === "number" && v.confidence >= 0 &&
     v.confidence <= 1 &&
     ["low", "medium", "high"].includes(String(v.priority)) &&
@@ -347,6 +362,8 @@ function validateBeardPhotoSemanticsVersion(
     /\b(?:will|would|shall|guarantee[sd]?|ensure[sd]?|leave[sd]?|produce[sd]?|result(?:s|ed)? in)\b.{0,80}\b(?:exactly|precisely|objective(?:ly)?)?\s*\d+(?:\.\d+)?\s*(?:mm|millimet(?:er|re)s?)\b|\b(?:exactly|precisely)\s*\d+(?:\.\d+)?\s*(?:mm|millimet(?:er|re)s?)\b.{0,80}\b(?:leave|remaining|physical beard|result)\b/i;
   const unsupportedPhysicalMeasurementV4 =
     /\b(?:measured from|calculated? from|used to calculate)\b.{0,80}\b(?:photo|image|hair|beard|dimension|length)\b|\b(?:photo|image|photograph)\b.{0,100}\b(?:proves?|confirms?|shows?|calculate[sd]?|measures?|measured)\b.{0,100}\b(?:exact|length|dimension|growth|density|symmetr|shorter|longer)\b|\b(?:beard|hair|cheek|chin|left side|right side)\b.{0,100}\b\d+(?:\.\d+)?\s*(?:mm|millimet(?:er|re)s?|percent|%|hairs?\s+per\s+square\s+centimet(?:er|re))\b|\b\d+(?:\.\d+)?\s*(?:mm|millimet(?:er|re)s?)\s+per\s+day\b|\b(?:density|symmetr|dimension|growth)\b.{0,100}\b(?:exactly|precisely|greater|less|shorter|longer|measures?|measurement)\b.{0,100}\b\d+(?:\.\d+)?\s*(?:percent|%|mm|millimet(?:er|re)s?|hairs?\s+per\s+square\s+centimet(?:er|re))\b/i;
+  const unsupportedCalibratedMetricV4 =
+    /\b(?:jaw|face|facial)\b.{0,80}\b(?:angle|geometry|dimension)\b.{0,40}\b\d+(?:\.\d+)?\s*(?:degrees?|°)\b|\b(?:density|symmetry)\b.{0,80}\b(?:is|measures?|equals?|at|of)?\s*\d+(?:\.\d+)?\s*(?:percent|%)|\b(?:photo|image|photograph)\b.{0,100}\bguard\b.{0,60}\b(?:objectively|definitively)\s+correct\b/i;
   const limitationAction =
     /\b(?:cannot|can't|can not|could not|unable to|not possible to|do not|does not|don't|doesn't|is not|isn't|are not|aren't|no)\b.{0,100}\b(?:diagnos|determin|establish|infer|identify|confirm|assess|conclude|measure|estimate|calibrat)|\b(?:diagnos|determin|establish|infer|identify|confirm|assess|conclude|measure|estimate|calibrat)[a-z]*\b.{0,100}\b(?:cannot|can't|can not|could not|unable|not possible|is not|isn't|are not|aren't|unknown|unavailable)\b/i;
   const professionalGuidance =
@@ -389,16 +406,18 @@ function validateBeardPhotoSemanticsVersion(
           BEARD_PHOTO_SEMANTIC_RULE_VERSION
         ? guardReferenceV4
         : guardReference;
+      const unsupportedPhysicalMeasurement =
+        semanticVersion === BEARD_PHOTO_SEMANTIC_RULE_VERSION &&
+        (unsupportedPhysicalMeasurementV4.test(clause) ||
+          unsupportedCalibratedMetricV4.test(clause));
       const permittedGuardInstruction = role === "guard_strategy" &&
         activeGuardReference.test(clause) &&
         !visualMeasurementAssertion.test(guardClause) &&
-        !exactResultGuarantee.test(clause) &&
-        !(semanticVersion === BEARD_PHOTO_SEMANTIC_RULE_VERSION &&
-          unsupportedPhysicalMeasurementV4.test(clause));
+        !unsupportedCalibratedMetricV4.test(clause) &&
+        !exactResultGuarantee.test(clause);
       if (
         ((exactMeasurement.test(clause) && !permittedGuardInstruction) ||
-          (semanticVersion === BEARD_PHOTO_SEMANTIC_RULE_VERSION &&
-            unsupportedPhysicalMeasurementV4.test(clause))) &&
+          (unsupportedPhysicalMeasurement && !permittedGuardInstruction)) &&
         !(role === "limitation" && limitationAction.test(clause))
       ) {
         return fail(

@@ -15,6 +15,8 @@ const supportDiagnosticMigration = readFileSync('supabase/migrations/20260722190
 const supportDiagnosticRepair = readFileSync('supabase/migrations/20260723044918_fix_beard_support_diagnostic_rpc.sql', 'utf8')
 const semanticV4Migration = readFileSync('supabase/migrations/20260723060732_beard_semantic_safety_v4.sql', 'utf8')
 const providerTraceMigration = readFileSync('supabase/migrations/20260723125652_beard_provider_timeout_observability.sql', 'utf8')
+const semanticFailureInvariant = readFileSync('supabase/migrations/20260726121237_beard_semantic_failure_invariant.sql', 'utf8')
+const guardStrategyV6Migration = readFileSync('supabase/migrations/20260726185624_beard_guard_strategy_v6.sql', 'utf8')
 const semanticV4Lookup = semanticV4Migration.slice(semanticV4Migration.indexOf('create or replace function public.lookup_beard_analysis_support_diagnostic'))
 const runtime = readFileSync('supabase/functions/_shared/beardPhotoRuntime.ts', 'utf8')
 
@@ -29,15 +31,24 @@ describe('beard photo intelligence boundaries', () => {
   it('keeps provider credentials server-side and bounds provider execution', () => {
     expect(edge).toContain('Deno.env.get("OPENAI_API_KEY")')
     expect(edge).not.toMatch(/VITE_.*OPENAI/)
-    expect(runtime).toContain('BEARD_PROVIDER_TIMEOUT_DEFAULT_MS = 110_000')
+    expect(runtime).toContain('BEARD_FUNCTION_WALL_CLOCK_LIMIT_MS = 400_000')
+    expect(runtime).toContain('BEARD_FUNCTION_NON_PROVIDER_RESERVE_MS = 100_000')
+    expect(runtime).toContain('BEARD_PROVIDER_TIMEOUT_DEFAULT_MS = 180_000')
     expect(runtime).toContain('BEARD_PROVIDER_TIMEOUT_MIN_MS = 60_000')
-    expect(runtime).toContain('BEARD_PROVIDER_TIMEOUT_MAX_MS = 120_000')
+    expect(runtime).toContain('BEARD_FUNCTION_WALL_CLOCK_LIMIT_MS - BEARD_FUNCTION_NON_PROVIDER_RESERVE_MS')
     expect(runtime).toContain('controller.abort(source)')
     expect(edge).toContain('OPENAI_BEARD_VISION_TIMEOUT_MS')
     expect(edge).toMatch(/store: false/)
+    expect(edge).toContain('reasoning: { effort: "low" }')
+    expect(edge).toContain('max_output_tokens: 6_000')
+    expect(edge).toContain('verbosity: "low"')
+    expect(edge).toContain('Promise.all(body.inputs.map(async (input)')
     expect(edge).toContain('Deno.env.get("OPENAI_BEARD_VISION_MODEL")')
     expect(edge).not.toContain('gpt-5.6-terra')
     expect(edge).toContain('ALLOWED_MODELS.has(model)')
+    expect(semanticFailureInvariant).toContain('provider_timeout_budget_ms between 60000 and 300000')
+    expect(semanticFailureInvariant).toContain("candidate_prompt_version <> 'beard-photo-analysis-v5'")
+    expect(semanticFailureInvariant).toContain("prompt_version='beard-photo-analysis-v5'")
   })
 
   it('has rate limiting, idempotency, strict validation, and no mock fallback', () => {
@@ -82,13 +93,37 @@ describe('beard photo intelligence boundaries', () => {
     expect(prompt).toMatch(/never guarantee the exact physical length/i)
     expect(prompt).toMatch(/observationKey/)
     expect(prompt).toMatch(/lowercase snake_case/)
-    expect(prompt).toMatch(/not database IDs/)
+    expect(prompt).toMatch(/server replaces it with canonical identity/)
     expect(prompt).toMatch(/supportingObservationKeys/)
+    expect(prompt).toMatch(/numeric guard.*only in proposedGuardStrategy/i)
+    expect(prompt).toMatch(/toolConstraints limited to non-numeric compatibility/i)
+    expect(prompt).toMatch(/select structured values instead of composing the final sentence/i)
+    expect(prompt).toMatch(/server renders the final guard-setting sentence/i)
+  })
+
+  it('normalizes structured or legacy guard intent before canonical and semantic validation', () => {
+    expect(edge).toContain('normalizeBeardGuardStrategies(providerTyped)')
+    expect(edge.indexOf('normalizeBeardGuardStrategies(providerTyped)')).toBeLessThan(
+      edge.indexOf('validateBeardPhotoContract(typed)'),
+    )
+    expect(edge.indexOf('validateBeardPhotoContract(typed)')).toBeLessThan(
+      edge.indexOf('validateBeardPhotoSemantics(typed)'),
+    )
+    expect(edge).toContain('"guard_setting", "guard_range", "relative_guard"')
+    expect(edge).toContain('"starting_point", "adjust_after_each_pass"')
+    expect(guardStrategyV6Migration).toContain("'beard-photo-analysis-v6'")
+    expect(guardStrategyV6Migration).toContain('candidate_recommendations')
+    expect(guardStrategyV6Migration).toContain('lookup_beard_analysis_support_diagnostic_v25')
   })
 
   it('persists only server-owned allowlisted failure metadata', () => {
     expect(edge).toContain('Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")')
     expect(edge).toContain('toDurableBeardFailureDiagnostic')
+    expect(edge).toContain('beardSemanticFailureCode')
+    expect(edge).toContain('const minimumFailure = await trustedClient')
+    expect(edge).toContain('.select("id").maybeSingle()')
+    expect(semanticFailureInvariant).toContain("'recommendationIndex',a.failure_recommendation_index")
+    expect(semanticFailureInvariant).toContain("'SEMANTIC_VALIDATOR_INTERNAL_ERROR'")
     expect(edge).toMatch(/\.eq\(\s*"owner_user_id",\s*userId/)
     expect(edge).toMatch(/\.eq\("correlation_id", correlationId\)/)
     expect(semanticMigration).toContain('failure_json_path')
@@ -104,9 +139,11 @@ describe('beard photo intelligence boundaries', () => {
 
   it('logs only the safe stage envelope and never sensitive request material', () => {
     expect(edge).toContain('console.info(beardStageLog')
+    expect(edge).toContain('console.info(beardProviderHttpErrorLog')
     expect(runtime).not.toMatch(/filename|objectPath|promptText|responseBodyContent|authorization|email|apiKey|imageData/i)
     expect(edge).not.toMatch(/console\.(?:log|debug|warn|error)/)
-    expect(edge).not.toMatch(/console\.info\((?!beardStageLog)/)
+    expect(edge).toContain('console.info(beardObservationKeyCollisionLog')
+    expect(edge).not.toMatch(/console\.info\((?!beard(?:Stage|ProviderHttpError|ObservationKeyCollision)Log)/)
   })
 
   it('keeps the browser on the normal invocation lifecycle without a shorter client timeout or retry', () => {

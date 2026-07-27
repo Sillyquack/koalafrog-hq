@@ -18,7 +18,7 @@ const stages = new Set([
 const validators = new Set([
   "responses-envelope", "responses-output", "json-parser", "json-schema",
   "beard-contract", "beard-semantic-safety-v2", "beard-semantic-safety-v3",
-  "beard-semantic-safety-v4",
+  "beard-semantic-safety-v4", "beard-observation-key-normalizer-v1",
   "legacy-beard-validator",
 ]);
 const expectedCategories = new Set([
@@ -39,17 +39,52 @@ const receivedCategories = new Set([
   "ambiguous sensitive reference",
 ]);
 const safeJsonPath = /^\$(?:\.[A-Za-z][A-Za-z0-9]*|\[[0-9]+\])*$/;
+const recommendationPath = /^\$\.recommendations\[([0-9]+)\]/;
+const isCompleteKnownDiagnostic = (diagnostic: ValidationFailure) =>
+  rules.has(diagnostic.ruleCode) &&
+  validators.has(diagnostic.validator) &&
+  expectedCategories.has(diagnostic.expected) &&
+  receivedCategories.has(diagnostic.received) &&
+  typeof diagnostic.jsonPath === "string" &&
+  diagnostic.jsonPath.length <= 160 &&
+  safeJsonPath.test(diagnostic.jsonPath);
+
+const internalSemanticDiagnostic = (diagnostic?: ValidationFailure) => {
+  const safePath = diagnostic?.jsonPath &&
+      diagnostic.jsonPath.length <= 160 &&
+      safeJsonPath.test(diagnostic.jsonPath)
+    ? diagnostic.jsonPath
+    : "$";
+  const index = recommendationPath.exec(safePath)?.[1];
+  return {
+    failure_stage: "SemanticValidation",
+    failure_rule_code: "VAL-0030",
+    failure_json_path: safePath,
+    failure_validator: validators.has(diagnostic?.validator ?? "")
+      ? diagnostic!.validator
+      : "beard-semantic-safety-v4",
+    failure_expected_category: "object",
+    failure_received_category: "unknown",
+    failure_schema_version: BEARD_PHOTO_SCHEMA_VERSION,
+    failure_trace_version: BEARD_FAILURE_TRACE_VERSION,
+    failure_recommendation_index: index === undefined ? null : Number(index),
+  };
+};
 
 export function toDurableBeardFailureDiagnostic(
   diagnostic?: ValidationFailure,
 ) {
+  if (diagnostic?.stage === "SemanticValidation" && (
+    diagnostic.ruleCode === "VAL-0030" ||
+    !isCompleteKnownDiagnostic(diagnostic)
+  )) {
+    return internalSemanticDiagnostic(diagnostic);
+  }
   if (
     !diagnostic || !stages.has(diagnostic.stage) ||
-    !rules.has(diagnostic.ruleCode) || !validators.has(diagnostic.validator) ||
-    !expectedCategories.has(diagnostic.expected) ||
-    !receivedCategories.has(diagnostic.received) ||
-    diagnostic.jsonPath.length > 160 || !safeJsonPath.test(diagnostic.jsonPath)
+    !isCompleteKnownDiagnostic(diagnostic)
   ) return {};
+  const index = recommendationPath.exec(diagnostic.jsonPath)?.[1];
   return {
     failure_stage: diagnostic.stage,
     failure_rule_code: diagnostic.ruleCode,
@@ -59,5 +94,12 @@ export function toDurableBeardFailureDiagnostic(
     failure_received_category: diagnostic.received,
     failure_schema_version: BEARD_PHOTO_SCHEMA_VERSION,
     failure_trace_version: BEARD_FAILURE_TRACE_VERSION,
+    failure_recommendation_index: index === undefined ? null : Number(index),
   };
 }
+
+export const beardSemanticFailureCode = (diagnostic: ValidationFailure) =>
+    diagnostic.ruleCode === "VAL-0030" ||
+      !isCompleteKnownDiagnostic(diagnostic)
+    ? "SEMANTIC_VALIDATOR_INTERNAL_ERROR"
+    : "SEMANTIC_VALIDATION_FAILED";

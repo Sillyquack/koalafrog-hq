@@ -44,7 +44,7 @@ const validResult = (): BeardPhotoAnalysisResult => ({
   lineAssessment: [],
   recommendations: [
     {
-      id: 'recommendation-1',
+      id: '82ef6a39-12bb-4f88-ae75-eb223fd6ce3a',
       title: 'Review the left jaw before trimming',
       reason: 'The visible density difference may benefit from a conservative review.',
       confidence: 0.68,
@@ -67,6 +67,12 @@ const validResult = (): BeardPhotoAnalysisResult => ({
 describe('beard photo analysis contract', () => {
   it('accepts a complete provider result', () => {
     expect(validateBeardPhotoAnalysisResult(validResult())).toBe(true)
+  })
+
+  it('rejects a display identifier before it can reach a UUID column', () => {
+    const result = validResult()
+    result.recommendations[0].id = 'recommendation-1'
+    expect(validateBeardPhotoAnalysisResult(result)).toBe(false)
   })
 
   it('rejects unknown fields and invalid confidence', () => {

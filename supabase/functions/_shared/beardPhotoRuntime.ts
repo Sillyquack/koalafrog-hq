@@ -1,6 +1,9 @@
-export const BEARD_PROVIDER_TIMEOUT_DEFAULT_MS = 110_000;
+export const BEARD_FUNCTION_WALL_CLOCK_LIMIT_MS = 400_000;
+export const BEARD_FUNCTION_NON_PROVIDER_RESERVE_MS = 100_000;
+export const BEARD_PROVIDER_TIMEOUT_DEFAULT_MS = 180_000;
 export const BEARD_PROVIDER_TIMEOUT_MIN_MS = 60_000;
-export const BEARD_PROVIDER_TIMEOUT_MAX_MS = 120_000;
+export const BEARD_PROVIDER_TIMEOUT_MAX_MS =
+  BEARD_FUNCTION_WALL_CLOCK_LIMIT_MS - BEARD_FUNCTION_NON_PROVIDER_RESERVE_MS;
 
 export class InvalidProviderTimeoutError extends Error {}
 
@@ -43,14 +46,123 @@ export interface ProviderInvocationTrace {
   usagePresent: boolean;
 }
 
+export type SafeProviderRateLimitCode =
+  | "PROVIDER_RATE_LIMIT_REQUESTS"
+  | "PROVIDER_RATE_LIMIT_TOKENS"
+  | "PROVIDER_QUOTA_EXHAUSTED"
+  | "PROVIDER_BILLING_LIMIT"
+  | "PROVIDER_MODEL_LIMIT"
+  | "PROVIDER_RATE_LIMIT_UNKNOWN";
+
+export interface SafeProviderHttpError {
+  httpStatus: number;
+  type: string | null;
+  code: string | null;
+  category: SafeProviderRateLimitCode | "PROVIDER_HTTP_ERROR";
+  retryAfter: string | null;
+  requestLimit: string | null;
+  requestRemaining: string | null;
+  requestReset: string | null;
+  tokenLimit: string | null;
+  tokenRemaining: string | null;
+  tokenReset: string | null;
+  requestId: string | null;
+  projectIdRedacted: string | null;
+  organizationIdRedacted: string | null;
+}
+
 export class ProviderInvocationError extends Error {
   constructor(
     public classification: ProviderFailureClassification,
     public trace: ProviderInvocationTrace,
     public response?: Response,
+    public httpError?: SafeProviderHttpError,
   ) {
     super(classification);
   }
+}
+
+const safeProviderToken = (value: unknown): string | null =>
+  typeof value === "string" && value.length > 0 && value.length <= 96 &&
+    /^[a-zA-Z0-9_.:/ -]+$/.test(value)
+    ? value
+    : null;
+
+const redactProviderIdentifier = (value: string | null): string | null => {
+  const safe = safeProviderToken(value);
+  if (!safe) return null;
+  return safe.length <= 8 ? "redacted" : `${safe.slice(0, 4)}…${safe.slice(-4)}`;
+};
+
+export function classifyOpenAIRateLimit(input: {
+  status: number;
+  type?: unknown;
+  code?: unknown;
+  param?: unknown;
+  message?: unknown;
+  headers?: Headers;
+}): SafeProviderHttpError {
+  const type = safeProviderToken(input.type);
+  const code = safeProviderToken(input.code);
+  const param = safeProviderToken(input.param);
+  const message = typeof input.message === "string"
+    ? input.message.toLowerCase().slice(0, 2_000)
+    : "";
+  const headers = input.headers ?? new Headers();
+  const lowerType = type?.toLowerCase() ?? "";
+  const lowerCode = code?.toLowerCase() ?? "";
+  const lowerParam = param?.toLowerCase() ?? "";
+  const combined = `${lowerType} ${lowerCode}`;
+  let category: SafeProviderHttpError["category"] = "PROVIDER_HTTP_ERROR";
+  if (input.status === 429) {
+    category = combined.includes("billing_hard_limit")
+      ? "PROVIDER_BILLING_LIMIT"
+      : combined.includes("insufficient_quota")
+      ? "PROVIDER_QUOTA_EXHAUSTED"
+      : combined.includes("model") &&
+          (combined.includes("limit") || combined.includes("rate"))
+        ? "PROVIDER_MODEL_LIMIT"
+      : lowerParam === "model" &&
+          (combined.includes("limit") || message.includes("rate limit"))
+      ? "PROVIDER_MODEL_LIMIT"
+      : message.includes("billing hard limit") ||
+          message.includes("billing limit")
+      ? "PROVIDER_BILLING_LIMIT"
+      : message.includes("quota") && !message.includes("rate limit")
+      ? "PROVIDER_QUOTA_EXHAUSTED"
+      : message.includes("tokens per") || message.includes("token rate") ||
+          message.includes("tokens/min")
+      ? "PROVIDER_RATE_LIMIT_TOKENS"
+      : message.includes("requests per") ||
+          message.includes("request rate") || message.includes("requests/min")
+      ? "PROVIDER_RATE_LIMIT_REQUESTS"
+      : "PROVIDER_RATE_LIMIT_UNKNOWN";
+  }
+  return {
+    httpStatus: input.status,
+    type,
+    code,
+    category,
+    retryAfter: safeProviderToken(headers.get("retry-after")),
+    requestLimit: safeProviderToken(headers.get("x-ratelimit-limit-requests")),
+    requestRemaining: safeProviderToken(
+      headers.get("x-ratelimit-remaining-requests"),
+    ),
+    requestReset: safeProviderToken(headers.get("x-ratelimit-reset-requests")),
+    tokenLimit: safeProviderToken(headers.get("x-ratelimit-limit-tokens")),
+    tokenRemaining: safeProviderToken(
+      headers.get("x-ratelimit-remaining-tokens"),
+    ),
+    tokenReset: safeProviderToken(headers.get("x-ratelimit-reset-tokens")),
+    requestId: safeProviderToken(headers.get("x-request-id")),
+    projectIdRedacted: redactProviderIdentifier(
+      headers.get("openai-project") ?? headers.get("x-openai-project"),
+    ),
+    organizationIdRedacted: redactProviderIdentifier(
+      headers.get("openai-organization") ??
+        headers.get("x-openai-organization"),
+    ),
+  };
 }
 
 const statusClass = (
@@ -94,12 +206,18 @@ export async function invokeProviderJson(options: {
     classification: ProviderFailureClassification,
     stage: ProviderStage,
     response?: Response,
+    httpError?: SafeProviderHttpError,
   ): never => {
     trace.stage = stage;
     trace.failureClassification = classification;
     trace.elapsedMs = Math.max(0, Math.round(now() - startedAt));
     trace.abortSignalAborted = controller.signal.aborted;
-    throw new ProviderInvocationError(classification, { ...trace }, response);
+    throw new ProviderInvocationError(
+      classification,
+      { ...trace },
+      response,
+      httpError,
+    );
   };
   const abort = (source: "application_deadline" | "caller") => {
     if (controller.signal.aborted) return;
@@ -158,7 +276,37 @@ export async function invokeProviderJson(options: {
     trace.httpStatusClass = statusClass(response.status);
     trace.providerRequestIdPresent = response.headers.has("x-request-id");
     if (!response.ok) {
-      return fail("PROVIDER_HTTP_ERROR", "provider_http_error_received", response);
+      let errorBody: unknown = null;
+      try {
+        const body = await response.text();
+        enforceDeadline("response_body");
+        trace.responseBodyCompleted = true;
+        errorBody = body.length <= 65_536 ? JSON.parse(body) : null;
+      } catch {
+        // Missing or malformed provider error bodies are classified safely below.
+      }
+      enforceDeadline("response_body");
+      const error = errorBody && typeof errorBody === "object" &&
+          !Array.isArray(errorBody) &&
+          (errorBody as Record<string, unknown>).error &&
+          typeof (errorBody as Record<string, unknown>).error === "object" &&
+          !Array.isArray((errorBody as Record<string, unknown>).error)
+        ? (errorBody as { error: Record<string, unknown> }).error
+        : {};
+      const httpError = classifyOpenAIRateLimit({
+        status: response.status,
+        type: error.type,
+        code: error.code,
+        param: error.param,
+        message: error.message,
+        headers: response.headers,
+      });
+      return fail(
+        "PROVIDER_HTTP_ERROR",
+        "provider_http_error_received",
+        response,
+        httpError,
+      );
     }
     trace.stage = "provider_response_body_started";
     let body: string;
@@ -250,5 +398,22 @@ export function beardStageLog(event: {
     ...(event.outcomeCode ? { outcomeCode: event.outcomeCode } : {}),
     ...(event.provider ? { provider: event.provider } : {}),
     ...(event.model ? { model: event.model } : {}),
+  });
+}
+
+export function beardProviderHttpErrorLog(event: {
+  correlationId: string;
+  analysisId: string;
+  provider: string;
+  model: string;
+  diagnostic: SafeProviderHttpError | undefined;
+}): string {
+  return JSON.stringify({
+    event: "beard_provider_http_error",
+    correlationId: event.correlationId,
+    analysisId: event.analysisId,
+    provider: event.provider,
+    model: event.model,
+    ...(event.diagnostic ?? {}),
   });
 }
