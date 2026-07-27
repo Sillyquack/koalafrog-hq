@@ -33,7 +33,7 @@ export function formulaReadiness(basis: RoundProductBasis): FormulaReadinessResu
   const reasons: string[] = []
   const review: string[] = []
   if (!basis.formulaVersion) reasons.push('Select a concrete formula version.')
-  if (basis.formulaVersion?.status === 'Draft') review.push('The selected formula version is Draft and requires explicit owner review.')
+  if (basis.formulaVersion?.status === 'Draft') reasons.push('The selected formula version is Draft and mutable; derive or select an immutable Candidate, Approved, or Retired version.')
   if (!basis.formulaLines.length) reasons.push('The selected formula has no ingredient lines.')
   if (basis.batchCount <= 0 || basis.batchSize <= 0) reasons.push('Batch count and batch size must be greater than zero.')
   if (!['mg', 'g', 'kg'].includes(basis.batchUnit)) reasons.push('Percentage formulas currently require a mass batch unit; no density conversion is permitted.')

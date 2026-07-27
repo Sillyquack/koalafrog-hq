@@ -41,6 +41,13 @@ describe('production procurement readiness', () => {
     ]))
   })
 
+  it('blocks mutable Draft formula versions as purchasing bases',()=>{
+    const input=basis('beard_oil','Beard Oil','jojoba')
+    input.formulaVersion={...input.formulaVersion!,status:'Draft'}
+    expect(formulaReadiness(input)).toMatchObject({state:'blocked'})
+    expect(formulaReadiness(input).reasons).toContain('The selected formula version is Draft and mutable; derive or select an immutable Candidate, Approved, or Retired version.')
+  })
+
   it('excludes quarantine, expiry, unavailable stock and reservations without counting incoming orders', () => {
     const requirement = generateRequirements([basis('beard_oil', 'Beard Oil', 'jojoba')]).requirements[0]
     const lots: InventoryLot[] = [
