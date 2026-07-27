@@ -20,6 +20,12 @@ describe('durable Production Readiness UI contract',()=>{
     for(const value of ['Purchasing specification','Generate candidates','Accept mapping','Select','Reject','Needs research','Clear selection','Documentation: SDS','Freshness: price','packs · purchased','surplus'])expect(page).toContain(value)
     expect(page).toContain('rel="noopener noreferrer"')
   })
+  it('shows six durable strategy semantics, commercial uncertainty, detail, regeneration, and explicit publication',()=>{
+    for(const value of ['Minimum immediate cash','Best overall value','First-order discount utilization','Fewest suppliers','Lowest procurement risk','Recommended balanced plan','Known minimum','Confirmed total','Estimated total','Unknown components','View supplier baskets and lines','Generate or regenerate scenarios','Publish comparison snapshot','Mixed currency'])expect(page).toContain(value)
+    for(const handoff of ['Refresh price','Verify stock','Verify shipping','Verify Norway delivery','Verify first-order discount','Verify tax/import assumption'])expect(page).toContain(handoff)
+    expect(page).toContain("navigate('/procurement')")
+    expect(css).toContain('.scenario-grid{grid-template-columns:1fr}')
+  })
   it('distinguishes unknown, zero, and not-calculated states accessibly',()=>{
     expect(page).toContain("'Unknown'")
     expect(page).toContain('Not calculated')
