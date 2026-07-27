@@ -1,5 +1,5 @@
 begin;
-select plan(85);
+select plan(112);
 
 select has_table('public',table_name,format('%s exists',table_name))
 from unnest(array[
@@ -138,6 +138,26 @@ from unnest(array[
   'reject_production_requirement_candidate(uuid,bigint,text)',
   'clear_production_requirement_match(uuid,bigint,bigint,text)'
 ]) signature;
+
+select has_table('public',table_name,format('%s exists',table_name))
+from unnest(array['production_procurement_scenarios','production_procurement_scenario_baskets','production_procurement_scenario_lines']) table_name;
+select is((select relrowsecurity from pg_class where oid=format('public.%I',table_name)::regclass),true,format('%s has RLS enabled',table_name))
+from unnest(array['production_procurement_scenarios','production_procurement_scenario_baskets','production_procurement_scenario_lines']) table_name;
+select is(has_table_privilege('authenticated',format('public.%I',table_name),'SELECT'),true,format('authenticated may read %s',table_name))
+from unnest(array['production_procurement_scenarios','production_procurement_scenario_baskets','production_procurement_scenario_lines']) table_name;
+select is(has_table_privilege('authenticated',format('public.%I',table_name),'INSERT'),false,format('%s is RPC-write-only',table_name))
+from unnest(array['production_procurement_scenarios','production_procurement_scenario_baskets','production_procurement_scenario_lines']) table_name;
+select is(has_table_privilege('anon',format('public.%I',table_name),'SELECT'),false,format('anonymous cannot read %s',table_name))
+from unnest(array['production_procurement_scenarios','production_procurement_scenario_baskets','production_procurement_scenario_lines']) table_name;
+
+select has_function('public',split_part(signature,'(',1),string_to_array(trim(trailing ')' from split_part(signature,'(',2)),','),format('%s exists',signature))
+from unnest(array['generate_production_procurement_scenarios(uuid,bigint)','publish_production_procurement_scenario(uuid,bigint,bigint)','delete_draft_production_procurement_scenario(uuid,bigint,bigint)']) signature;
+select is(has_function_privilege('authenticated','public.'||signature,'EXECUTE'),true,format('authenticated may execute %s',signature))
+from unnest(array['generate_production_procurement_scenarios(uuid,bigint)','publish_production_procurement_scenario(uuid,bigint,bigint)','delete_draft_production_procurement_scenario(uuid,bigint,bigint)']) signature;
+select is(has_function_privilege('anon','public.'||signature,'EXECUTE'),false,format('anonymous cannot execute %s',signature))
+from unnest(array['generate_production_procurement_scenarios(uuid,bigint)','publish_production_procurement_scenario(uuid,bigint,bigint)','delete_draft_production_procurement_scenario(uuid,bigint,bigint)']) signature;
+select is((select proconfig[1] from pg_proc where oid=('public.'||signature)::regprocedure),'search_path=public, pg_temp',format('%s has a fixed search path',signature))
+from unnest(array['generate_production_procurement_scenarios(uuid,bigint)','publish_production_procurement_scenario(uuid,bigint,bigint)','delete_draft_production_procurement_scenario(uuid,bigint,bigint)']) signature;
 
 select * from finish();
 rollback;
