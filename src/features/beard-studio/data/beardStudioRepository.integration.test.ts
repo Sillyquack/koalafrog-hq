@@ -134,6 +134,12 @@ run('Beard Studio against local Supabase',()=>{
     const plan={version:2,intelligenceVersion:'beard-intelligence-v2',targetStyle:target,generatedAt:createdAt,sourceFingerprint:'stable',steps:[{id:'step-one',order:1,title:'Shape the sides',region:'sides',tool:'Philips Beard Trimmer 7000 / BT7665/15',attachmentOrComb:'Integrated adjustable comb',guardSetting:'7 mm',technique:'Set the adjustable comb to 7 mm.',fallbackWording:null,direction:'with growth first',caution:'Inspect first.',expectedResult:'Cleaner sides.',recommendationIds:[recommendationIds[0]]}]}
     const rpc=first.client.rpc.bind(first.client) as unknown as (name:string,args:Record<string,unknown>)=>Promise<{data:unknown;error:{message:string}|null}>
     const finishArgs={candidate_workspace_id:first.workspaceId,candidate_analysis_id:analysisId,candidate_decisions:recommendationIds.map((recommendationId,index)=>({recommendationId,status:decisions[index]})),candidate_summary_snapshot:summary,candidate_trim_plan_snapshot:plan}
+    const rejectedDecisions=finishArgs.candidate_decisions.map((decision,index)=>index===0?{...decision,status:'dismissed'}:decision)
+    expect((await rpc('finish_beard_analysis_review',{...finishArgs,candidate_decisions:rejectedDecisions,candidate_summary_snapshot:{...summary,targetStyle:null},candidate_trim_plan_snapshot:{...plan,targetStyle:null}})).error?.message).toContain('SNAPSHOT_TARGET_MISMATCH')
+    const differentTarget={value:'rugged_full_beard',label:'Rugged full beard'}
+    expect((await rpc('finish_beard_analysis_review',{...finishArgs,candidate_decisions:rejectedDecisions,candidate_summary_snapshot:{...summary,targetStyle:differentTarget}})).error?.message).toContain('SNAPSHOT_TARGET_MISMATCH')
+    expect((await first.client.from('intelligence_analyses').select('target_style,summary_snapshot,trim_plan_snapshot,review_finished_at').eq('id',analysisId).single()).data).toMatchObject({target_style:target,summary_snapshot:null,trim_plan_snapshot:null,review_finished_at:null})
+    expect((await first.client.from('intelligence_recommendations').select('review_status').eq('id',recommendationIds[0]).single()).data).toMatchObject({review_status:'accepted_for_planning'})
     expect((await rpc('finish_beard_analysis_review',finishArgs)).error).toBeNull()
     const firstRow=(await first.client.from('intelligence_analyses').select('summary_snapshot,trim_plan_snapshot,review_finished_at,created_at').eq('id',analysisId).single()).data as unknown as {summary_snapshot:unknown;trim_plan_snapshot:unknown;review_finished_at:string;created_at:string}
     expect((await rpc('finish_beard_analysis_review',finishArgs)).error).toBeNull()
@@ -151,5 +157,40 @@ run('Beard Studio against local Supabase',()=>{
     const otherRpc=second.client.rpc.bind(second.client) as unknown as typeof rpc
     expect((await otherRpc('reopen_beard_analysis',{candidate_workspace_id:first.workspaceId,candidate_analysis_id:analysisId})).data).toBeNull()
     expect((await otherRpc('list_beard_analysis_history',{candidate_workspace_id:first.workspaceId,candidate_limit:20,candidate_before:null,candidate_before_id:null})).data).toEqual([])
+  })
+
+  it('finishes a legacy null-target review and rejects mismatched snapshots atomically',async()=>{
+    const first=await owner('v2-null-target'),repository=new SupabaseBeardStudioGateway(first.workspaceId,first.client),state=createStarterWorkspace()
+    await repository.save(state)
+    const analysisId=crypto.randomUUID(),createdAt='2026-07-27T10:00:00.000Z'
+    expect((await admin.from('intelligence_analyses').insert({
+      id:analysisId,workspace_id:first.workspaceId,owner_user_id:first.ownerId,source_module:'beard-studio',analysis_type:'beard_photo_analysis',
+      schema_version:2,contract_version:'beard-photo-result-contract-v2',prompt_version:'beard-photo-analysis-v6',semantic_rule_version:'beard-semantic-safety-v4',
+      status:'completed',idempotency_key:crypto.randomUUID(),profile_id:state.profiles[0].id,context_manifest:{},correlation_id:crypto.randomUUID(),
+      result_payload:{photoQuality:{overall:'suitable'}},provider_name:'openai',model_name:'gpt-5',completed_at:createdAt,created_at:createdAt,
+      target_style:null,analysis_version:null,
+    } as never)).error).toBeNull()
+    const statuses=['accepted_for_planning','dismissed','undecided'] as const,recommendationIds=statuses.map(()=>crypto.randomUUID())
+    expect((await admin.from('intelligence_recommendations').insert(statuses.map((review_status,index)=>({
+      id:recommendationIds[index],workspace_id:first.workspaceId,owner_user_id:first.ownerId,analysis_id:analysisId,title:`Legacy recommendation ${index}`,
+      reason:'Persisted reason',confidence:.8,priority:'medium',expected_benefit:'Persisted benefit',supporting_observation_ids:[],
+      affected_zones:['sides'],tool_constraints:[],proposed_guard_strategy:null,review_status,provenance:'ai',
+    })))).error).toBeNull()
+    const summary={version:2,targetStyle:null,overallAssessment:'Legacy assessment',strengths:['Persisted strength'],highestImpactImprovements:[],sequence:[],estimatedTrimMinutes:10,difficulty:'Easy',confidence:'High',photoQualityCaveat:'Persisted caveat'}
+    const plan={version:2,intelligenceVersion:'beard-intelligence-v2',targetStyle:null,generatedAt:createdAt,sourceFingerprint:'legacy-null',steps:[]}
+    const decisions=recommendationIds.map((recommendationId,index)=>({recommendationId,status:statuses[index]}))
+    const rpc=first.client.rpc.bind(first.client) as unknown as (name:string,args:Record<string,unknown>)=>Promise<{data:unknown;error:{message:string}|null}>
+    const args={candidate_workspace_id:first.workspaceId,candidate_analysis_id:analysisId,candidate_decisions:decisions,candidate_summary_snapshot:summary,candidate_trim_plan_snapshot:plan}
+    const changedDecisions=decisions.map((decision,index)=>index===0?{...decision,status:'dismissed'}:decision)
+    const targetObject={value:'structured_full_beard',label:'Structured full beard'}
+    expect((await rpc('finish_beard_analysis_review',{...args,candidate_decisions:changedDecisions,candidate_summary_snapshot:{...summary,targetStyle:targetObject}})).error?.message).toContain('SNAPSHOT_TARGET_MISMATCH')
+    expect((await rpc('finish_beard_analysis_review',{...args,candidate_decisions:changedDecisions,candidate_trim_plan_snapshot:{...plan,targetStyle:targetObject}})).error?.message).toContain('SNAPSHOT_TARGET_MISMATCH')
+    const unchanged=(await first.client.from('intelligence_analyses').select('target_style,summary_snapshot,trim_plan_snapshot,review_finished_at').eq('id',analysisId).single()).data
+    expect(unchanged).toMatchObject({target_style:null,summary_snapshot:null,trim_plan_snapshot:null,review_finished_at:null})
+    expect((await first.client.from('intelligence_recommendations').select('review_status').eq('id',recommendationIds[0]).single()).data).toMatchObject({review_status:'accepted_for_planning'})
+    expect((await rpc('finish_beard_analysis_review',args)).error).toBeNull()
+    const reopened=await rpc('reopen_beard_analysis',{candidate_workspace_id:first.workspaceId,candidate_analysis_id:analysisId})
+    expect(reopened.data).toMatchObject({analysisId,targetStyle:null,summarySnapshot:summary,trimPlanSnapshot:plan,decisions:expect.arrayContaining(decisions)})
+    expect((await first.client.from('intelligence_analyses').select('target_style,review_finished_at').eq('id',analysisId).single()).data).toMatchObject({target_style:null,review_finished_at:expect.any(String)})
   })
 })

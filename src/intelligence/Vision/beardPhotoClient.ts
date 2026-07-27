@@ -56,6 +56,7 @@ export type BeardPhotoErrorCode =
   | "NETWORK_FAILURE"
   | "ANALYSIS_IN_PROGRESS"
   | "ATTEMPT_PROVENANCE_FAILED"
+  | "SNAPSHOT_TARGET_MISMATCH"
   | "UNEXPECTED_ERROR";
 export class BeardPhotoAnalysisError extends Error {
   constructor(
@@ -134,6 +135,8 @@ const messageFor = (code: BeardPhotoErrorCode) =>
       ANALYSIS_IN_PROGRESS: "Another photo analysis is already active.",
       ATTEMPT_PROVENANCE_FAILED:
         "The provider attempt could not be recorded, so no analysis was sent.",
+      SNAPSHOT_TARGET_MISMATCH:
+        "The review snapshots do not match the analysis target.",
       UNEXPECTED_ERROR: "Beard photo analysis could not be completed.",
     } as Partial<Record<BeardPhotoErrorCode, string>>)[code] ??
       "Beard photo analysis could not be completed.";
@@ -325,7 +328,11 @@ export async function finishBeardAnalysisReview(workspaceId:string,analysisId:st
   if(!supabase)throw new BeardPhotoAnalysisError('PROVIDER_NOT_CONFIGURED',messageFor('PROVIDER_NOT_CONFIGURED'))
   const decisions=recommendations.map(item=>({recommendationId:item.id,status:item.status}))
   const response=await supabase.rpc('finish_beard_analysis_review' as never,{candidate_workspace_id:workspaceId,candidate_analysis_id:analysisId,candidate_decisions:decisions,candidate_summary_snapshot:summary,candidate_trim_plan_snapshot:plan} as never)
-  if(response.error)throw new BeardPhotoAnalysisError('NETWORK_FAILURE','Review decisions and trim plan could not be saved.')
+  if(response.error){
+    const targetMismatch=[response.error.message,response.error.details,response.error.hint].some(value=>value?.includes('SNAPSHOT_TARGET_MISMATCH'))
+    const code=targetMismatch?'SNAPSHOT_TARGET_MISMATCH':'NETWORK_FAILURE'
+    throw new BeardPhotoAnalysisError(code,messageFor(code))
+  }
   return response.data
 }
 
