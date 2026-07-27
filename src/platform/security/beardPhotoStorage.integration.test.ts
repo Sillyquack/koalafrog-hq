@@ -98,7 +98,7 @@ run('beard photo temporary storage isolation', () => {
       id: analysisId, workspace_id: workspaceId, owner_user_id: ownerId,
       source_module: 'beard-studio', analysis_type: 'beard_photo_analysis',
       schema_version: 2, contract_version: 'beard-photo-result-contract-v2',
-      prompt_version: 'beard-photo-analysis-v4', status: 'staging',
+      prompt_version: 'beard-photo-analysis-v6', status: 'staging',
       idempotency_key: crypto.randomUUID(), profile_id: profileId,
       context_manifest: {}, correlation_id: correlationId,
     })).error).toBeNull()
@@ -107,7 +107,7 @@ run('beard photo temporary storage isolation', () => {
       candidate_analysis_id: analysisId,
       candidate_provider: 'openai',
       candidate_model: 'gpt-5',
-      candidate_prompt_version: 'beard-photo-analysis-v4',
+      candidate_prompt_version: 'beard-photo-analysis-v6',
     })).data).toBe(true)
     expect((await owner.from('intelligence_analyses')
       .select('semantic_rule_version').eq('id', analysisId).single()).data)
@@ -189,7 +189,7 @@ run('beard photo temporary storage isolation', () => {
       analysis_type: 'beard_photo_analysis',
       schema_version: 2,
       contract_version: 'beard-photo-result-contract-v2',
-      prompt_version: 'beard-photo-analysis-v4',
+      prompt_version: 'beard-photo-analysis-v6',
       status: 'staging',
       idempotency_key: crypto.randomUUID(),
       profile_id: profileId,
@@ -201,7 +201,7 @@ run('beard photo temporary storage isolation', () => {
       candidate_analysis_id: analysisId,
       candidate_provider: 'openai',
       candidate_model: 'gpt-5',
-      candidate_prompt_version: 'beard-photo-analysis-v4',
+      candidate_prompt_version: 'beard-photo-analysis-v6',
     })).data).toBe(true)
     const providerText = 'private provider observation that must never enter diagnostics'
     const observationKey = 'front_density_distribution'
@@ -255,13 +255,14 @@ run('beard photo temporary storage isolation', () => {
     expect((await owner.from('intelligence_recommendations').select('id').eq('analysis_id', analysisId)).data).toEqual([])
     expect((await owner.from('intelligence_recommendation_observations').select('recommendation_id').eq('analysis_id', analysisId)).data).toEqual([])
     const analysis = await owner.from('intelligence_analyses').select(
-      'status,error_code,result_payload,provider_usage,persistence_failure_step,persistence_failure_table,persistence_failure_operation,persistence_failure_sqlstate,persistence_failure_constraint,persistence_failure_entity_type,persistence_failure_entity_index,persistence_failure_diagnostic_version',
+      'status,error_code,result_payload,provider_usage,prompt_version,persistence_failure_step,persistence_failure_table,persistence_failure_operation,persistence_failure_sqlstate,persistence_failure_constraint,persistence_failure_entity_type,persistence_failure_entity_index,persistence_failure_diagnostic_version',
     ).eq('id', analysisId).single()
     expect(analysis.data).toMatchObject({
       status: 'failed',
       error_code: 'RESULT_PERSISTENCE_FAILED',
       result_payload: null,
       provider_usage: null,
+      prompt_version: 'beard-photo-analysis-v6',
       persistence_failure_step: 'relationship_insert',
       persistence_failure_table: 'intelligence_recommendation_observations',
       persistence_failure_operation: 'insert',
@@ -289,7 +290,7 @@ run('beard photo temporary storage isolation', () => {
       errorCode: 'RESULT_PERSISTENCE_FAILED', cleanupState: 'cleanup_required',
       resultPresent: false, providerUsagePresent: false, attemptCount: 1,
       persistence: { step: 'relationship_insert', table: 'intelligence_recommendation_observations', operation: 'insert', sqlstate: '23505', constraint: 'intelligence_recommendation_observations_pkey', entityType: 'relationship', entityIndex: 1, diagnosticVersion: 'beard-persistence-diagnostic-v1' },
-      provenance: { provider: 'openai', model: 'gpt-5', promptVersion: 'beard-photo-analysis-v4', contractVersion: 'beard-photo-result-contract-v2', schemaVersion: 2, semanticVersion: 'beard-semantic-safety-v4' },
+      provenance: { provider: 'openai', model: 'gpt-5', promptVersion: 'beard-photo-analysis-v6', contractVersion: 'beard-photo-result-contract-v2', schemaVersion: 2, semanticVersion: 'beard-semantic-safety-v4' },
     })
     expect(Object.keys(lookup.data as object).sort()).toEqual([
       'analysisId','attemptCount','cleanupCompletedAt','cleanupState','errorCode',
@@ -325,7 +326,7 @@ run('beard photo temporary storage isolation', () => {
       id: crypto.randomUUID(), workspace_id: workspaceId, owner_user_id: ownerId,
       source_module: 'beard-studio', analysis_type: 'beard_photo_analysis', schema_version: 2,
       contract_version: 'beard-photo-result-contract-v2',
-      prompt_version: 'beard-photo-analysis-v4', status, idempotency_key: crypto.randomUUID(),
+      prompt_version: 'beard-photo-analysis-v6', status, idempotency_key: crypto.randomUUID(),
       profile_id: profileId, context_manifest: {}, correlation_id: crypto.randomUUID(),
     })
     const active = row('staging')
@@ -336,7 +337,7 @@ run('beard photo temporary storage isolation', () => {
       candidate_analysis_id: active.id,
       candidate_provider: 'openai',
       candidate_model: 'gpt-5',
-      candidate_prompt_version: 'beard-photo-analysis-v4',
+      candidate_prompt_version: 'beard-photo-analysis-v6',
     }
     expect((await owner.rpc('begin_beard_provider_attempt', attempt)).data).toBe(true)
     expect((await owner.rpc('begin_beard_provider_attempt', attempt)).data).toBe(false)

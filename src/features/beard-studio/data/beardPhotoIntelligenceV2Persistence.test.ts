@@ -1,0 +1,10 @@
+import{describe,expect,it}from'vitest'
+import{readFileSync}from'node:fs'
+describe('Beard Intelligence v2 persistence boundary',()=>{
+ const migration=readFileSync('supabase/migrations/20260727120000_beard_intelligence_v2.sql','utf8')
+ const client=readFileSync('src/intelligence/Vision/beardPhotoClient.ts','utf8')
+ it('saves decisions and snapshots in one owner-scoped transaction',()=>{expect(migration).toContain('finish_beard_analysis_review');expect(migration).toContain('owner_user_id=current_owner');expect(migration).toContain('for update');expect(migration).toContain('DUPLICATE_REVIEW_DECISION')})
+ it('preserves legacy null intelligence versions and validates v2 snapshot schemas',()=>{expect(migration).toContain('add column analysis_version text,');expect(migration).not.toContain("default 'beard-intelligence-v1'");expect(migration).toContain("candidate_summary_snapshot->>'version'<>'2'");expect(migration).toContain("candidate_trim_plan_snapshot->>'intelligenceVersion'<>'beard-intelligence-v2'")})
+ it('provides bounded owner-safe stable cursor history without storage paths',()=>{expect(migration).toContain('least(coalesce(candidate_limit,20),50)');expect(migration).toContain('candidate_before_id');expect(migration).toContain('a.id<candidate_before_id');expect(migration).toContain('a.owner_user_id=auth.uid()');expect(migration).not.toMatch(/object_path|signed_url|image_bytes/)})
+ it('reopens persisted JSON and decisions without provider or image retrieval',()=>{const reopen=client.slice(client.indexOf('export async function reopenBeardAnalysis'),client.indexOf('export async function finishBeardAnalysisReview'));expect(reopen).toContain("rpc('reopen_beard_analysis'");expect(reopen).not.toMatch(/functions\.invoke|storage\.from|getSignedUrl/)})
+})

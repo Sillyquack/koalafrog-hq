@@ -70,6 +70,12 @@ type Body = {
   analysisId: string;
   idempotencyKey: string;
   profileId: string;
+  targetStyle?: {
+    value: "structured_full_beard" | "short_boxed_beard" | "natural_defined_beard" |
+      "fuller_chin_soft_side_fade" | "rugged_full_beard" | "custom";
+    label: string;
+    customLabel?: string;
+  };
   inputs: Input[];
 };
 const uuid =
@@ -82,6 +88,10 @@ function validBody(value: unknown): value is Body {
       typeof x === "string" && uuid.test(x)
     ) || !Array.isArray(v.inputs) || v.inputs.length < 3 || v.inputs.length > 4
   ) return false;
+  if (v.targetStyle && (
+    !["structured_full_beard","short_boxed_beard","natural_defined_beard","fuller_chin_soft_side_fade","rugged_full_beard","custom"].includes(v.targetStyle.value) ||
+    typeof v.targetStyle.label !== "string" || (v.targetStyle.customLabel !== undefined && typeof v.targetStyle.customLabel !== "string")
+  )) return false;
   const seen = new Set<string>();
   for (const input of v.inputs) {
     if (
@@ -1104,7 +1114,10 @@ Deno.serve(async (req) => {
       lengthMapId: map.data?.id ?? null,
       lastLogAt: lastLog.data?.occurred_at ?? null,
       views: body.inputs.map((x) => x.view),
+      targetStyle: body.targetStyle ?? null,
     },
+    target_style: body.targetStyle ?? null,
+    analysis_version: "beard-intelligence-v2",
     correlation_id: correlationId,
   }).select("id").single();
   if (inserted.error) {
@@ -1230,6 +1243,7 @@ Deno.serve(async (req) => {
       correlationId,
       context: {
         profile: profile.data,
+        selectedTargetStyle: body.targetStyle ?? null,
         tools: tools.data ?? [],
         lengthMap: map.data ?? null,
         lastTrim: lastLog.data ?? null,
