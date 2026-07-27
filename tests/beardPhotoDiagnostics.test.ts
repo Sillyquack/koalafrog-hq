@@ -405,6 +405,7 @@ describe("Beard diagnostics adapters", () => {
       failure_received_category: "infection assertion",
       failure_schema_version: 2,
       failure_trace_version: "intelligence-failure-trace-v1",
+      failure_recommendation_index: null,
     });
     expect(JSON.stringify(safe)).not.toContain(rejectedValue);
     expect(
@@ -417,6 +418,16 @@ describe("Beard diagnostics adapters", () => {
         validator: "beard-semantic-safety-v2",
         stage: "SemanticValidation",
       } as ValidationFailure),
-    ).toEqual({});
+    ).toEqual({
+      failure_stage: "SemanticValidation",
+      failure_rule_code: "VAL-0030",
+      failure_json_path: "$",
+      failure_validator: "beard-semantic-safety-v2",
+      failure_expected_category: "object",
+      failure_received_category: "unknown",
+      failure_schema_version: 2,
+      failure_trace_version: "intelligence-failure-trace-v1",
+      failure_recommendation_index: null,
+    });
   });
 });

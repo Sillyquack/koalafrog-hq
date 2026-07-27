@@ -1,8 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
+  BEARD_FUNCTION_NON_PROVIDER_RESERVE_MS,
+  BEARD_FUNCTION_WALL_CLOCK_LIMIT_MS,
   BEARD_PROVIDER_TIMEOUT_DEFAULT_MS,
+  BEARD_PROVIDER_TIMEOUT_MAX_MS,
   ProviderInvocationError,
   beardStageLog,
+  classifyOpenAIRateLimit,
   invokeProviderJson,
   parseBeardProviderTimeout,
 } from './beardPhotoRuntime'
@@ -10,11 +14,13 @@ import {
 describe('beard provider runtime policy', () => {
   afterEach(() => vi.useRealTimers())
 
-  it('uses a 110 second default and rejects invalid or unbounded overrides', () => {
+  it('uses a bounded default and reserves time for persistence and cleanup', () => {
     expect(parseBeardProviderTimeout(undefined)).toBe(BEARD_PROVIDER_TIMEOUT_DEFAULT_MS)
     expect(parseBeardProviderTimeout('60000')).toBe(60_000)
-    expect(parseBeardProviderTimeout('120000')).toBe(120_000)
-    for (const value of ['nope', '59999', '120001', '1.5']) {
+    expect(parseBeardProviderTimeout('300000')).toBe(300_000)
+    expect(BEARD_PROVIDER_TIMEOUT_DEFAULT_MS).toBe(180_000)
+    expect(BEARD_PROVIDER_TIMEOUT_MAX_MS + BEARD_FUNCTION_NON_PROVIDER_RESERVE_MS).toBe(BEARD_FUNCTION_WALL_CLOCK_LIMIT_MS)
+    for (const value of ['nope', '59999', '300001', '1.5']) {
       expect(() => parseBeardProviderTimeout(value)).toThrow('INVALID_PROVIDER_TIMEOUT')
     }
   })
@@ -39,6 +45,108 @@ describe('beard provider runtime policy', () => {
     expect(rejected.trace.requestDispatched).toBe(true)
     expect(calls).toBe(1)
     expect(JSON.stringify(rejected.trace)).not.toMatch(/authorization|header value|response body|stack|secret|token/i)
+  })
+
+  it.each([
+    [
+      'ordinary request rate limit',
+      { type: 'requests', code: 'rate_limit_exceeded', message: 'Rate limit reached for requests per min.' },
+      'PROVIDER_RATE_LIMIT_REQUESTS',
+    ],
+    [
+      'ordinary token rate limit',
+      { type: 'tokens', code: 'rate_limit_exceeded', message: 'Rate limit reached for tokens per min.' },
+      'PROVIDER_RATE_LIMIT_TOKENS',
+    ],
+    [
+      'exhausted quota',
+      { type: 'insufficient_quota', code: 'insufficient_quota', message: 'You exceeded your current quota.' },
+      'PROVIDER_QUOTA_EXHAUSTED',
+    ],
+    [
+      'billing hard limit',
+      { type: 'invalid_request_error', code: 'billing_hard_limit_reached', message: 'Billing hard limit reached.' },
+      'PROVIDER_BILLING_LIMIT',
+    ],
+    [
+      'model-specific limit',
+      { type: 'rate_limit_error', code: 'model_rate_limit_exceeded', param: 'model', message: 'Model rate limit reached.' },
+      'PROVIDER_MODEL_LIMIT',
+    ],
+    [
+      'missing provider error body',
+      {},
+      'PROVIDER_RATE_LIMIT_UNKNOWN',
+    ],
+  ])('safely classifies %s', (_label, error, expected) => {
+    expect(classifyOpenAIRateLimit({ status: 429, ...error }).category).toBe(expected)
+  })
+
+  it('captures allowlisted retry metadata and redacts account identifiers', () => {
+    const diagnostic = classifyOpenAIRateLimit({
+      status: 429,
+      code: 'rate_limit_exceeded',
+      headers: new Headers({
+        'retry-after': '12',
+        'x-ratelimit-limit-requests': '500',
+        'x-ratelimit-remaining-requests': '0',
+        'x-ratelimit-reset-requests': '12s',
+        'x-ratelimit-limit-tokens': '30000',
+        'x-ratelimit-remaining-tokens': '120',
+        'x-ratelimit-reset-tokens': '250ms',
+        'x-request-id': 'req_1234567890',
+        'openai-project': 'proj_abcdefghijk',
+        'openai-organization': 'org_abcdefghijk',
+      }),
+    })
+    expect(diagnostic).toMatchObject({
+      retryAfter: '12',
+      requestLimit: '500',
+      requestRemaining: '0',
+      requestReset: '12s',
+      tokenLimit: '30000',
+      tokenRemaining: '120',
+      tokenReset: '250ms',
+      requestId: 'req_1234567890',
+      projectIdRedacted: 'proj…hijk',
+      organizationIdRedacted: 'org_…hijk',
+    })
+    expect(JSON.stringify(diagnostic)).not.toContain('proj_abcdefghijk')
+    expect(JSON.stringify(diagnostic)).not.toContain('org_abcdefghijk')
+  })
+
+  it('reads and classifies one HTTP error response without retrying', async () => {
+    let calls = 0
+    const rejected = await invokeProviderJson({
+      request: () => {
+        calls += 1
+        return Promise.resolve(new Response(JSON.stringify({
+          error: {
+            type: 'insufficient_quota',
+            code: 'insufficient_quota',
+            message: 'You exceeded your current quota.',
+          },
+        }), {
+          status: 429,
+          headers: { 'retry-after': '60', 'x-request-id': 'req_safe' },
+        }))
+      },
+      timeoutMs: 60_000,
+    }).catch(error => error)
+    expect(calls).toBe(1)
+    expect(rejected).toMatchObject({
+      classification: 'PROVIDER_HTTP_ERROR',
+      httpError: {
+        httpStatus: 429,
+        type: 'insufficient_quota',
+        code: 'insufficient_quota',
+        category: 'PROVIDER_QUOTA_EXHAUSTED',
+        retryAfter: '60',
+        requestId: 'req_safe',
+      },
+      trace: { responseBodyCompleted: true },
+    })
+    expect(JSON.stringify(rejected.httpError)).not.toContain('You exceeded')
   })
 
   it('distinguishes a headers timeout from a stalled response body', async () => {
@@ -102,6 +210,22 @@ describe('beard provider runtime policy', () => {
       },
     })
     expect(calls).toBe(1)
+  })
+
+  it('consumes a successful provider body exactly once', async () => {
+    let textCalls = 0
+    const response = new Response(JSON.stringify({ output: [] }))
+    Object.defineProperty(response, 'text', {
+      value: async () => {
+        textCalls += 1
+        return JSON.stringify({ output: [] })
+      },
+    })
+    await expect(invokeProviderJson({
+      request: () => Promise.resolve(response),
+      timeoutMs: 60_000,
+    })).resolves.toMatchObject({ json: { output: [] } })
+    expect(textCalls).toBe(1)
   })
 
   it('classifies caller cancellation separately from the application deadline', async () => {

@@ -24,6 +24,20 @@ export type BeardPhotoErrorCode =
   | "PROVIDER_NOT_CONFIGURED"
   | "PROVIDER_TIMEOUT"
   | "PROVIDER_RATE_LIMIT"
+  | "PROVIDER_RATE_LIMIT_REQUESTS"
+  | "PROVIDER_RATE_LIMIT_TOKENS"
+  | "PROVIDER_QUOTA_EXHAUSTED"
+  | "PROVIDER_BILLING_LIMIT"
+  | "PROVIDER_MODEL_LIMIT"
+  | "PROVIDER_RATE_LIMIT_UNKNOWN"
+  | "PROVIDER_RESPONSE_ENVELOPE_INVALID"
+  | "PROVIDER_STRUCTURED_OUTPUT_MISSING"
+  | "PROVIDER_STRUCTURED_OUTPUT_AMBIGUOUS"
+  | "PROVIDER_OUTPUT_TEXT_MISSING"
+  | "PROVIDER_OUTPUT_JSON_INVALID"
+  | "PROVIDER_OUTPUT_REFUSAL"
+  | "PROVIDER_OUTPUT_SCHEMA_MISMATCH"
+  | "PROVIDER_RESPONSE_PARSE_INTERNAL_ERROR"
   | "PROVIDER_REFUSAL"
   | "INVALID_STRUCTURED_OUTPUT"
   | "INVALID_ENVELOPE"
@@ -33,6 +47,7 @@ export type BeardPhotoErrorCode =
   | "SCHEMA_VALIDATION_FAILED"
   | "CONTRACT_VALIDATION_FAILED"
   | "SEMANTIC_VALIDATION_FAILED"
+  | "SEMANTIC_VALIDATOR_INTERNAL_ERROR"
   | "UNKNOWN_VALIDATION_FAILURE"
   | "ANALYSIS_CANCELLED"
   | "CLEANUP_FAILURE"
@@ -59,6 +74,7 @@ const validationFailures = new Set<BeardPhotoErrorCode>([
   "SCHEMA_VALIDATION_FAILED",
   "CONTRACT_VALIDATION_FAILED",
   "SEMANTIC_VALIDATION_FAILED",
+  "SEMANTIC_VALIDATOR_INTERNAL_ERROR",
   "UNKNOWN_VALIDATION_FAILURE",
 ]);
 const messageFor = (code: BeardPhotoErrorCode) =>
@@ -78,8 +94,36 @@ const messageFor = (code: BeardPhotoErrorCode) =>
         "Private image access could not be verified.",
       PROVIDER_NOT_CONFIGURED: "Beard photo analysis is not configured.",
       PROVIDER_TIMEOUT:
-        "Analysis timed out. No Beard Studio record was changed.",
+        "The analysis took too long, so no result was stored. You may start a new analysis.",
       PROVIDER_RATE_LIMIT: "The analysis limit was reached. Try again later.",
+      PROVIDER_RATE_LIMIT_REQUESTS:
+        "The provider request rate limit was reached. Wait and try again later.",
+      PROVIDER_RATE_LIMIT_TOKENS:
+        "The provider token rate limit was reached. Wait and try again later.",
+      PROVIDER_RATE_LIMIT_UNKNOWN:
+        "The provider returned an unidentified rate limit. Check provider diagnostics before trying again.",
+      PROVIDER_QUOTA_EXHAUSTED:
+        "The OpenAI project quota is exhausted. Correct API billing or project quota before trying again.",
+      PROVIDER_BILLING_LIMIT:
+        "The OpenAI project billing limit was reached. Correct the project billing limit before trying again.",
+      PROVIDER_MODEL_LIMIT:
+        "The selected OpenAI model is not available within the project limit. Correct model access or limits before trying again.",
+      PROVIDER_RESPONSE_ENVELOPE_INVALID:
+        "The provider returned an invalid response envelope.",
+      PROVIDER_STRUCTURED_OUTPUT_MISSING:
+        "The provider response did not contain the required structured result.",
+      PROVIDER_STRUCTURED_OUTPUT_AMBIGUOUS:
+        "The provider returned conflicting structured results.",
+      PROVIDER_OUTPUT_TEXT_MISSING:
+        "The provider response did not contain the expected output text.",
+      PROVIDER_OUTPUT_JSON_INVALID:
+        "The provider output was not valid structured JSON.",
+      PROVIDER_OUTPUT_REFUSAL:
+        "The provider declined to analyze these photos.",
+      PROVIDER_OUTPUT_SCHEMA_MISMATCH:
+        "The provider result did not match the Beard Photo Analysis schema.",
+      PROVIDER_RESPONSE_PARSE_INTERNAL_ERROR:
+        "The provider response could not be processed safely.",
       PROVIDER_REFUSAL: "The provider could not complete this analysis.",
       ANALYSIS_CANCELLED: "Analysis was cancelled before provider execution.",
       CLEANUP_FAILURE: "Temporary image cleanup requires attention.",
