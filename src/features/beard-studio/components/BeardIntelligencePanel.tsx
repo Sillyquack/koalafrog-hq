@@ -6,7 +6,7 @@ import type { ContextEntity, IntelligenceResult } from '../../../intelligence/Sh
 import type { BeardStudioState } from '../../../types/beardStudio'
 import { useActiveWorkspace } from '../../../platform/startup/ActiveWorkspaceContext'
 import { BeardPhotoAnalysisFlow } from './BeardPhotoAnalysisFlow'
-import { BeardAnalysisSupportLookup } from './BeardAnalysisSupportLookup'
+import { BeardAnalysisHistory } from './BeardAnalysisHistory'
 
 const actions: readonly IntelligenceAction[] = [
   { id: 'analyze-beard', label: 'Analyze Beard', kind: 'Analyze', description: 'Review current profile and available records.' },
@@ -38,7 +38,7 @@ export function BeardIntelligencePanel({ state }: { state: BeardStudioState }) {
     userPreferences: { lengthUnit: 'mm' },
   })
   const development = import.meta.env.DEV
-  return <><IntelligencePanel context={context} actions={actions} agents={development?defaultAgents:[]} initialResult={development?mockResult(logs.length):computedResult(logs.length)} title="Beard Intelligence"/><BeardAnalysisSupportLookup workspaceId={workspace?.workspaceId}/><BeardPhotoAnalysisFlow state={state} workspaceId={workspace?.workspaceId}/></>
+  return <><IntelligencePanel context={context} actions={actions} agents={development?defaultAgents:[]} initialResult={development?mockResult(logs.length):computedResult(logs.length)} title="Beard Intelligence"/><BeardPhotoAnalysisFlow state={state} workspaceId={workspace?.workspaceId}/><BeardAnalysisHistory key={workspace?.workspaceId??'local'} workspaceId={workspace?.workspaceId} state={state}/></>
 }
 
 function mockResult(logCount: number): IntelligenceResult {

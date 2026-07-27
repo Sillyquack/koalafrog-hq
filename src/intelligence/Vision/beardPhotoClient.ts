@@ -4,6 +4,7 @@ import {
   type SelectedBeardPhoto,
   validateBeardPhotoFile,
 } from "./beardPhotoAnalysis";
+import type { BeardAnalysisTarget, GroomingSummarySnapshot, TrimPlanSnapshot } from "../../features/beard-studio/domain/beardPhotoIntelligenceV2";
 import {
   type BeardPhotoAnalysisResult,
   type RecommendationReviewStatus,
@@ -146,6 +147,7 @@ export async function runBeardPhotoAnalysis(
     idempotencyKey: string;
     signal?: AbortSignal;
     onStage?: (stage: string) => void;
+    targetStyle?: BeardAnalysisTarget;
   },
 ): Promise<{ result: BeardPhotoAnalysisResult; cleanupWarning?: string }> {
   if (!supabase) {
@@ -238,6 +240,7 @@ export async function runBeardPhotoAnalysis(
         analysisId: input.analysisId,
         idempotencyKey: input.idempotencyKey,
         profileId: input.profileId,
+        targetStyle: input.targetStyle,
         inputs: rows,
       },
     });
@@ -293,6 +296,37 @@ export async function runBeardPhotoAnalysis(
       messageFor("UNEXPECTED_ERROR"),
     );
   }
+}
+
+export interface BeardAnalysisHistoryItem {
+  analysisId:string;supportId:string;createdAt:string;completedAt:string|null;status:'completed'|'completed_cleanup_required'|'failed';
+  targetStyle:BeardAnalysisTarget|null;provider:string|null;model:string|null;overallSummary:string|null;acceptedCount:number;undecidedCount:number;dismissedCount:number;
+  photoQuality:string|null;cleanupState:string;failureCategory:string|null;analysisVersion:string
+}
+export interface ReopenedBeardAnalysis {
+  analysisId:string;supportId:string;status:string;createdAt:string;completedAt?:string|null;targetStyle?:BeardAnalysisTarget|null;
+  result?:BeardPhotoAnalysisResult;summarySnapshot?:GroomingSummarySnapshot|null;trimPlanSnapshot?:TrimPlanSnapshot|null;analysisVersion?:string;
+  decisions?:Array<{recommendationId:string;status:RecommendationReviewStatus}>;errorCode?:string|null
+}
+export async function listBeardAnalysisHistory(workspaceId:string,before?:Pick<BeardAnalysisHistoryItem,'createdAt'|'analysisId'>,limit=20):Promise<BeardAnalysisHistoryItem[]> {
+  if(!supabase)return[]
+  const response=await supabase.rpc('list_beard_analysis_history' as never,{candidate_workspace_id:workspaceId,candidate_limit:limit,candidate_before:before?.createdAt??null,candidate_before_id:before?.analysisId??null} as never)
+  if(response.error)throw new BeardPhotoAnalysisError('NETWORK_FAILURE','Analysis history could not be loaded.')
+  return response.data as unknown as BeardAnalysisHistoryItem[]
+}
+export async function reopenBeardAnalysis(workspaceId:string,analysisId:string):Promise<ReopenedBeardAnalysis> {
+  if(!supabase)throw new BeardPhotoAnalysisError('PROVIDER_NOT_CONFIGURED',messageFor('PROVIDER_NOT_CONFIGURED'))
+  const response=await supabase.rpc('reopen_beard_analysis' as never,{candidate_workspace_id:workspaceId,candidate_analysis_id:analysisId} as never)
+  const data:unknown=response.data
+  if(response.error||!data)throw new BeardPhotoAnalysisError('NETWORK_FAILURE','The analysis could not be reopened.')
+  return data as ReopenedBeardAnalysis
+}
+export async function finishBeardAnalysisReview(workspaceId:string,analysisId:string,recommendations:BeardPhotoAnalysisResult['recommendations'],summary:GroomingSummarySnapshot,plan:TrimPlanSnapshot) {
+  if(!supabase)throw new BeardPhotoAnalysisError('PROVIDER_NOT_CONFIGURED',messageFor('PROVIDER_NOT_CONFIGURED'))
+  const decisions=recommendations.map(item=>({recommendationId:item.id,status:item.status}))
+  const response=await supabase.rpc('finish_beard_analysis_review' as never,{candidate_workspace_id:workspaceId,candidate_analysis_id:analysisId,candidate_decisions:decisions,candidate_summary_snapshot:summary,candidate_trim_plan_snapshot:plan} as never)
+  if(response.error)throw new BeardPhotoAnalysisError('NETWORK_FAILURE','Review decisions and trim plan could not be saved.')
+  return response.data
 }
 
 export async function reviewBeardPhotoRecommendation(
