@@ -34,7 +34,7 @@ Calculator versions are exported as:
 
 ## Formula readiness
 
-A basis is blocked when it has no concrete version, no lines, unresolved ingredient identity, invalid percentages, a non-100% composition, invalid batch parameters, or a volume/count batch unit. Draft versions require owner review.
+A basis is blocked when it has no concrete version, selects a mutable Draft version, has no lines, has unresolved ingredient identity, invalid percentages, a non-100% composition, invalid batch parameters, or a volume/count batch unit. Candidate, Approved, and Retired versions are immutable at the application boundary and may serve as exact bases.
 
 Deodorant additionally requires a recorded structure. Missing functional-role or phase/process metadata remains a visible review reason. The workflow does not invent a deodorant formula or performance claim.
 
@@ -68,6 +68,43 @@ Shipping rules check supplier, active status, destination, currency, and thresho
 
 Original supplier currency is preserved. Base-currency conversion is not performed without a stored rate, source, and timestamp.
 
+## Durable round lifecycle
+
+Production Procurement Rounds are durable owner/workspace records with a conservative lifecycle:
+
+- `draft`: four required product slots exist and may be edited.
+- `blocked`: server-side regeneration found a blocking formula basis.
+- `requirements_ready`: requirements and inventory gaps were generated transactionally.
+- `cancelled`: preserved for audit, locked against editing and regeneration.
+
+Every round begins with explicit Beard Oil, Beard Butter, Beard Balm, and Deodorant slots. These slots intentionally contain no invented Product or Formula selection.
+
+The durable aggregate uses:
+
+- `production_procurement_rounds`
+- `production_procurement_round_products`
+- `production_procurement_requirements`
+- `production_procurement_requirement_sources`
+- `production_procurement_inventory_gaps`
+
+Formula bases preserve the exact Formula Version foreign key, label/status snapshots, and a JSON snapshot of immutable version metadata. Requirement sources preserve exact Product, Formula, Formula Version, Formula Line, phase, contribution, overage, and calculation path.
+
+## Regeneration, revisions, and cancellation
+
+Draft edits and regeneration require the caller's expected revision. The RPC locks the round row and rejects a stale revision without retrying it as a database serialization failure.
+
+Regeneration reads Formula Lines and inventory server-side; client totals are never authoritative. Existing draft requirements, provenance, and gaps are replaced in one transaction, so the same valid basis produces one canonical set without duplicates. A failure rolls back the replacement.
+
+Inventory gaps are point-in-time snapshots. Active mass lots are converted within the mass family only. Quarantined, expired, exhausted, disposed, and outstanding Lab/Production allocations are excluded from usable stock. Incoming unreceived quantity remains nullable and never reduces the purchasing gap.
+
+Cancellation is explicit and revision guarded. It changes no formula, supplier, purchase-plan, lot, or movement record.
+
+## Security boundary
+
+All durable tables carry `workspace_id` and `owner_id`, enforce composite workspace foreign keys, enable RLS, and expose only owner-scoped reads to authenticated clients. Direct client insert/update/delete is denied; writes use guarded transactional RPCs.
+
+The RPCs derive identity from `auth.uid()`, require an active owned workspace, lock mutable rounds, validate every Product/Formula/Version/Ingredient reference inside the workspace, use a fixed search path, revoke public/anonymous execution, and grant execution only to authenticated users.
+
 ## Approval, ordering, and receiving semantics
 
 The existing `purchase_plans`, `purchase_plan_lines`, cart scenarios, external-order RPC, Supplier Events, Supplier Products, supplier offers, and receiving ledger are the intended downstream boundaries.
@@ -82,8 +119,8 @@ Production readiness should create or link existing procurement requested items 
 
 ## Known limitations and next slices
 
-- The current page derives a draft round from the active workspace state; durable round, requirement, match, scenario, and approval tables/RPCs remain to be added.
-- General stock reservations are not yet a first-class aggregate; only execution allocations exist.
+- The durable workflow now persists rounds, exact formula bases, requirements, sources, and inventory gaps; matches, cross-supplier scenarios, and approval snapshots remain future slices.
+- General stock reservations are not yet a first-class aggregate; outstanding Lab and Production allocations are recorded as allocated stock, while `reserved_quantity` remains zero.
 - Requirement-to-Supplier Product matching and purchasing specifications need the durable match slice.
 - Cross-supplier optimizer publication and immutable approval snapshots need the scenario/approval slice.
 - Weight-tier shipping, exclusions, dangerous-goods handling, landed-cost ranges, and exchange-rate snapshots need commercial schema extensions.

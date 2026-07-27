@@ -1,0 +1,31 @@
+import { readFileSync } from 'node:fs'
+import { describe, expect, it } from 'vitest'
+
+const page=readFileSync(new URL('./ProductionReadinessPage.tsx',import.meta.url),'utf8')
+const css=readFileSync(new URL('../../../styles/index.css',import.meta.url),'utf8')
+
+describe('durable Production Readiness UI contract',()=>{
+  it('keeps the four-product scope and deodorant mandatory',()=>{
+    for(const label of ['Beard Oil','Beard Butter','Beard Balm','Deodorant'])expect(page).toContain(label)
+    expect(page).toContain('mandatory')
+    expect(page).toContain('deodorantStructure')
+  })
+  it('supports create, reopen, save, regenerate, revision feedback, requirements, gaps, and explicit cancellation',()=>{
+    for(const operation of ['createProductionRound','listProductionRounds','loadProductionRound','saveProductionRound','regenerateProductionRound','cancelProductionRound'])expect(page).toContain(operation)
+    expect(page).toContain('Draft revision')
+    expect(page).toContain('Requirements and inventory gap')
+    expect(page).toContain("window.confirm('Cancel this production procurement round?")
+  })
+  it('distinguishes unknown, zero, and not-calculated states accessibly',()=>{
+    expect(page).toContain("'Unknown'")
+    expect(page).toContain('Not calculated')
+    expect(page).toContain('role="alert"')
+    expect(page).toContain('role="status"')
+  })
+  it('has a 390px-compatible single-column layout and full-width keyboard buttons',()=>{
+    expect(css).toContain('@media(max-width:520px)')
+    expect(css).toContain('.readiness-round-meta{grid-template-columns:1fr}')
+    expect(css).toContain('.readiness-actions .button{width:100%}')
+    expect(page).not.toContain('tabIndex={-1}')
+  })
+})

@@ -17,6 +17,7 @@ if(process.argv[2]==='orphans'){
   if(!id)throw new Error('Usage: node scripts/browser-test-owner.mjs delete <user-id>')
   if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id))throw new Error('Browser test owner ID must be a UUID.')
   const cleanup=`begin;
+delete from public.production_procurement_rounds where owner_id='${id}'::uuid;
 delete from public.procurement_recommendations where owner_id='${id}'::uuid;
 delete from public.procurement_offer_candidates where owner_id='${id}'::uuid;
 delete from public.procurement_research_jobs where owner_id='${id}'::uuid;

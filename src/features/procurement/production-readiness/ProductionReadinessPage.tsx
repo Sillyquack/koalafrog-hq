@@ -1,90 +1,58 @@
-import { useMemo, useState } from 'react'
-import { AlertTriangle, CheckCircle2, LockKeyhole, ShoppingBasket } from 'lucide-react'
+/* eslint-disable react-hooks/set-state-in-effect -- durable aggregate hydration follows route/workspace changes */
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { AlertTriangle, CheckCircle2, LockKeyhole, Plus, RefreshCw, Save, ShoppingBasket, XCircle } from 'lucide-react'
+import { useNavigate, useParams } from 'react-router-dom'
 import { PageHeader } from '../../../components/ui/PageHeader'
+import { useActiveWorkspace } from '../../../platform/startup/ActiveWorkspaceContext'
 import { useFormulaData } from '../../formulas/state/FormulaDataContext'
-import { calculateInventoryGap, formulaReadiness, generateRequirements, REQUIRED_PRODUCTION_CATEGORIES, type ProductionCategory, type RoundProductBasis } from './domain/productionReadiness'
+import {
+  cancelProductionRound, createProductionRound, listProductionRounds, loadProductionRound, regenerateProductionRound,
+  saveProductionRound, type DurableRoundAggregate, type RoundProductSelection,
+} from './data/productionReadinessRepository'
+import { formulaReadiness, REQUIRED_PRODUCTION_CATEGORIES, type ProductionCategory, type RoundProductBasis } from './domain/productionReadiness'
 
-const labels: Record<ProductionCategory, string> = { beard_oil: 'Beard Oil', beard_butter: 'Beard Butter', beard_balm: 'Beard Balm', deodorant: 'Deodorant' }
-const categoryMatches = (category: ProductionCategory, value: string) => {
-  const normalized = value.toLowerCase().replace(/[^a-z]+/g, ' ')
-  return category === 'deodorant' ? normalized.includes('deodorant') : normalized.includes(category.replace('_', ' '))
-}
+const labels:Record<ProductionCategory,string>={beard_oil:'Beard Oil',beard_butter:'Beard Butter',beard_balm:'Beard Balm',deodorant:'Deodorant'}
+const categoryMatches=(category:ProductionCategory,value:string)=>{const normalized=value.toLowerCase().replace(/[^a-z]+/g,' ');return category==='deodorant'?normalized.includes('deodorant'):normalized.includes(category.replace('_',' '))}
+const blankSelection=(category:ProductionCategory):RoundProductSelection=>({category,productId:null,formulaVersionId:null,batchCount:1,batchSize:100,batchUnit:'g',overagePercent:5,expectedYield:null,deodorantStructure:null})
 
-export function ProductionReadinessPage() {
-  const data = useFormulaData()
-  const [selectedVersions, setSelectedVersions] = useState<Record<string, string>>({})
-  const [batchSizes, setBatchSizes] = useState<Record<string, number>>({})
-  const [overages, setOverages] = useState<Record<string, number>>({})
-  const [generated, setGenerated] = useState(false)
-  const bases = useMemo(() => REQUIRED_PRODUCTION_CATEGORIES.map(category => {
-    const product = data.products.find(item => categoryMatches(category, `${item.name} ${item.category}`))
-    const formulas = product ? data.formulas.filter(item => item.productId === product.id) : []
-    const versions = data.formulaVersions.filter(item => formulas.some(formula => formula.id === item.formulaId))
-    const preferredId = selectedVersions[category] || product?.currentApprovedFormulaVersionId || product?.currentDevelopmentFormulaVersionId
-    const formulaVersion = versions.find(item => item.id === preferredId) ?? versions.find(item => item.status === 'Approved') ?? versions[0]
-    return { category, product, formulas, versions, formulaVersion }
-  }), [data.products, data.formulas, data.formulaVersions, selectedVersions])
-  const roundBases: RoundProductBasis[] = bases.filter(item => item.product).map(item => ({
-    product: item.product!,
-    category: item.category,
-    formulaVersion: item.formulaVersion,
-    formulaLines: data.formulaLines.filter(line => line.formulaVersionId === item.formulaVersion?.id),
-    ingredients: data.ingredients,
-    batchCount: 1,
-    batchSize: batchSizes[item.category] ?? 100,
-    batchUnit: 'g',
-    overagePercent: overages[item.category] ?? 5,
-    deodorantStructure: item.category === 'deodorant' ? (item.formulaVersion?.phaseDefinitions?.length ? 'other' : undefined) : undefined,
-  }))
-  const missingProducts = bases.filter(item => !item.product)
-  const calculation = generateRequirements(roundBases)
-  const requirements = generated ? calculation.requirements : []
-  const gaps = requirements.map(requirement => ({ requirement, gap: calculateInventoryGap({ requirement, lots: data.inventoryLots, movements: data.inventoryMovements }) }))
-  const readiness = roundBases.map(basis => ({ basis, result: formulaReadiness(basis) }))
-  const blocked = missingProducts.length + readiness.filter(item => item.result.state === 'blocked').length
+export function ProductionReadinessPage(){
+  const workspace=useActiveWorkspace(),data=useFormulaData(),navigate=useNavigate(),{roundId}=useParams()
+  const[rounds,setRounds]=useState<Array<{id:string;title:string;status:string;revision:number;updated_at:string}>>([]),[aggregate,setAggregate]=useState<DurableRoundAggregate>(),[selections,setSelections]=useState<RoundProductSelection[]>(REQUIRED_PRODUCTION_CATEGORIES.map(blankSelection))
+  const[title,setTitle]=useState('First production round'),[notes,setNotes]=useState(''),[message,setMessage]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false)
+  const refresh=useCallback(async()=>{if(!workspace)return;try{const list=await listProductionRounds(workspace.workspaceId);setRounds(list);if(roundId){const loaded=await loadProductionRound(workspace.workspaceId,roundId);setAggregate(loaded);setTitle(loaded.round.title);setNotes(loaded.round.notes);setSelections(REQUIRED_PRODUCTION_CATEGORIES.map(category=>{const row=loaded.products.find(item=>item.category===category);return row?{category,productId:row.product_id,formulaVersionId:row.formula_version_id,batchCount:row.planned_batch_count,batchSize:row.batch_size,batchUnit:row.batch_unit,overagePercent:row.overage_percentage,expectedYield:row.expected_yield,deodorantStructure:row.deodorant_structure}:blankSelection(category)}))}else setAggregate(undefined);setError('')}catch(cause){setError(cause instanceof Error?cause.message:'Production round unavailable.')}},[workspace,roundId])
+  useEffect(()=>void refresh(),[refresh])
+  const updateSelection=(category:ProductionCategory,patch:Partial<RoundProductSelection>)=>setSelections(current=>current.map(item=>item.category===category?{...item,...patch}:item))
+  const productOptions=useMemo(()=>Object.fromEntries(REQUIRED_PRODUCTION_CATEGORIES.map(category=>[category,data.products.filter(product=>categoryMatches(category,`${product.name} ${product.category}`))])) as Record<ProductionCategory,typeof data.products>,[data])
+  const preview=selections.map(selection=>{const product=data.products.find(item=>item.id===selection.productId),formulas=data.formulas.filter(item=>item.productId===product?.id),versions=data.formulaVersions.filter(item=>formulas.some(formula=>formula.id===item.formulaId)),version=versions.find(item=>item.id===selection.formulaVersionId);const basis:RoundProductBasis|undefined=product?{product,category:selection.category,formulaVersion:version,formulaLines:data.formulaLines.filter(line=>line.formulaVersionId===version?.id),ingredients:data.ingredients,batchCount:selection.batchCount,batchSize:selection.batchSize,batchUnit:selection.batchUnit,overagePercent:selection.overagePercent,deodorantStructure:selection.category==='deodorant'?(selection.deodorantStructure as RoundProductBasis['deodorantStructure']):undefined}:undefined;return{selection,product,versions,basis,result:basis?formulaReadiness(basis):{state:'blocked' as const,reasons:[`Select the required ${labels[selection.category]} product.`]}}})
+  const readyCount=preview.filter(item=>item.result.state!=='blocked').length,blockedCount=4-readyCount
+  const gapsByRequirement=new Map(aggregate?.gaps.map(gap=>[gap.requirement_id,gap])??[])
+  const create=async()=>{if(!workspace)return;setBusy(true);try{const id=await createProductionRound(workspace.workspaceId,'First production round');navigate(`/procurement/production-readiness/${id}`)}catch(cause){setError(cause instanceof Error?cause.message:'Could not create round.')}finally{setBusy(false)}}
+  const save=async(showMessage=true)=>{if(!aggregate)return null;const revision=await saveProductionRound(aggregate.round,title,notes,selections);const updated={...aggregate.round,revision};setAggregate(current=>current?{...current,round:updated}:current);if(showMessage)setMessage(`Draft saved at revision ${revision}.`);return updated}
+  const generate=async()=>{if(!aggregate)return;setBusy(true);setMessage('');try{const saved=await save(false);if(!saved)return;const revision=await regenerateProductionRound(saved);setMessage(blockedCount?`Readiness remains blocked at revision ${revision}; resolve the reasons below.`:`Requirements regenerated transactionally at revision ${revision}.`);await refresh()}catch(cause){setError(cause instanceof Error?cause.message:'Could not regenerate requirements.')}finally{setBusy(false)}}
+  const cancel=async()=>{if(!aggregate||!window.confirm('Cancel this production procurement round? It will remain available for audit and cannot be regenerated.'))return;setBusy(true);try{await cancelProductionRound(aggregate.round);setMessage('Round cancelled. No inventory or purchasing records were changed.');await refresh()}catch(cause){setError(cause instanceof Error?cause.message:'Could not cancel round.')}finally{setBusy(false)}}
 
+  if(!workspace)return <section className="panel procurement-state" role="alert"><h1>Durable workspace required</h1><p>Production Readiness is an owner-scoped Supabase workflow. Activate the Supabase workspace repository to create or reopen rounds.</p></section>
+  if(!roundId)return <div className="production-readiness"><PageHeader eyebrow="Procurement / durable first-production planning" title="Production readiness rounds" description="Create or reopen an owner-controlled four-product planning round." action={<button className="button primary" disabled={busy} onClick={()=>void create()}><Plus size={15}/>New round</button>}/>{error&&<p className="form-message" role="alert">{error}</p>}<section className="readiness-round-list">{rounds.map(round=><button className="panel" key={round.id} onClick={()=>navigate(`/procurement/production-readiness/${round.id}`)}><span className="eyebrow">{round.status} · revision {round.revision}</span><strong>{round.title}</strong><small>Updated {new Date(round.updated_at).toLocaleString()}</small></button>)}{!rounds.length&&!error&&<article className="panel"><h2>No production rounds</h2><p>Create the first durable planning round. No formula selections are seeded automatically.</p></article>}</section></div>
+  if(!aggregate)return <section className="panel procurement-state">{error?<><h1>Round unavailable</h1><p role="alert">{error}</p></>:<p>Loading production round…</p>}</section>
+  const cancelled=aggregate.round.status==='cancelled'
   return <div className="production-readiness">
-    <PageHeader eyebrow="Procurement / first production round" title="Production readiness" description="Bind exact formula versions to a reproducible raw-material plan. Planning and approval never place orders or create stock." />
-    <div className="operational-notice"><LockKeyhole /><p>Four products are mandatory · formula identity is exact · mass and volume never convert silently · ordering remains manual.</p></div>
+    <PageHeader eyebrow={`Procurement / durable round / revision ${aggregate.round.revision}`} title={aggregate.round.title} description="Exact formula bases, requirements, and inventory gaps persist as owner-scoped draft snapshots." action={<button className="button ghost" onClick={()=>navigate('/procurement/production-readiness')}>All rounds</button>}/>
+    <div className="operational-notice"><LockKeyhole/><p>Four products are mandatory · persisted calculations are server-generated · no purchase plan, supplier match, or stock is created.</p></div>
+    {message&&<p className="form-message" role="status">{message}</p>}{error&&<p className="form-message" role="alert">{error}</p>}
+    <section className="panel readiness-round-meta"><label>Round title<input value={title} disabled={cancelled} onChange={event=>setTitle(event.target.value)}/></label><label>Notes<textarea value={notes} disabled={cancelled} rows={2} onChange={event=>setNotes(event.target.value)}/></label></section>
     <section className="readiness-summary" aria-label="Round summary">
-      <article><strong>4</strong><span>Products in scope</span></article>
-      <article><strong>{readiness.filter(item => item.result.state !== 'blocked').length}/4</strong><span>Formula basis available</span></article>
-      <article><strong>{requirements.length || '—'}</strong><span>Ingredients required</span></article>
-      <article><strong>{blocked}</strong><span>Blocking products</span></article>
-      <article><strong>{generated ? gaps.filter(item => item.gap.purchasingGap > 0).length : '—'}</strong><span>Purchasing gaps</span></article>
+      <article><strong>4</strong><span>Required products</span></article><article><strong>{readyCount}/4</strong><span>Formula bases ready/review</span></article><article><strong>{blockedCount}</strong><span>Blocked products</span></article>
+      <article><strong>{aggregate.requirements.length}</strong><span>Consolidated ingredients</span></article><article><strong>{aggregate.gaps.filter(gap=>gap.purchasing_gap>0).length}</strong><span>Purchasing gaps</span></article>
+      <article><strong>{aggregate.gaps.reduce((sum,gap)=>sum+gap.net_usable_quantity,0).toFixed(2)} g</strong><span>Usable stock contribution</span></article><article><strong>{aggregate.round.last_calculated_at?new Date(aggregate.round.last_calculated_at).toLocaleString():'Not calculated'}</strong><span>Last calculated</span></article><article><strong>{aggregate.round.revision}</strong><span>Draft revision</span></article><article><strong>{aggregate.round.status.replace('_',' ')}</strong><span>Overall state</span></article>
     </section>
-
-    <section aria-labelledby="scope-title">
-      <header className="section-header"><div><span className="eyebrow">Stage 1–2</span><h2 id="scope-title">Scope and formula readiness</h2></div></header>
-      <div className="readiness-products">
-        {bases.map(item => {
-          if (!item.product) return <article className="panel readiness-product blocked" key={item.category}><AlertTriangle /><span className="eyebrow">{labels[item.category]}</span><h3>Product missing</h3><p>Create or identify the {labels[item.category]} Product before procurement can continue.</p></article>
-          const basis = roundBases.find(entry => entry.category === item.category)!
-          const result = formulaReadiness(basis)
-          return <article className={`panel readiness-product ${result.state}`} key={item.category}>
-            {result.state === 'ready' ? <CheckCircle2 /> : <AlertTriangle />}
-            <span className="eyebrow">{labels[item.category]} · mandatory</span><h3>{item.product.name}</h3>
-            <label>Formula version<select value={item.formulaVersion?.id ?? ''} onChange={event => { setSelectedVersions(current => ({ ...current, [item.category]: event.target.value })); setGenerated(false) }}><option value="">Select version</option>{item.versions.map(version => <option key={version.id} value={version.id}>{version.version} · {version.status}</option>)}</select></label>
-            <div className="readiness-batch"><label>Batch size (g)<input type="number" min="0.001" value={batchSizes[item.category] ?? 100} onChange={event => { setBatchSizes(current => ({ ...current, [item.category]: Number(event.target.value) })); setGenerated(false) }} /></label><label>Overage %<input type="number" min="0" value={overages[item.category] ?? 5} onChange={event => { setOverages(current => ({ ...current, [item.category]: Number(event.target.value) })); setGenerated(false) }} /></label></div>
-            <strong className="readiness-state">{result.state.replace('_', ' ')}</strong>
-            {result.reasons.length ? <ul>{result.reasons.map(reason => <li key={reason}>{reason}</li>)}</ul> : <p>Composition reconciles and scales deterministically from this immutable basis.</p>}
-          </article>
-        })}
-      </div>
-      <button className="button primary" disabled={blocked > 0} onClick={() => setGenerated(true)}><ShoppingBasket size={15} />Generate requirements</button>
-      {blocked > 0 && <p className="form-message" role="alert">Requirement generation is blocked by {blocked} product {blocked === 1 ? 'basis' : 'bases'}. Resolve the explicit reasons above; no assumptions will be invented.</p>}
+    <section aria-labelledby="scope-title"><header className="section-header"><div><span className="eyebrow">Durable basis</span><h2 id="scope-title">Four-product scope</h2></div></header><div className="readiness-products">{preview.map(({selection,product,versions,result})=><article className={`panel readiness-product ${result.state}`} key={selection.category}>{result.state==='ready'?<CheckCircle2/>:<AlertTriangle/>}<span className="eyebrow">{labels[selection.category]} · mandatory</span><h3>{product?.name??'Product not selected'}</h3>
+      <label>Product<select disabled={cancelled} value={selection.productId??''} onChange={event=>updateSelection(selection.category,{productId:event.target.value||null,formulaVersionId:null})}><option value="">Select product</option>{productOptions[selection.category].map(item=><option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+      <label>Formula version<select disabled={cancelled||!product} value={selection.formulaVersionId??''} onChange={event=>updateSelection(selection.category,{formulaVersionId:event.target.value||null})}><option value="">Select version</option>{versions.map(version=><option key={version.id} value={version.id}>{version.version} · {version.status}</option>)}</select></label>
+      <div className="readiness-batch"><label>Batch count<input disabled={cancelled} type="number" min="1" value={selection.batchCount} onChange={event=>updateSelection(selection.category,{batchCount:Number(event.target.value)})}/></label><label>Batch size<input disabled={cancelled} type="number" min=".001" value={selection.batchSize} onChange={event=>updateSelection(selection.category,{batchSize:Number(event.target.value)})}/></label><label>Unit<select disabled={cancelled} value={selection.batchUnit} onChange={event=>updateSelection(selection.category,{batchUnit:event.target.value as RoundProductSelection['batchUnit']})}>{['mg','g','kg','ml','L','pcs'].map(unit=><option key={unit}>{unit}</option>)}</select></label><label>Overage %<input disabled={cancelled} type="number" min="0" max="100" value={selection.overagePercent} onChange={event=>updateSelection(selection.category,{overagePercent:Number(event.target.value)})}/></label></div>
+      {selection.category==='deodorant'&&<label>Deodorant structure<select disabled={cancelled} value={selection.deodorantStructure??''} onChange={event=>updateSelection(selection.category,{deodorantStructure:event.target.value||null})}><option value="">Unknown — blocks generation</option>{['anhydrous','emulsion','suspension','other'].map(value=><option key={value}>{value}</option>)}</select></label>}
+      <strong className="readiness-state">{result.state.replace('_',' ')}</strong>{result.reasons.length?<ul>{result.reasons.map(reason=><li key={reason}>{reason}</li>)}</ul>:<p>Composition reconciles and scales deterministically.</p>}</article>)}</div>
+      {!cancelled&&<div className="readiness-actions"><button className="button ghost" disabled={busy} onClick={()=>void save()}><Save size={15}/>Save draft</button><button className="button primary" disabled={busy} onClick={()=>void generate()}><RefreshCw size={15}/>Save and regenerate</button><button className="button ghost danger" disabled={busy} onClick={()=>void cancel()}><XCircle size={15}/>Cancel round</button></div>}
     </section>
-
-    {generated && <section aria-labelledby="requirements-title">
-      <header className="section-header"><div><span className="eyebrow">Stage 3–4</span><h2 id="requirements-title">Consolidated requirements and inventory gap</h2></div></header>
-      <div className="readiness-requirements">
-        {gaps.map(({ requirement, gap }) => <article className="panel" key={`${requirement.ingredientId}:${requirement.unit}`}>
-          <div><span className="eyebrow">{requirement.sources.length} formula contributions</span><h3>{requirement.ingredientName}</h3><p>{requirement.sources.map(source => `${source.productName} ${source.totalQuantity} ${source.unit}`).join(' · ')}</p></div>
-          <dl><div><dt>Required</dt><dd>{gap.required} {gap.unit}</dd></div><div><dt>Usable stock</dt><dd>{gap.usableAvailable} {gap.unit}</dd></div><div><dt>Quarantined / expired</dt><dd>{gap.quarantined + gap.expired} {gap.unit}</dd></div><div><dt>Purchase gap</dt><dd>{gap.purchasingGap} {gap.unit}</dd></div></dl>
-        </article>)}
-        {!gaps.length && <article className="panel"><h3>No requirements generated</h3><p>The selected formulas contain no purchasable ingredient requirements.</p></article>}
-      </div>
-      <p className="readiness-boundary"><strong>Next gate:</strong> each non-zero gap needs an explicitly accepted Supplier Product, integer package selection, documented commercial assumptions, and a complete basket before approval. Unknown shipping, tax, duty, documentation, stock, or freshness remains unresolved.</p>
-    </section>}
+    <section aria-labelledby="requirements-title"><header className="section-header"><div><span className="eyebrow">Persisted snapshot</span><h2 id="requirements-title">Requirements and inventory gap</h2></div></header><div className="readiness-requirements">{aggregate.requirements.map(requirement=>{const gap=gapsByRequirement.get(requirement.id);return <article className="panel" key={requirement.id}><div><span className="eyebrow">Canonical ingredient · {requirement.calculation_version}</span><h3>{requirement.ingredient_name_snapshot}</h3><p>Base {requirement.required_quantity} {requirement.purchasing_unit} · overage {requirement.overage_quantity} {requirement.purchasing_unit}</p></div><dl><div><dt>Required</dt><dd>{requirement.total_planned_quantity} {requirement.purchasing_unit}</dd></div><div><dt>Usable stock</dt><dd>{gap?`${gap.net_usable_quantity} ${gap.unit}`:'Unknown'}</dd></div><div><dt>Quarantined / expired</dt><dd>{gap?`${gap.quarantined_quantity+gap.expired_quantity} ${gap.unit}`:'Unknown'}</dd></div><div><dt>Purchase gap</dt><dd>{gap?`${gap.purchasing_gap} ${gap.unit}`:'Unknown'}</dd></div></dl></article>})}{!aggregate.requirements.length&&<article className="panel"><ShoppingBasket/><h3>Not calculated</h3><p>Save the four exact formula bases, then regenerate. Calculated zero and unknown are never displayed as the same state.</p></article>}</div></section>
   </div>
 }
