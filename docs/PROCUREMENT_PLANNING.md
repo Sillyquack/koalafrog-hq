@@ -220,3 +220,12 @@ Quote lines retain supplier currency. Merchandise, shipping, duties, tax, paymen
 Lifecycle: Draft → Ready for review → Approved internally → Ordered externally → Partially received → Received. Cancelled and Archived are explicit terminal paths. “Approved internally” is not an external order. “Ordered externally” only records that a human placed the order elsewhere.
 
 Creating or reviewing a plan creates no Inventory Lot, Inventory Movement, packaging lot, payable, payment, or external transaction. Receipt automation is deliberately deferred behind a future explicit transactional review boundary; current receipts continue through their authoritative domain workflows.
+## Semantic lifecycle boundary
+
+Purchase Plans are internal decisions and never mean ordered or received. External execution uses a distinct Purchase Order and immutable Purchase Order Lines:
+
+`Purchase Plan → explicit order handoff → Purchase Order → future Receipt → Inventory Lot`
+
+Creating an order is explicit and idempotent. Recording placement only documents an external action already performed by the owner. Neither action creates stock, a receipt, a payment, incoming-goods truth, or consumes a discount.
+
+Historical plan statuses that previously represented ordering or receipt are preserved as linked Purchase Orders. Legacy line receipt quantities are review metadata only; Inventory Movements remain the sole stock truth.

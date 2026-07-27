@@ -107,11 +107,11 @@ The RPCs derive identity from `auth.uid()`, require an active owned workspace, l
 
 ## Approval, ordering, and receiving semantics
 
-The existing `purchase_plans`, `purchase_plan_lines`, cart scenarios, external-order RPC, Supplier Events, Supplier Products, supplier offers, and receiving ledger are the intended downstream boundaries.
+Purchase Plans now represent internal purchasing decisions only. Their lifecycle contains no ordered, shipped, or received state. Approval and checkout verification remain future controlled transitions over this internal record.
 
-The remaining persistence slice must add a production-round aggregate and transactional requirement/scenario/approval snapshots. Approval must preserve exact source versions, inventory and commercial assumptions, warnings, provenance, and calculator versions. Later price or stock changes must not recalculate that historical snapshot.
+External execution is represented by `purchase_orders` and immutable `purchase_order_lines`. An eligible internal plan creates no order automatically. The explicit plan-to-order RPC snapshots the plan and supplier data into a draft order; a separate placement RPC records an order that the owner already placed outside Koalafrog.
 
-External ordering remains an explicit owner record through the existing purchase-plan transition. Receiving remains the only operation that can create a raw-material lot and Receipt movement.
+No Purchase Order creates receipts, inventory lots, movements, incoming-stock claims, payments, or discount consumption. Receiving remains a separate future execution boundary, and Inventory Movements remain stock truth.
 
 ## Research automation
 
@@ -155,3 +155,20 @@ The commercial schema extends the existing discount and shipping records rather 
 Unknown shipping, tax, import VAT, customs, handling, or conversion remain unknown and prevent a confirmed or aggregate base-currency total. Original currency totals always remain inspectable. Stored currency rates retain source and effective time; no conversion is fabricated. Research actions remain explicit handoffs to the existing procurement research workflow and never run on page load or scenario reopen.
 
 Scenario feasibility requires every purchasing gap to have a selected, workspace-valid Supplier Product and valid package coverage. Missing selections create durable incomplete scenarios with blockers rather than fake totals. Warnings may include stale prices/stock, checkout shipping, optional documentation, and import verification. This slice deliberately excludes approval, Purchase Plan creation, external ordering, discount consumption, receiving, and inventory mutation.
+
+## Procurement semantic separation
+
+The canonical lifecycle is:
+
+`Production Procurement Round → Published Scenario → Purchase Plan → Purchase Order → Receipt → Inventory Lot`
+
+- Purchase Plan: internal intent, approval, verification, supersession, and cancellation.
+- Purchase Order: an explicit supplier-specific execution snapshot, initially draft and separately recorded as placed.
+- Receipt: accepted/rejected delivery quantities and inspection evidence. No standalone durable Receipt entity exists yet.
+- Inventory Lot: created only through the existing inventory boundary, never by planning or ordering.
+
+Legacy `ordered_external`, `partially_received`, and `received` plans are migrated conservatively. Their internal plan survives as `approved`; a linked Purchase Order retains the external status, monetary fields, dates, and legacy key. Line-level received quantities are copied into non-authoritative `legacy_received_quantity` metadata and flagged for receiving review. Existing supplier events are relinked to the Purchase Order without replaying events, receipts, lots, or movements.
+
+`purchase_plan_lines.received_quantity` remains temporarily for migration compatibility, is deprecated, and is neither writable nor read as receipt truth. It can be removed after a dedicated Receipt model has reconciled every historical record.
+
+The compatibility boundary is intentionally narrow: legacy history is inspectable, but new external execution uses only Purchase Orders. Provider calls, live checkout, payment, shipment creation, receiving, inventory creation, discount consumption, deployment, and remote migration remain excluded.
