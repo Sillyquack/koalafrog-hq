@@ -8,6 +8,10 @@ test.afterEach(()=>{
  for(const prefix of createdPrefixes.splice(0)){
   if(!/^pic-[0-9a-f-]+$/i.test(prefix))throw new Error('Unsafe Production Inventory Control fixture prefix.')
   const cleanup=`begin;set local session_replication_role=replica;
+delete from public.finished_goods_lot_events where production_run_id like '${prefix}%';
+delete from public.finished_goods_quarantines where packaging_run_id in(select id from public.packaging_runs where production_run_id like '${prefix}%');
+delete from public.finished_goods_lots where production_run_id like '${prefix}%';
+delete from public.packaged_output_reconciliations where packaging_run_id in(select id from public.packaging_runs where production_run_id like '${prefix}%');
 delete from public.packaging_run_events where production_run_id like '${prefix}%';
 delete from public.packaging_run_reconciliations where packaging_run_id in(select id from public.packaging_runs where production_run_id like '${prefix}%');
 delete from public.packaging_run_inventory_uses where packaging_run_id in(select id from public.packaging_runs where production_run_id like '${prefix}%');
@@ -213,10 +217,40 @@ test('Production controlled-material workspace completes a multi-lot controlled 
  await expect(packaging.getByText('Ready to complete Packaging Run')).toBeVisible()
  await packaging.getByRole('button',{name:'Complete Packaging Run'}).click()
  await expect(packaging.locator('.completion-readiness strong')).toHaveText('Ready for Finished Goods Lot Creation')
+ const finishedGoods=packaging.locator('.finished-goods-handoff')
+ await expect(finishedGoods.getByText('Lot creation blocked')).toBeVisible()
+ const packagedOutput=finishedGoods.locator('details').filter({hasText:'Record packaged-output reconciliation'}).first()
+ await packagedOutput.locator('summary').click()
+ await packagedOutput.getByLabel('Total').fill('10')
+ await packagedOutput.getByLabel('Accepted').fill('10')
+ await packagedOutput.getByLabel('Evidence').fill('packaged-count:e2e')
+ await packagedOutput.getByRole('button',{name:'Record authoritative reconciliation'}).click()
+ await expect(finishedGoods.getByText('Ready for quarantined lot creation')).toBeVisible()
+ const createLot=async(quantity:string,code:string)=>{
+  const form=finishedGoods.locator('details').filter({hasText:'Create Finished Goods Lot'}).first()
+  if((await form.getAttribute('open'))===null)await form.locator('summary').click()
+  await form.getByLabel('Lot quantity').fill(quantity)
+  await form.getByLabel('Consumer batch code (optional)').fill(code)
+  await form.getByLabel('This creates an immutable Finished Goods Lot in quarantine. It does not release inventory for sale.').check()
+  await form.getByRole('button',{name:'Create quarantined Finished Goods Lot'}).click()
+ }
+ await createLot('6','KF-E2E-FG-01')
+ await expect(finishedGoods.locator('.material-totals dt:has-text("Remaining accepted") + dd')).toHaveText('4 pcs')
+ await page.reload()
+ await expect(page.locator('.finished-goods-handoff')).toContainText('KF-E2E-FG-01')
+ await createLot('4','KF-E2E-FG-02')
+ await expect(page.locator('.finished-goods-handoff')).toContainText('Accepted output fully converted')
+ const firstLotLink=page.locator('.finished-goods-lot-list').getByRole('link',{name:'Open genealogy'}).first()
+ await firstLotLink.click()
+ await expect(page.locator('.batch-source').getByText('Inspection required',{exact:true})).toBeVisible()
+ await expect(page.getByText('No saleable inventory or quality release exists.')).toBeVisible()
+ await expect(page.getByRole('heading',{name:'Backward genealogy'})).toBeVisible()
+ await expect(page.getByRole('button',{name:/release/i})).toHaveCount(0)
+ await page.goBack()
  await page.reload()
  await expect(page.locator('.packaging-run-workspace .completion-readiness strong')).toHaveText('Ready for Finished Goods Lot Creation')
  await expect(page.locator('.packaging-run-card')).toContainText('completed')
- await expect(page.getByText('No Finished Goods inventory',{exact:false})).toBeVisible()
+ await expect(page.locator('.finished-goods-lot-list')).toContainText('KF-E2E-FG-02')
  await expect(page.locator('body')).toHaveJSProperty('scrollWidth',await page.locator('body').evaluate(body=>body.clientWidth))
 })
 
