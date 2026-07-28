@@ -6068,6 +6068,893 @@ export type Database = {
           },
         ]
       }
+      packaging_run_bulk_allocations: {
+        Row: {
+          allocated_at: string
+          allocated_by: string
+          allocated_quantity: number
+          allocation_method: string
+          id: string
+          idempotency_key: string
+          normalized_quantity: number
+          normalized_unit: string
+          output_available_after_snapshot: number
+          output_available_before_snapshot: number
+          owner_id: string
+          packaging_run_id: string
+          payload_fingerprint: string
+          production_output_id: string
+          release_idempotency_key: string | null
+          release_payload_fingerprint: string | null
+          released_at: string | null
+          released_by: string | null
+          revision: number
+          status: string
+          transferred_normalized_quantity: number
+          unit: string
+          workspace_id: string
+        }
+        Insert: {
+          allocated_at: string
+          allocated_by: string
+          allocated_quantity: number
+          allocation_method: string
+          id?: string
+          idempotency_key: string
+          normalized_quantity: number
+          normalized_unit: string
+          output_available_after_snapshot: number
+          output_available_before_snapshot: number
+          owner_id: string
+          packaging_run_id: string
+          payload_fingerprint: string
+          production_output_id: string
+          release_idempotency_key?: string | null
+          release_payload_fingerprint?: string | null
+          released_at?: string | null
+          released_by?: string | null
+          revision?: number
+          status?: string
+          transferred_normalized_quantity?: number
+          unit: string
+          workspace_id: string
+        }
+        Update: {
+          allocated_at?: string
+          allocated_by?: string
+          allocated_quantity?: number
+          allocation_method?: string
+          id?: string
+          idempotency_key?: string
+          normalized_quantity?: number
+          normalized_unit?: string
+          output_available_after_snapshot?: number
+          output_available_before_snapshot?: number
+          owner_id?: string
+          packaging_run_id?: string
+          payload_fingerprint?: string
+          production_output_id?: string
+          release_idempotency_key?: string | null
+          release_payload_fingerprint?: string | null
+          released_at?: string | null
+          released_by?: string | null
+          revision?: number
+          status?: string
+          transferred_normalized_quantity?: number
+          unit?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "packaging_run_bulk_allocation_workspace_id_packaging_run_i_fkey"
+            columns: ["workspace_id", "packaging_run_id"]
+            isOneToOne: true
+            referencedRelation: "packaging_runs"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "packaging_run_bulk_allocation_workspace_id_production_outp_fkey"
+            columns: ["workspace_id", "production_output_id"]
+            isOneToOne: false
+            referencedRelation: "production_outputs"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "packaging_run_bulk_allocations_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      packaging_run_bulk_transfers: {
+        Row: {
+          bulk_allocation_id: string
+          created_at: string
+          destination_vessel: string | null
+          equipment_reference: string | null
+          evidence_reference: string | null
+          id: string
+          idempotency_key: string
+          measurement_method: string
+          normalized_quantity: number
+          normalized_unit: string
+          note: string
+          owner_id: string
+          packaging_run_id: string
+          payload_fingerprint: string
+          production_output_id: string
+          quantity: number
+          revision: number
+          source_vessel: string | null
+          transferred_at: string
+          transferred_by: string
+          unit: string
+          workspace_id: string
+        }
+        Insert: {
+          bulk_allocation_id: string
+          created_at?: string
+          destination_vessel?: string | null
+          equipment_reference?: string | null
+          evidence_reference?: string | null
+          id?: string
+          idempotency_key: string
+          measurement_method: string
+          normalized_quantity: number
+          normalized_unit: string
+          note?: string
+          owner_id: string
+          packaging_run_id: string
+          payload_fingerprint: string
+          production_output_id: string
+          quantity: number
+          revision?: number
+          source_vessel?: string | null
+          transferred_at: string
+          transferred_by: string
+          unit: string
+          workspace_id: string
+        }
+        Update: {
+          bulk_allocation_id?: string
+          created_at?: string
+          destination_vessel?: string | null
+          equipment_reference?: string | null
+          evidence_reference?: string | null
+          id?: string
+          idempotency_key?: string
+          measurement_method?: string
+          normalized_quantity?: number
+          normalized_unit?: string
+          note?: string
+          owner_id?: string
+          packaging_run_id?: string
+          payload_fingerprint?: string
+          production_output_id?: string
+          quantity?: number
+          revision?: number
+          source_vessel?: string | null
+          transferred_at?: string
+          transferred_by?: string
+          unit?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "packaging_run_bulk_transfers_workspace_id_bulk_allocation__fkey"
+            columns: ["workspace_id", "bulk_allocation_id"]
+            isOneToOne: false
+            referencedRelation: "packaging_run_bulk_allocations"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "packaging_run_bulk_transfers_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "packaging_run_bulk_transfers_workspace_id_packaging_run_id_fkey"
+            columns: ["workspace_id", "packaging_run_id"]
+            isOneToOne: false
+            referencedRelation: "packaging_runs"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "packaging_run_bulk_transfers_workspace_id_production_outpu_fkey"
+            columns: ["workspace_id", "production_output_id"]
+            isOneToOne: false
+            referencedRelation: "production_outputs"
+            referencedColumns: ["workspace_id", "id"]
+          },
+        ]
+      }
+      packaging_run_events: {
+        Row: {
+          actor_id: string
+          event_key: string
+          event_type: string
+          id: string
+          metadata: Json
+          occurred_at: string
+          owner_id: string
+          packaging_inventory_lot_id: string | null
+          packaging_requirement_id: string | null
+          packaging_run_id: string
+          policy_version: string
+          production_output_id: string
+          production_run_id: string
+          quantity: number | null
+          revision: number | null
+          unit: string | null
+          workspace_id: string
+        }
+        Insert: {
+          actor_id: string
+          event_key: string
+          event_type: string
+          id?: string
+          metadata?: Json
+          occurred_at?: string
+          owner_id: string
+          packaging_inventory_lot_id?: string | null
+          packaging_requirement_id?: string | null
+          packaging_run_id: string
+          policy_version: string
+          production_output_id: string
+          production_run_id: string
+          quantity?: number | null
+          revision?: number | null
+          unit?: string | null
+          workspace_id: string
+        }
+        Update: {
+          actor_id?: string
+          event_key?: string
+          event_type?: string
+          id?: string
+          metadata?: Json
+          occurred_at?: string
+          owner_id?: string
+          packaging_inventory_lot_id?: string | null
+          packaging_requirement_id?: string | null
+          packaging_run_id?: string
+          policy_version?: string
+          production_output_id?: string
+          production_run_id?: string
+          quantity?: number | null
+          revision?: number | null
+          unit?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "packaging_run_events_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "packaging_run_events_workspace_id_packaging_inventory_lot__fkey"
+            columns: ["workspace_id", "packaging_inventory_lot_id"]
+            isOneToOne: false
+            referencedRelation: "packaging_inventory_lots"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "packaging_run_events_workspace_id_packaging_requirement_id_fkey"
+            columns: ["workspace_id", "packaging_requirement_id"]
+            isOneToOne: false
+            referencedRelation: "packaging_run_requirements"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "packaging_run_events_workspace_id_packaging_run_id_fkey"
+            columns: ["workspace_id", "packaging_run_id"]
+            isOneToOne: false
+            referencedRelation: "packaging_runs"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "packaging_run_events_workspace_id_production_output_id_fkey"
+            columns: ["workspace_id", "production_output_id"]
+            isOneToOne: false
+            referencedRelation: "production_outputs"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "packaging_run_events_workspace_id_production_run_id_fkey"
+            columns: ["workspace_id", "production_run_id"]
+            isOneToOne: false
+            referencedRelation: "production_runs"
+            referencedColumns: ["workspace_id", "id"]
+          },
+        ]
+      }
+      packaging_run_inventory_uses: {
+        Row: {
+          actor_id: string
+          category: string | null
+          cost_confidence: string
+          created_at: string
+          currency: string | null
+          evidence_reference: string | null
+          id: string
+          idempotency_key: string
+          occurred_at: string
+          owner_id: string
+          packaging_inventory_lot_id: string
+          packaging_inventory_movement_id: string
+          packaging_requirement_id: string
+          packaging_reservation_id: string
+          packaging_run_id: string
+          payload_fingerprint: string
+          quantity: number
+          quantity_in_lot_unit: number
+          reason: string
+          revision: number
+          total_cost_snapshot: number | null
+          unit: string
+          unit_cost_snapshot: number | null
+          use_type: string
+          workspace_id: string
+        }
+        Insert: {
+          actor_id: string
+          category?: string | null
+          cost_confidence: string
+          created_at?: string
+          currency?: string | null
+          evidence_reference?: string | null
+          id?: string
+          idempotency_key: string
+          occurred_at: string
+          owner_id: string
+          packaging_inventory_lot_id: string
+          packaging_inventory_movement_id: string
+          packaging_requirement_id: string
+          packaging_reservation_id: string
+          packaging_run_id: string
+          payload_fingerprint: string
+          quantity: number
+          quantity_in_lot_unit: number
+          reason: string
+          revision?: number
+          total_cost_snapshot?: number | null
+          unit: string
+          unit_cost_snapshot?: number | null
+          use_type: string
+          workspace_id: string
+        }
+        Update: {
+          actor_id?: string
+          category?: string | null
+          cost_confidence?: string
+          created_at?: string
+          currency?: string | null
+          evidence_reference?: string | null
+          id?: string
+          idempotency_key?: string
+          occurred_at?: string
+          owner_id?: string
+          packaging_inventory_lot_id?: string
+          packaging_inventory_movement_id?: string
+          packaging_requirement_id?: string
+          packaging_reservation_id?: string
+          packaging_run_id?: string
+          payload_fingerprint?: string
+          quantity?: number
+          quantity_in_lot_unit?: number
+          reason?: string
+          revision?: number
+          total_cost_snapshot?: number | null
+          unit?: string
+          unit_cost_snapshot?: number | null
+          use_type?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "packaging_run_inventory_uses_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "packaging_run_inventory_uses_workspace_id_packaging_inven_fkey1"
+            columns: ["workspace_id", "packaging_inventory_movement_id"]
+            isOneToOne: true
+            referencedRelation: "packaging_inventory_movements"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "packaging_run_inventory_uses_workspace_id_packaging_invent_fkey"
+            columns: ["workspace_id", "packaging_inventory_lot_id"]
+            isOneToOne: false
+            referencedRelation: "packaging_inventory_lots"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "packaging_run_inventory_uses_workspace_id_packaging_requir_fkey"
+            columns: ["workspace_id", "packaging_requirement_id"]
+            isOneToOne: false
+            referencedRelation: "packaging_run_requirements"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "packaging_run_inventory_uses_workspace_id_packaging_reserv_fkey"
+            columns: ["workspace_id", "packaging_reservation_id"]
+            isOneToOne: false
+            referencedRelation: "packaging_run_reservations"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "packaging_run_inventory_uses_workspace_id_packaging_run_id_fkey"
+            columns: ["workspace_id", "packaging_run_id"]
+            isOneToOne: false
+            referencedRelation: "packaging_runs"
+            referencedColumns: ["workspace_id", "id"]
+          },
+        ]
+      }
+      packaging_run_reconciliations: {
+        Row: {
+          bulk_waste_normalized_quantity: number
+          created_at: string
+          evidence_reference: string | null
+          id: string
+          idempotency_key: string
+          owner_id: string
+          packaging_run_id: string
+          payload_fingerprint: string
+          pending_finished_goods_normalized_quantity: number
+          policy_version: string
+          reason: string | null
+          reconciled_at: string
+          reconciled_by: string
+          reconciliation_version: number
+          retained_bulk_normalized_quantity: number
+          state: string
+          unexplained_bulk_variance: number
+          unexplained_packaging_variance: number
+          workspace_id: string
+        }
+        Insert: {
+          bulk_waste_normalized_quantity: number
+          created_at?: string
+          evidence_reference?: string | null
+          id?: string
+          idempotency_key: string
+          owner_id: string
+          packaging_run_id: string
+          payload_fingerprint: string
+          pending_finished_goods_normalized_quantity: number
+          policy_version: string
+          reason?: string | null
+          reconciled_at: string
+          reconciled_by: string
+          reconciliation_version: number
+          retained_bulk_normalized_quantity: number
+          state: string
+          unexplained_bulk_variance: number
+          unexplained_packaging_variance: number
+          workspace_id: string
+        }
+        Update: {
+          bulk_waste_normalized_quantity?: number
+          created_at?: string
+          evidence_reference?: string | null
+          id?: string
+          idempotency_key?: string
+          owner_id?: string
+          packaging_run_id?: string
+          payload_fingerprint?: string
+          pending_finished_goods_normalized_quantity?: number
+          policy_version?: string
+          reason?: string | null
+          reconciled_at?: string
+          reconciled_by?: string
+          reconciliation_version?: number
+          retained_bulk_normalized_quantity?: number
+          state?: string
+          unexplained_bulk_variance?: number
+          unexplained_packaging_variance?: number
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "packaging_run_reconciliations_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "packaging_run_reconciliations_workspace_id_packaging_run_i_fkey"
+            columns: ["workspace_id", "packaging_run_id"]
+            isOneToOne: false
+            referencedRelation: "packaging_runs"
+            referencedColumns: ["workspace_id", "id"]
+          },
+        ]
+      }
+      packaging_run_requirements: {
+        Row: {
+          component_name_snapshot: string
+          component_role_snapshot: string
+          created_at: string
+          eligibility_policy_version: string
+          expected_waste_allowance: number
+          id: string
+          instructions: string
+          normalized_quantity: number
+          owner_id: string
+          packaging_component_id: string
+          packaging_run_id: string
+          packaging_specification_line_id: string
+          packaging_specification_version_id: string
+          planned_unit_count: number
+          revision: number
+          sequence: number
+          total_required_quantity: number
+          unit: string
+          units_required_per_finished_unit: number
+          workspace_id: string
+        }
+        Insert: {
+          component_name_snapshot: string
+          component_role_snapshot: string
+          created_at?: string
+          eligibility_policy_version: string
+          expected_waste_allowance?: number
+          id?: string
+          instructions?: string
+          normalized_quantity: number
+          owner_id: string
+          packaging_component_id: string
+          packaging_run_id: string
+          packaging_specification_line_id: string
+          packaging_specification_version_id: string
+          planned_unit_count: number
+          revision?: number
+          sequence: number
+          total_required_quantity: number
+          unit: string
+          units_required_per_finished_unit: number
+          workspace_id: string
+        }
+        Update: {
+          component_name_snapshot?: string
+          component_role_snapshot?: string
+          created_at?: string
+          eligibility_policy_version?: string
+          expected_waste_allowance?: number
+          id?: string
+          instructions?: string
+          normalized_quantity?: number
+          owner_id?: string
+          packaging_component_id?: string
+          packaging_run_id?: string
+          packaging_specification_line_id?: string
+          packaging_specification_version_id?: string
+          planned_unit_count?: number
+          revision?: number
+          sequence?: number
+          total_required_quantity?: number
+          unit?: string
+          units_required_per_finished_unit?: number
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "packaging_run_requirements_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "packaging_run_requirements_workspace_id_packaging_componen_fkey"
+            columns: ["workspace_id", "packaging_component_id"]
+            isOneToOne: false
+            referencedRelation: "packaging_components"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "packaging_run_requirements_workspace_id_packaging_run_id_fkey"
+            columns: ["workspace_id", "packaging_run_id"]
+            isOneToOne: false
+            referencedRelation: "packaging_runs"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "packaging_run_requirements_workspace_id_packaging_specifi_fkey1"
+            columns: ["workspace_id", "packaging_specification_line_id"]
+            isOneToOne: false
+            referencedRelation: "packaging_specification_lines"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "packaging_run_requirements_workspace_id_packaging_specific_fkey"
+            columns: ["workspace_id", "packaging_specification_version_id"]
+            isOneToOne: false
+            referencedRelation: "packaging_specification_versions"
+            referencedColumns: ["workspace_id", "id"]
+          },
+        ]
+      }
+      packaging_run_reservations: {
+        Row: {
+          consumed_in_lot_unit: number
+          id: string
+          idempotency_key: string
+          owner_id: string
+          packaging_inventory_lot_id: string
+          packaging_requirement_id: string
+          packaging_run_id: string
+          payload_fingerprint: string
+          released_at: string | null
+          released_by: string | null
+          reserved_at: string
+          reserved_by: string
+          reserved_in_lot_unit: number
+          reserved_quantity: number
+          revision: number
+          status: string
+          unit: string
+          waste_in_lot_unit: number
+          workspace_id: string
+        }
+        Insert: {
+          consumed_in_lot_unit?: number
+          id?: string
+          idempotency_key: string
+          owner_id: string
+          packaging_inventory_lot_id: string
+          packaging_requirement_id: string
+          packaging_run_id: string
+          payload_fingerprint: string
+          released_at?: string | null
+          released_by?: string | null
+          reserved_at: string
+          reserved_by: string
+          reserved_in_lot_unit: number
+          reserved_quantity: number
+          revision?: number
+          status?: string
+          unit: string
+          waste_in_lot_unit?: number
+          workspace_id: string
+        }
+        Update: {
+          consumed_in_lot_unit?: number
+          id?: string
+          idempotency_key?: string
+          owner_id?: string
+          packaging_inventory_lot_id?: string
+          packaging_requirement_id?: string
+          packaging_run_id?: string
+          payload_fingerprint?: string
+          released_at?: string | null
+          released_by?: string | null
+          reserved_at?: string
+          reserved_by?: string
+          reserved_in_lot_unit?: number
+          reserved_quantity?: number
+          revision?: number
+          status?: string
+          unit?: string
+          waste_in_lot_unit?: number
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "packaging_run_reservations_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "packaging_run_reservations_workspace_id_packaging_inventor_fkey"
+            columns: ["workspace_id", "packaging_inventory_lot_id"]
+            isOneToOne: false
+            referencedRelation: "packaging_inventory_lots"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "packaging_run_reservations_workspace_id_packaging_requirem_fkey"
+            columns: ["workspace_id", "packaging_requirement_id"]
+            isOneToOne: false
+            referencedRelation: "packaging_run_requirements"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "packaging_run_reservations_workspace_id_packaging_run_id_fkey"
+            columns: ["workspace_id", "packaging_run_id"]
+            isOneToOne: false
+            referencedRelation: "packaging_runs"
+            referencedColumns: ["workspace_id", "id"]
+          },
+        ]
+      }
+      packaging_runs: {
+        Row: {
+          actual_transferred_normalized_quantity: number
+          bulk_cost_confidence: string
+          bulk_material_cost_currency: string | null
+          bulk_material_cost_snapshot: number | null
+          completed_at: string | null
+          completed_by: string | null
+          created_at: string
+          created_by: string
+          creation_idempotency_key: string
+          creation_payload_fingerprint: string
+          formula_version_id: string
+          formula_version_snapshot: string
+          id: string
+          internal_run_code: string
+          location: string
+          nominal_fill_quantity: number
+          nominal_fill_unit: string
+          owner_id: string
+          packaging_specification_name_snapshot: string
+          packaging_specification_snapshot: Json
+          packaging_specification_version_id: string
+          packaging_specification_version_snapshot: string
+          planned_bulk_normalized_quantity: number
+          planned_bulk_normalized_unit: string
+          planned_bulk_quantity: number
+          planned_bulk_unit: string
+          planned_unit_count: number
+          product_id: string
+          product_name_snapshot: string
+          production_output_code_snapshot: string
+          production_output_id: string
+          production_run_id: string
+          revision: number
+          run_label: string
+          run_sequence: number
+          started_at: string | null
+          started_by: string | null
+          status: string
+          target_packaging_format: string
+          workspace_id: string
+        }
+        Insert: {
+          actual_transferred_normalized_quantity?: number
+          bulk_cost_confidence: string
+          bulk_material_cost_currency?: string | null
+          bulk_material_cost_snapshot?: number | null
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          created_by: string
+          creation_idempotency_key: string
+          creation_payload_fingerprint: string
+          formula_version_id: string
+          formula_version_snapshot: string
+          id?: string
+          internal_run_code: string
+          location: string
+          nominal_fill_quantity: number
+          nominal_fill_unit: string
+          owner_id: string
+          packaging_specification_name_snapshot: string
+          packaging_specification_snapshot: Json
+          packaging_specification_version_id: string
+          packaging_specification_version_snapshot: string
+          planned_bulk_normalized_quantity: number
+          planned_bulk_normalized_unit: string
+          planned_bulk_quantity: number
+          planned_bulk_unit: string
+          planned_unit_count: number
+          product_id: string
+          product_name_snapshot: string
+          production_output_code_snapshot: string
+          production_output_id: string
+          production_run_id: string
+          revision?: number
+          run_label: string
+          run_sequence: number
+          started_at?: string | null
+          started_by?: string | null
+          status?: string
+          target_packaging_format: string
+          workspace_id: string
+        }
+        Update: {
+          actual_transferred_normalized_quantity?: number
+          bulk_cost_confidence?: string
+          bulk_material_cost_currency?: string | null
+          bulk_material_cost_snapshot?: number | null
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          created_by?: string
+          creation_idempotency_key?: string
+          creation_payload_fingerprint?: string
+          formula_version_id?: string
+          formula_version_snapshot?: string
+          id?: string
+          internal_run_code?: string
+          location?: string
+          nominal_fill_quantity?: number
+          nominal_fill_unit?: string
+          owner_id?: string
+          packaging_specification_name_snapshot?: string
+          packaging_specification_snapshot?: Json
+          packaging_specification_version_id?: string
+          packaging_specification_version_snapshot?: string
+          planned_bulk_normalized_quantity?: number
+          planned_bulk_normalized_unit?: string
+          planned_bulk_quantity?: number
+          planned_bulk_unit?: string
+          planned_unit_count?: number
+          product_id?: string
+          product_name_snapshot?: string
+          production_output_code_snapshot?: string
+          production_output_id?: string
+          production_run_id?: string
+          revision?: number
+          run_label?: string
+          run_sequence?: number
+          started_at?: string | null
+          started_by?: string | null
+          status?: string
+          target_packaging_format?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "packaging_runs_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "packaging_runs_workspace_id_formula_version_id_fkey"
+            columns: ["workspace_id", "formula_version_id"]
+            isOneToOne: false
+            referencedRelation: "formula_versions"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "packaging_runs_workspace_id_packaging_specification_versio_fkey"
+            columns: ["workspace_id", "packaging_specification_version_id"]
+            isOneToOne: false
+            referencedRelation: "packaging_specification_versions"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "packaging_runs_workspace_id_product_id_fkey"
+            columns: ["workspace_id", "product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "packaging_runs_workspace_id_production_output_id_fkey"
+            columns: ["workspace_id", "production_output_id"]
+            isOneToOne: false
+            referencedRelation: "production_outputs"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "packaging_runs_workspace_id_production_run_id_fkey"
+            columns: ["workspace_id", "production_run_id"]
+            isOneToOne: false
+            referencedRelation: "production_runs"
+            referencedColumns: ["workspace_id", "id"]
+          },
+        ]
+      }
       packaging_specification_lines: {
         Row: {
           id: string
@@ -14422,6 +15309,17 @@ export type Database = {
         Args: { candidate_attempt_id: string }
         Returns: boolean
       }
+      allocate_bulk_to_packaging_run_v1: {
+        Args: {
+          candidate_allocation_method: string
+          candidate_idempotency_key: string
+          candidate_quantity: number
+          candidate_unit: string
+          expected_run_revision: number
+          target_packaging_run_id: string
+        }
+        Returns: Json
+      }
       approve_production_procurement_scenario: {
         Args: {
           candidate_approval_key: string
@@ -14545,6 +15443,15 @@ export type Database = {
         Args: { commits: Json; run_id: string }
         Returns: Json
       }
+      complete_packaging_run_v1: {
+        Args: {
+          candidate_completed_at: string
+          candidate_idempotency_key: string
+          expected_run_revision: number
+          target_packaging_run_id: string
+        }
+        Returns: Json
+      }
       complete_production_output_stage_v1: {
         Args: {
           candidate_completed_at: string
@@ -14613,6 +15520,21 @@ export type Database = {
           target_variant: string
         }
         Returns: string
+      }
+      create_packaging_run_v1: {
+        Args: {
+          candidate_idempotency_key: string
+          candidate_location: string
+          candidate_nominal_fill_quantity: number
+          candidate_nominal_fill_unit: string
+          candidate_packaging_specification_version_id: string
+          candidate_planned_bulk_quantity: number
+          candidate_planned_bulk_unit: string
+          candidate_planned_unit_count: number
+          candidate_run_label: string
+          target_production_output_id: string
+        }
+        Returns: Json
       }
       create_product_studio_formula_handoff: {
         Args: {
@@ -14769,6 +15691,22 @@ export type Database = {
         }
         Returns: Json
       }
+      get_packaging_available_bulk_v1: {
+        Args: { target_production_output_id: string }
+        Returns: Json
+      }
+      get_packaging_eligible_lots_v1: {
+        Args: { target_packaging_requirement_id: string }
+        Returns: Json
+      }
+      get_packaging_run_completion_readiness_v1: {
+        Args: { target_packaging_run_id: string }
+        Returns: Json
+      }
+      get_packaging_run_genealogy_v1: {
+        Args: { target_packaging_run_id: string }
+        Returns: Json
+      }
       get_production_output_completion_readiness_v1: {
         Args: { target_production_run_id: string }
         Returns: Json
@@ -14825,9 +15763,17 @@ export type Database = {
           unit: string
         }[]
       }
+      kf_packaging_available_bulk_v1: {
+        Args: { target_output_id: string; target_workspace_id: string }
+        Returns: Json
+      }
       kf_packaging_balance: {
         Args: { lot_id: string; wid: string }
         Returns: number
+      }
+      kf_packaging_run_completion_readiness_v1: {
+        Args: { target_packaging_run_id: string; target_workspace_id: string }
+        Returns: Json
       }
       kf_production_output_readiness_v1: {
         Args: { target_run_id: string; target_workspace_id: string }
@@ -14990,6 +15936,23 @@ export type Database = {
         }
         Returns: Json
       }
+      reconcile_packaging_run_v1: {
+        Args: {
+          candidate_approve_variance: boolean
+          candidate_bulk_waste_quantity: number
+          candidate_evidence_reference: string
+          candidate_idempotency_key: string
+          candidate_pending_finished_goods_quantity: number
+          candidate_reason: string
+          candidate_reconciled_at: string
+          candidate_retained_bulk_quantity: number
+          candidate_unexplained_bulk_variance: number
+          candidate_unexplained_packaging_variance: number
+          expected_run_revision: number
+          target_packaging_run_id: string
+        }
+        Returns: Json
+      }
       reconcile_production_output_v1: {
         Args: {
           candidate_approve_variance: boolean
@@ -15046,6 +16009,38 @@ export type Database = {
           target_reservation_id: string
           weighing_quantity: number
           weighing_unit: string
+        }
+        Returns: Json
+      }
+      record_packaging_bulk_transfer_v1: {
+        Args: {
+          candidate_destination_vessel: string
+          candidate_equipment_reference: string
+          candidate_evidence_reference: string
+          candidate_idempotency_key: string
+          candidate_measurement_method: string
+          candidate_note: string
+          candidate_quantity: number
+          candidate_source_vessel: string
+          candidate_transferred_at: string
+          candidate_unit: string
+          expected_run_revision: number
+          target_bulk_allocation_id: string
+        }
+        Returns: Json
+      }
+      record_packaging_inventory_use_v1: {
+        Args: {
+          candidate_category: string
+          candidate_evidence_reference: string
+          candidate_idempotency_key: string
+          candidate_occurred_at: string
+          candidate_quantity: number
+          candidate_reason: string
+          candidate_unit: string
+          candidate_use_type: string
+          expected_run_revision: number
+          target_packaging_reservation_id: string
         }
         Returns: Json
       }
@@ -15234,6 +16229,27 @@ export type Database = {
         }
         Returns: Json
       }
+      release_packaging_reservation_v1: {
+        Args: {
+          candidate_condition_acceptable: boolean
+          candidate_evidence_reference: string
+          candidate_idempotency_key: string
+          candidate_reason: string
+          candidate_staged_return: boolean
+          expected_run_revision: number
+          target_packaging_reservation_id: string
+        }
+        Returns: Json
+      }
+      release_packaging_run_bulk_allocation_v1: {
+        Args: {
+          candidate_idempotency_key: string
+          candidate_reason: string
+          expected_run_revision: number
+          target_bulk_allocation_id: string
+        }
+        Returns: Json
+      }
       remove_current_document_object: {
         Args: { document_id: string }
         Returns: {
@@ -15287,6 +16303,26 @@ export type Database = {
           target_batch_kind: string
           target_inventory_lot_id: string
           target_requirement_id: string
+        }
+        Returns: Json
+      }
+      reserve_packaging_run_requirement_v1: {
+        Args: {
+          candidate_idempotency_key: string
+          candidate_quantity: number
+          candidate_unit: string
+          expected_run_revision: number
+          target_packaging_inventory_lot_id: string
+          target_packaging_requirement_id: string
+        }
+        Returns: Json
+      }
+      reserve_packaging_run_requirements_v1: {
+        Args: {
+          candidate_idempotency_key: string
+          candidates: Json
+          expected_run_revision: number
+          target_packaging_run_id: string
         }
         Returns: Json
       }
