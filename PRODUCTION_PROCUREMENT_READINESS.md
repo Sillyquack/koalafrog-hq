@@ -133,6 +133,16 @@ A placed order remains an execution snapshot. It cannot be cancelled through dra
 
 Lifecycle: Production Round → Published Scenario → Purchase Plan → Verification → Checkout-ready Plan → Draft Purchase Orders → Placed Purchase Order → Supplier Confirmation / Shipment → Receipt → Inventory.
 
+## Supplier confirmation and shipment preparation
+
+Confirmation policy `1.0.0` records a supplier response as a new immutable version. Ordered and placement values stay on the Purchase Order; supplier-confirmed identity, package, quantity, price, availability, dates, totals, notes, and evidence live on the confirmation version. Corrected responses supersede rather than rewrite prior versions. Exact confirmations can be accepted directly; partial quantities, price changes, backorders, unavailable lines, package changes, and substitutions retain explicit owner decisions. Substitutions require compatibility evidence and are never accepted silently.
+
+A Purchase Order may have multiple shipment records. Each allocation is checked against accepted confirmed quantity and cumulative non-cancelled allocations, so split shipments cannot over-ship a line. Tracking changes and explicit dispatch/delay/exception/delivery reports are historical logistics events. A tracking number never implies dispatch, and `delivery_reported` means only that a supplier or carrier reports delivery.
+
+Confirmation and shipment retries use stable idempotency keys and payload fingerprints. Tables are owner/workspace isolated, browser-readable but RPC-write-only, and retain audit and supplier-event links. None of these actions creates a Receipt, Inventory Lot, Inventory Movement, inspection result, or production availability.
+
+Lifecycle: Production Round → Published Scenario → Purchase Plan → Verification → Checkout-ready Plan → Draft Purchase Orders → Placed Purchase Order → Supplier Confirmation → Shipment → Carrier-reported Delivery → Physical Receipt → Inspection → Inventory.
+
 External execution is represented by `purchase_orders` and immutable `purchase_order_lines`. An eligible internal plan creates no order automatically. The explicit plan-to-order RPC snapshots the plan and supplier data into a draft order; a separate placement RPC records an order that the owner already placed outside Koalafrog.
 
 No Purchase Order creates receipts, inventory lots, movements, incoming-stock claims, payments, or discount consumption. Receiving remains a separate future execution boundary, and Inventory Movements remain stock truth.

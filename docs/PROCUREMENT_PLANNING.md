@@ -243,3 +243,11 @@ External placement is recorded one order at a time after manual supplier checkou
 Placement does not infer payment settlement or supplier confirmation. First-order discount use is retained on the placed order for reconciliation rather than silently changing shared discount availability. Mixed-currency deltas require an explicit exchange rate; otherwise they are not compared numerically.
 
 Historical plan statuses that previously represented ordering or receipt are preserved as linked Purchase Orders. Legacy line receipt quantities are review metadata only; Inventory Movements remain the sole stock truth.
+
+## Supplier confirmation and shipment execution
+
+Supplier responses are stored in versioned `purchase_order_confirmations` and line snapshots. The latest recorded version may supersede an earlier response without deleting it. Confirmation states distinguish confirmed, partial, backordered, unavailable, supplier-cancelled, substitution-proposed, and pending response. Placement actuals and original ordered quantities are never overwritten. Material differences require a recorded owner decision; incompatible units and unreviewed substitutions block shipment preparation.
+
+`purchase_order_shipments` supports multiple shipments per order and immutable line allocations. Cumulative shipped quantity may not exceed the accepted confirmation. Carrier, tracking, dispatch, delay, customs, and delivery-report evidence are logistics facts only. Opening a safe HTTP(S) link has no lifecycle effect.
+
+`delivery_reported` is deliberately not `received`: physical receipt, quantity inspection, document inspection, acceptance/rejection, lots, movements, and stock availability remain downstream. Confirmation and shipment RPCs authenticate the owner, validate the active workspace, lock aggregates, guard revisions, deduplicate retries and supplier events, and never mutate the Purchase Plan.
