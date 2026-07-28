@@ -17,6 +17,16 @@ if(process.argv[2]==='orphans'){
   if(!id)throw new Error('Usage: node scripts/browser-test-owner.mjs delete <user-id>')
   if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id))throw new Error('Browser test owner ID must be a UUID.')
   const cleanup=`begin;
+set local session_replication_role=replica;
+delete from public.batch_material_events where owner_id='${id}'::uuid;
+delete from public.batch_material_reconciliations where owner_id='${id}'::uuid;
+delete from public.batch_material_variances where owner_id='${id}'::uuid;
+delete from public.batch_material_returns where owner_id='${id}'::uuid;
+delete from public.batch_material_waste where owner_id='${id}'::uuid;
+delete from public.batch_material_consumptions where owner_id='${id}'::uuid;
+delete from public.batch_material_weighings where owner_id='${id}'::uuid;
+delete from public.inventory_reservations where owner_id='${id}'::uuid;
+delete from public.batch_material_lot_allocations where owner_id='${id}'::uuid;
 delete from public.inventory_movements where owner_id='${id}'::uuid;
 delete from public.packaging_inventory_movements where owner_id='${id}'::uuid;
 delete from public.inventory_lots where owner_id='${id}'::uuid;
