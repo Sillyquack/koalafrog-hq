@@ -189,7 +189,7 @@ export type InventoryLotStatus = 'Active' | 'Quarantined' | 'Exhausted' | 'Expir
 export interface InventoryLot {
   id: string; ingredientId: string; supplierProductId?: string; internalLotNumber: string; supplierLotNumber?: string
   receivedDate: string; openingQuantity: number; unit: InventoryUnit; expiryDate?: string; bestBeforeDate?: string
-  location: string; status: InventoryLotStatus; notes: string; totalAcquisitionCost?: number; acquisitionCostCurrency?: string; costNotes?: string; createdAt: string; updatedAt: string
+  location: string; status: InventoryLotStatus; notes: string; totalAcquisitionCost?: number; acquisitionCostCurrency?: string; costNotes?: string; quarantineIntakeId?:string; qualityReleaseReviewId?:string; createdAt: string; updatedAt: string
 }
 export type InventoryMovementType = 'Receipt' | 'Consumption' | 'Waste' | 'Sample' | 'Adjustment'
 export interface InventoryMovement {
@@ -229,7 +229,7 @@ export type PackagingComponentStatus='Active'|'Research'|'Archived'
 export interface PackagingComponent { id:string;name:string;category:string;description:string;defaultUnit:InventoryUnit;colour:string;material:string;capacity?:number;capacityUnit?:InventoryUnit;notes:string;status:PackagingComponentStatus;reorderThreshold?:number;createdAt:string;updatedAt:string }
 export interface PackagingSupplierProduct { id:string;packagingComponentId:string;supplierName:string;productName:string;supplierSku?:string;packageQuantity:number;packageUnit:InventoryUnit;price:number;currency:string;productUrl?:string;notes:string;isPreferred:boolean;supplierId?:string;createdAt:string;updatedAt:string }
 export type PackagingInventoryLotStatus='Active'|'Quarantined'|'Exhausted'|'Disposed'|'Archived'
-export interface PackagingInventoryLot { id:string;packagingComponentId:string;packagingSupplierProductId?:string;internalLotNumber:string;supplierLotNumber?:string;receivedDate:string;openingQuantity:number;unit:InventoryUnit;location:string;status:PackagingInventoryLotStatus;notes:string;totalAcquisitionCost?:number;acquisitionCostCurrency?:string;costNotes?:string;createdAt:string;updatedAt:string }
+export interface PackagingInventoryLot { id:string;packagingComponentId:string;packagingSupplierProductId?:string;internalLotNumber:string;supplierLotNumber?:string;receivedDate:string;openingQuantity:number;unit:InventoryUnit;location:string;status:PackagingInventoryLotStatus;notes:string;totalAcquisitionCost?:number;acquisitionCostCurrency?:string;costNotes?:string;quarantineIntakeId?:string;qualityReleaseReviewId?:string;createdAt:string;updatedAt:string }
 export type PackagingMovementType='Receipt'|'Consumption'|'Waste'|'Sample'|'Adjustment'
 export interface PackagingInventoryMovement { id:string;packagingInventoryLotId:string;type:PackagingMovementType;quantity:number;unit:InventoryUnit;reason:string;referenceType?:string;referenceId?:string;notes:string;occurredAt:string;createdAt:string }
 export interface PackagingSpecification { id:string;productId:string;name:string;description:string;createdAt:string;updatedAt:string }
