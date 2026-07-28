@@ -1,6 +1,6 @@
 # Roadmap
 
-Current milestone: Finished Goods & Batch Genealogy V1. Slice 1, controlled [Production Output & Yield Reconciliation](PRODUCTION_OUTPUT_AND_YIELD_RECONCILIATION.md), is **PASS**. Next is Slice 2: **Packaging Run Planning, Bulk Allocation & Packaging Control**, which embeds Minimum safe Packaging Control V1 while preserving the separate packaging ledger.
+Current milestone: Finished Goods & Batch Genealogy V1. Slice 1, controlled [Production Output & Yield Reconciliation](PRODUCTION_OUTPUT_AND_YIELD_RECONCILIATION.md), is **PASS**. Slice 2, [Packaging Run Planning, Bulk Allocation & Packaging Control](PACKAGING_RUN_PLANNING_AND_CONTROL.md), is implemented locally and undergoing release-candidate validation.
 
 ## Phase 1: Foundation — Complete
 
@@ -84,7 +84,7 @@ The closeout and architecture review are recorded in [Production Inventory Contr
 
 ### Next: Finished Goods & Batch Genealogy V1
 
-**Status:** In progress. Slice 1 is PASS; Slice 2 is next.
+**Status:** In progress. Slice 1 is PASS; Slice 2 is implemented locally and in validation.
 
 High-level objective: transform completed Production output into controlled Finished Goods Lots with immutable batch genealogy, yield reconciliation, quality release, packaging identity, and traceability back to every consumed raw-material lot.
 

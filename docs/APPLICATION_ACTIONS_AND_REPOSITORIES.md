@@ -11,7 +11,8 @@ The application inventories 66 persistent commands. The provider retains query s
 - Testing (4): create Tester, Template, Session, and immutable Response.
 - Production and Costing (10): create/update/transition Run, update Line, add/update Allocation, commit consumption, add/update Process Step, add Cost Line.
 - Packaging (10): create/update Component, save Supplier Product, receive stock, append Movement, create Specification, add/update Line, transition/duplicate Version.
-- Finished Goods (5): create Batch, add/update Packaging Allocation, commit Packaging consumption, append Movement.
+- Legacy Finished Goods (5): create Batch, add/update legacy Packaging Allocation, commit legacy Packaging consumption, append Movement.
+- Packaging Run Control: RPC-only run creation, bulk allocation/release/transfer, eligible-lot reads, durable reservation, staged return/release, consumption/waste, reconciliation, readiness, completion and genealogy. It creates no Finished Goods record or movement.
 - Compliance (7): create, duplicate, and update Dossier; update Regulatory Review; update PIF Section; create and update Compliance Document metadata.
 - Launch (2): update Plan and append Decision.
 

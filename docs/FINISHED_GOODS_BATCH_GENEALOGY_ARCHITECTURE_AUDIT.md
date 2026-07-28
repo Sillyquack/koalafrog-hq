@@ -518,6 +518,8 @@ Dependencies: completed Production Inventory Control V1. Schema: `production_out
 
 ### Slice 2 — Packaging Run Planning, Bulk Allocation & Packaging Control
 
+Implementation reference: [Packaging Run Planning, Bulk Allocation & Packaging Control](PACKAGING_RUN_PLANNING_AND_CONTROL.md).
+
 Objective: plan and complete a controlled Packaging Run against reconciled output using Minimum safe Packaging Control V1. Dependencies: Slice 1. Schema: packaging runs, immutable requirements, evolved durable allocations/commitments and a minimal additive reservation layer only if required. RPCs: start, reserve atomically where supported, release, safely return staged unused packaging, consume/waste and complete. UI: accessible mobile-capable reservation and execution workspace. Tests: eligibility, deterministic locks, reservation-aware balances, multi-run concurrency, idempotency, release/return, cost unknowns, reconciliation and splits.
 
 Slice 2 excludes Finished Goods Lot creation, finished-product quarantine, inspection and quality release, Finished Goods opening movements and shipment, customer allocation, persistent recall scopes, sales, accounting, landed-cost reconciliation, serialization and consumer label printing.

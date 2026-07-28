@@ -89,6 +89,8 @@ Completion readiness is server-authoritative. The read-only readiness RPC and co
 
 Raw-material and Packaging ledgers remain separate. Production Inventory Control V1 did not claim Packaging reservation, return, waste/damage, or release-state parity. Finished Goods & Batch Genealogy Slice 2 now owns the minimum safe Packaging Control extension: evolve the existing packaging commitment model additively for durable reservation, reservation-aware availability, release, safe staged return, waste/damage and reconciliation without folding Packaging or Finished Goods into raw-material tables.
 
+Slice 2 is documented in [Packaging Run Planning, Bulk Allocation & Packaging Control](PACKAGING_RUN_PLANNING_AND_CONTROL.md). Completed Production Output retained bulk is allocated under row lock; Packaging Lots remain movement-ledger truth; run-scoped reservations create no movement; productive use and waste create separate exactly-once negative movements; staged return releases unused reservation without inventing stock. Packaging Run completion is server-authoritative and creates neither a Finished Goods Lot nor an opening movement.
+
 See [Production Inventory Control V1 release closeout](PRODUCTION_INVENTORY_CONTROL_RELEASE_CLOSEOUT.md) for the audited lifecycle, authority boundaries, accepted limitations, and entry conditions for the next milestone.
 
 ## Phase 7 — Compliance Evidence and Launch Readiness
