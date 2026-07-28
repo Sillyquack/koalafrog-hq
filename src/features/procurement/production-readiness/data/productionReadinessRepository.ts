@@ -30,7 +30,12 @@ export interface DurableSupplierProductSummary {id:string;supplier_id:string|nul
 export interface DurableScenario {id:string;round_id:string;strategy:string;status:'draft'|'published'|'incomplete'|'blocked';feasibility:string;calculation_version:string;source_round_revision:number;generated_at:string;stale_at:string|null;base_currency:string;mixed_currency:boolean;total_known_minimum:number|null;total_confirmed:number|null;total_estimated:number|null;total_range_minimum:number|null;total_range_maximum:number|null;original_currency_totals:Record<string,number>;unknown_commercial_components:string[];supplier_count:number;line_count:number;warning_count:number;blocker_count:number;stale_data_count:number;ranking_score:number|null;ranking_explanation:string[];strategy_weights:Record<string,number>;revision:number;published_at:string|null}
 export interface DurableScenarioBasket {id:string;scenario_id:string;supplier_id:string;supplier_name_snapshot:string;supplier_url_snapshot:string|null;currency:string;merchandise_subtotal:number;eligible_subtotal:number;confirmed_discount:number;estimated_discount:number;post_discount_subtotal:number;shipping:number|null;shipping_state:string;vat:number|null;vat_state:string;import_vat:number|null;import_vat_state:string;customs:number|null;customs_state:string;handling:number|null;handling_state:string;known_minimum:number;confirmed_total:number|null;estimated_total:number|null;range_minimum:number|null;range_maximum:number|null;free_shipping_progress:Record<string,unknown>;warnings:string[];freshness_states:Record<string,string>;assumption_snapshot:Record<string,unknown>}
 export interface DurableScenarioLine {id:string;scenario_id:string;basket_id:string;requirement_id:string;supplier_product_id:string;supplier_product_name_snapshot:string;product_url_snapshot:string|null;ingredient_name_snapshot:string;required_quantity:number;required_unit:string;package_size:number;package_unit:string;package_count:number;moq_adjusted_count:number;purchased_quantity:number;surplus:number;unit_price:number;currency:string;merchandise_line_total:number;discount_eligibility:string;allocated_discount:number;allocated_shipping:number|null;effective_landed_cost:number|null;effective_cost_per_required_unit:number|null;uncertainty:string[];warnings:string[]}
-export interface DurableRoundAggregate {round:DurableRound;products:DurableRoundProduct[];requirements:DurableRequirement[];gaps:DurableGap[];specifications:DurablePurchasingSpecification[];candidates:DurableSupplierCandidate[];matches:DurableSupplierMatch[];supplierProducts:DurableSupplierProductSummary[];scenarios:DurableScenario[];scenarioBaskets:DurableScenarioBasket[];scenarioLines:DurableScenarioLine[]}
+export interface DurablePurchasePlan {id:string;production_procurement_round_id:string;source_scenario_id:string;plan_version:number;title:string;status:'verification_required'|'checkout_ready'|'superseded'|'cancelled';strategy:string;strategy_explanation:string[];base_currency:string;mixed_currency:boolean;supplier_count:number;line_count:number;known_minimum:number|null;confirmed_total:number|null;estimated_landed_total:number|null;range_minimum:number|null;range_maximum:number|null;unknown_component_count:number;warning_count:number;blocker_count:number;approved_by:string;approved_at:string;superseded_by:string|null;superseded_at:string|null;cancelled_at:string|null;cancellation_reason:string|null;verification_revision:number;revision:number;snapshot_version:string}
+export interface DurablePlanBasket {id:string;purchase_plan_id:string;supplier_id:string;supplier_name_snapshot:string;supplier_url_snapshot:string|null;currency:string;merchandise_subtotal:number;confirmed_discount:number;estimated_discount:number;shipping:number|null;shipping_state:string;vat_state:string;import_vat_state:string;customs_state:string;handling_state:string;known_minimum:number;confirmed_total:number|null;estimated_total:number|null;range_minimum:number|null;range_maximum:number|null;commercial_warnings:string[];freshness_states:Record<string,string>;verification_required_count:number;verification_completed_count:number}
+export interface DurablePlanLine {id:string;purchase_plan_id:string;purchase_plan_basket_id:string;source_scenario_line_id:string;canonical_ingredient_id:string;ingredient_name_snapshot:string;inci_snapshot:string;supplier_product_id:string;supplier_product_name_snapshot:string;product_url_snapshot:string|null;pack_size:number;unit:string;pack_count:number;moq_adjusted_pack_count:number;required_quantity:number;purchased_quantity:number;expected_surplus:number;estimated_unit_price:number;currency:string;estimated_line_total:number;allocated_discount:number;allocated_shipping:number|null;expected_landed_cost:number|null;effective_cost_per_unit:number|null;documentation_state:Record<string,unknown>;price_freshness:string|null;stock_freshness:string|null;snapshot_warnings:string[]}
+export interface DurablePlanVerification {id:string;purchase_plan_id:string;plan_version:number;purchase_plan_basket_id:string|null;purchase_plan_line_id:string|null;supplier_id:string|null;category:string;field:string;expected_value:unknown;expected_unit_or_currency:string|null;severity:'required'|'advisory';requirement_reason:string;source_freshness:string|null;verification_state:string;verification_method:string|null;verified_value:unknown;verified_unit_or_currency:string|null;evidence_reference:string|null;note:string;verified_at:string|null;mismatch_classification:string;resolution_state:string;policy_version:string;revision:number}
+export interface DurablePlanAuditEvent {id:string;purchase_plan_id:string;plan_version:number;event_type:string;actor_id:string;occurred_at:string;prior_state:string|null;new_state:string|null;reason:string;metadata:Record<string,unknown>}
+export interface DurableRoundAggregate {round:DurableRound;products:DurableRoundProduct[];requirements:DurableRequirement[];gaps:DurableGap[];specifications:DurablePurchasingSpecification[];candidates:DurableSupplierCandidate[];matches:DurableSupplierMatch[];supplierProducts:DurableSupplierProductSummary[];scenarios:DurableScenario[];scenarioBaskets:DurableScenarioBasket[];scenarioLines:DurableScenarioLine[];purchasePlans:DurablePurchasePlan[];planBaskets:DurablePlanBasket[];planLines:DurablePlanLine[];planVerifications:DurablePlanVerification[];planAuditEvents:DurablePlanAuditEvent[]}
 export interface RoundProductSelection {
   category:ProductionCategory;productId:string|null;formulaVersionId:string|null;batchCount:number;batchSize:number;batchUnit:InventoryUnit
   overagePercent:number;expectedYield:number|null;deodorantStructure:string|null
@@ -75,6 +80,16 @@ export async function loadProductionRound(workspaceId:string,roundId:string):Pro
   ]):[{data:[],error:null},{data:[],error:null}]
   if(scenarioBasketsResult.error)throw new Error(scenarioBasketsResult.error.message)
   if(scenarioLinesResult.error)throw new Error(scenarioLinesResult.error.message)
+  const plansResult=await database.from('purchase_plans').select('*').eq('workspace_id',workspaceId).eq('production_procurement_round_id',roundId).order('plan_version',{ascending:false})
+  if(plansResult.error)throw new Error(plansResult.error.message)
+  const planIds=(plansResult.data??[]).map((row:Record<string,unknown>)=>String(row.id))
+  const [planBasketsResult,planLinesResult,planVerificationsResult,planAuditResult]=planIds.length?await Promise.all([
+    database.from('purchase_plan_baskets').select('*').eq('workspace_id',workspaceId).in('purchase_plan_id',planIds).order('supplier_name_snapshot'),
+    database.from('purchase_plan_lines').select('*').eq('workspace_id',workspaceId).in('purchase_plan_id',planIds).order('ingredient_name_snapshot'),
+    database.from('purchase_plan_verifications').select('*').eq('workspace_id',workspaceId).in('purchase_plan_id',planIds).order('category').order('field'),
+    database.from('purchase_plan_audit_events').select('*').eq('workspace_id',workspaceId).in('purchase_plan_id',planIds).order('occurred_at',{ascending:false}),
+  ]):[{data:[],error:null},{data:[],error:null},{data:[],error:null},{data:[],error:null}]
+  for(const result of [planBasketsResult,planLinesResult,planVerificationsResult,planAuditResult])if(result.error)throw new Error(result.error.message)
   return {
     round:numeric(roundResult.data,['revision']) as unknown as DurableRound,
     products:(productsResult.data??[]).map(row=>numeric(row,['planned_batch_count','batch_size','overage_percentage','expected_yield'])) as unknown as DurableRoundProduct[],
@@ -87,6 +102,11 @@ export async function loadProductionRound(workspaceId:string,roundId:string):Pro
     scenarios:(scenariosResult.data??[]).map(row=>numeric(row,['source_round_revision','total_known_minimum','total_confirmed','total_estimated','total_range_minimum','total_range_maximum','supplier_count','line_count','warning_count','blocker_count','stale_data_count','ranking_score','revision'])) as unknown as DurableScenario[],
     scenarioBaskets:(scenarioBasketsResult.data??[]).map(row=>numeric(row,['merchandise_subtotal','eligible_subtotal','confirmed_discount','estimated_discount','post_discount_subtotal','shipping','vat','import_vat','customs','handling','known_minimum','confirmed_total','estimated_total','range_minimum','range_maximum'])) as unknown as DurableScenarioBasket[],
     scenarioLines:(scenarioLinesResult.data??[]).map(row=>numeric(row,['required_quantity','package_size','package_count','moq_adjusted_count','purchased_quantity','surplus','unit_price','merchandise_line_total','allocated_discount','allocated_shipping','effective_landed_cost','effective_cost_per_required_unit'])) as unknown as DurableScenarioLine[],
+    purchasePlans:(plansResult.data??[]).map(row=>numeric(row,['plan_version','supplier_count','line_count','known_minimum','confirmed_total','estimated_landed_total','range_minimum','range_maximum','unknown_component_count','warning_count','blocker_count','verification_revision','revision'])) as unknown as DurablePurchasePlan[],
+    planBaskets:(planBasketsResult.data??[]).map(row=>numeric(row,['merchandise_subtotal','confirmed_discount','estimated_discount','shipping','known_minimum','confirmed_total','estimated_total','range_minimum','range_maximum','verification_required_count','verification_completed_count'])) as unknown as DurablePlanBasket[],
+    planLines:(planLinesResult.data??[]).map(row=>numeric(row,['pack_size','pack_count','moq_adjusted_pack_count','required_quantity','purchased_quantity','expected_surplus','estimated_unit_price','estimated_line_total','allocated_discount','allocated_shipping','expected_landed_cost','effective_cost_per_unit'])) as unknown as DurablePlanLine[],
+    planVerifications:(planVerificationsResult.data??[]).map(row=>numeric(row,['plan_version','revision'])) as unknown as DurablePlanVerification[],
+    planAuditEvents:(planAuditResult.data??[]).map(row=>numeric(row,['plan_version'])) as unknown as DurablePlanAuditEvent[],
   }
 }
 export async function createProductionRound(workspaceId:string,title:string){
@@ -139,5 +159,25 @@ export async function publishProductionScenario(scenario:DurableScenario,round:D
 }
 export async function deleteDraftProductionScenario(scenario:DurableScenario,round:DurableRound){
   const result=await client().rpc('delete_draft_production_procurement_scenario',{target_scenario_id:scenario.id,expected_scenario_revision:scenario.revision,expected_round_revision:round.revision})
+  if(result.error)throw new Error(result.error.message);return Number(result.data)
+}
+export async function approveProductionScenario(scenario:DurableScenario,replacesPlanId?:string){
+  const result=await client().rpc('approve_production_procurement_scenario',{target_scenario_id:scenario.id,expected_scenario_revision:scenario.revision,candidate_approval_key:crypto.randomUUID(),candidate_title:null,candidate_notes:null,target_replaces_plan_id:replacesPlanId??null})
+  if(result.error)throw new Error(result.error.message);return String(result.data)
+}
+export async function recordPlanVerification(item:DurablePlanVerification,state:'confirmed'|'changed'|'unavailable'|'not_applicable',value:unknown,unit:string,note:string,evidence:string){
+  const result=await client().rpc('record_purchase_plan_verification',{target_verification_id:item.id,expected_revision:item.revision,candidate_state:state,candidate_verified_value:value as Json,candidate_unit_or_currency:unit,candidate_method:'manual_owner_check',candidate_evidence:evidence,candidate_note:note})
+  if(result.error)throw new Error(result.error.message);return Number(result.data)
+}
+export async function waivePlanVerification(item:DurablePlanVerification,reason:string){
+  const result=await client().rpc('waive_purchase_plan_verification',{target_verification_id:item.id,expected_revision:item.revision,waiver_reason:reason})
+  if(result.error)throw new Error(result.error.message);return Number(result.data)
+}
+export async function markPlanCheckoutReady(plan:DurablePurchasePlan){
+  const result=await client().rpc('mark_purchase_plan_checkout_ready',{target_plan_id:plan.id,expected_verification_revision:plan.verification_revision})
+  if(result.error)throw new Error(result.error.message);return Number(result.data)
+}
+export async function cancelInternalPlan(plan:DurablePurchasePlan,reason:string){
+  const result=await client().rpc('cancel_internal_purchase_plan',{target_plan_id:plan.id,expected_revision:plan.revision,candidate_cancellation_reason:reason})
   if(result.error)throw new Error(result.error.message);return Number(result.data)
 }

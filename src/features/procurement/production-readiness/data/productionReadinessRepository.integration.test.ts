@@ -105,11 +105,48 @@ run('durable Production Procurement Readiness against local Supabase',()=>{
     const publishedScenario=await a.client.rpc('publish_production_procurement_scenario',{target_scenario_id:balanced.id,expected_scenario_revision:1,expected_round_revision:15})
     expect(publishedScenario.error).toBeNull();expect(publishedScenario.data).toBe(16)
     expect((await a.client.from('production_procurement_scenarios').update({ranking_score:0}).eq('id',balanced.id)).error).not.toBeNull()
+    const publishedBalanced=await a.client.from('production_procurement_scenarios').select('revision').eq('id',balanced.id).single()
+    const approvalKey='22222222-2222-4222-8222-222222222222'
+    expect((await b.client.rpc('approve_production_procurement_scenario',{target_scenario_id:balanced.id,expected_scenario_revision:publishedBalanced.data!.revision,candidate_approval_key:approvalKey})).error?.message).toContain('SCENARIO_UNAVAILABLE')
+    const approved=await a.client.rpc('approve_production_procurement_scenario',{target_scenario_id:balanced.id,expected_scenario_revision:publishedBalanced.data!.revision,candidate_approval_key:approvalKey})
+    expect(approved.error).toBeNull()
+    const repeatedApproval=await a.client.rpc('approve_production_procurement_scenario',{target_scenario_id:balanced.id,expected_scenario_revision:0,candidate_approval_key:approvalKey})
+    expect(repeatedApproval.error).toBeNull();expect(repeatedApproval.data).toBe(approved.data)
+    const planId=approved.data as string
+    const plan=await a.client.from('purchase_plans').select('*').eq('id',planId).single()
+    expect(plan.data).toMatchObject({supplier_id:null,status:'verification_required',plan_version:1,source_scenario_id:balanced.id,supplier_count:1,line_count:1})
+    const planSnapshot=plan.data!.source_snapshot
+    const baskets=await a.client.from('purchase_plan_baskets').select('*').eq('purchase_plan_id',planId)
+    const lines=await a.client.from('purchase_plan_lines').select('*').eq('purchase_plan_id',planId)
+    expect(baskets.data).toHaveLength(1);expect(lines.data).toHaveLength(1)
+    expect(lines.data?.[0]).toMatchObject({canonical_ingredient_id:'shared-oil',supplier_product_id:'supplier-product-selected',pack_count:1})
+    expect((await a.client.from('purchase_plan_baskets').update({supplier_name_snapshot:'Unsafe'}).eq('purchase_plan_id',planId)).error).not.toBeNull()
+    expect((await a.client.from('purchase_plan_lines').update({pack_count:99}).eq('purchase_plan_id',planId)).error).not.toBeNull()
+    const beforeCheckout=await Promise.all(['purchase_orders','inventory_lots','inventory_movements','supplier_events'].map(table=>a.client.from(table).select('*',{count:'exact',head:true})))
+    expect((await a.client.rpc('mark_purchase_plan_checkout_ready',{target_plan_id:planId,expected_verification_revision:1})).error?.message).toContain('VERIFICATION_GATE_UNRESOLVED')
+    let verifications=(await a.client.from('purchase_plan_verifications').select('*').eq('purchase_plan_id',planId)).data!
+    expect(verifications.length).toBeGreaterThanOrEqual(7)
+    for(const verification of verifications){
+      const recorded=await a.client.rpc('record_purchase_plan_verification',{target_verification_id:verification.id,expected_revision:verification.revision,candidate_state:'confirmed',candidate_verified_value:verification.expected_value,candidate_unit_or_currency:verification.expected_unit_or_currency??'',candidate_method:'manual_owner_check',candidate_evidence:'integration-checkout',candidate_note:'Confirmed in integration test'})
+      expect(recorded.error).toBeNull()
+    }
+    verifications=(await a.client.from('purchase_plan_verifications').select('*').eq('purchase_plan_id',planId)).data!
+    expect(verifications.every((row:{verification_state:string})=>row.verification_state==='confirmed')).toBe(true)
+    const verifiedPlan=await a.client.from('purchase_plans').select('*').eq('id',planId).single()
+    const checkoutReady=await a.client.rpc('mark_purchase_plan_checkout_ready',{target_plan_id:planId,expected_verification_revision:verifiedPlan.data!.verification_revision})
+    expect(checkoutReady.error).toBeNull()
+    const checkoutPlan=await a.client.from('purchase_plans').select('*').eq('id',planId).single()
+    expect(checkoutPlan.data).toMatchObject({status:'checkout_ready',source_snapshot:planSnapshot})
+    expect((await a.client.from('purchase_plan_verifications').update({note:'Unsafe'}).eq('purchase_plan_id',planId)).error).not.toBeNull()
+    const afterCheckout=await Promise.all(['purchase_orders','inventory_lots','inventory_movements','supplier_events'].map(table=>a.client.from(table).select('*',{count:'exact',head:true})))
+    expect(afterCheckout.map(result=>result.count)).toEqual(beforeCheckout.map(result=>result.count))
+    expect((await a.client.from('procurement_supplier_discounts').select('status,used_at').eq('supplier_id',supplier.data!.id).single()).data).toMatchObject({status:'available',used_at:null})
     expect((await a.client.rpc('generate_production_procurement_scenarios',{target_round_id:roundId,expected_round_revision:16})).error).toBeNull()
     const historical=await a.client.from('production_procurement_scenarios').select('id,status,source_fingerprint').eq('round_id',roundId)
     expect(historical.data).toHaveLength(7);expect(historical.data?.find((row:{id:string})=>row.id===balanced.id)?.status).toBe('published')
-    const operationalAfterScenarios=await Promise.all(['inventory_lots','inventory_movements','purchase_plans','procurement_supplier_offers'].map(table=>a.client.from(table).select('*',{count:'exact',head:true})))
-    expect(operationalAfterScenarios.map(result=>result.count)).toEqual(operationalAfter.map(result=>result.count))
+    const operationalAfterScenarios=await Promise.all(['inventory_lots','inventory_movements','procurement_supplier_offers'].map(table=>a.client.from(table).select('*',{count:'exact',head:true})))
+    expect(operationalAfterScenarios.map(result=>result.count)).toEqual([operationalAfter[0].count,operationalAfter[1].count,operationalAfter[3].count])
+    expect((await a.client.from('purchase_plans').select('id').eq('production_procurement_round_id',roundId)).data).toHaveLength(1)
     const usedDiscount=await a.client.from('procurement_supplier_discounts').select('status,used_at').eq('supplier_id',supplier.data!.id).single()
     expect(usedDiscount.data).toMatchObject({status:'available',used_at:null})
     const cancelled=await a.client.rpc('cancel_production_procurement_round',{target_round_id:roundId,expected_revision:17})
@@ -118,5 +155,123 @@ run('durable Production Procurement Readiness against local Supabase',()=>{
     expect((await a.client.from('production_procurement_rounds').update({title:'Unsafe direct write'}).eq('id',roundId)).error).not.toBeNull()
     expect((await b.client.from('production_procurement_rounds').select('id').eq('id',roundId)).data).toEqual([])
     expect((await createClient(url!,anonKey!,{auth:{persistSession:false}}).rpc('create_production_procurement_round',{candidate_workspace_id:a.workspaceId,candidate_title:'Anonymous'})).error).not.toBeNull()
+  },20000)
+
+  it('approves one genuine two-supplier plan, enforces the verification gate, supersedes versions, and preserves cancellation boundaries',async()=>{
+    const a=await owner('multi-supplier'),other=await owner('multi-supplier-other'),now='2026-07-28T06:00:00.000Z'
+    const owned={workspace_id:a.workspaceId,owner_id:a.ownerId}
+    const supplierA=crypto.randomUUID(),supplierB=crypto.randomUUID()
+    expect((await a.client.from('ingredients').insert([
+      {...owned,id:'multi-ingredient-a',common_name:'Multi Oil',inci_name:'SIMMONDSIA CHINENSIS SEED OIL',category:'Oil',functions:['Emollient'],description:'',default_unit:'g',notes:'',status:'Active',created_at:now,updated_at:now},
+      {...owned,id:'multi-ingredient-b',common_name:'Multi Wax',inci_name:'CANDELILLA CERA',category:'Wax',functions:['Structurant'],description:'',default_unit:'g',notes:'',status:'Active',created_at:now,updated_at:now},
+    ])).error).toBeNull()
+    const categories=['beard_oil','beard_butter','beard_balm','deodorant'] as const
+    for(const [index,category] of categories.entries()){
+      const ingredientId=index<2?'multi-ingredient-a':'multi-ingredient-b'
+      expect((await a.client.from('products').insert({...owned,id:`multi-product-${category}`,name:category.replaceAll('_',' '),category,status:'Active',development_stage:'Formulation',description:'',scent_profile:'',created_at:now,updated_at:now})).error).toBeNull()
+      expect((await a.client.from('formulas').insert({...owned,id:`multi-formula-${category}`,product_id:`multi-product-${category}`,name:`${category} formula`,description:'',created_at:now,updated_at:now})).error).toBeNull()
+      expect((await a.client.from('formula_versions').insert({...owned,id:`multi-version-${category}`,formula_id:`multi-formula-${category}`,version:'v1.0',status:'Approved',description:'',target_characteristics:'',phase_definitions:[{code:'A',name:'Main',order:1}],manufacturing_process:[],created_at:now,updated_at:now})).error).toBeNull()
+      expect((await a.client.from('formula_lines').insert({...owned,id:`multi-line-${category}`,formula_version_id:`multi-version-${category}`,ingredient_id:ingredientId,percentage:100,phase:'A',sort_order:1,notes:'',formulation_role:category==='deodorant'?'deodorant_active':'emollient'})).error).toBeNull()
+    }
+    expect((await a.client.from('suppliers').insert([
+      {...owned,id:supplierA,legal_name:'Supplier Alpha',supplier_type:'raw_material',status:'active',internal_notes:'',is_preferred:true,website_url:'https://alpha.example.test'},
+      {...owned,id:supplierB,legal_name:'Supplier Beta',supplier_type:'raw_material',status:'active',internal_notes:'',is_preferred:false,website_url:'https://beta.example.test'},
+    ])).error).toBeNull()
+    expect((await a.client.from('supplier_products').insert([
+      {...owned,id:'multi-product-a',ingredient_id:'multi-ingredient-a',supplier_id:supplierA,supplier_name:'Supplier Alpha',product_name:'Multi Oil 500 g',package_quantity:500,package_unit:'g',price:100,currency:'NOK',product_url:'https://alpha.example.test/oil',notes:'',is_preferred:true,grade:'Cosmetic',product_status:'verified_operational',availability_status:'in_stock',last_verified_date:'2026-07-28',verification:{sds:'reviewed'},created_at:now,updated_at:now},
+      {...owned,id:'multi-product-b',ingredient_id:'multi-ingredient-b',supplier_id:supplierB,supplier_name:'Supplier Beta',product_name:'Multi Wax 250 g',package_quantity:250,package_unit:'g',price:80,currency:'NOK',product_url:'https://beta.example.test/wax',notes:'',is_preferred:true,grade:'Cosmetic',product_status:'verified_operational',availability_status:'in_stock',last_verified_date:'2026-07-28',verification:{sds:'reviewed'},created_at:now,updated_at:now},
+    ])).error).toBeNull()
+    expect((await a.client.from('procurement_supplier_shipping_rules').insert([
+      {...owned,supplier_id:supplierA,destination_country_code:'NO',currency:'NOK',flat_rate:20,tax_handling:'included',duty_handling:'excluded',status:'active',verified_at:now,evidence_notes:''},
+      {...owned,supplier_id:supplierB,destination_country_code:'NO',currency:'NOK',flat_rate:30,tax_handling:'included',duty_handling:'excluded',status:'active',verified_at:now,evidence_notes:''},
+    ])).error).toBeNull()
+    const created=await a.client.rpc('create_production_procurement_round',{candidate_workspace_id:a.workspaceId,candidate_title:'Two supplier production',candidate_notes:'',candidate_base_currency:'NOK',idempotency_key:crypto.randomUUID()})
+    expect(created.error).toBeNull()
+    const roundId=created.data as string
+    const selections=categories.map(category=>({category,productId:`multi-product-${category}`,formulaVersionId:`multi-version-${category}`,batchCount:1,batchSize:100,batchUnit:'g',overagePercent:0,expectedYield:null,deodorantStructure:category==='deodorant'?'anhydrous':null}))
+    expect((await a.client.rpc('update_production_procurement_round_products',{target_round_id:roundId,expected_revision:1,round_title:'Two supplier production',round_notes:'',product_selections:selections})).error).toBeNull()
+    expect((await a.client.rpc('regenerate_production_procurement_requirements',{target_round_id:roundId,expected_revision:2})).error).toBeNull()
+    const requirements=(await a.client.from('production_procurement_requirements').select('*').eq('round_id',roundId).order('ingredient_id')).data!
+    expect(requirements).toHaveLength(2)
+    let roundRevision=3
+    for(const requirement of requirements){
+      const supplierProductId=requirement.ingredient_id==='multi-ingredient-a'?'multi-product-a':'multi-product-b'
+      expect((await a.client.rpc('generate_production_requirement_candidates',{target_requirement_id:requirement.id,expected_round_revision:roundRevision})).error).toBeNull();roundRevision++
+      expect((await a.client.rpc('accept_supplier_product_ingredient_mapping',{target_requirement_id:requirement.id,target_supplier_product_id:supplierProductId,expected_round_revision:roundRevision,acceptance_note:'Two-supplier fixture'})).error).toBeNull();roundRevision++
+      expect((await a.client.rpc('generate_production_requirement_candidates',{target_requirement_id:requirement.id,expected_round_revision:roundRevision})).error).toBeNull();roundRevision++
+      const candidate=(await a.client.from('production_requirement_supplier_candidates').select('id').eq('requirement_id',requirement.id).eq('supplier_product_id',supplierProductId).single()).data!
+      const match=(await a.client.from('production_requirement_supplier_matches').select('revision').eq('requirement_id',requirement.id).single()).data!
+      expect((await a.client.rpc('select_production_requirement_supplier_product',{target_requirement_id:requirement.id,target_candidate_id:candidate.id,expected_round_revision:roundRevision,expected_match_revision:match.revision})).error).toBeNull();roundRevision++
+    }
+    expect((await a.client.rpc('generate_production_procurement_scenarios',{target_round_id:roundId,expected_round_revision:roundRevision})).error).toBeNull();roundRevision++
+    const scenarioARecord=(await a.client.from('production_procurement_scenarios').select('*').eq('round_id',roundId).eq('strategy','balanced').neq('status','published').single()).data!
+    expect(scenarioARecord).toMatchObject({supplier_count:2,line_count:2})
+    expect((await a.client.rpc('publish_production_procurement_scenario',{target_scenario_id:scenarioARecord.id,expected_scenario_revision:scenarioARecord.revision,expected_round_revision:roundRevision})).error).toBeNull();roundRevision++
+    const scenarioA=scenarioARecord.id
+    expect((await other.client.rpc('approve_production_procurement_scenario',{target_scenario_id:scenarioA,expected_scenario_revision:2,candidate_approval_key:crypto.randomUUID()})).error?.message).toContain('SCENARIO_UNAVAILABLE')
+    const approvedA=await a.client.rpc('approve_production_procurement_scenario',{target_scenario_id:scenarioA,expected_scenario_revision:2,candidate_approval_key:'33333333-3333-4333-8333-333333333333'})
+    expect(approvedA.error).toBeNull()
+    const planAId=approvedA.data as string
+    const planA=await a.client.from('purchase_plans').select('*').eq('id',planAId).single()
+    expect(planA.data).toMatchObject({supplier_id:null,source_scenario_id:scenarioA,plan_version:1,supplier_count:2,line_count:2,status:'verification_required'})
+    expect((await a.client.from('purchase_plan_baskets').select('supplier_id').eq('purchase_plan_id',planAId)).data?.map((row:{supplier_id:string})=>row.supplier_id).sort()).toEqual([supplierA,supplierB].sort())
+    expect((await a.client.from('purchase_plan_lines').select('source_scenario_line_id').eq('purchase_plan_id',planAId)).data).toHaveLength(2)
+    expect((await a.client.from('purchase_orders').select('id').eq('source_purchase_plan_id',planAId)).data).toEqual([])
+
+    const expectedSnapshot=structuredClone(planA.data!.source_snapshot)
+    const checks=(await a.client.from('purchase_plan_verifications').select('*').eq('purchase_plan_id',planAId)).data!
+    const priceCheck=checks.find((row:{field:string})=>row.field==='package_price')!
+    const stalePrice=await a.client.rpc('record_purchase_plan_verification',{target_verification_id:priceCheck.id,expected_revision:0,candidate_state:'changed',candidate_verified_value:95,candidate_unit_or_currency:'NOK',candidate_method:'manual_owner_check',candidate_evidence:'checkout',candidate_note:'Lower price'})
+    expect(stalePrice.error?.message).toContain('STALE_VERIFICATION_REVISION')
+    expect((await a.client.rpc('record_purchase_plan_verification',{target_verification_id:priceCheck.id,expected_revision:priceCheck.revision,candidate_state:'changed',candidate_verified_value:95,candidate_unit_or_currency:'NOK',candidate_method:'manual_owner_check',candidate_evidence:'checkout',candidate_note:'Lower price'})).error).toBeNull()
+    expect((await a.client.from('purchase_plan_verifications').select('expected_value,verified_value,verification_state').eq('id',priceCheck.id).single()).data).toMatchObject({expected_value:100,verified_value:95,verification_state:'changed_acceptable'})
+    const identityCheck=checks.find((row:{field:string})=>row.field==='package_identity')!
+    expect((await a.client.rpc('record_purchase_plan_verification',{target_verification_id:identityCheck.id,expected_revision:identityCheck.revision,candidate_state:'changed',candidate_verified_value:{size:1000,unit:'g',count:1},candidate_unit_or_currency:'g',candidate_method:'manual_owner_check',candidate_evidence:'checkout',candidate_note:'Changed pack'})).error).toBeNull()
+    expect((await a.client.from('purchase_plan_verifications').select('verification_state').eq('id',identityCheck.id).single()).data?.verification_state).toBe('changed_requires_new_plan')
+    let currentPlanA=await a.client.from('purchase_plans').select('*').eq('id',planAId).single()
+    expect((await a.client.rpc('mark_purchase_plan_checkout_ready',{target_plan_id:planAId,expected_verification_revision:currentPlanA.data!.verification_revision})).error?.message).toContain('VERIFICATION_GATE_UNRESOLVED')
+    expect((await a.client.rpc('waive_purchase_plan_verification',{target_verification_id:identityCheck.id,expected_revision:identityCheck.revision+1,waiver_reason:'Cannot waive this required identity check'})).error?.message).toContain('HARD_BLOCKER_NOT_WAIVABLE')
+    for(const check of (await a.client.from('purchase_plan_verifications').select('*').eq('purchase_plan_id',planAId)).data!){
+      if(check.id===priceCheck.id)continue
+      expect((await a.client.rpc('record_purchase_plan_verification',{target_verification_id:check.id,expected_revision:check.revision,candidate_state:'confirmed',candidate_verified_value:check.expected_value,candidate_unit_or_currency:check.expected_unit_or_currency??'',candidate_method:'manual_owner_check',candidate_evidence:'checkout',candidate_note:'Confirmed'})).error).toBeNull()
+    }
+    const basketAId=(await a.client.from('purchase_plan_baskets').select('id').eq('purchase_plan_id',planAId).limit(1).single()).data!.id
+    const advisoryId=crypto.randomUUID()
+    await admin.from('purchase_plan_verifications').insert({...owned,id:advisoryId,purchase_plan_id:planAId,plan_version:1,purchase_plan_basket_id:basketAId,supplier_id:supplierA,category:'supplier',field:'optional_service_level',expected_value:'standard',severity:'advisory',requirement_reason:'Optional service-level note'}).throwOnError()
+    expect((await a.client.rpc('waive_purchase_plan_verification',{target_verification_id:advisoryId,expected_revision:1,waiver_reason:'no'})).error?.message).toContain('WAIVER_REASON_REQUIRED')
+    expect((await a.client.rpc('waive_purchase_plan_verification',{target_verification_id:advisoryId,expected_revision:1,waiver_reason:'Owner accepts standard delivery'})).error).toBeNull()
+    currentPlanA=await a.client.from('purchase_plans').select('*').eq('id',planAId).single()
+    expect((await a.client.rpc('mark_purchase_plan_checkout_ready',{target_plan_id:planAId,expected_verification_revision:currentPlanA.data!.verification_revision})).error).toBeNull()
+    expect((await a.client.from('purchase_plans').select('source_snapshot,status').eq('id',planAId).single()).data).toMatchObject({source_snapshot:expectedSnapshot,status:'checkout_ready'})
+
+    expect((await a.client.rpc('generate_production_procurement_scenarios',{target_round_id:roundId,expected_round_revision:roundRevision})).error).toBeNull();roundRevision++
+    const scenarioBRecord=(await a.client.from('production_procurement_scenarios').select('*').eq('round_id',roundId).eq('strategy','balanced').neq('status','published').single()).data!
+    expect((await a.client.rpc('publish_production_procurement_scenario',{target_scenario_id:scenarioBRecord.id,expected_scenario_revision:scenarioBRecord.revision,expected_round_revision:roundRevision})).error).toBeNull()
+    const scenarioB=scenarioBRecord.id
+    expect((await a.client.rpc('approve_production_procurement_scenario',{target_scenario_id:scenarioB,expected_scenario_revision:2,candidate_approval_key:crypto.randomUUID()})).error?.message).toContain('ACTIVE_PLAN_REQUIRES_EXPLICIT_SUPERSESSION')
+    const approvedB=await a.client.rpc('approve_production_procurement_scenario',{target_scenario_id:scenarioB,expected_scenario_revision:2,candidate_approval_key:'44444444-4444-4444-8444-444444444444',target_replaces_plan_id:planAId})
+    expect(approvedB.error).toBeNull()
+    const planBId=approvedB.data as string
+    expect((await a.client.from('purchase_plans').select('status,plan_version,superseded_by,source_scenario_id').eq('id',planAId).single()).data).toMatchObject({status:'superseded',plan_version:1,superseded_by:planBId,source_scenario_id:scenarioA})
+    expect((await a.client.from('purchase_plans').select('status,plan_version,source_scenario_id').eq('id',planBId).single()).data).toMatchObject({status:'verification_required',plan_version:2,source_scenario_id:scenarioB})
+    expect((await a.client.from('purchase_plan_verifications').select('id').eq('purchase_plan_id',planAId)).data!.length).toBeGreaterThan(0)
+    expect((await a.client.rpc('mark_purchase_plan_checkout_ready',{target_plan_id:planAId,expected_verification_revision:currentPlanA.data!.verification_revision})).error?.message).toContain('PLAN_NOT_READY_ELIGIBLE')
+
+    const planB=await a.client.from('purchase_plans').select('*').eq('id',planBId).single()
+    expect((await a.client.rpc('cancel_internal_purchase_plan',{target_plan_id:planBId,expected_revision:0,candidate_cancellation_reason:'Stale cancellation revision'})).error?.message).toContain('STALE_PURCHASE_PLAN_REVISION')
+    expect((await a.client.rpc('cancel_internal_purchase_plan',{target_plan_id:planBId,expected_revision:planB.data!.revision,candidate_cancellation_reason:'no'})).error?.message).toContain('CANCELLATION_REASON_REQUIRED')
+    const orderId=crypto.randomUUID()
+    await admin.from('purchase_orders').insert({...owned,id:orderId,supplier_id:supplierA,source_purchase_plan_id:planBId,source_purchase_plan_revision:planB.data!.revision,status:'draft',created_by:a.ownerId}).throwOnError()
+    expect((await a.client.rpc('cancel_internal_purchase_plan',{target_plan_id:planBId,expected_revision:planB.data!.revision,candidate_cancellation_reason:'Plan no longer required'})).error?.message).toContain('PLAN_HAS_PURCHASE_ORDER')
+    await admin.from('purchase_orders').delete().eq('id',orderId).throwOnError()
+    expect((await a.client.rpc('cancel_internal_purchase_plan',{target_plan_id:planBId,expected_revision:planB.data!.revision,candidate_cancellation_reason:'Plan no longer required'})).error).toBeNull()
+    const cancelledPlan=await a.client.from('purchase_plans').select('*').eq('id',planBId).single()
+    expect(cancelledPlan.data).toMatchObject({status:'cancelled',plan_version:2,source_scenario_id:scenarioB})
+    const cancelledCheck=(await a.client.from('purchase_plan_verifications').select('*').eq('purchase_plan_id',planBId).limit(1).single()).data!
+    expect((await a.client.rpc('record_purchase_plan_verification',{target_verification_id:cancelledCheck.id,expected_revision:cancelledCheck.revision,candidate_state:'confirmed',candidate_verified_value:cancelledCheck.expected_value,candidate_unit_or_currency:'',candidate_method:'manual_owner_check',candidate_evidence:'',candidate_note:''})).error?.message).toContain('PLAN_NOT_MUTABLE')
+    expect((await a.client.rpc('mark_purchase_plan_checkout_ready',{target_plan_id:planBId,expected_verification_revision:cancelledPlan.data!.verification_revision})).error?.message).toContain('PLAN_NOT_READY_ELIGIBLE')
+    expect((await a.client.from('purchase_plan_baskets').select('id').eq('purchase_plan_id',planBId)).data).toHaveLength(2)
+    expect((await a.client.from('purchase_plan_audit_events').select('event_type').eq('purchase_plan_id',planBId)).data?.some((row:{event_type:string})=>row.event_type==='plan_cancelled')).toBe(true)
+    expect((await a.client.from('purchase_orders').select('id').in('source_purchase_plan_id',[planAId,planBId])).data).toEqual([])
   },20000)
 })
