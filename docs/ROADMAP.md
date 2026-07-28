@@ -52,6 +52,42 @@ Phase 6 now replaces overlapping manual packaging Cost Lines with authoritative 
 - Phase 9C+: Operations Copilot and later Intelligence work — Future
 - Phase 10A: Procurement, Suppliers & Equipment Foundation — Implemented locally; hosted migration pending
 
+## Operational milestone closeout — 2026-07-28
+
+### Procurement Readiness V1 — Complete
+
+Release Candidate validated. The delivered procurement lifecycle preserves internal Purchase Plan truth separately from external Purchase Order execution, then carries confirmed supply through shipment, physical receipt, inspection, quarantine, quality release, Inventory Lot creation, and exactly-once opening movement.
+
+### Production Inventory Control V1 — Complete
+
+Release Candidate: **PASS**. Closeout date: **2026-07-28**.
+
+Completed capabilities:
+
+- immutable Batch Material Requirements;
+- eligible released-lot selection with deterministic FEFO recommendation;
+- durable lot allocation and concurrency-safe reservation;
+- distinct planned and actual weighing;
+- productive consumption and waste;
+- explicit reservation release;
+- staged return without a positive movement;
+- controlled post-consumption physical return;
+- exact material reconciliation with documented variance;
+- authoritative server-side completion readiness;
+- immutable historical provenance;
+- shared Lab and Production operator workflows;
+- complete desktop and 390 px mobile lifecycle coverage.
+
+The closeout and architecture review are recorded in [Production Inventory Control V1 release closeout](PRODUCTION_INVENTORY_CONTROL_RELEASE_CLOSEOUT.md).
+
+### Next: Finished Goods & Batch Genealogy V1
+
+**Status:** Next; not started.
+
+High-level objective: transform completed Production output into controlled Finished Goods Lots with immutable batch genealogy, yield reconciliation, quality release, packaging identity, and traceability back to every consumed raw-material lot.
+
+This milestone hardens and extends the lightweight Finished Goods/output registration delivered in Phase 6. It does not replace the separate raw-material, packaging, or Finished Goods ledgers.
+
 ## Koalafrog HQ v0.13.0 — Delivered
 
 **Release theme:** Benchmark Lab, Living Research and Beard Studio

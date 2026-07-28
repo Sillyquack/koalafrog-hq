@@ -81,6 +81,16 @@ Actual physical Packaging allocation cost is authoritative once committed. Overl
 
 Persistence advances from workspace v7 to v8. The explicit Phase 5 migration preserves all Phase 1–5 collections and adds empty Phase 6 collections; seed records are used only for new workspaces.
 
+## Production Inventory Control V1
+
+The current controlled raw-material execution boundary extends the earlier Production model without replacing its ledgers. A Batch Material Requirement is an immutable execution snapshot. Released Inventory Lots are allocated and transactionally reserved; availability is movement-derived balance less active reservations. Planned weighing records intent, actual weighing records observation, and neither changes physical stock. Productive consumption and waste append separate movements exactly once. Reservation release, staged return, and post-consumption physical return retain distinct identities and accounting effects.
+
+Completion readiness is server-authoritative. The read-only readiness RPC and completion trigger call the same versioned evaluator, while the browser only renders its structured blockers. Historical provenance is assembled server-side from execution snapshots and immutable lifecycle identities; edits to current Ingredient or other master labels do not rewrite batch history.
+
+Raw-material and Packaging ledgers remain separate. V1 does not claim Packaging reservation, return, waste/damage, or release-state parity. The next Finished Goods & Batch Genealogy milestone will build on the existing lightweight Finished Goods boundary rather than folding Packaging or Finished Goods into raw-material tables.
+
+See [Production Inventory Control V1 release closeout](PRODUCTION_INVENTORY_CONTROL_RELEASE_CLOSEOUT.md) for the audited lifecycle, authority boundaries, accepted limitations, and entry conditions for the next milestone.
+
 ## Phase 7 — Compliance Evidence and Launch Readiness
 
 A Compliance Dossier binds one exact Product, Formula Version, optional Packaging Specification Version, optional Label Artwork Version, target market, and language. Old dossiers remain immutable configuration history. Duplication creates a new record and marks copied version-sensitive evidence Needs Review; CPSR and CPNP validity are never carried forward automatically.
