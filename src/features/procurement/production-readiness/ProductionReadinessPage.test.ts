@@ -31,6 +31,11 @@ describe('durable Production Readiness UI contract',()=>{
     for(const operation of ['approveProductionScenario','recordPlanVerification','waivePlanVerification','markPlanCheckoutReady','cancelInternalPlan'])expect(page).toContain(operation)
     expect(page).toContain('checkout readiness never creates a Purchase Order')
     expect(page).not.toContain('createPurchaseOrder')
+    expect(page).toContain('Create draft Purchase Orders')
+    expect(page).toContain('Internal draft')
+    expect(page).toContain('Not placed')
+    expect(page).toContain('No external checkout')
+    expect(page).toContain('Cancel draft')
   })
   it('distinguishes unknown, zero, and not-calculated states accessibly',()=>{
     expect(page).toContain("'Unknown'")

@@ -113,6 +113,16 @@ The generated manual gate separately records Norway delivery, shipping, tax/impo
 
 `checkout_ready` means only that every required check resolved under the recorded policy. It creates no Purchase Order, receipt, incoming-stock record, lot, movement, payment, provider action, or discount consumption. Cancellation and supersession preserve snapshots, checks, and audit events.
 
+## Explicit draft Purchase Order handoff
+
+A checkout-ready multi-supplier plan can be handed off explicitly under deterministic policy `1.0.0`. One atomic RPC creates exactly one internal draft Purchase Order per supplier basket and copies that basket's lines, plan/version provenance, expected values, accepted verified values, currencies, quantities, commercial assumptions, verification evidence, warnings, and manual checkout checklist. A stable handoff key makes retries idempotent and any invalid basket rolls back the complete handoff.
+
+`Internal draft` and `Not placed` are literal boundaries: drafting does not contact a supplier, submit checkout, record payment or placement, consume a discount, create a Receipt, or mutate Inventory. Unplaced drafts may be cancelled with a reason; their header, lines, and audit history remain immutable and inspectable. The legacy singular handoff remains compatibility-only for sufficiently complete single-supplier plans.
+
+Lifecycle: Production Procurement Round → Published Scenario → Purchase Plan → Checkout Verification → Checkout-ready Plan → Draft Purchase Orders → External Placement → Receipt → Inventory.
+
+The database scenario ranking expression still has a known integer-overflow risk for unusually large accumulated missing-data penalties. Handoff is restricted to already-published, checkout-ready plans; ranking arithmetic was not changed because safely replacing the existing generator requires a separately validated optimizer migration.
+
 External execution is represented by `purchase_orders` and immutable `purchase_order_lines`. An eligible internal plan creates no order automatically. The explicit plan-to-order RPC snapshots the plan and supplier data into a draft order; a separate placement RPC records an order that the owner already placed outside Koalafrog.
 
 No Purchase Order creates receipts, inventory lots, movements, incoming-stock claims, payments, or discount consumption. Receiving remains a separate future execution boundary, and Inventory Movements remain stock truth.

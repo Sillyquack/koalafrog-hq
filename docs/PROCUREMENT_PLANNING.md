@@ -234,4 +234,8 @@ Purchase Plans are internal decisions and never mean ordered or received. Extern
 
 Creating an order is explicit and idempotent. Recording placement only documents an external action already performed by the owner. Neither action creates stock, a receipt, a payment, incoming-goods truth, or consumes a discount.
 
+Production Readiness uses the multi-basket `create_draft_purchase_orders_from_plan` boundary, not the legacy singular handoff. It locks the checkout-ready plan, validates its revision and resolved verification gate, and transactionally creates one internal draft per supplier basket. Draft headers and lines preserve immutable plan/version/basket provenance plus expected, verified, and effective values with their source. The owner still performs checkout manually.
+
+Draft cancellation is a retained historical transition requiring an owner reason. It never deletes lines, rewrites the Purchase Plan, restores or consumes a discount, or implies supplier cancellation. Safe stored HTTP(S) supplier, product, documentation, and evidence links are navigation only.
+
 Historical plan statuses that previously represented ordering or receipt are preserved as linked Purchase Orders. Legacy line receipt quantities are review metadata only; Inventory Movements remain the sole stock truth.

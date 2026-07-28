@@ -114,7 +114,7 @@ test('owner persists, regenerates, reopens, and cancels a four-product productio
  expect((await admin.from('inventory_movements').select('*',{count:'exact',head:true}).eq('workspace_id',workspaceId)).count).toBe(movementsBefore.count)
 })
 
-test('owner approves and verifies one two-supplier plan, then explicitly supersedes it without creating execution records',async({page})=>{
+test('owner creates one internal draft per verified supplier basket, retries safely, cancels one, and supersedes the plan',async({page})=>{
  const client=await localOwnerClient(),fixture=await seedTwoSupplierScenario(client)
  const ordersBefore=(await client.from('purchase_orders').select('*',{count:'exact',head:true}).eq('workspace_id',fixture.workspaceId)).count
  const movementsBefore=(await client.from('inventory_movements').select('*',{count:'exact',head:true}).eq('workspace_id',fixture.workspaceId)).count
@@ -145,7 +145,27 @@ test('owner approves and verifies one two-supplier plan, then explicitly superse
  await page.locator('.purchase-plan-card').filter({hasText:'Plan v1'}).getByRole('button',{name:'Mark checkout ready'}).click()
  await expect(page.locator('.purchase-plan-card').filter({hasText:'Plan v1'})).toContainText('checkout ready')
  await page.reload()
- await expect(page.locator('.purchase-plan-card').filter({hasText:'Plan v1'})).toContainText('changed acceptable')
+ const readyPlan=page.locator('.purchase-plan-card').filter({hasText:'Plan v1'})
+ await expect(readyPlan).toContainText('changed acceptable')
+ await expect(readyPlan).toContainText('2 suppliers · 2 internal drafts · 2 lines')
+ page.once('dialog',dialog=>void dialog.accept())
+ await readyPlan.getByRole('button',{name:'Create draft Purchase Orders'}).click()
+ await expect(readyPlan.getByText('Internal draft',{exact:false})).toHaveCount(2)
+ await expect(readyPlan.getByText('Not placed',{exact:false})).toHaveCount(2)
+ await expect(readyPlan).toContainText('Expected 100 · Verified 95 · Effective 95')
+ let orders=(await client.from('purchase_orders').select('*').eq('source_purchase_plan_id',planId)).data!
+ expect(orders).toHaveLength(2)
+ expect(new Set((await client.from('purchase_order_lines').select('source_purchase_plan_basket_id').in('purchase_order_id',orders.map(order=>order.id))).data!.map(row=>row.source_purchase_plan_basket_id)).size).toBe(2)
+ const retry=await client.rpc('create_draft_purchase_orders_from_plan',{target_plan_id:planId,expected_plan_revision:(await client.from('purchase_plans').select('revision').eq('id',planId).single()).data!.revision,candidate_handoff_key:orders[0].handoff_key})
+ expect(retry.error).toBeNull();expect(retry.data).toHaveLength(2)
+ expect((await client.from('purchase_orders').select('id',{count:'exact',head:true}).eq('source_purchase_plan_id',planId)).count).toBe(2)
+ await page.reload()
+ const persistedPlan=page.locator('.purchase-plan-card').filter({hasText:'Plan v1'})
+ await expect(persistedPlan.getByText('Internal draft',{exact:false})).toHaveCount(2)
+ await answerPrompts(page,['Supplier checkout deferred'],()=>persistedPlan.getByRole('button',{name:'Cancel draft'}).first().click())
+ await expect(persistedPlan).toContainText('Cancelled')
+ orders=(await client.from('purchase_orders').select('*').eq('source_purchase_plan_id',planId)).data!
+ expect(orders.filter(order=>order.status==='cancelled')).toHaveLength(1)
 
  const currentRound=(await client.from('production_procurement_rounds').select('revision').eq('id',fixture.roundId).single()).data!
  expect((await client.rpc('generate_production_procurement_scenarios',{target_round_id:fixture.roundId,expected_round_revision:currentRound.revision})).error).toBeNull()
@@ -157,6 +177,7 @@ test('owner approves and verifies one two-supplier plan, then explicitly superse
  await page.locator('.scenario-card').filter({hasText:'Recommended balanced plan'}).filter({hasText:'published'}).filter({has:page.getByRole('button',{name:'Approve immutable plan'})}).getByRole('button',{name:'Approve immutable plan'}).click()
  await expect(page.locator('.purchase-plan-card').filter({hasText:'Plan v1'})).toContainText('superseded')
  await expect(page.locator('.purchase-plan-card').filter({hasText:'Plan v2'})).toContainText('verification required')
- expect((await client.from('purchase_orders').select('*',{count:'exact',head:true}).eq('workspace_id',fixture.workspaceId)).count).toBe(ordersBefore)
+ expect((await client.from('purchase_orders').select('*',{count:'exact',head:true}).eq('workspace_id',fixture.workspaceId)).count).toBe((ordersBefore??0)+2)
+ expect((await client.from('supplier_events').select('id').in('purchase_order_id',orders.map(order=>order.id))).data).toEqual([])
  expect((await client.from('inventory_movements').select('*',{count:'exact',head:true}).eq('workspace_id',fixture.workspaceId)).count).toBe(movementsBefore)
 })
