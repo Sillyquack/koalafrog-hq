@@ -17,6 +17,7 @@ import {
 } from "./domain/productionLogic";
 import { useActiveWorkspace } from "../../platform/startup/ActiveWorkspaceContext";
 import { BatchMaterialControlWorkspace } from "./components/BatchMaterialControlWorkspace";
+import { ProductionOutputWorkspace } from "./components/ProductionOutputWorkspace";
 import type { CompletionReadiness } from "./domain/productionInventoryControl";
 export function ProductionRunDetailPage() {
   const { productionRunId } = useParams();
@@ -292,6 +293,7 @@ export function ProductionRunDetailPage() {
         </div>
       </section>
       )}
+      <ProductionOutputWorkspace run={run} />
       <div className="batch-detail-grid">
         <section className="panel">
           <SectionHeader

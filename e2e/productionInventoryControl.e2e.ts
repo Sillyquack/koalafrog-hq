@@ -8,6 +8,11 @@ test.afterEach(()=>{
  for(const prefix of createdPrefixes.splice(0)){
   if(!/^pic-[0-9a-f-]+$/i.test(prefix))throw new Error('Unsafe Production Inventory Control fixture prefix.')
   const cleanup=`begin;set local session_replication_role=replica;
+delete from public.production_output_events where production_run_id like '${prefix}%';
+delete from public.production_output_reconciliations where production_output_id in(select id from public.production_outputs where production_run_id like '${prefix}%');
+delete from public.production_output_components where production_output_id in(select id from public.production_outputs where production_run_id like '${prefix}%');
+delete from public.production_output_measurements where production_output_id in(select id from public.production_outputs where production_run_id like '${prefix}%');
+delete from public.production_outputs where production_run_id like '${prefix}%';
 delete from public.batch_material_events where batch_id like '${prefix}%';
 delete from public.batch_material_reconciliations where batch_id like '${prefix}%';
 delete from public.batch_material_variances where batch_id like '${prefix}%';
@@ -104,6 +109,36 @@ test('Production controlled-material workspace completes a multi-lot controlled 
  await answer(page,[''],()=>page.getByRole('button',{name:'Complete Production Run'}).click())
  await expect(page.getByText('Completed',{exact:true}).first()).toBeVisible()
  await expect(page.getByRole('button',{name:'Record planned weighing'})).toHaveCount(0)
+ const createOutput=page.locator('.output-action-form').filter({hasText:'Create Production Output'})
+ await createOutput.locator('summary').click()
+ await createOutput.getByRole('button',{name:'Create controlled output'}).click()
+ await expect(page.getByText(/OUT-01/)).toBeVisible()
+ const measurement=page.locator('.output-action-form').filter({hasText:'Record actual measurement'})
+ await measurement.locator('summary').click()
+ await measurement.getByLabel('Net quantity').fill('100')
+ await measurement.getByRole('button',{name:'Record versioned measurement'}).click()
+ await expect(page.locator('.production-output-card dt:has-text("Actual measured") + dd')).toHaveText('100 g')
+ for(const[type,quantity,reason,evidence]of[['retained_bulk','95','Available for packaging',''],['bulk_waste','3','Vessel residue',''],['unexplained_variance','2','Documented measurement variance','variance:e2e']]){
+  const component=page.locator('.output-action-form').filter({hasText:'Record retained bulk'})
+  if((await component.getAttribute('open'))===null)await component.locator('summary').click()
+  await component.getByLabel('Component').selectOption(type)
+  await component.getByLabel('Quantity').fill(quantity)
+  await component.getByLabel('Reason').fill(reason)
+  await component.getByLabel('Evidence').fill(evidence)
+  await component.getByRole('button',{name:'Record immutable component'}).click()
+ }
+ const reconciliation=page.locator('.output-action-form').filter({hasText:'Reconcile equation'})
+ await reconciliation.locator('summary').click()
+ await reconciliation.getByLabel('Variance reason').fill('Two grams reviewed')
+ await reconciliation.getByLabel('Evidence').fill('variance:e2e')
+ await reconciliation.getByLabel('Approve documented unexplained variance').check()
+ await reconciliation.getByRole('button',{name:'Run authoritative reconciliation'}).click()
+ await expect(page.getByText('Ready to complete output stage')).toBeVisible()
+ await page.getByRole('button',{name:'Complete Output Stage'}).click()
+ await expect(page.getByText(/Ready for Packaging Planning/)).toBeVisible()
+ await page.reload()
+ await expect(page.getByText(/Ready for Packaging Planning/)).toBeVisible()
+ await expect(page.getByText('No Finished Goods inventory',{exact:false})).toBeVisible()
  await expect(page.locator('body')).toHaveJSProperty('scrollWidth',await page.locator('body').evaluate(body=>body.clientWidth))
 })
 
