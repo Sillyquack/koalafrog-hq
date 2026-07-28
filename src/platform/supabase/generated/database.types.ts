@@ -2957,6 +2957,330 @@ export type Database = {
           },
         ]
       }
+      finished_goods_lot_events: {
+        Row: {
+          actor_id: string
+          consumer_batch_code: string | null
+          event_key: string
+          event_type: string
+          finished_goods_lot_id: string | null
+          formula_version_id: string
+          id: string
+          metadata: Json
+          occurred_at: string
+          owner_id: string
+          packaging_run_id: string
+          policy_versions: Json
+          product_id: string
+          production_output_id: string
+          production_run_id: string
+          quantity: number | null
+          revision: number
+          unit: string | null
+          workspace_id: string
+        }
+        Insert: {
+          actor_id: string
+          consumer_batch_code?: string | null
+          event_key: string
+          event_type: string
+          finished_goods_lot_id?: string | null
+          formula_version_id: string
+          id?: string
+          metadata?: Json
+          occurred_at: string
+          owner_id: string
+          packaging_run_id: string
+          policy_versions: Json
+          product_id: string
+          production_output_id: string
+          production_run_id: string
+          quantity?: number | null
+          revision: number
+          unit?: string | null
+          workspace_id: string
+        }
+        Update: {
+          actor_id?: string
+          consumer_batch_code?: string | null
+          event_key?: string
+          event_type?: string
+          finished_goods_lot_id?: string | null
+          formula_version_id?: string
+          id?: string
+          metadata?: Json
+          occurred_at?: string
+          owner_id?: string
+          packaging_run_id?: string
+          policy_versions?: Json
+          product_id?: string
+          production_output_id?: string
+          production_run_id?: string
+          quantity?: number | null
+          revision?: number
+          unit?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finished_goods_lot_events_workspace_id_finished_goods_lot__fkey"
+            columns: ["workspace_id", "finished_goods_lot_id"]
+            isOneToOne: false
+            referencedRelation: "finished_goods_lots"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "finished_goods_lot_events_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finished_goods_lot_events_workspace_id_formula_version_id_fkey"
+            columns: ["workspace_id", "formula_version_id"]
+            isOneToOne: false
+            referencedRelation: "formula_versions"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "finished_goods_lot_events_workspace_id_packaging_run_id_fkey"
+            columns: ["workspace_id", "packaging_run_id"]
+            isOneToOne: false
+            referencedRelation: "packaging_runs"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "finished_goods_lot_events_workspace_id_product_id_fkey"
+            columns: ["workspace_id", "product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "finished_goods_lot_events_workspace_id_production_output_i_fkey"
+            columns: ["workspace_id", "production_output_id"]
+            isOneToOne: false
+            referencedRelation: "production_outputs"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "finished_goods_lot_events_workspace_id_production_run_id_fkey"
+            columns: ["workspace_id", "production_run_id"]
+            isOneToOne: false
+            referencedRelation: "production_runs"
+            referencedColumns: ["workspace_id", "id"]
+          },
+        ]
+      }
+      finished_goods_lots: {
+        Row: {
+          code_policy_version: string
+          consumer_batch_code: string
+          cost_snapshot: Json
+          created_at: string
+          created_by: string
+          creation_idempotency_key: string
+          creation_payload_fingerprint: string
+          expiry_date: string | null
+          formula_id: string
+          formula_snapshot: Json
+          formula_version_id: string
+          genealogy_snapshot: Json
+          id: string
+          internal_lot_code: string
+          label_snapshot: Json
+          lifecycle_status: string
+          location: string
+          lot_label: string
+          lot_sequence: number
+          manufacturing_date: string
+          nominal_fill_quantity: number
+          nominal_fill_unit: string
+          normalized_quantity: number
+          owner_id: string
+          packaged_output_reconciliation_id: string
+          packaging_run_id: string
+          packaging_snapshot: Json
+          packaging_specification_version_id: string
+          period_after_opening_unit: string | null
+          period_after_opening_value: number | null
+          product_id: string
+          product_snapshot: Json
+          production_output_id: string
+          production_run_id: string
+          quantity: number
+          quarantine_status: string
+          quarantined_at: string
+          quarantined_by: string
+          revision: number
+          shelf_life_basis: string
+          shelf_life_duration: number | null
+          shelf_life_policy_version: string
+          shelf_life_unit: string | null
+          unit: string
+          workspace_id: string
+        }
+        Insert: {
+          code_policy_version?: string
+          consumer_batch_code: string
+          cost_snapshot: Json
+          created_at?: string
+          created_by: string
+          creation_idempotency_key: string
+          creation_payload_fingerprint: string
+          expiry_date?: string | null
+          formula_id: string
+          formula_snapshot: Json
+          formula_version_id: string
+          genealogy_snapshot: Json
+          id?: string
+          internal_lot_code: string
+          label_snapshot: Json
+          lifecycle_status?: string
+          location: string
+          lot_label: string
+          lot_sequence: number
+          manufacturing_date: string
+          nominal_fill_quantity: number
+          nominal_fill_unit: string
+          normalized_quantity: number
+          owner_id: string
+          packaged_output_reconciliation_id: string
+          packaging_run_id: string
+          packaging_snapshot: Json
+          packaging_specification_version_id: string
+          period_after_opening_unit?: string | null
+          period_after_opening_value?: number | null
+          product_id: string
+          product_snapshot: Json
+          production_output_id: string
+          production_run_id: string
+          quantity: number
+          quarantine_status?: string
+          quarantined_at: string
+          quarantined_by: string
+          revision?: number
+          shelf_life_basis: string
+          shelf_life_duration?: number | null
+          shelf_life_policy_version?: string
+          shelf_life_unit?: string | null
+          unit: string
+          workspace_id: string
+        }
+        Update: {
+          code_policy_version?: string
+          consumer_batch_code?: string
+          cost_snapshot?: Json
+          created_at?: string
+          created_by?: string
+          creation_idempotency_key?: string
+          creation_payload_fingerprint?: string
+          expiry_date?: string | null
+          formula_id?: string
+          formula_snapshot?: Json
+          formula_version_id?: string
+          genealogy_snapshot?: Json
+          id?: string
+          internal_lot_code?: string
+          label_snapshot?: Json
+          lifecycle_status?: string
+          location?: string
+          lot_label?: string
+          lot_sequence?: number
+          manufacturing_date?: string
+          nominal_fill_quantity?: number
+          nominal_fill_unit?: string
+          normalized_quantity?: number
+          owner_id?: string
+          packaged_output_reconciliation_id?: string
+          packaging_run_id?: string
+          packaging_snapshot?: Json
+          packaging_specification_version_id?: string
+          period_after_opening_unit?: string | null
+          period_after_opening_value?: number | null
+          product_id?: string
+          product_snapshot?: Json
+          production_output_id?: string
+          production_run_id?: string
+          quantity?: number
+          quarantine_status?: string
+          quarantined_at?: string
+          quarantined_by?: string
+          revision?: number
+          shelf_life_basis?: string
+          shelf_life_duration?: number | null
+          shelf_life_policy_version?: string
+          shelf_life_unit?: string | null
+          unit?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finished_goods_lots_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finished_goods_lots_workspace_id_formula_id_fkey"
+            columns: ["workspace_id", "formula_id"]
+            isOneToOne: false
+            referencedRelation: "formulas"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "finished_goods_lots_workspace_id_formula_version_id_fkey"
+            columns: ["workspace_id", "formula_version_id"]
+            isOneToOne: false
+            referencedRelation: "formula_versions"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "finished_goods_lots_workspace_id_packaged_output_reconcili_fkey"
+            columns: ["workspace_id", "packaged_output_reconciliation_id"]
+            isOneToOne: false
+            referencedRelation: "packaged_output_reconciliations"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "finished_goods_lots_workspace_id_packaging_run_id_fkey"
+            columns: ["workspace_id", "packaging_run_id"]
+            isOneToOne: false
+            referencedRelation: "packaging_runs"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "finished_goods_lots_workspace_id_packaging_specification_v_fkey"
+            columns: ["workspace_id", "packaging_specification_version_id"]
+            isOneToOne: false
+            referencedRelation: "packaging_specification_versions"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "finished_goods_lots_workspace_id_product_id_fkey"
+            columns: ["workspace_id", "product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "finished_goods_lots_workspace_id_production_output_id_fkey"
+            columns: ["workspace_id", "production_output_id"]
+            isOneToOne: false
+            referencedRelation: "production_outputs"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "finished_goods_lots_workspace_id_production_run_id_fkey"
+            columns: ["workspace_id", "production_run_id"]
+            isOneToOne: false
+            referencedRelation: "production_runs"
+            referencedColumns: ["workspace_id", "id"]
+          },
+        ]
+      }
       finished_goods_movements: {
         Row: {
           created_at: string
@@ -3017,6 +3341,97 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "workspaces"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      finished_goods_quarantines: {
+        Row: {
+          current_review_state: string
+          entered_at: string
+          entered_by: string
+          finished_goods_lot_id: string
+          held_quantity: number
+          id: string
+          location: string
+          owner_id: string
+          packaging_run_id: string
+          provenance: Json
+          quantity: number
+          quarantine_policy_version: string
+          quarantine_reason: string
+          quarantine_status: string
+          rejected_quantity: number
+          released_quantity: number
+          remaining_quantity: number
+          revision: number
+          unit: string
+          workspace_id: string
+        }
+        Insert: {
+          current_review_state?: string
+          entered_at: string
+          entered_by: string
+          finished_goods_lot_id: string
+          held_quantity?: number
+          id?: string
+          location: string
+          owner_id: string
+          packaging_run_id: string
+          provenance: Json
+          quantity: number
+          quarantine_policy_version?: string
+          quarantine_reason: string
+          quarantine_status?: string
+          rejected_quantity?: number
+          released_quantity?: number
+          remaining_quantity: number
+          revision?: number
+          unit: string
+          workspace_id: string
+        }
+        Update: {
+          current_review_state?: string
+          entered_at?: string
+          entered_by?: string
+          finished_goods_lot_id?: string
+          held_quantity?: number
+          id?: string
+          location?: string
+          owner_id?: string
+          packaging_run_id?: string
+          provenance?: Json
+          quantity?: number
+          quarantine_policy_version?: string
+          quarantine_reason?: string
+          quarantine_status?: string
+          rejected_quantity?: number
+          released_quantity?: number
+          remaining_quantity?: number
+          revision?: number
+          unit?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finished_goods_quarantines_workspace_id_finished_goods_lot_fkey"
+            columns: ["workspace_id", "finished_goods_lot_id"]
+            isOneToOne: true
+            referencedRelation: "finished_goods_lots"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "finished_goods_quarantines_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finished_goods_quarantines_workspace_id_packaging_run_id_fkey"
+            columns: ["workspace_id", "packaging_run_id"]
+            isOneToOne: false
+            referencedRelation: "packaging_runs"
+            referencedColumns: ["workspace_id", "id"]
           },
         ]
       }
@@ -5750,6 +6165,122 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "migration_runs_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      packaged_output_reconciliations: {
+        Row: {
+          accepted_quantity: number
+          created_at: string
+          damaged_quantity: number
+          equation_difference: number
+          evidence_reference: string | null
+          id: string
+          idempotency_key: string
+          note: string
+          owner_id: string
+          packaging_run_id: string
+          payload_fingerprint: string
+          policy_version: string
+          production_output_id: string
+          reconciliation_version: number
+          recorded_at: string
+          recorded_by: string
+          rejected_quantity: number
+          retention_quantity: number
+          sample_quantity: number
+          state: string
+          supersedes_reconciliation_id: string | null
+          tolerance_quantity: number
+          total_packaged_quantity: number
+          unit: string
+          unresolved_variance: number
+          workspace_id: string
+        }
+        Insert: {
+          accepted_quantity: number
+          created_at?: string
+          damaged_quantity: number
+          equation_difference: number
+          evidence_reference?: string | null
+          id?: string
+          idempotency_key: string
+          note?: string
+          owner_id: string
+          packaging_run_id: string
+          payload_fingerprint: string
+          policy_version?: string
+          production_output_id: string
+          reconciliation_version: number
+          recorded_at: string
+          recorded_by: string
+          rejected_quantity: number
+          retention_quantity: number
+          sample_quantity: number
+          state: string
+          supersedes_reconciliation_id?: string | null
+          tolerance_quantity?: number
+          total_packaged_quantity: number
+          unit: string
+          unresolved_variance: number
+          workspace_id: string
+        }
+        Update: {
+          accepted_quantity?: number
+          created_at?: string
+          damaged_quantity?: number
+          equation_difference?: number
+          evidence_reference?: string | null
+          id?: string
+          idempotency_key?: string
+          note?: string
+          owner_id?: string
+          packaging_run_id?: string
+          payload_fingerprint?: string
+          policy_version?: string
+          production_output_id?: string
+          reconciliation_version?: number
+          recorded_at?: string
+          recorded_by?: string
+          rejected_quantity?: number
+          retention_quantity?: number
+          sample_quantity?: number
+          state?: string
+          supersedes_reconciliation_id?: string | null
+          tolerance_quantity?: number
+          total_packaged_quantity?: number
+          unit?: string
+          unresolved_variance?: number
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "packaged_output_reconciliatio_supersedes_reconciliation_id_fkey"
+            columns: ["supersedes_reconciliation_id"]
+            isOneToOne: false
+            referencedRelation: "packaged_output_reconciliations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "packaged_output_reconciliatio_workspace_id_packaging_run_i_fkey"
+            columns: ["workspace_id", "packaging_run_id"]
+            isOneToOne: false
+            referencedRelation: "packaging_runs"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "packaged_output_reconciliatio_workspace_id_production_outp_fkey"
+            columns: ["workspace_id", "production_output_id"]
+            isOneToOne: false
+            referencedRelation: "production_outputs"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "packaged_output_reconciliations_workspace_id_fkey"
             columns: ["workspace_id"]
             isOneToOne: false
             referencedRelation: "workspaces"
@@ -15502,6 +16033,34 @@ export type Database = {
         }
         Returns: Json
       }
+      create_finished_goods_lot_v1: {
+        Args: {
+          candidate_acknowledged: boolean
+          candidate_code_override_evidence: string
+          candidate_code_override_reason: string
+          candidate_consumer_batch_code: string
+          candidate_created_at: string
+          candidate_expiry_override: string
+          candidate_expiry_override_evidence: string
+          candidate_expiry_override_reason: string
+          candidate_idempotency_key: string
+          candidate_internal_lot_code: string
+          candidate_location: string
+          candidate_lot_label: string
+          candidate_manual_code_override: boolean
+          candidate_manufacturing_date: string
+          candidate_pao_unit: string
+          candidate_pao_value: number
+          candidate_quantity: number
+          candidate_shelf_life_basis: string
+          candidate_shelf_life_duration: number
+          candidate_shelf_life_unit: string
+          candidate_unit: string
+          expected_run_revision: number
+          target_packaging_run_id: string
+        }
+        Returns: Json
+      }
       create_formula_branch_from_experiment: {
         Args: {
           idempotency: string
@@ -15691,6 +16250,10 @@ export type Database = {
         }
         Returns: Json
       }
+      get_finished_goods_lot_genealogy_v1: {
+        Args: { target_finished_goods_lot_id: string }
+        Returns: Json
+      }
       get_packaging_available_bulk_v1: {
         Args: { target_production_output_id: string }
         Returns: Json
@@ -15700,6 +16263,10 @@ export type Database = {
         Returns: Json
       }
       get_packaging_run_completion_readiness_v1: {
+        Args: { target_packaging_run_id: string }
+        Returns: Json
+      }
+      get_packaging_run_finished_goods_readiness_v1: {
         Args: { target_packaging_run_id: string }
         Returns: Json
       }
@@ -15747,6 +16314,10 @@ export type Database = {
       kf_convert_quantity: {
         Args: { from_unit: string; q: number; to_unit: string }
         Returns: number
+      }
+      kf_finished_goods_readiness_v1: {
+        Args: { target_packaging_run_id: string; target_workspace_id: string }
+        Returns: Json
       }
       kf_inventory_available_balance: {
         Args: { target_lot_id: string; target_workspace_id: string }
@@ -16009,6 +16580,25 @@ export type Database = {
           target_reservation_id: string
           weighing_quantity: number
           weighing_unit: string
+        }
+        Returns: Json
+      }
+      record_packaged_output_reconciliation_v1: {
+        Args: {
+          candidate_accepted_quantity: number
+          candidate_damaged_quantity: number
+          candidate_evidence_reference: string
+          candidate_idempotency_key: string
+          candidate_note: string
+          candidate_recorded_at: string
+          candidate_rejected_quantity: number
+          candidate_retention_quantity: number
+          candidate_sample_quantity: number
+          candidate_total_packaged_quantity: number
+          candidate_unit: string
+          candidate_unresolved_variance: number
+          expected_run_revision: number
+          target_packaging_run_id: string
         }
         Returns: Json
       }
