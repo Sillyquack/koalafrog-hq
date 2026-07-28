@@ -135,4 +135,6 @@ v0.14.0 will be selected only after the stabilization review. No release theme o
 
 # Documentation phase — Koalafrog Bible (implemented locally)
 
+Finished Goods & Batch Genealogy V1 Slice 3 establishes immutable Finished Goods Lot creation and explicit quarantine from completed Packaging Runs. Finished-product inspection and controlled release remain Slice 4.
+
 The repository now contains a typed, searchable, cross-linked in-app operations manual under Knowledge → Koalafrog Bible, contextual route help, a verified limitations register, playbooks, glossary, and governance tests. Supplier and Equipment guidance reflects the Phase 10A implementation and its deliberate no-ordering, no-payment, and no-safety-certification boundaries.

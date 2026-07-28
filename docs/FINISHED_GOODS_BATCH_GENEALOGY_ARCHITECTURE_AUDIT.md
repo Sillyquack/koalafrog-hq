@@ -630,3 +630,5 @@ Stop an implementation slice and do not broaden scope when:
 > Add database tests for constraints, split output, unit compatibility, equations, non-zero variance approval, owner/workspace isolation, forged IDs, direct-write denial, idempotent retry, fingerprint conflict, stale revision and concurrency. Add repository integration tests, refresh reconstruction, and desktop plus 390 × 844 E2E for completed Production → record output → reconcile. Confirm no packaging or Finished Goods movement is created.
 >
 > Update documentation for Slice 1. Run `npm run lint`, `npm run build`, `npm test`, `git diff --check`, relevant Supabase tests, desktop/mobile focused E2E, `git status --short --branch`, and `git diff --stat`. Stop on any authority, reconciliation or destructive-migration condition listed in the architecture audit. Produce a narrowly scoped implementation commit; do not push.
+
+Slice 3 implements the approved next boundary in [Finished Goods Lot Creation and Quarantine](FINISHED_GOODS_LOT_CREATION_AND_QUARANTINE.md): append-only packaged-output reconciliation, immutable split lot conversion, snapshot authority, and explicit quarantine without active stock.

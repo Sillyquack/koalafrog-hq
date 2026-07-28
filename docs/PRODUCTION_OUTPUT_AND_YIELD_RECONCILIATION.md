@@ -133,3 +133,5 @@ The rollback-only fixture in `scripts/performance/production-output-plans.sql` u
 - Output types are limited to bulk and intermediate.
 
 Slice 2 starts when output stage is complete and retained bulk is available: [Packaging Run Planning, Bulk Allocation & Packaging Control](PACKAGING_RUN_PLANNING_AND_CONTROL.md). It embeds Minimum safe Packaging Control V1, including locked bulk allocation, durable reservations, reservation-aware availability, release and safe staged return; it does not create or release Finished Goods.
+
+The subsequent quarantine conversion is documented in [Finished Goods Lot Creation and Quarantine](FINISHED_GOODS_LOT_CREATION_AND_QUARANTINE.md); it preserves this Production Output identity and raw-material genealogy.

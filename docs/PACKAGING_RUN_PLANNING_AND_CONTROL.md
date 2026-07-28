@@ -102,4 +102,4 @@ Representative plans live in `scripts/performance/packaging-run-plans.sql`. The 
 - no density conversion;
 - no Finished Goods identity, quantity, quarantine, inspection, release or active inventory.
 
-Slice 3 may start only after Slice 2 validation is green and a completed Packaging Run reconstructs as **Ready for Finished Goods Lot Creation** with no Finished Goods side effect.
+Slice 3 is implemented by [Finished Goods Lot Creation and Quarantine](FINISHED_GOODS_LOT_CREATION_AND_QUARANTINE.md). It begins only from a completed Packaging Run and creates quarantined identity without an active inventory movement.
