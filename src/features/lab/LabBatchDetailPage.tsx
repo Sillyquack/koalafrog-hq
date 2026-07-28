@@ -13,13 +13,18 @@ import {
 } from "./domain/labLogic";
 import { ObservationForm } from "./components/ObservationForm";
 import { TestSessionForm } from "../testing/components/TestSessionForm";
+import { useActiveWorkspace } from "../../platform/startup/ActiveWorkspaceContext";
+import { BatchMaterialControlWorkspace } from "../production/components/BatchMaterialControlWorkspace";
+import type { CompletionReadiness } from "../production/domain/productionInventoryControl";
 
 export function LabBatchDetailPage() {
   const { labBatchId } = useParams();
   const data = useFormulaData();
+  const workspace = useActiveWorkspace();
   const [message, setMessage] = useState("");
   const [observing, setObserving] = useState(false);
   const [testing, setTesting] = useState(false);
+  const [materialReadiness, setMaterialReadiness] = useState<CompletionReadiness>();
   const batch = data.labBatches.find((b) => b.id === labBatchId);
   if (!batch)
     return (
@@ -103,7 +108,7 @@ export function LabBatchDetailPage() {
               </button>
             )}
             {batch.status === "In Progress" && (
-              <button className="button primary" onClick={complete}>
+              <button className="button primary" disabled={workspace != null && !materialReadiness?.readyForCompletion} onClick={complete}>
                 <Check size={15} />
                 Complete Batch
               </button>
@@ -149,6 +154,21 @@ export function LabBatchDetailPage() {
           <strong>{batch.targetCharacteristics}</strong>
         </div>
       </section>
+      {workspace ? (
+        <BatchMaterialControlWorkspace
+          kind="lab"
+          batchId={batch.id}
+          editable={batch.status === "In Progress"}
+          requirements={lines.map((line) => ({
+            id: line.id,
+            name: line.ingredientNameSnapshot,
+            phase: line.phase,
+            targetQuantity: line.plannedQuantity,
+            unit: line.unit,
+          }))}
+          onReadinessChange={setMaterialReadiness}
+        />
+      ) : (
       <section className="panel execution-section">
         <SectionHeader
           title="Execution weigh-ins"
@@ -286,6 +306,7 @@ export function LabBatchDetailPage() {
           })}
         </div>
       </section>
+      )}
       <div className="batch-detail-grid">
         <section className="panel">
           <SectionHeader
