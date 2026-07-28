@@ -1,6 +1,6 @@
 # Roadmap
 
-Current milestone: Finished Goods & Batch Genealogy V1 Slice 1 adds controlled [Production Output & Yield Reconciliation](PRODUCTION_OUTPUT_AND_YIELD_RECONCILIATION.md). Packaging Runs and Finished Goods remain subsequent slices.
+Current milestone: Finished Goods & Batch Genealogy V1. Slice 1, controlled [Production Output & Yield Reconciliation](PRODUCTION_OUTPUT_AND_YIELD_RECONCILIATION.md), is **PASS**. Next is Slice 2: **Packaging Run Planning, Bulk Allocation & Packaging Control**, which embeds Minimum safe Packaging Control V1 while preserving the separate packaging ledger.
 
 ## Phase 1: Foundation — Complete
 
@@ -84,11 +84,24 @@ The closeout and architecture review are recorded in [Production Inventory Contr
 
 ### Next: Finished Goods & Batch Genealogy V1
 
-**Status:** Next; not started.
+**Status:** In progress. Slice 1 is PASS; Slice 2 is next.
 
 High-level objective: transform completed Production output into controlled Finished Goods Lots with immutable batch genealogy, yield reconciliation, quality release, packaging identity, and traceability back to every consumed raw-material lot.
 
 This milestone hardens and extends the lightweight Finished Goods/output registration delivered in Phase 6. It does not replace the separate raw-material, packaging, or Finished Goods ledgers.
+
+Approved implementation sequence:
+
+1. Production Output & Yield Reconciliation — **PASS**
+2. Packaging Run Planning, Bulk Allocation & Packaging Control
+3. Finished Goods Lot Creation & Quarantine
+4. Finished Goods Inspection & Quality Release
+5. Finished Goods Inventory & Cost
+6. Batch Genealogy & Traceability
+7. Recall Readiness
+8. Release-Candidate Hardening
+
+Slice 2 owns durable packaging allocations and reservations, reservation-aware availability, concurrency-safe bulk and component allocation, release and safe staged return, exactly-once consumption, waste/damage, reconciliation, readiness, cost provenance and genealogy. It creates no Finished Goods Lot and performs no Finished Goods release or opening movement.
 
 ## Koalafrog HQ v0.13.0 — Delivered
 

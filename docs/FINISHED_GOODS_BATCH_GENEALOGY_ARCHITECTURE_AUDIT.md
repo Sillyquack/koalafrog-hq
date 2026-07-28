@@ -20,7 +20,7 @@ The smallest safe V1 is a hybrid model:
 - introduce `production_outputs` (bulk identity), `packaging_runs`, and controlled `finished_goods_lots`;
 - retain and harden the separate Finished Goods movement ledger rather than generalising raw-material inventory;
 - keep all produced units quarantined until an explicit, versioned release RPC creates the active opening movement;
-- add minimal packaging control (atomic lot consumption, waste/damage, release eligibility and idempotency) inside this milestone. Full packaging reservation and return parity can remain a later milestone.
+- embed **Minimum safe Packaging Control V1 in Slice 2**, including durable allocations and reservations, reservation-aware availability, concurrency-safe bulk and component allocation, release, safe staged return, exactly-once consumption, waste/damage, reconciliation, cost provenance and genealogy.
 
 Legacy Finished Goods records must not be silently treated as quality-released. They require explicit classification and backfill provenance before the controlled cutover.
 
@@ -55,6 +55,8 @@ Legend: **implemented** is durable and usable; **partial** is reusable but incom
 | Packaging-spec snapshot |  | Partial |  | immutable packaging version FK | Version and lines are immutable by convention, but execution presentation is not snapshotted. |
 | Label snapshot |  | Partial |  | dossier and label-artwork version FKs | Finished Goods has no bound label/artwork snapshot. |
 | Packaging consumption |  | Legacy |  | `commit_packaging_consumption` | Atomic balance check and unit cost, but conflates consumption with FG release. |
+| Packaging reservation |  | Partial |  | packaging commitment locks/balance checks + raw-material contract pattern | Existing safeguards are reusable, but durable reservation identity and reservation-aware availability are required extensions in Slice 2. |
+| Packaging staged return |  | Partial |  | lot allocation identity + raw-material staged-return pattern | Slice 2 must release or return unused staged packaging only while lot identity and condition remain reliable; unrestricted post-consumption positive return remains deferred. |
 | Packaging-lot provenance |  | Partial |  | allocations → movement → lot | Derivable, but no packaging-run identity or authoritative trace RPC. |
 | Finished-goods inventory lot |  | Legacy |  | `finished_goods_batches` | Mixes identity, quarantine and active inventory. Rename/extend in place where safe. |
 | Opening movement |  | Legacy |  | `ProductionReceipt` | Exactly-once only by existence check; created before quality release. |
@@ -196,22 +198,29 @@ Unit count cannot be equated to mass without a snapshotted nominal/actual fill-w
 
 ## 8. Packaging boundary
 
-Recommendation: **A. Minimal safe packaging extension within Finished Goods V1.**
+Decision: **Minimum safe Packaging Control V1 is embedded in Slice 2.**
 
-Existing packaging has separate lots, movement-derived balances, atomic row locking and balance checks in consumption, an existence-based exactly-once guard, transactional rollback, and unit-cost snapshots. Incoming packaging can use the shared procurement quarantine/release tables.
+Existing packaging commitments are the preferred system of record to evolve. They already provide partial safeguards: separate packaging lots and movements, movement-derived balances, allocation and lot locking, balance checks, exactly-once consumption, transactional rollback and unit-cost snapshots. They do not provide the complete lifecycle required for safe Packaging Runs: durable reservation identity, reservation-aware available quantity, concurrency-safe allocation across runs, explicit reservation release, controlled staged return, waste/damage lifecycle, complete reconciliation or persistent operator workflow.
 
-Missing parity includes durable reservations, controlled return, explicit waste/damage, packaging-run identity, robust idempotency/fingerprint checks and release-state enforcement at consumption time.
+Slice 2 must extend or wrap the existing commitment model additively where safe. It must not create a second competing packaging reservation system. If the existing commitment records cannot safely carry durable reservation semantics, a minimal additive reservation layer is authorised, with a documented backward-compatible migration path. Packaging inventory remains authoritative only in its existing separate lot and movement ledger; it must never be merged into raw-material requirement, reservation or movement tables.
 
-Finished Goods V1 strictly requires:
+Required in Slice 2:
 
-- an Approved Packaging Specification Version;
-- active, released, non-expired/non-disposed packaging lots;
-- atomic consumption and waste/damage movements tied to a Packaging Run;
-- movement uniqueness/idempotency and balance locks;
-- lot cost snapshots and unknown-cost propagation;
-- reconciliation before packaging completion.
+- controlled Packaging Run identity and server-authoritative Production Output availability;
+- concurrency-safe bulk allocation and explicit bulk transfer;
+- an immutable Approved Packaging Specification Version snapshot and immutable component requirements;
+- active, released, eligible, non-expired/non-disposed packaging lots;
+- durable packaging-component allocations and durable reservations;
+- available packaging quantity derived from movement balance less active reservations;
+- deterministic locking and atomic multi-component reservation where the existing model can support it safely;
+- explicit release of unused reservations;
+- staged unused packaging return only while original lot identity and condition remain reliable;
+- exactly-once explicit consumption and distinct waste/damage movements;
+- robust idempotency/fingerprint checks, balance locks and atomic rollback;
+- authoritative reconciliation and completion readiness;
+- lot cost snapshots, unknown-cost propagation and packaging genealogy.
 
-V1 may omit advance packaging reservations and controlled returns. This allows two operators to contend at commit time and provides no forward availability promise, acceptable for the current single-user workshop. It must not permit negative balance or silent substitution. Full reservation parity is a separate Packaging Control V1 follow-up. Packaging remains in its own tables.
+Packaging Runs must never treat planned quantities or client state as reservation truth. Still deferred are unrestricted post-consumption positive returns, a general packaging adjustment engine, broad packaging quality-release parity unrelated to safe component use, advanced warehouse reservations, serialization, customer/distribution handling and Finished Goods release.
 
 ## 9. Finished-goods quality model
 
@@ -377,8 +386,9 @@ All tables include `workspace_id`, `owner_id`, timestamps and composite workspac
 | `production_outputs` | New canonical bulk output identity | `production_run_id`, optional `derived_from_output_id`, output code, quantity/unit | product/formula/run snapshots; `draft`, `recorded`, `reconciled`, `depleted`, `cancelled` | run, output code unique, status |
 | `production_output_reconciliations` | New append-only yield reconciliation versions | output/run, quantities, tolerance, decision, revision/idempotency | equation inputs, variance, evidence, actor | output + version; state |
 | `packaging_runs` | New filling/packaging execution root | output, packaging-spec version, run code, filling input | full packaging/product snapshot; `draft`, `in_progress`, `completed`, `cancelled` | output, code unique, status/date |
-| `packaging_run_components` | New requirement/allocation execution rows | run, spec line, component and lot | component requirement snapshot; allocated/consumed/waste quantities and cost | run, lot |
-| `packaging_allocations` | Legacy; migrate to run components or add `packaging_run_id` | existing lot/movement links | unsafe as direct FG child | migration lookup only |
+| `packaging_run_components` | New immutable requirement execution rows | run, spec line and component | requirement snapshot; required/allocated/reserved/consumed/waste/returned quantities | run, component |
+| `packaging_allocations` | Reuse and evolve additively where safe | run component, packaging lot and reservation/source commitment | durable lot identity and allocation state; no second ledger | run, lot, state |
+| `packaging_reservations` | Add only if existing commitments cannot safely carry reservation identity | run component/allocation, packaging lot, quantity, state and source keys | active/released/consumed/staged-returned lifecycle; append-only events | lot/state, run, unique source |
 | `finished_goods_lots` | New canonical table; migrate legacy batches | packaging run, output, product, exact formula/packaging/label/dossier refs, internal and consumer codes | product/label/packaging snapshots; `draft`, `quarantined`, `on_hold`, `partially_released`, `released`, `rejected`, `depleted`, `archived` | both codes unique/workspace, run, release status, expiry |
 | `finished_goods_quality_reviews` | New append-only review versions | lot, version, decision, disposition qty, policy version, evidence | checklist/results/deviation snapshots; `hold`, `reject`, `release` | lot/version unique, decision |
 | `finished_goods_release_events` | New immutable release authority | lot, review, quantity, expiry, actor, idempotency | exact readiness/result snapshot | lot, review unique, event key unique |
@@ -400,7 +410,10 @@ Every mutation takes an idempotency UUID and expected revision, locks its root a
 | `record_production_output_v1` | owner; completed run, yield/output quantities, code request, snapshots; sum cannot exceed measured output | output + event; output ID/code/revision |
 | `reconcile_production_output_yield_v1` | owner; equation terms, tolerance, variance reason/evidence/approval | reconciliation + event; readiness |
 | `start_packaging_run_v1` | owner; reconciled available output, Approved packaging version, filling quantity, snapshot inputs | packaging run/components + event |
-| `commit_packaging_run_consumption_v1` | owner; component lot allocations, consumption/waste, expected revisions | locked packaging movements, cost snapshots, component events |
+| `reserve_packaging_run_components_v1` | owner; complete component plan, eligible lots, expected revisions | deterministic locks; atomic durable allocations/reservations and events where supported |
+| `release_packaging_run_reservations_v1` | owner; unused reservations, reason and expected revisions | released reservation state + exactly-once events; no inventory movement |
+| `return_staged_packaging_v1` | owner; unused staged quantity whose lot identity/condition remain reliable | controlled staged-return state + event; no fabricated positive inventory |
+| `commit_packaging_run_consumption_v1` | owner; reserved component lots, productive consumption, waste/damage, expected revisions | exactly-once locked packaging movements, cost snapshots, reservation state and component events |
 | `complete_packaging_run_v1` | owner; accepted/rejected/damaged/sample/retention counts and fill reconciliation | completed run + events; no active FG inventory |
 | `create_finished_goods_lot_v1` | owner; completed packaging run, disposition split, code inputs, expiry basis | quarantined lot + event; no opening movement |
 | `inspect_finished_goods_lot_v1` | owner; review version, tests/checklist/evidence/deviation payload | append-only review + event/readiness |
@@ -415,7 +428,7 @@ Every mutation takes an idempotency UUID and expected revision, locks its root a
 | `get_finished_goods_recall_scope_v1` | owner; search key; read-only preview | live scope, quantities and gaps |
 | `create_finished_goods_recall_scope_v1` | owner; exact preview fingerprint/revisions | immutable scope snapshot + event |
 
-`reserve_packaging_components` and `return_packaging_components` are explicitly deferred. `reject_finished_goods_quantity_v1` may be folded into release review; do not create a redundant RPC if the transaction already owns the disposition.
+Unrestricted post-consumption positive packaging return remains deferred. `reject_finished_goods_quantity_v1` may be folded into release review; do not create a redundant RPC if the transaction already owns the disposition.
 
 ## 18. Application integration
 
@@ -425,6 +438,7 @@ Every mutation takes an idempotency UUID and expected revision, locks its root a
 - Query/cache keys include workspace, root ID and revision. Invalidate output, packaging run, FG lot, balances and genealogy after commands; never optimistic-update immutable ledger facts.
 - Production completion shows a handoff to record/reconcile output, never automatic output creation.
 - Add focused workspaces for Production Output, Packaging Run, Finished Goods Lot, inspection/release, genealogy/traceability, recall scope, inventory and cost.
+- The Packaging Run workspace persists allocation/reservation state, shows reservation-aware availability, and provides explicit reserve, release, staged-return, consumption and waste/damage actions through the typed RPC-only repository.
 - Replace prompts with accessible forms, confirmation summaries and useful empty/loading/error states.
 - Mobile flow prioritises scanning/selecting lots, recording counts/evidence, readiness blockers and review confirmation at 390 × 844.
 - Legacy records are visibly labelled until classified/backfilled.
@@ -443,6 +457,7 @@ Database tests:
 - expiry/shelf-life policy and review-version rules;
 - genealogy integrity and historical snapshot preservation;
 - unknown cost propagation and append-only adjustment.
+- packaging reservation-aware availability, atomic multi-component reservation, release, safe staged return, exactly-once consumption, waste/damage and concurrent Packaging Run oversubscription denial.
 
 Integration tests:
 
@@ -459,6 +474,7 @@ E2E desktop and mobile:
 - complete controlled batch, record yield/output, package, create lot, inspect, release, verify inventory and genealogy;
 - blocking paths for missing cost/evidence, variance, expiry, insufficient packaging and stale revision;
 - traceability search and immutable recall view.
+- Slice 2 reservation, release, staged-return, consumption, waste/damage, reconciliation and completion on desktop and at 390 × 844.
 
 No test may infer legal sale readiness from a Finished Goods status.
 
@@ -492,21 +508,44 @@ Do not destructively rewrite historical production rows or reuse existing `Produ
 
 ### Slice 1 — Production Output & Yield Reconciliation
 
+Status: **PASS**.
+
 Implementation reference: [Production Output & Yield Reconciliation](PRODUCTION_OUTPUT_AND_YIELD_RECONCILIATION.md).
 
 Objective: create immutable bulk-output identity and authoritative reconciliation after Production material completion.
 
 Dependencies: completed Production Inventory Control V1. Schema: `production_outputs`, reconciliation/event structures and supporting constraints/indexes. RPCs: record output, reconcile yield and readiness. UI: Production completion handoff and output workspace. Tests: equations, splits, idempotency, concurrency, RLS and refresh. Excludes packaging, Finished Goods lots, release and recall. Exit: a completed run can produce reconciled, traceable output lots without stock or packaging side effects.
 
-### Slice 2 — Packaging Run & Minimal Packaging Control
+### Slice 2 — Packaging Run Planning, Bulk Allocation & Packaging Control
 
-Objective: consume released packaging lots against a reconciled output with waste/damage and fill reconciliation. Dependencies: Slice 1. Schema: packaging runs/components. RPCs: start, consume and complete. UI: mobile-capable run workspace. Tests: lot locks, balances, cost unknowns and splits. Excludes advance reservation/return parity and FG release. Exit: completed Packaging Run with immutable packaging provenance and no active FG inventory.
+Objective: plan and complete a controlled Packaging Run against reconciled output using Minimum safe Packaging Control V1. Dependencies: Slice 1. Schema: packaging runs, immutable requirements, evolved durable allocations/commitments and a minimal additive reservation layer only if required. RPCs: start, reserve atomically where supported, release, safely return staged unused packaging, consume/waste and complete. UI: accessible mobile-capable reservation and execution workspace. Tests: eligibility, deterministic locks, reservation-aware balances, multi-run concurrency, idempotency, release/return, cost unknowns, reconciliation and splits.
+
+Slice 2 excludes Finished Goods Lot creation, finished-product quarantine, inspection and quality release, Finished Goods opening movements and shipment, customer allocation, persistent recall scopes, sales, accounting, landed-cost reconciliation, serialization and consumer label printing.
+
+Slice 2 PASS requires all of:
+
+- controlled Packaging Run identity;
+- authoritative Production Output availability;
+- concurrency-safe bulk allocation;
+- immutable packaging specification snapshot and immutable packaging requirements;
+- safe packaging-lot eligibility;
+- durable packaging reservations and reservation-aware availability;
+- explicit bulk transfer;
+- exactly-once packaging consumption;
+- distinct packaging waste/damage;
+- reservation release and controlled staged packaging return where safe;
+- authoritative reconciliation and authoritative completion readiness;
+- Packaging Run completion with no automatic Finished Goods Lot creation;
+- typed RPC-only repository integration;
+- desktop and mobile E2E;
+- representative performance plans;
+- full validation and clean commits.
 
 ### Slice 3 — Finished Goods Lot Creation & Quarantine
 
 Objective: create traceable quarantined lots and server-generated codes/snapshots. Dependencies: Slice 2. Schema: canonical FG lot and code controls. RPCs: create lot/read readiness. UI: lot workspace. Tests: code concurrency, snapshots and split dispositions. Excludes release/opening movement. Exit: accepted units exist only as quarantined output.
 
-### Slice 4 — Inspection & Quality Release
+### Slice 4 — Finished Goods Inspection & Quality Release
 
 Objective: versioned inspection, hold/reject/partial release and evidence. Dependencies: Slice 3 and compliance references. Schema: reviews/releases. RPCs: inspect/review/release. UI: inspection and release workspace. Tests: policy, expiry, evidence, direct-write denial and exactly-once release. Exit: active inventory is possible only from an explicit release.
 
@@ -514,7 +553,7 @@ Objective: versioned inspection, hold/reject/partial release and evidence. Depen
 
 Objective: harden the movement ledger, destruction/adjustment, locations and historical unit cost. Dependencies: Slice 4. Schema: movement hardening and cost adjustments. RPCs: destroy/adjust. UI: balances, movement and cost views. Tests: no negative balance, unknown cost and append-only history. Excludes customer fulfilment. Exit: released stock and costs reconstruct from immutable facts.
 
-### Slice 6 — Genealogy & Traceability
+### Slice 6 — Batch Genealogy & Traceability
 
 Objective: authoritative backward and forward trace across raw and packaging supply chains. Dependencies: Slices 1–5. Schema: read views/indexes only where possible. RPCs: genealogy and trace queries. UI: graph/table trace workspace. Tests: split chains, provenance gaps, isolation and performance. Exit: every canonical FG lot traces to consumed raw and packaging lots.
 
@@ -522,7 +561,7 @@ Objective: authoritative backward and forward trace across raw and packaging sup
 
 Objective: scope searches and immutable recall snapshots. Dependencies: Slice 6. Schema: recall scopes. RPCs: preview/create. UI: search and scope view. Tests: quantities/status/current location and snapshot immutability. Excludes customer distribution. Exit: operator can freeze and later reproduce a production-level recall scope.
 
-### Slice 8 — Migration & Release-Candidate Hardening
+### Slice 8 — Release-Candidate Hardening
 
 Objective: classify legacy records, reconcile repositories and prove operational readiness. Dependencies: all slices. Schema: backfill/validation only. UI: legacy warnings and gaps. Tests: full matrix, desktop/mobile E2E, migration fingerprints and performance. Excludes remote cutover/deployment unless separately authorised. Exit: clean local validation, documented rollback and no unclassified legacy rows.
 
@@ -551,7 +590,14 @@ Stop an implementation slice and do not broaden scope when:
 - packaging must be merged into raw-material tables;
 - unknown cost would be coerced to zero;
 - Formula/Packaging Version or completed material history would be mutated;
-- customer/distribution traceability, unit serialization or full packaging reservations become necessary for acceptance; create a separately approved milestone instead;
+- current packaging commitments conflict with the intended system of record;
+- reservations would require a second competing packaging ledger;
+- reservation-aware availability cannot be made authoritative;
+- concurrent Packaging Runs can oversubscribe packaging stock;
+- exactly-once packaging consumption cannot be preserved;
+- controlled staged return would fabricate inventory;
+- destructive historical rewrites are required;
+- customer/distribution traceability, unit serialization or advanced warehouse reservations become necessary for acceptance; create a separately approved milestone instead;
 - database concurrency/RLS/idempotency tests cannot prove the authority boundary;
 - requirements would imply legal compliance or market approval unsupported by external evidence.
 

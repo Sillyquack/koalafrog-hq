@@ -248,7 +248,7 @@ The current Finished Goods capability is a lightweight explicit output and packa
 ## Deferred work
 
 - Production-like volume plans and evidence-led index changes.
-- Full Packaging reservation, return, damage/waste, and release-state parity.
+- Packaging reservation, safe staged return, damage/waste and the control parity required for Packaging Runs are assigned to Finished Goods & Batch Genealogy Slice 2. Unrestricted post-consumption positive returns, a generalized adjustment engine and broad quality-release parity remain later work.
 - Finished Goods output genealogy and controlled release hardening.
 - Established database-lint and build-warning cleanup as separately scoped maintenance.
 - Hosted deployment, remote migrations, and provider/environment configuration.

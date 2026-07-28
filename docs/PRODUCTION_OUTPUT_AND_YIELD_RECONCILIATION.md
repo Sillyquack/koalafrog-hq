@@ -132,4 +132,4 @@ The rollback-only fixture in `scripts/performance/production-output-plans.sql` u
 - Multiple-output cost is provisional/unallocated.
 - Output types are limited to bulk and intermediate.
 
-Slice 2 may start when output stage is complete and retained bulk is available: **Packaging Run & Minimal Packaging Control**.
+Slice 2 may start when output stage is complete and retained bulk is available: **Packaging Run Planning, Bulk Allocation & Packaging Control**. It embeds Minimum safe Packaging Control V1, including durable reservations, reservation-aware availability, release and safe staged return; it does not create or release Finished Goods.

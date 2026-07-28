@@ -87,7 +87,7 @@ The current controlled raw-material execution boundary extends the earlier Produ
 
 Completion readiness is server-authoritative. The read-only readiness RPC and completion trigger call the same versioned evaluator, while the browser only renders its structured blockers. Historical provenance is assembled server-side from execution snapshots and immutable lifecycle identities; edits to current Ingredient or other master labels do not rewrite batch history.
 
-Raw-material and Packaging ledgers remain separate. V1 does not claim Packaging reservation, return, waste/damage, or release-state parity. The next Finished Goods & Batch Genealogy milestone will build on the existing lightweight Finished Goods boundary rather than folding Packaging or Finished Goods into raw-material tables.
+Raw-material and Packaging ledgers remain separate. Production Inventory Control V1 did not claim Packaging reservation, return, waste/damage, or release-state parity. Finished Goods & Batch Genealogy Slice 2 now owns the minimum safe Packaging Control extension: evolve the existing packaging commitment model additively for durable reservation, reservation-aware availability, release, safe staged return, waste/damage and reconciliation without folding Packaging or Finished Goods into raw-material tables.
 
 See [Production Inventory Control V1 release closeout](PRODUCTION_INVENTORY_CONTROL_RELEASE_CLOSEOUT.md) for the audited lifecycle, authority boundaries, accepted limitations, and entry conditions for the next milestone.
 
