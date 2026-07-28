@@ -114,7 +114,7 @@ test('owner persists, regenerates, reopens, and cancels a four-product productio
  expect((await admin.from('inventory_movements').select('*',{count:'exact',head:true}).eq('workspace_id',workspaceId)).count).toBe(movementsBefore.count)
 })
 
-test('owner creates one internal draft per verified supplier basket, retries safely, cancels one, and supersedes the plan',async({page})=>{
+test('owner creates supplier drafts, records one external placement, leaves its sibling draft, and supersedes the plan',async({page})=>{
  const client=await localOwnerClient(),fixture=await seedTwoSupplierScenario(client)
  const ordersBefore=(await client.from('purchase_orders').select('*',{count:'exact',head:true}).eq('workspace_id',fixture.workspaceId)).count
  const movementsBefore=(await client.from('inventory_movements').select('*',{count:'exact',head:true}).eq('workspace_id',fixture.workspaceId)).count
@@ -162,10 +162,25 @@ test('owner creates one internal draft per verified supplier basket, retries saf
  await page.reload()
  const persistedPlan=page.locator('.purchase-plan-card').filter({hasText:'Plan v1'})
  await expect(persistedPlan.getByText('Internal draft',{exact:false})).toHaveCount(2)
- await answerPrompts(page,['Supplier checkout deferred'],()=>persistedPlan.getByRole('button',{name:'Cancel draft'}).first().click())
- await expect(persistedPlan).toContainText('Cancelled')
+ const placementCard=page.locator('.placement-order-card').filter({hasText:'Internal draft'}).first()
+ await placementCard.locator('summary').filter({hasText:'Record external placement'}).click()
+ await placementCard.getByLabel('Supplier order reference').fill('E2E-PLACED-1001')
+ await placementCard.getByLabel('Actual grand total').fill('120')
+ await placementCard.getByLabel('Evidence reference').fill('confirmation-email:E2E-PLACED-1001')
+ await placementCard.getByLabel('I confirm this order was placed externally.').check()
+ const acknowledge=placementCard.getByLabel('I explicitly acknowledge the material checkout differences.')
+ if(await acknowledge.count())await acknowledge.check()
+ await placementCard.getByRole('button',{name:'Record external placement'}).click()
+ const placedCard=page.locator('.placement-order-card').filter({hasText:'E2E-PLACED-1001'})
+ await expect(placedCard).toContainText('Placed externally')
+ await expect(placedCard).toContainText('No receiving yet. No inventory yet.')
+ await page.reload()
+ await expect(page.locator('.placement-order-card').filter({hasText:'E2E-PLACED-1001'})).toContainText('Placed externally')
  orders=(await client.from('purchase_orders').select('*').eq('source_purchase_plan_id',planId)).data!
- expect(orders.filter(order=>order.status==='cancelled')).toHaveLength(1)
+ expect(orders.filter(order=>order.status==='placed')).toHaveLength(1)
+ expect(orders.filter(order=>order.status==='draft')).toHaveLength(1)
+ const placedOrder=orders.find(order=>order.status==='placed')!
+ expect((await client.from('supplier_events').select('id').eq('purchase_order_id',placedOrder.id)).data).toHaveLength(1)
 
  const currentRound=(await client.from('production_procurement_rounds').select('revision').eq('id',fixture.roundId).single()).data!
  expect((await client.rpc('generate_production_procurement_scenarios',{target_round_id:fixture.roundId,expected_round_revision:currentRound.revision})).error).toBeNull()
@@ -178,6 +193,6 @@ test('owner creates one internal draft per verified supplier basket, retries saf
  await expect(page.locator('.purchase-plan-card').filter({hasText:'Plan v1'})).toContainText('superseded')
  await expect(page.locator('.purchase-plan-card').filter({hasText:'Plan v2'})).toContainText('verification required')
  expect((await client.from('purchase_orders').select('*',{count:'exact',head:true}).eq('workspace_id',fixture.workspaceId)).count).toBe((ordersBefore??0)+2)
- expect((await client.from('supplier_events').select('id').in('purchase_order_id',orders.map(order=>order.id))).data).toEqual([])
+ expect((await client.from('supplier_events').select('id').in('purchase_order_id',orders.map(order=>order.id))).data).toHaveLength(1)
  expect((await client.from('inventory_movements').select('*',{count:'exact',head:true}).eq('workspace_id',fixture.workspaceId)).count).toBe(movementsBefore)
 })

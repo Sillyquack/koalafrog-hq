@@ -36,6 +36,7 @@ describe('durable Production Readiness UI contract',()=>{
     expect(page).toContain('Not placed')
     expect(page).toContain('No external checkout')
     expect(page).toContain('Cancel draft')
+    for(const text of ['Record external placement','External action warning','Expected / verified / actual comparison','Placed externally','No receiving yet. No inventory yet.','First-order discount applied','Evidence reference'])expect(page).toContain(text)
   })
   it('distinguishes unknown, zero, and not-calculated states accessibly',()=>{
     expect(page).toContain("'Unknown'")

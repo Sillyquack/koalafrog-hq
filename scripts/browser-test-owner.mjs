@@ -18,6 +18,7 @@ if(process.argv[2]==='orphans'){
   if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id))throw new Error('Browser test owner ID must be a UUID.')
   const cleanup=`begin;
 delete from public.purchase_order_audit_events where owner_id='${id}'::uuid;
+delete from public.supplier_events where owner_id='${id}'::uuid;
 delete from public.purchase_order_lines where owner_id='${id}'::uuid;
 delete from public.purchase_orders where owner_id='${id}'::uuid;
 delete from public.purchase_plan_audit_events where owner_id='${id}'::uuid;

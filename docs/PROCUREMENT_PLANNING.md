@@ -238,4 +238,8 @@ Production Readiness uses the multi-basket `create_draft_purchase_orders_from_pl
 
 Draft cancellation is a retained historical transition requiring an owner reason. It never deletes lines, rewrites the Purchase Plan, restores or consumes a discount, or implies supplier cancellation. Safe stored HTTP(S) supplier, product, documentation, and evidence links are navigation only.
 
+External placement is recorded one order at a time after manual supplier checkout. Basket-backed drafts use `record_verified_purchase_order_placement`, which preserves expected, verified, and actual commercial layers, line actuals, evidence, deterministic policy classification, actor, timestamp, and an idempotent supplier event. The older placement signature is legacy-only and rejects basket-backed drafts.
+
+Placement does not infer payment settlement or supplier confirmation. First-order discount use is retained on the placed order for reconciliation rather than silently changing shared discount availability. Mixed-currency deltas require an explicit exchange rate; otherwise they are not compared numerically.
+
 Historical plan statuses that previously represented ordering or receipt are preserved as linked Purchase Orders. Legacy line receipt quantities are review metadata only; Inventory Movements remain the sole stock truth.

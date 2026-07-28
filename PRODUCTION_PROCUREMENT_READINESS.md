@@ -123,6 +123,16 @@ Lifecycle: Production Procurement Round → Published Scenario → Purchase Plan
 
 The database scenario ranking expression still has a known integer-overflow risk for unusually large accumulated missing-data penalties. Handoff is restricted to already-published, checkout-ready plans; ranking arithmetic was not changed because safely replacing the existing generator requires a separately validated optimizer migration.
 
+## Explicit external placement
+
+Placement policy `1.0.0` records one supplier order only after the owner has completed checkout outside Koalafrog. It requires a supplier reference, actual total and currency, placement time, line identity/quantity confirmation, evidence, and an explicit external-placement acknowledgement. Expected plan values, verified draft values, and actual checkout values remain separate; material total, shipping, or discount differences require explicit acknowledgement, while identity, package, insufficient-quantity, backorder, and unavailable-line changes block the normal path.
+
+The placement key and payload fingerprint make identical retries idempotent and reject conflicting retries. Exactly one `purchase_placed` supplier event is written. First-order discount use is recorded on the immutable order with reconciliation metadata; the shared commercial term is not automatically consumed. Optional payment observations never imply settlement.
+
+A placed order remains an execution snapshot. It cannot be cancelled through draft cancellation or edited directly. Placement creates no supplier confirmation, shipment, Receipt, incoming-stock truth, Inventory Lot, or Inventory Movement, and it does not mutate the Purchase Plan or sibling supplier orders.
+
+Lifecycle: Production Round → Published Scenario → Purchase Plan → Verification → Checkout-ready Plan → Draft Purchase Orders → Placed Purchase Order → Supplier Confirmation / Shipment → Receipt → Inventory.
+
 External execution is represented by `purchase_orders` and immutable `purchase_order_lines`. An eligible internal plan creates no order automatically. The explicit plan-to-order RPC snapshots the plan and supplier data into a draft order; a separate placement RPC records an order that the owner already placed outside Koalafrog.
 
 No Purchase Order creates receipts, inventory lots, movements, incoming-stock claims, payments, or discount consumption. Receiving remains a separate future execution boundary, and Inventory Movements remain stock truth.
