@@ -188,7 +188,7 @@ test('owner creates supplier drafts, records one external placement, leaves its 
  await confirmationCard.getByRole('button',{name:'Record supplier confirmation'}).click()
  await expect(confirmationCard).toContainText('Confirmation v1')
  await expect(confirmationCard).toContainText('exact')
- await confirmationCard.getByRole('button',{name:'Accept confirmation'}).click()
+ await confirmationCard.getByRole('button',{name:'Accept reviewed confirmation'}).click()
  await confirmationCard.locator('summary').filter({hasText:'Create shipment record'}).click()
  await confirmationCard.getByLabel('Supplier shipment reference').fill('E2E-SHIP-1')
  await confirmationCard.getByLabel('Carrier').fill('PostNord')

@@ -45,7 +45,7 @@ describe('durable Production Readiness UI contract',()=>{
     expect(page).toContain('role="status"')
   })
   it('shows confirmation, split-shipment and delivery-report boundaries without receipt language',()=>{
-    for(const value of ['Record supplier confirmation','Accept confirmation','Mark for replanning','Create shipment record','Record dispatch','Record delivery reported','Carrier reports delivery. Physical receipt and inspection have not been recorded.','Audit history'])expect(page).toContain(value)
+    for(const value of ['Record supplier confirmation','Availability','backordered','substitution_proposed','Confirmed package count','Accept reviewed confirmation','Compatibility review evidence reference','Reject differences and replan','Create shipment record','shippedQuantity:quantity','Record dispatch','Record delivery reported','Carrier reports delivery. Physical receipt and inspection have not been recorded.','Audit history'])expect(page).toContain(value)
     for(const operation of ['recordSupplierConfirmation','decideSupplierConfirmation','createOrderShipment','recordShipmentStatus'])expect(page).toContain(operation)
     expect(page).toContain('rel="noopener noreferrer"')
     expect(page).toContain('No Receipt, lot, movement, or stock was created.')
