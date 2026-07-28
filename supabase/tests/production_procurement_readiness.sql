@@ -1,5 +1,5 @@
 begin;
-select plan(112);
+select plan(115);
 
 select has_table('public',table_name,format('%s exists',table_name))
 from unnest(array[
@@ -158,6 +158,24 @@ select is(has_function_privilege('anon','public.'||signature,'EXECUTE'),false,fo
 from unnest(array['generate_production_procurement_scenarios(uuid,bigint)','publish_production_procurement_scenario(uuid,bigint,bigint)','delete_draft_production_procurement_scenario(uuid,bigint,bigint)']) signature;
 select is((select proconfig[1] from pg_proc where oid=('public.'||signature)::regprocedure),'search_path=public, pg_temp',format('%s has a fixed search path',signature))
 from unnest(array['generate_production_procurement_scenarios(uuid,bigint)','publish_production_procurement_scenario(uuid,bigint,bigint)','delete_draft_production_procurement_scenario(uuid,bigint,bigint)']) signature;
+
+-- Integer counters must be promoted before weighting; assigning the completed
+-- expression to numeric is too late to prevent an int4 intermediate overflow.
+select matches(
+  pg_get_functiondef('public.generate_production_procurement_scenarios(uuid,bigint)'::regprocedure),
+  'supplier_count::numeric\*1000000000::numeric',
+  'supplier-count ranking promotes before multiplication'
+);
+select matches(
+  pg_get_functiondef('public.generate_production_procurement_scenarios(uuid,bigint)'::regprocedure),
+  'missing_count::numeric\*1000000000::numeric',
+  'uncertainty ranking promotes before multiplication'
+);
+select matches(
+  pg_get_functiondef('public.generate_production_procurement_scenarios(uuid,bigint)'::regprocedure),
+  'stale_data_count::numeric\*100000000::numeric',
+  'stale-data ranking promotes before multiplication'
+);
 
 select * from finish();
 rollback;
