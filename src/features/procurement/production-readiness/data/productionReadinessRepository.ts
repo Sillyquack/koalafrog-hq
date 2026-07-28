@@ -44,7 +44,13 @@ export interface DurableOrderConfirmationLine {id:string;confirmation_id:string;
 export interface DurableOrderShipment {id:string;purchase_order_id:string;confirmation_id:string;shipment_sequence:number;status:string;revision:number;carrier:string;service_level:string;tracking_number:string;tracking_url:string|null;supplier_shipment_reference:string;dispatch_date:string|null;estimated_delivery_date:string|null;delivery_reported_at:string|null;evidence_reference:string;source_url:string|null}
 export interface DurableOrderShipmentLine {id:string;shipment_id:string;purchase_order_id:string;purchase_order_line_id:string;confirmation_line_id:string;shipped_package_count:number;shipped_quantity:number;package_unit:string;backordered_remainder:number}
 export interface DurableShipmentEvent {id:string;shipment_id:string;event_type:string;prior_state:string|null;new_state:string;occurred_at:string;evidence:Record<string,unknown>;metadata:Record<string,unknown>}
-export interface DurableRoundAggregate {round:DurableRound;products:DurableRoundProduct[];requirements:DurableRequirement[];gaps:DurableGap[];specifications:DurablePurchasingSpecification[];candidates:DurableSupplierCandidate[];matches:DurableSupplierMatch[];supplierProducts:DurableSupplierProductSummary[];scenarios:DurableScenario[];scenarioBaskets:DurableScenarioBasket[];scenarioLines:DurableScenarioLine[];purchasePlans:DurablePurchasePlan[];planBaskets:DurablePlanBasket[];planLines:DurablePlanLine[];planVerifications:DurablePlanVerification[];planAuditEvents:DurablePlanAuditEvent[];draftOrders:DurableDraftPurchaseOrder[];draftOrderLines:DurableDraftPurchaseOrderLine[];draftOrderAuditEvents:DurablePurchaseOrderAuditEvent[];confirmations:DurableOrderConfirmation[];confirmationLines:DurableOrderConfirmationLine[];shipments:DurableOrderShipment[];shipmentLines:DurableOrderShipmentLine[];shipmentEvents:DurableShipmentEvent[]}
+export interface DurableOrderReceipt {id:string;purchase_order_id:string;receipt_sequence:number;receipt_number:string;revision:number;status:string;physical_receipt_date:string;receiving_location:string;package_count_expected:number|null;package_count_received:number;outer_packaging_condition:string;tamper_state:string;visible_contamination_state:string;temperature_concern_state:string;evidence_reference:string;delivery_note_reference:string;packing_slip_reference:string;receiving_notes:string}
+export interface DurableReceiptShipment {id:string;receipt_id:string;shipment_id:string;carrier_snapshot:string;tracking_number_snapshot:string;shipment_reference_snapshot:string}
+export interface DurableReceiptLine {id:string;receipt_id:string;purchase_order_line_id:string;confirmation_line_id:string|null;shipment_line_id:string|null;expected_product:string;ordered_quantity:number;confirmed_quantity:number|null;shipped_quantity:number|null;received_product_name:string;received_package_count:number;received_package_size:number;received_package_unit:string;received_total_quantity:number;damaged_quantity:number;held_quantity:number;rejected_quantity:number;quarantine_candidate_quantity:number;supplier_lot_number:string;expiry_date:string|null;material_profile:string;line_status:string;identity_status:string;condition_status:string;documentation_checks:Record<string,unknown>}
+export interface DurableReceiptDiscrepancy {id:string;receipt_id:string;receipt_line_id:string|null;discrepancy_type:string;severity:string;affected_quantity:number;unit:string;description:string;owner_disposition:string;resolution_status:string;supplier_claim_required:boolean;occurred_at:string}
+export interface DurableReceiptInspection {id:string;receipt_id:string;receipt_line_id:string|null;inspection_type:string;inspection_version:number;policy_version:string;result:string;checklist_snapshot:Record<string,unknown>;notes:string;inspected_at:string}
+export interface DurableQuarantineIntake {id:string;receipt_id:string;receipt_line_id:string;quarantine_quantity:number;unit:string;supplier_lot_number:string;quarantine_location:string;quarantine_status:string;created_at:string}
+export interface DurableRoundAggregate {round:DurableRound;products:DurableRoundProduct[];requirements:DurableRequirement[];gaps:DurableGap[];specifications:DurablePurchasingSpecification[];candidates:DurableSupplierCandidate[];matches:DurableSupplierMatch[];supplierProducts:DurableSupplierProductSummary[];scenarios:DurableScenario[];scenarioBaskets:DurableScenarioBasket[];scenarioLines:DurableScenarioLine[];purchasePlans:DurablePurchasePlan[];planBaskets:DurablePlanBasket[];planLines:DurablePlanLine[];planVerifications:DurablePlanVerification[];planAuditEvents:DurablePlanAuditEvent[];draftOrders:DurableDraftPurchaseOrder[];draftOrderLines:DurableDraftPurchaseOrderLine[];draftOrderAuditEvents:DurablePurchaseOrderAuditEvent[];confirmations:DurableOrderConfirmation[];confirmationLines:DurableOrderConfirmationLine[];shipments:DurableOrderShipment[];shipmentLines:DurableOrderShipmentLine[];shipmentEvents:DurableShipmentEvent[];receipts:DurableOrderReceipt[];receiptShipments:DurableReceiptShipment[];receiptLines:DurableReceiptLine[];receiptDiscrepancies:DurableReceiptDiscrepancy[];receiptInspections:DurableReceiptInspection[];quarantineIntakes:DurableQuarantineIntake[]}
 export interface RoundProductSelection {
   category:ProductionCategory;productId:string|null;formulaVersionId:string|null;batchCount:number;batchSize:number;batchUnit:InventoryUnit
   overagePercent:number;expectedYield:number|null;deodorantStructure:string|null
@@ -101,7 +107,7 @@ export async function loadProductionRound(workspaceId:string,roundId:string):Pro
   ]):[{data:[],error:null},{data:[],error:null},{data:[],error:null},{data:[],error:null},{data:[],error:null}]
   for(const result of [planBasketsResult,planLinesResult,planVerificationsResult,planAuditResult,draftOrdersResult])if(result.error)throw new Error(result.error.message)
   const orderIds=(draftOrdersResult.data??[]).map((row:Record<string,unknown>)=>String(row.id))
-  const [draftLinesResult,draftAuditResult,confirmationsResult,confirmationLinesResult,shipmentsResult,shipmentLinesResult,shipmentEventsResult]=orderIds.length?await Promise.all([
+  const [draftLinesResult,draftAuditResult,confirmationsResult,confirmationLinesResult,shipmentsResult,shipmentLinesResult,shipmentEventsResult,receiptsResult,receiptShipmentsResult,receiptLinesResult,receiptDiscrepanciesResult,receiptInspectionsResult,quarantineIntakesResult]=orderIds.length?await Promise.all([
     database.from('purchase_order_lines').select('*').eq('workspace_id',workspaceId).in('purchase_order_id',orderIds).order('ingredient_name_snapshot'),
     database.from('purchase_order_audit_events').select('*').eq('workspace_id',workspaceId).in('purchase_order_id',orderIds).order('occurred_at',{ascending:false}),
     database.from('purchase_order_confirmations').select('*').eq('workspace_id',workspaceId).in('purchase_order_id',orderIds).order('confirmation_version',{ascending:false}),
@@ -109,8 +115,14 @@ export async function loadProductionRound(workspaceId:string,roundId:string):Pro
     database.from('purchase_order_shipments').select('*').eq('workspace_id',workspaceId).in('purchase_order_id',orderIds).order('shipment_sequence'),
     database.from('purchase_order_shipment_lines').select('*').eq('workspace_id',workspaceId).in('purchase_order_id',orderIds),
     database.from('purchase_order_shipment_events').select('*').eq('workspace_id',workspaceId).in('purchase_order_id',orderIds).order('occurred_at',{ascending:false}),
-  ]):[{data:[],error:null},{data:[],error:null},{data:[],error:null},{data:[],error:null},{data:[],error:null},{data:[],error:null},{data:[],error:null}]
-  for(const result of [draftLinesResult,draftAuditResult,confirmationsResult,confirmationLinesResult,shipmentsResult,shipmentLinesResult,shipmentEventsResult])if(result.error)throw new Error(result.error.message)
+    database.from('purchase_order_receipts').select('*').eq('workspace_id',workspaceId).in('purchase_order_id',orderIds).order('receipt_sequence'),
+    database.from('purchase_order_receipt_shipments').select('*').eq('workspace_id',workspaceId).in('purchase_order_id',orderIds),
+    database.from('purchase_order_receipt_lines').select('*').eq('workspace_id',workspaceId).in('purchase_order_id',orderIds),
+    database.from('purchase_order_receipt_discrepancies').select('*').eq('workspace_id',workspaceId),
+    database.from('purchase_order_receipt_inspections').select('*').eq('workspace_id',workspaceId),
+    database.from('inventory_quarantine_intakes').select('*').eq('workspace_id',workspaceId),
+  ]):Array.from({length:13},()=>({data:[],error:null}))
+  for(const result of [draftLinesResult,draftAuditResult,confirmationsResult,confirmationLinesResult,shipmentsResult,shipmentLinesResult,shipmentEventsResult,receiptsResult,receiptShipmentsResult,receiptLinesResult,receiptDiscrepanciesResult,receiptInspectionsResult,quarantineIntakesResult])if(result.error)throw new Error(result.error.message)
   return {
     round:numeric(roundResult.data,['revision']) as unknown as DurableRound,
     products:(productsResult.data??[]).map(row=>numeric(row,['planned_batch_count','batch_size','overage_percentage','expected_yield'])) as unknown as DurableRoundProduct[],
@@ -136,6 +148,12 @@ export async function loadProductionRound(workspaceId:string,roundId:string):Pro
     shipments:(shipmentsResult.data??[]).map(row=>numeric(row,['shipment_sequence','revision'])) as unknown as DurableOrderShipment[],
     shipmentLines:(shipmentLinesResult.data??[]).map(row=>numeric(row,['shipped_package_count','shipped_quantity','backordered_remainder'])) as unknown as DurableOrderShipmentLine[],
     shipmentEvents:(shipmentEventsResult.data??[]) as unknown as DurableShipmentEvent[],
+    receipts:(receiptsResult.data??[]).map(row=>numeric(row,['receipt_sequence','revision','package_count_expected','package_count_received'])) as unknown as DurableOrderReceipt[],
+    receiptShipments:(receiptShipmentsResult.data??[]) as unknown as DurableReceiptShipment[],
+    receiptLines:(receiptLinesResult.data??[]).map(row=>numeric(row,['ordered_quantity','confirmed_quantity','shipped_quantity','received_package_count','received_package_size','received_total_quantity','damaged_quantity','held_quantity','rejected_quantity','quarantine_candidate_quantity'])) as unknown as DurableReceiptLine[],
+    receiptDiscrepancies:(receiptDiscrepanciesResult.data??[]).map(row=>numeric(row,['affected_quantity'])) as unknown as DurableReceiptDiscrepancy[],
+    receiptInspections:(receiptInspectionsResult.data??[]).map(row=>numeric(row,['inspection_version'])) as unknown as DurableReceiptInspection[],
+    quarantineIntakes:(quarantineIntakesResult.data??[]).map(row=>numeric(row,['quarantine_quantity'])) as unknown as DurableQuarantineIntake[],
   }
 }
 export async function createProductionRound(workspaceId:string,title:string){
@@ -258,4 +276,28 @@ export async function createOrderShipment(order:DurableDraftPurchaseOrder,confir
 export async function recordShipmentStatus(shipment:DurableOrderShipment,status:string,payload:Record<string,unknown>,idempotencyKey=crypto.randomUUID()){
   const result=await client().rpc('record_purchase_order_shipment_status',{target_shipment_id:shipment.id,expected_revision:shipment.revision,candidate_status:status,status_payload:payload as Json,candidate_idempotency_key:idempotencyKey})
   if(result.error)throw new Error(result.error.message);return Number(result.data)
+}
+export async function createOrderReceipt(order:DurableDraftPurchaseOrder,payload:Record<string,unknown>,idempotencyKey=crypto.randomUUID()){
+  const result=await client().rpc('create_purchase_order_receipt',{target_order_id:order.id,expected_order_revision:order.revision,candidate_idempotency_key:idempotencyKey,receipt_payload:payload as Json})
+  if(result.error)throw new Error(result.error.message);return String(result.data)
+}
+export async function recordOrderReceiptLine(receipt:DurableOrderReceipt,payload:Record<string,unknown>,idempotencyKey=crypto.randomUUID()){
+  const result=await client().rpc('record_purchase_order_receipt_line',{target_receipt_id:receipt.id,expected_receipt_revision:receipt.revision,candidate_idempotency_key:idempotencyKey,line_payload:payload as Json})
+  if(result.error)throw new Error(result.error.message);return String(result.data)
+}
+export async function recordReceiptDiscrepancy(receipt:DurableOrderReceipt,payload:Record<string,unknown>,idempotencyKey=crypto.randomUUID()){
+  const result=await client().rpc('record_purchase_order_receipt_discrepancy',{target_receipt_id:receipt.id,expected_receipt_revision:receipt.revision,candidate_idempotency_key:idempotencyKey,discrepancy_payload:payload as Json})
+  if(result.error)throw new Error(result.error.message);return String(result.data)
+}
+export async function recordReceiptInspection(receipt:DurableOrderReceipt,payload:Record<string,unknown>,idempotencyKey=crypto.randomUUID()){
+  const result=await client().rpc('record_purchase_order_receipt_inspection',{target_receipt_id:receipt.id,expected_receipt_revision:receipt.revision,candidate_idempotency_key:idempotencyKey,inspection_payload:payload as Json})
+  if(result.error)throw new Error(result.error.message);return String(result.data)
+}
+export async function completeOrderReceiving(receipt:DurableOrderReceipt,idempotencyKey=crypto.randomUUID()){
+  const result=await client().rpc('complete_purchase_order_receiving',{target_receipt_id:receipt.id,expected_receipt_revision:receipt.revision,candidate_idempotency_key:idempotencyKey})
+  if(result.error)throw new Error(result.error.message);return String(result.data)
+}
+export async function quarantineOrderReceipt(receipt:DurableOrderReceipt,payload:Record<string,unknown>,idempotencyKey=crypto.randomUUID()){
+  const result=await client().rpc('place_purchase_order_receipt_into_quarantine',{target_receipt_id:receipt.id,expected_receipt_revision:receipt.revision,candidate_idempotency_key:idempotencyKey,quarantine_payload:payload as Json})
+  if(result.error)throw new Error(result.error.message);return result.data as string[]
 }
