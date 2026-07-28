@@ -243,6 +243,24 @@ run('durable Production Procurement Readiness against local Supabase',()=>{
     currentPlanA=await a.client.from('purchase_plans').select('*').eq('id',planAId).single()
     expect((await a.client.rpc('mark_purchase_plan_checkout_ready',{target_plan_id:planAId,expected_verification_revision:currentPlanA.data!.verification_revision})).error).toBeNull()
     expect((await a.client.from('purchase_plans').select('source_snapshot,status').eq('id',planAId).single()).data).toMatchObject({source_snapshot:expectedSnapshot,status:'checkout_ready'})
+    currentPlanA=await a.client.from('purchase_plans').select('*').eq('id',planAId).single()
+    const handoffKey=crypto.randomUUID()
+    const handoff=await a.client.rpc('create_draft_purchase_orders_from_plan',{target_plan_id:planAId,expected_plan_revision:currentPlanA.data!.revision,candidate_handoff_key:handoffKey})
+    expect(handoff.error).toBeNull();expect(handoff.data).toHaveLength(2)
+    const orders=(await a.client.from('purchase_orders').select('*').eq('source_purchase_plan_id',planAId).order('supplier_id')).data!
+    expect(orders).toHaveLength(2)
+    expect(orders.every((order:{status:string;external_order_date:string|null;handoff_policy_version:string})=>order.status==='draft'&&order.external_order_date===null&&order.handoff_policy_version==='1.0.0')).toBe(true)
+    const orderLines=(await a.client.from('purchase_order_lines').select('*').in('purchase_order_id',orders.map((order:{id:string})=>order.id))).data!
+    expect(orderLines).toHaveLength(2)
+    expect(orderLines.find((line:{verified_unit_price:number|null})=>line.verified_unit_price!=null)).toMatchObject({expected_unit_price:100,verified_unit_price:95,effective_unit_price:95,effective_value_source:'checkout_verification'})
+    for(const order of orders)expect(new Set(orderLines.filter((line:{purchase_order_id:string})=>line.purchase_order_id===order.id).map((line:{source_purchase_plan_basket_id:string})=>line.source_purchase_plan_basket_id))).toEqual(new Set([order.source_purchase_plan_basket_id]))
+    expect((await a.client.rpc('create_draft_purchase_orders_from_plan',{target_plan_id:planAId,expected_plan_revision:currentPlanA.data!.revision,candidate_handoff_key:handoffKey})).data).toEqual(handoff.data)
+    expect((await a.client.from('purchase_orders').select('id',{count:'exact',head:true}).eq('source_purchase_plan_id',planAId)).count).toBe(2)
+    expect((await a.client.rpc('cancel_draft_purchase_order',{target_order_id:orders[0].id,expected_revision:1,candidate_reason:'Supplier checkout deferred'})).error).toBeNull()
+    expect((await a.client.from('purchase_orders').select('status,cancellation_reason').eq('id',orders[0].id).single()).data).toMatchObject({status:'cancelled',cancellation_reason:'Supplier checkout deferred'})
+    expect((await a.client.from('purchase_order_lines').select('id').eq('purchase_order_id',orders[0].id)).data).toHaveLength(1)
+    expect((await a.client.rpc('cancel_draft_purchase_order',{target_order_id:orders[1].id,expected_revision:1,candidate_reason:''})).error?.message).toContain('CANCELLATION_REASON_REQUIRED')
+    expect((await a.client.from('supplier_events').select('id').in('purchase_order_id',orders.map((order:{id:string})=>order.id))).data).toEqual([])
 
     expect((await a.client.rpc('generate_production_procurement_scenarios',{target_round_id:roundId,expected_round_revision:roundRevision})).error).toBeNull();roundRevision++
     const scenarioBRecord=(await a.client.from('production_procurement_scenarios').select('*').eq('round_id',roundId).eq('strategy','balanced').neq('status','published').single()).data!
@@ -272,6 +290,6 @@ run('durable Production Procurement Readiness against local Supabase',()=>{
     expect((await a.client.rpc('mark_purchase_plan_checkout_ready',{target_plan_id:planBId,expected_verification_revision:cancelledPlan.data!.verification_revision})).error?.message).toContain('PLAN_NOT_READY_ELIGIBLE')
     expect((await a.client.from('purchase_plan_baskets').select('id').eq('purchase_plan_id',planBId)).data).toHaveLength(2)
     expect((await a.client.from('purchase_plan_audit_events').select('event_type').eq('purchase_plan_id',planBId)).data?.some((row:{event_type:string})=>row.event_type==='plan_cancelled')).toBe(true)
-    expect((await a.client.from('purchase_orders').select('id').in('source_purchase_plan_id',[planAId,planBId])).data).toEqual([])
+    expect((await a.client.from('purchase_orders').select('id').eq('source_purchase_plan_id',planBId)).data).toEqual([])
   },20000)
 })

@@ -35,7 +35,10 @@ export interface DurablePlanBasket {id:string;purchase_plan_id:string;supplier_i
 export interface DurablePlanLine {id:string;purchase_plan_id:string;purchase_plan_basket_id:string;source_scenario_line_id:string;canonical_ingredient_id:string;ingredient_name_snapshot:string;inci_snapshot:string;supplier_product_id:string;supplier_product_name_snapshot:string;product_url_snapshot:string|null;pack_size:number;unit:string;pack_count:number;moq_adjusted_pack_count:number;required_quantity:number;purchased_quantity:number;expected_surplus:number;estimated_unit_price:number;currency:string;estimated_line_total:number;allocated_discount:number;allocated_shipping:number|null;expected_landed_cost:number|null;effective_cost_per_unit:number|null;documentation_state:Record<string,unknown>;price_freshness:string|null;stock_freshness:string|null;snapshot_warnings:string[]}
 export interface DurablePlanVerification {id:string;purchase_plan_id:string;plan_version:number;purchase_plan_basket_id:string|null;purchase_plan_line_id:string|null;supplier_id:string|null;category:string;field:string;expected_value:unknown;expected_unit_or_currency:string|null;severity:'required'|'advisory';requirement_reason:string;source_freshness:string|null;verification_state:string;verification_method:string|null;verified_value:unknown;verified_unit_or_currency:string|null;evidence_reference:string|null;note:string;verified_at:string|null;mismatch_classification:string;resolution_state:string;policy_version:string;revision:number}
 export interface DurablePlanAuditEvent {id:string;purchase_plan_id:string;plan_version:number;event_type:string;actor_id:string;occurred_at:string;prior_state:string|null;new_state:string|null;reason:string;metadata:Record<string,unknown>}
-export interface DurableRoundAggregate {round:DurableRound;products:DurableRoundProduct[];requirements:DurableRequirement[];gaps:DurableGap[];specifications:DurablePurchasingSpecification[];candidates:DurableSupplierCandidate[];matches:DurableSupplierMatch[];supplierProducts:DurableSupplierProductSummary[];scenarios:DurableScenario[];scenarioBaskets:DurableScenarioBasket[];scenarioLines:DurableScenarioLine[];purchasePlans:DurablePurchasePlan[];planBaskets:DurablePlanBasket[];planLines:DurablePlanLine[];planVerifications:DurablePlanVerification[];planAuditEvents:DurablePlanAuditEvent[]}
+export interface DurableDraftPurchaseOrder {id:string;supplier_id:string;source_purchase_plan_id:string;source_purchase_plan_version:number;source_purchase_plan_basket_id:string;status:'draft'|'cancelled'|'placed'|'confirmed'|'partially_fulfilled'|'fulfilled';currency:string;merchandise_subtotal:number|null;discount:number|null;shipping:number|null;tax:number|null;total:number|null;supplier_url_snapshot:string|null;handoff_policy_version:string;draft_created_at:string;cancelled_at:string|null;cancellation_reason:string|null;supplier_snapshot:Record<string,unknown>;commercial_snapshot:Record<string,unknown>;verification_snapshot:Record<string,unknown>;manual_checkout_checklist:string[];revision:number}
+export interface DurableDraftPurchaseOrderLine {id:string;purchase_order_id:string;source_purchase_plan_line_id:string;source_purchase_plan_basket_id:string;product_name_snapshot:string;ingredient_name_snapshot:string;product_url_snapshot:string|null;ordered_package_count:number;ordered_quantity:number;ordered_unit:string;expected_unit_price:number|null;verified_unit_price:number|null;effective_unit_price:number|null;effective_value_source:'approved_snapshot'|'checkout_verification';currency:string;line_subtotal:number|null;verification_snapshot:Record<string,unknown>}
+export interface DurablePurchaseOrderAuditEvent {id:string;purchase_order_id:string;event_type:string;prior_state:string|null;new_state:string|null;reason:string;metadata:Record<string,unknown>;occurred_at:string}
+export interface DurableRoundAggregate {round:DurableRound;products:DurableRoundProduct[];requirements:DurableRequirement[];gaps:DurableGap[];specifications:DurablePurchasingSpecification[];candidates:DurableSupplierCandidate[];matches:DurableSupplierMatch[];supplierProducts:DurableSupplierProductSummary[];scenarios:DurableScenario[];scenarioBaskets:DurableScenarioBasket[];scenarioLines:DurableScenarioLine[];purchasePlans:DurablePurchasePlan[];planBaskets:DurablePlanBasket[];planLines:DurablePlanLine[];planVerifications:DurablePlanVerification[];planAuditEvents:DurablePlanAuditEvent[];draftOrders:DurableDraftPurchaseOrder[];draftOrderLines:DurableDraftPurchaseOrderLine[];draftOrderAuditEvents:DurablePurchaseOrderAuditEvent[]}
 export interface RoundProductSelection {
   category:ProductionCategory;productId:string|null;formulaVersionId:string|null;batchCount:number;batchSize:number;batchUnit:InventoryUnit
   overagePercent:number;expectedYield:number|null;deodorantStructure:string|null
@@ -83,13 +86,20 @@ export async function loadProductionRound(workspaceId:string,roundId:string):Pro
   const plansResult=await database.from('purchase_plans').select('*').eq('workspace_id',workspaceId).eq('production_procurement_round_id',roundId).order('plan_version',{ascending:false})
   if(plansResult.error)throw new Error(plansResult.error.message)
   const planIds=(plansResult.data??[]).map((row:Record<string,unknown>)=>String(row.id))
-  const [planBasketsResult,planLinesResult,planVerificationsResult,planAuditResult]=planIds.length?await Promise.all([
+  const [planBasketsResult,planLinesResult,planVerificationsResult,planAuditResult,draftOrdersResult]=planIds.length?await Promise.all([
     database.from('purchase_plan_baskets').select('*').eq('workspace_id',workspaceId).in('purchase_plan_id',planIds).order('supplier_name_snapshot'),
     database.from('purchase_plan_lines').select('*').eq('workspace_id',workspaceId).in('purchase_plan_id',planIds).order('ingredient_name_snapshot'),
     database.from('purchase_plan_verifications').select('*').eq('workspace_id',workspaceId).in('purchase_plan_id',planIds).order('category').order('field'),
     database.from('purchase_plan_audit_events').select('*').eq('workspace_id',workspaceId).in('purchase_plan_id',planIds).order('occurred_at',{ascending:false}),
-  ]):[{data:[],error:null},{data:[],error:null},{data:[],error:null},{data:[],error:null}]
-  for(const result of [planBasketsResult,planLinesResult,planVerificationsResult,planAuditResult])if(result.error)throw new Error(result.error.message)
+    database.from('purchase_orders').select('*').eq('workspace_id',workspaceId).in('source_purchase_plan_id',planIds).not('source_purchase_plan_basket_id','is',null).order('draft_created_at'),
+  ]):[{data:[],error:null},{data:[],error:null},{data:[],error:null},{data:[],error:null},{data:[],error:null}]
+  for(const result of [planBasketsResult,planLinesResult,planVerificationsResult,planAuditResult,draftOrdersResult])if(result.error)throw new Error(result.error.message)
+  const orderIds=(draftOrdersResult.data??[]).map((row:Record<string,unknown>)=>String(row.id))
+  const [draftLinesResult,draftAuditResult]=orderIds.length?await Promise.all([
+    database.from('purchase_order_lines').select('*').eq('workspace_id',workspaceId).in('purchase_order_id',orderIds).order('ingredient_name_snapshot'),
+    database.from('purchase_order_audit_events').select('*').eq('workspace_id',workspaceId).in('purchase_order_id',orderIds).order('occurred_at',{ascending:false}),
+  ]):[{data:[],error:null},{data:[],error:null}]
+  for(const result of [draftLinesResult,draftAuditResult])if(result.error)throw new Error(result.error.message)
   return {
     round:numeric(roundResult.data,['revision']) as unknown as DurableRound,
     products:(productsResult.data??[]).map(row=>numeric(row,['planned_batch_count','batch_size','overage_percentage','expected_yield'])) as unknown as DurableRoundProduct[],
@@ -107,6 +117,9 @@ export async function loadProductionRound(workspaceId:string,roundId:string):Pro
     planLines:(planLinesResult.data??[]).map(row=>numeric(row,['pack_size','pack_count','moq_adjusted_pack_count','required_quantity','purchased_quantity','expected_surplus','estimated_unit_price','estimated_line_total','allocated_discount','allocated_shipping','expected_landed_cost','effective_cost_per_unit'])) as unknown as DurablePlanLine[],
     planVerifications:(planVerificationsResult.data??[]).map(row=>numeric(row,['plan_version','revision'])) as unknown as DurablePlanVerification[],
     planAuditEvents:(planAuditResult.data??[]).map(row=>numeric(row,['plan_version'])) as unknown as DurablePlanAuditEvent[],
+    draftOrders:(draftOrdersResult.data??[]).map(row=>numeric(row,['source_purchase_plan_version','merchandise_subtotal','discount','shipping','tax','total','revision'])) as unknown as DurableDraftPurchaseOrder[],
+    draftOrderLines:(draftLinesResult.data??[]).map(row=>numeric(row,['ordered_package_count','ordered_quantity','expected_unit_price','verified_unit_price','effective_unit_price','line_subtotal'])) as unknown as DurableDraftPurchaseOrderLine[],
+    draftOrderAuditEvents:(draftAuditResult.data??[]) as unknown as DurablePurchaseOrderAuditEvent[],
   }
 }
 export async function createProductionRound(workspaceId:string,title:string){
@@ -179,5 +192,13 @@ export async function markPlanCheckoutReady(plan:DurablePurchasePlan){
 }
 export async function cancelInternalPlan(plan:DurablePurchasePlan,reason:string){
   const result=await client().rpc('cancel_internal_purchase_plan',{target_plan_id:plan.id,expected_revision:plan.revision,candidate_cancellation_reason:reason})
+  if(result.error)throw new Error(result.error.message);return Number(result.data)
+}
+export async function createDraftPurchaseOrders(plan:DurablePurchasePlan,handoffKey=crypto.randomUUID()){
+  const result=await client().rpc('create_draft_purchase_orders_from_plan',{target_plan_id:plan.id,expected_plan_revision:plan.revision,candidate_handoff_key:handoffKey})
+  if(result.error)throw new Error(result.error.message);return result.data as string[]
+}
+export async function cancelDraftPurchaseOrder(order:DurableDraftPurchaseOrder,reason:string){
+  const result=await client().rpc('cancel_draft_purchase_order',{target_order_id:order.id,expected_revision:order.revision,candidate_reason:reason})
   if(result.error)throw new Error(result.error.message);return Number(result.data)
 }
