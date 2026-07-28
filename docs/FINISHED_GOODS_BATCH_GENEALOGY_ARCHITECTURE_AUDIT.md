@@ -492,6 +492,8 @@ Do not destructively rewrite historical production rows or reuse existing `Produ
 
 ### Slice 1 — Production Output & Yield Reconciliation
 
+Implementation reference: [Production Output & Yield Reconciliation](PRODUCTION_OUTPUT_AND_YIELD_RECONCILIATION.md).
+
 Objective: create immutable bulk-output identity and authoritative reconciliation after Production material completion.
 
 Dependencies: completed Production Inventory Control V1. Schema: `production_outputs`, reconciliation/event structures and supporting constraints/indexes. RPCs: record output, reconcile yield and readiness. UI: Production completion handoff and output workspace. Tests: equations, splits, idempotency, concurrency, RLS and refresh. Excludes packaging, Finished Goods lots, release and recall. Exit: a completed run can produce reconciled, traceable output lots without stock or packaging side effects.

@@ -1,5 +1,7 @@
 # Roadmap
 
+Current milestone: Finished Goods & Batch Genealogy V1 Slice 1 adds controlled [Production Output & Yield Reconciliation](PRODUCTION_OUTPUT_AND_YIELD_RECONCILIATION.md). Packaging Runs and Finished Goods remain subsequent slices.
+
 ## Phase 1: Foundation — Complete
 
 Responsive application shell, domain models, local fixtures, core layouts for Dashboard, Products, Ingredients, Lab, and Scent House, placeholder modules, and repository documentation.

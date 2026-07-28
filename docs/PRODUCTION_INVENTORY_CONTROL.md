@@ -102,6 +102,8 @@ flowchart TB
 
 The controlled Production browser proof covers two-lot allocation/reservation, planned sequence and vessels, actual weighing, productive consumption, waste, staged return without a positive movement, explicit release, reconciliation, authoritative readiness, provenance, completion, refresh persistence, and read-only completed state. The same proof runs in desktop Chromium and at a real 390 × 844 mobile viewport. A focused Lab proof verifies the shared reservation and planned-weighing contract plus refresh persistence.
 
+Production material completion is not output completion. The controlled handoff is documented in [Production Output & Yield Reconciliation](PRODUCTION_OUTPUT_AND_YIELD_RECONCILIATION.md); it records measured bulk identity without creating Finished Goods or consuming packaging.
+
 Representative local `EXPLAIN (ANALYZE, BUFFERS)` measurements used a workspace containing one requirement, two reservations, two planned/actual weighing rows, consumption, waste, return, reconciliation, and seven controlled-material reservations across the local database:
 
 - Completion readiness: 10.660 ms, 1,791 shared-buffer hits.
