@@ -8,6 +8,20 @@ test.afterEach(()=>{
  for(const prefix of createdPrefixes.splice(0)){
   if(!/^pic-[0-9a-f-]+$/i.test(prefix))throw new Error('Unsafe Production Inventory Control fixture prefix.')
   const cleanup=`begin;set local session_replication_role=replica;
+delete from public.packaging_run_events where production_run_id like '${prefix}%';
+delete from public.packaging_run_reconciliations where packaging_run_id in(select id from public.packaging_runs where production_run_id like '${prefix}%');
+delete from public.packaging_run_inventory_uses where packaging_run_id in(select id from public.packaging_runs where production_run_id like '${prefix}%');
+delete from public.packaging_run_reservations where packaging_run_id in(select id from public.packaging_runs where production_run_id like '${prefix}%');
+delete from public.packaging_run_bulk_transfers where packaging_run_id in(select id from public.packaging_runs where production_run_id like '${prefix}%');
+delete from public.packaging_run_bulk_allocations where packaging_run_id in(select id from public.packaging_runs where production_run_id like '${prefix}%');
+delete from public.packaging_run_requirements where packaging_run_id in(select id from public.packaging_runs where production_run_id like '${prefix}%');
+delete from public.packaging_runs where production_run_id like '${prefix}%';
+delete from public.packaging_inventory_movements where packaging_inventory_lot_id like '${prefix}%';
+delete from public.packaging_inventory_lots where id like '${prefix}%';
+delete from public.packaging_specification_lines where id like '${prefix}%';
+delete from public.packaging_specification_versions where id like '${prefix}%';
+delete from public.packaging_specifications where id like '${prefix}%';
+delete from public.packaging_components where id like '${prefix}%';
 delete from public.production_output_events where production_run_id like '${prefix}%';
 delete from public.production_output_reconciliations where production_output_id in(select id from public.production_outputs where production_run_id like '${prefix}%');
 delete from public.production_output_components where production_output_id in(select id from public.production_outputs where production_run_id like '${prefix}%');
@@ -45,6 +59,14 @@ async function seed(){
  await client.from('formulas').insert({...owned,id:`${p}-formula`,product_id:`${p}-product`,name:'Controlled E2E Formula',description:'',created_at:now,updated_at:now})
  await client.from('formula_versions').insert({...owned,id:`${p}-version`,formula_id:`${p}-formula`,version:'1.0',status:'Approved',description:'',target_characteristics:'',phase_definitions:[],manufacturing_process:[],created_at:now,updated_at:now})
  await client.from('formula_lines').insert({...owned,id:`${p}-formula-line`,formula_version_id:`${p}-version`,ingredient_id:`${p}-ingredient`,percentage:100,phase:'A',sort_order:1,notes:'',formulation_role:'emollient'})
+ await client.from('packaging_specifications').insert({...owned,id:`${p}-packaging-spec`,product_id:`${p}-product`,name:'E2E retail bottle',description:'10 g retail pack',created_at:now,updated_at:now})
+ await client.from('packaging_specification_versions').insert({...owned,id:`${p}-packaging-version`,packaging_specification_id:`${p}-packaging-spec`,version:'1.0',status:'Approved',description:'Bottle and closure',notes:'',created_at:now,updated_at:now})
+ for(const[index,component]of['bottle','closure'].entries()){
+  await client.from('packaging_components').insert({...owned,id:`${p}-${component}-component`,name:`E2E ${component}`,category:component,description:'',default_unit:'pcs',colour:'',material:'',notes:'',status:'Active',created_at:now,updated_at:now})
+  await client.from('packaging_specification_lines').insert({...owned,id:`${p}-${component}-line`,packaging_specification_version_id:`${p}-packaging-version`,packaging_component_id:`${p}-${component}-component`,quantity_per_unit:1,unit:'pcs',sort_order:index,purpose:component,notes:''})
+  await client.from('packaging_inventory_lots').insert({...owned,id:`${p}-${component}-lot`,packaging_component_id:`${p}-${component}-component`,internal_lot_number:`PKG-${component}-${suffix.slice(0,8)}`,received_date:'2026-07-01',opening_quantity:30,unit:'pcs',location:'Packaging',status:'Active',notes:'',total_acquisition_cost:30,acquisition_cost_currency:'NOK',created_at:now,updated_at:now})
+  await client.from('packaging_inventory_movements').insert({...owned,id:`${p}-${component}-receipt`,packaging_inventory_lot_id:`${p}-${component}-lot`,type:'Receipt',quantity:30,unit:'pcs',reason:'Packaging receipt',notes:'',occurred_at:now,created_at:now})
+ }
  const insertedRun=await client.from('production_runs').insert({...owned,id:`${p}-run`,production_run_number:`PIC-E2E-${suffix.slice(0,8)}`,product_id:`${p}-product`,formula_id:`${p}-formula`,formula_version_id:`${p}-version`,status:'In Progress',planned_batch_size:100,planned_batch_unit:'g',actual_yield:100,actual_yield_unit:'g',created_at:now,updated_at:now,purpose:'Controlled browser proof',notes:'',summary:''})
  if(insertedRun.error)throw insertedRun.error
  await client.from('production_run_lines').insert({...owned,id:`${p}-line`,production_run_id:`${p}-run`,formula_line_id:`${p}-formula-line`,ingredient_id:`${p}-ingredient`,ingredient_name_snapshot:'Controlled E2E Oil',phase:'A',planned_percentage:100,planned_quantity:100,unit:'g',notes:'',status:'Pending',formula_id_snapshot:`${p}-formula`,formula_version_id_snapshot:`${p}-version`,inci_snapshot:'SIMMONDSIA CHINENSIS SEED OIL',functions_snapshot:['Emollient'],sort_order_snapshot:1,processing_instructions_snapshot:''})
@@ -138,6 +160,62 @@ test('Production controlled-material workspace completes a multi-lot controlled 
  await expect(page.getByText(/Ready for Packaging Planning/)).toBeVisible()
  await page.reload()
  await expect(page.getByText(/Ready for Packaging Planning/)).toBeVisible()
+ const packaging=page.locator('.packaging-run-workspace')
+ await expect(packaging.getByText('Available now')).toBeVisible()
+ const createPackaging=packaging.locator('details').filter({hasText:'Create Packaging Run'}).first()
+ await createPackaging.locator('summary').click()
+ await createPackaging.getByLabel('Run label').fill('E2E controlled packaging')
+ await createPackaging.getByLabel('Bulk quantity').fill('95')
+ await createPackaging.getByLabel('Planned units').fill('10')
+ await createPackaging.getByLabel('Nominal fill').fill('9.5')
+ await createPackaging.getByRole('button',{name:'Create controlled Packaging Run'}).click()
+ await expect(packaging.locator('.packaging-run-card .eyebrow')).toContainText('PKG-01')
+ const allocate=packaging.locator('details').filter({hasText:'Allocate bulk'}).first()
+ await allocate.locator('summary').click();await allocate.getByRole('button',{name:'Allocate bulk'}).click()
+ const transfer=packaging.locator('details').filter({hasText:'Record bulk transfer'}).first()
+ await transfer.locator('summary').click()
+ await transfer.getByLabel('Actual transfer').fill('95')
+ await transfer.getByLabel('Source vessel').fill('BULK-E2E')
+ await transfer.getByLabel('Destination vessel').fill('FILL-E2E')
+ await transfer.getByRole('button',{name:'Record bulk transfer'}).click()
+ const requirementCount=await packaging.locator('.packaging-requirement').count()
+ for(let index=0;index<requirementCount;index++){
+  const requirement=packaging.locator('.packaging-requirement').nth(index)
+  const reserve=requirement.locator('details').filter({hasText:'Reserve packaging'}).first()
+  await reserve.locator('summary').click();await reserve.getByLabel('Quantity').fill('11')
+  await reserve.getByRole('button',{name:'Reserve selected lot'}).click()
+  const reservation=requirement.locator('details').filter({hasText:'Reservation'}).first()
+  await reservation.locator(':scope > summary').click()
+  const consume=reservation.locator('details').filter({hasText:'Consume packaging'}).first()
+  await consume.locator('summary').click();await consume.getByLabel('Productive consumption').fill('10')
+  await consume.getByRole('button',{name:'Consume packaging'}).click()
+  const updatedReservation=requirement.locator('details').filter({hasText:'Reservation'}).first()
+  if(index===0){
+   const waste=updatedReservation.locator('details').filter({hasText:'Record waste or damage'}).first()
+   await waste.locator('summary').click()
+   await waste.getByLabel('Waste quantity').fill('1')
+   await waste.getByLabel('Reason').fill('E2E filling damage')
+   await waste.getByLabel('Evidence').fill('waste:e2e')
+   await waste.getByRole('button',{name:'Record waste or damage'}).click()
+  }else{
+   const stagedReturn=updatedReservation.locator('details').filter({hasText:'Release or return unused packaging'}).first()
+   await stagedReturn.locator('summary').click()
+   await stagedReturn.getByLabel('Reason').fill('E2E unused staged closure')
+   await stagedReturn.getByLabel('Staged-return evidence').fill('return:e2e')
+   await stagedReturn.getByLabel('Physically staged? (yes/no)').fill('yes')
+   await stagedReturn.getByRole('button',{name:'Release or return unused packaging'}).click()
+  }
+ }
+ const packagingReconciliation=packaging.locator('details').filter({hasText:'Reconcile Packaging Run'}).first()
+ await packagingReconciliation.locator('summary').click()
+ await packagingReconciliation.getByLabel('Pending Finished Goods conversion').fill('95')
+ await packagingReconciliation.getByRole('button',{name:'Reconcile Packaging Run'}).click()
+ await expect(packaging.getByText('Ready to complete Packaging Run')).toBeVisible()
+ await packaging.getByRole('button',{name:'Complete Packaging Run'}).click()
+ await expect(packaging.locator('.completion-readiness strong')).toHaveText('Ready for Finished Goods Lot Creation')
+ await page.reload()
+ await expect(page.locator('.packaging-run-workspace .completion-readiness strong')).toHaveText('Ready for Finished Goods Lot Creation')
+ await expect(page.locator('.packaging-run-card')).toContainText('completed')
  await expect(page.getByText('No Finished Goods inventory',{exact:false})).toBeVisible()
  await expect(page.locator('body')).toHaveJSProperty('scrollWidth',await page.locator('body').evaluate(body=>body.clientWidth))
 })

@@ -14,6 +14,7 @@
     "test:e2e:stale": "playwright test --project=desktop --grep @stale",
     "test:bible": "vitest run src/features/knowledge/bible/bibleContent.test.ts",
     "test:supabase": "node scripts/test-supabase.mjs",
+    "test:packaging-run": "node scripts/test-packaging-run.mjs",
     "test:secrets": "node scripts/check-secrets.mjs",
     "test:cloudflare": "node scripts/test-cloudflare-readiness.mjs",
     "library:validate": "node scripts/ingredient-library.mjs",
