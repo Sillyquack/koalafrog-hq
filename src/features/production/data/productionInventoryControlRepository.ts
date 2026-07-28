@@ -93,7 +93,7 @@ export class ProductionInventoryControlRepository {
   async consume(args: Database["public"]["Functions"]["consume_reserved_batch_material"]["Args"]) {
     return response(await this.client.rpc("consume_reserved_batch_material", args), "consume_reserved_batch_material");
   }
-  async recordReturn(args: Omit<Database["public"]["Functions"]["record_batch_material_return"]["Args"], "original_consumption_id"> & { original_consumption_id: string | null }) {
+  async recordReturn(args: Database["public"]["Functions"]["record_batch_material_return"]["Args"]) {
     return response(await this.client.rpc("record_batch_material_return", args), "record_batch_material_return");
   }
   async reconcile(args: Database["public"]["Functions"]["reconcile_batch_material_requirement"]["Args"]) {

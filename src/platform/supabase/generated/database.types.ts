@@ -7876,6 +7876,522 @@ export type Database = {
           },
         ]
       }
+      production_output_components: {
+        Row: {
+          approval_state: string
+          component_type: string
+          created_at: string
+          evidence_reference: string | null
+          id: string
+          idempotency_key: string
+          normalized_quantity: number
+          normalized_unit: string
+          owner_id: string
+          payload_fingerprint: string
+          production_output_id: string
+          quantity: number
+          reason: string
+          recorded_at: string
+          recorded_by: string
+          revision: number
+          unit: string
+          workspace_id: string
+        }
+        Insert: {
+          approval_state?: string
+          component_type: string
+          created_at?: string
+          evidence_reference?: string | null
+          id?: string
+          idempotency_key: string
+          normalized_quantity: number
+          normalized_unit: string
+          owner_id: string
+          payload_fingerprint: string
+          production_output_id: string
+          quantity: number
+          reason: string
+          recorded_at: string
+          recorded_by: string
+          revision?: number
+          unit: string
+          workspace_id: string
+        }
+        Update: {
+          approval_state?: string
+          component_type?: string
+          created_at?: string
+          evidence_reference?: string | null
+          id?: string
+          idempotency_key?: string
+          normalized_quantity?: number
+          normalized_unit?: string
+          owner_id?: string
+          payload_fingerprint?: string
+          production_output_id?: string
+          quantity?: number
+          reason?: string
+          recorded_at?: string
+          recorded_by?: string
+          revision?: number
+          unit?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "production_output_components_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "production_output_components_workspace_id_production_outpu_fkey"
+            columns: ["workspace_id", "production_output_id"]
+            isOneToOne: false
+            referencedRelation: "production_outputs"
+            referencedColumns: ["workspace_id", "id"]
+          },
+        ]
+      }
+      production_output_events: {
+        Row: {
+          actor_id: string
+          event_key: string
+          event_type: string
+          formula_version_id: string
+          id: string
+          metadata: Json
+          occurred_at: string
+          output_revision: number | null
+          owner_id: string
+          policy_version: string
+          production_output_id: string | null
+          production_run_id: string
+          quantity: number | null
+          unit: string | null
+          workspace_id: string
+        }
+        Insert: {
+          actor_id: string
+          event_key: string
+          event_type: string
+          formula_version_id: string
+          id?: string
+          metadata?: Json
+          occurred_at?: string
+          output_revision?: number | null
+          owner_id: string
+          policy_version: string
+          production_output_id?: string | null
+          production_run_id: string
+          quantity?: number | null
+          unit?: string | null
+          workspace_id: string
+        }
+        Update: {
+          actor_id?: string
+          event_key?: string
+          event_type?: string
+          formula_version_id?: string
+          id?: string
+          metadata?: Json
+          occurred_at?: string
+          output_revision?: number | null
+          owner_id?: string
+          policy_version?: string
+          production_output_id?: string | null
+          production_run_id?: string
+          quantity?: number | null
+          unit?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "production_output_events_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "production_output_events_workspace_id_formula_version_id_fkey"
+            columns: ["workspace_id", "formula_version_id"]
+            isOneToOne: false
+            referencedRelation: "formula_versions"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "production_output_events_workspace_id_production_output_id_fkey"
+            columns: ["workspace_id", "production_output_id"]
+            isOneToOne: false
+            referencedRelation: "production_outputs"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "production_output_events_workspace_id_production_run_id_fkey"
+            columns: ["workspace_id", "production_run_id"]
+            isOneToOne: false
+            referencedRelation: "production_runs"
+            referencedColumns: ["workspace_id", "id"]
+          },
+        ]
+      }
+      production_output_measurements: {
+        Row: {
+          created_at: string
+          equipment_reference: string | null
+          evidence_reference: string | null
+          gross_quantity: number | null
+          id: string
+          idempotency_key: string
+          measured_at: string
+          measured_by: string
+          measurement_method: string
+          measurement_version: number
+          normalized_quantity: number
+          normalized_unit: string
+          note: string
+          owner_id: string
+          payload_fingerprint: string
+          production_output_id: string
+          quantity: number
+          supersedes_measurement_id: string | null
+          tare_quantity: number | null
+          unit: string
+          vessel_reference: string | null
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          equipment_reference?: string | null
+          evidence_reference?: string | null
+          gross_quantity?: number | null
+          id?: string
+          idempotency_key: string
+          measured_at: string
+          measured_by: string
+          measurement_method: string
+          measurement_version: number
+          normalized_quantity: number
+          normalized_unit: string
+          note?: string
+          owner_id: string
+          payload_fingerprint: string
+          production_output_id: string
+          quantity: number
+          supersedes_measurement_id?: string | null
+          tare_quantity?: number | null
+          unit: string
+          vessel_reference?: string | null
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          equipment_reference?: string | null
+          evidence_reference?: string | null
+          gross_quantity?: number | null
+          id?: string
+          idempotency_key?: string
+          measured_at?: string
+          measured_by?: string
+          measurement_method?: string
+          measurement_version?: number
+          normalized_quantity?: number
+          normalized_unit?: string
+          note?: string
+          owner_id?: string
+          payload_fingerprint?: string
+          production_output_id?: string
+          quantity?: number
+          supersedes_measurement_id?: string | null
+          tare_quantity?: number | null
+          unit?: string
+          vessel_reference?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "production_output_measurement_workspace_id_production_outp_fkey"
+            columns: ["workspace_id", "production_output_id"]
+            isOneToOne: false
+            referencedRelation: "production_outputs"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "production_output_measurements_supersedes_measurement_id_fkey"
+            columns: ["supersedes_measurement_id"]
+            isOneToOne: false
+            referencedRelation: "production_output_measurements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "production_output_measurements_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      production_output_reconciliations: {
+        Row: {
+          actual_normalized_quantity: number
+          approved_by: string | null
+          created_at: string
+          equation_difference: number
+          evidence_reference: string | null
+          id: string
+          idempotency_key: string
+          owner_id: string
+          payload_fingerprint: string
+          policy_version: string
+          production_output_id: string
+          reason: string | null
+          reconciled_at: string
+          reconciled_by: string
+          reconciliation_version: number
+          retained_normalized_quantity: number
+          state: string
+          theoretical_variance: number
+          tolerance_quantity: number
+          transferred_normalized_quantity: number
+          unexplained_normalized_quantity: number
+          waste_normalized_quantity: number
+          workspace_id: string
+          yield_percentage: number
+        }
+        Insert: {
+          actual_normalized_quantity: number
+          approved_by?: string | null
+          created_at?: string
+          equation_difference: number
+          evidence_reference?: string | null
+          id?: string
+          idempotency_key: string
+          owner_id: string
+          payload_fingerprint: string
+          policy_version: string
+          production_output_id: string
+          reason?: string | null
+          reconciled_at: string
+          reconciled_by: string
+          reconciliation_version: number
+          retained_normalized_quantity: number
+          state: string
+          theoretical_variance: number
+          tolerance_quantity: number
+          transferred_normalized_quantity: number
+          unexplained_normalized_quantity: number
+          waste_normalized_quantity: number
+          workspace_id: string
+          yield_percentage: number
+        }
+        Update: {
+          actual_normalized_quantity?: number
+          approved_by?: string | null
+          created_at?: string
+          equation_difference?: number
+          evidence_reference?: string | null
+          id?: string
+          idempotency_key?: string
+          owner_id?: string
+          payload_fingerprint?: string
+          policy_version?: string
+          production_output_id?: string
+          reason?: string | null
+          reconciled_at?: string
+          reconciled_by?: string
+          reconciliation_version?: number
+          retained_normalized_quantity?: number
+          state?: string
+          theoretical_variance?: number
+          tolerance_quantity?: number
+          transferred_normalized_quantity?: number
+          unexplained_normalized_quantity?: number
+          waste_normalized_quantity?: number
+          workspace_id?: string
+          yield_percentage?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "production_output_reconciliat_workspace_id_production_outp_fkey"
+            columns: ["workspace_id", "production_output_id"]
+            isOneToOne: false
+            referencedRelation: "production_outputs"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "production_output_reconciliations_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      production_outputs: {
+        Row: {
+          batch_number_snapshot: string
+          batch_scale_quantity_snapshot: number
+          batch_scale_unit_snapshot: string
+          completed_at: string | null
+          completed_by: string | null
+          created_at: string
+          created_by: string
+          creation_idempotency_key: string
+          creation_payload_fingerprint: string
+          formula_id: string
+          formula_name_snapshot: string
+          formula_version_id: string
+          formula_version_snapshot: string
+          id: string
+          internal_output_code: string
+          location: string
+          material_cost_confidence: string
+          material_cost_currency: string | null
+          material_cost_snapshot: number | null
+          measurement_basis: string
+          output_label: string
+          output_sequence: number
+          output_type: string
+          owner_id: string
+          product_id: string
+          product_name_snapshot: string
+          production_completion_policy_version: string
+          production_run_id: string
+          revision: number
+          status: string
+          theoretical_normalized_quantity: number
+          theoretical_normalized_unit: string
+          theoretical_override_evidence: string | null
+          theoretical_override_reason: string | null
+          theoretical_quantity: number
+          theoretical_unit: string
+          theoretical_yield_basis: string
+          unresolved_cost_count: number
+          workspace_id: string
+        }
+        Insert: {
+          batch_number_snapshot: string
+          batch_scale_quantity_snapshot: number
+          batch_scale_unit_snapshot: string
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          created_by: string
+          creation_idempotency_key: string
+          creation_payload_fingerprint: string
+          formula_id: string
+          formula_name_snapshot: string
+          formula_version_id: string
+          formula_version_snapshot: string
+          id?: string
+          internal_output_code: string
+          location: string
+          material_cost_confidence: string
+          material_cost_currency?: string | null
+          material_cost_snapshot?: number | null
+          measurement_basis: string
+          output_label: string
+          output_sequence: number
+          output_type?: string
+          owner_id: string
+          product_id: string
+          product_name_snapshot: string
+          production_completion_policy_version: string
+          production_run_id: string
+          revision?: number
+          status?: string
+          theoretical_normalized_quantity: number
+          theoretical_normalized_unit: string
+          theoretical_override_evidence?: string | null
+          theoretical_override_reason?: string | null
+          theoretical_quantity: number
+          theoretical_unit: string
+          theoretical_yield_basis: string
+          unresolved_cost_count?: number
+          workspace_id: string
+        }
+        Update: {
+          batch_number_snapshot?: string
+          batch_scale_quantity_snapshot?: number
+          batch_scale_unit_snapshot?: string
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          created_by?: string
+          creation_idempotency_key?: string
+          creation_payload_fingerprint?: string
+          formula_id?: string
+          formula_name_snapshot?: string
+          formula_version_id?: string
+          formula_version_snapshot?: string
+          id?: string
+          internal_output_code?: string
+          location?: string
+          material_cost_confidence?: string
+          material_cost_currency?: string | null
+          material_cost_snapshot?: number | null
+          measurement_basis?: string
+          output_label?: string
+          output_sequence?: number
+          output_type?: string
+          owner_id?: string
+          product_id?: string
+          product_name_snapshot?: string
+          production_completion_policy_version?: string
+          production_run_id?: string
+          revision?: number
+          status?: string
+          theoretical_normalized_quantity?: number
+          theoretical_normalized_unit?: string
+          theoretical_override_evidence?: string | null
+          theoretical_override_reason?: string | null
+          theoretical_quantity?: number
+          theoretical_unit?: string
+          theoretical_yield_basis?: string
+          unresolved_cost_count?: number
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "production_outputs_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "production_outputs_workspace_id_formula_id_fkey"
+            columns: ["workspace_id", "formula_id"]
+            isOneToOne: false
+            referencedRelation: "formulas"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "production_outputs_workspace_id_formula_version_id_fkey"
+            columns: ["workspace_id", "formula_version_id"]
+            isOneToOne: false
+            referencedRelation: "formula_versions"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "production_outputs_workspace_id_product_id_fkey"
+            columns: ["workspace_id", "product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "production_outputs_workspace_id_production_run_id_fkey"
+            columns: ["workspace_id", "production_run_id"]
+            isOneToOne: false
+            referencedRelation: "production_runs"
+            referencedColumns: ["workspace_id", "id"]
+          },
+        ]
+      }
       production_process_steps: {
         Row: {
           completed_at: string | null
@@ -9119,6 +9635,9 @@ export type Database = {
           id: string
           material_policy_version: string
           notes: string
+          output_stage_completed_at: string | null
+          output_stage_completed_by: string | null
+          output_stage_status: string
           owner_id: string
           planned_batch_size: number
           planned_batch_unit: string
@@ -9144,6 +9663,9 @@ export type Database = {
           id: string
           material_policy_version?: string
           notes: string
+          output_stage_completed_at?: string | null
+          output_stage_completed_by?: string | null
+          output_stage_status?: string
           owner_id: string
           planned_batch_size: number
           planned_batch_unit: string
@@ -9169,6 +9691,9 @@ export type Database = {
           id?: string
           material_policy_version?: string
           notes?: string
+          output_stage_completed_at?: string | null
+          output_stage_completed_by?: string | null
+          output_stage_status?: string
           owner_id?: string
           planned_batch_size?: number
           planned_batch_unit?: string
@@ -14020,6 +14545,15 @@ export type Database = {
         Args: { commits: Json; run_id: string }
         Returns: Json
       }
+      complete_production_output_stage_v1: {
+        Args: {
+          candidate_completed_at: string
+          candidate_idempotency_key: string
+          expected_batch_revision: number
+          target_production_run_id: string
+        }
+        Returns: Json
+      }
       complete_purchase_order_receiving: {
         Args: {
           candidate_idempotency_key: string
@@ -14093,6 +14627,23 @@ export type Database = {
       create_product_studio_purchase_plan: {
         Args: { concept_id: string; lines: Json }
         Returns: string
+      }
+      create_production_output_v1: {
+        Args: {
+          candidate_idempotency_key: string
+          candidate_location: string
+          candidate_measurement_basis: string
+          candidate_output_label: string
+          candidate_output_type: string
+          candidate_override_evidence: string
+          candidate_override_reason: string
+          candidate_theoretical_basis: string
+          candidate_theoretical_quantity: number
+          candidate_theoretical_unit: string
+          expected_batch_revision: number
+          target_production_run_id: string
+        }
+        Returns: Json
       }
       create_production_procurement_round: {
         Args: {
@@ -14218,6 +14769,14 @@ export type Database = {
         }
         Returns: Json
       }
+      get_production_output_completion_readiness_v1: {
+        Args: { target_production_run_id: string }
+        Returns: Json
+      }
+      get_production_output_genealogy_v1: {
+        Args: { target_production_output_id: string }
+        Returns: Json
+      }
       import_procurement_purchasing_snapshot: {
         Args: { candidate_workspace_id: string; payload: Json }
         Returns: undefined
@@ -14259,9 +14818,20 @@ export type Database = {
         Args: { lot_id: string; wid: string }
         Returns: number
       }
+      kf_output_normalize: {
+        Args: { q: number; u: string }
+        Returns: {
+          quantity: number
+          unit: string
+        }[]
+      }
       kf_packaging_balance: {
         Args: { lot_id: string; wid: string }
         Returns: number
+      }
+      kf_production_output_readiness_v1: {
+        Args: { target_run_id: string; target_workspace_id: string }
+        Returns: Json
       }
       list_beard_analysis_history: {
         Args: {
@@ -14420,13 +14990,26 @@ export type Database = {
         }
         Returns: Json
       }
+      reconcile_production_output_v1: {
+        Args: {
+          candidate_approve_variance: boolean
+          candidate_evidence_reference: string
+          candidate_idempotency_key: string
+          candidate_reason: string
+          candidate_reconciled_at: string
+          candidate_tolerance_quantity: number
+          expected_output_revision: number
+          target_production_output_id: string
+        }
+        Returns: Json
+      }
       record_batch_material_return: {
         Args: {
           candidate_idempotency_key: string
           condition_assessment: string
           evidence_reference: string
           expected_reservation_revision: number
-          original_consumption_id: string | null
+          original_consumption_id: string
           reason: string
           return_kind: string
           return_quantity: number
@@ -14463,6 +15046,39 @@ export type Database = {
           target_reservation_id: string
           weighing_quantity: number
           weighing_unit: string
+        }
+        Returns: Json
+      }
+      record_production_output_component_v1: {
+        Args: {
+          candidate_approval_state: string
+          candidate_component_type: string
+          candidate_evidence_reference: string
+          candidate_idempotency_key: string
+          candidate_quantity: number
+          candidate_reason: string
+          candidate_recorded_at: string
+          candidate_unit: string
+          expected_output_revision: number
+          target_production_output_id: string
+        }
+        Returns: Json
+      }
+      record_production_output_measurement_v1: {
+        Args: {
+          candidate_equipment_reference: string
+          candidate_evidence_reference: string
+          candidate_gross_quantity: number
+          candidate_idempotency_key: string
+          candidate_measured_at: string
+          candidate_method: string
+          candidate_note: string
+          candidate_quantity: number
+          candidate_tare_quantity: number
+          candidate_unit: string
+          candidate_vessel_reference: string
+          expected_output_revision: number
+          target_production_output_id: string
         }
         Returns: Json
       }
