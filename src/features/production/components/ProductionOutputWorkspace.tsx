@@ -6,6 +6,7 @@ import { useActiveWorkspace } from "../../../platform/startup/ActiveWorkspaceCon
 import type { ProductionRun } from "../../../types/domain";
 import { ProductionOutputRepository } from "../data/productionOutputRepository";
 import type { ProductionOutputComponentType, ProductionOutputSnapshot } from "../domain/productionOutput";
+import { PackagingRunWorkspace } from "../../packaging-run/components/PackagingRunWorkspace";
 
 export function ProductionOutputWorkspace({ run }: { run: ProductionRun }) {
   const workspace = useActiveWorkspace();
@@ -150,6 +151,7 @@ export function ProductionOutputWorkspace({ run }: { run: ProductionRun }) {
                 candidate_evidence_reference: input.evidence, candidate_approve_variance: input.approveVariance,
                 candidate_reconciled_at: new Date().toISOString(), candidate_idempotency_key: key,
               }))}/>}
+            {readOnly && <PackagingRunWorkspace productionOutputId={output.id} productId={output.product_id}/>}
           </article>;
         })}
       </div>
