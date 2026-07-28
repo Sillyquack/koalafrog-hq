@@ -28,6 +28,7 @@ import { PackagingComponentDetailPage } from '../features/packaging/PackagingCom
 import { PackagingSpecificationPage } from '../features/packaging/PackagingSpecificationPage'
 import { FinishedGoodsPage } from '../features/finished-goods/FinishedGoodsPage'
 import { FinishedGoodsDetailPage } from '../features/finished-goods/FinishedGoodsDetailPage'
+import { FinishedGoodsLotPage } from '../features/finished-goods-control/FinishedGoodsLotPage'
 import { CompliancePage } from '../features/compliance/CompliancePage'
 import { ComplianceDossierPage } from '../features/compliance/ComplianceDossierPage'
 import { LaunchPage } from '../features/launch/LaunchPage'
@@ -101,6 +102,7 @@ export function App() {
         <Route path="packaging/specifications/:packagingSpecificationId" element={<PackagingSpecificationPage />} />
         <Route path="finished-goods" element={<FinishedGoodsPage />} />
         <Route path="finished-goods/:finishedGoodsBatchId" element={<FinishedGoodsDetailPage />} />
+        <Route path="finished-goods-lots/:finishedGoodsLotId" element={<FinishedGoodsLotPage />} />
         <Route path="compliance" element={<CompliancePage />} />
         <Route path="compliance/:complianceDossierId" element={<ComplianceDossierPage />} />
         <Route path="launch" element={<LaunchPage />} />

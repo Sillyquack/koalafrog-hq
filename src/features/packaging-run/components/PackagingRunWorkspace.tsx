@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Check, PackageCheck, RefreshCw } from "lucide-react";
 import { StatusPill } from "../../../components/ui/StatusPill";
+import { FinishedGoodsHandoff } from "../../finished-goods-control/components/FinishedGoodsHandoff";
 import { PackagingRunRepository } from "../data/packagingRunRepository";
 import type {
   PackagingBulkAvailability,
@@ -178,6 +179,7 @@ function PackagingRunDetail({ snapshot, eligibleLots, pending, act, repository }
         candidate_completed_at: new Date().toISOString(), candidate_idempotency_key: key,
       }))}><Check size={14}/>Complete Packaging Run</button>}
     {readOnly && <p className="success-message"><PackageCheck size={16}/><b>Ready for Finished Goods Lot Creation.</b> No Finished Goods Lot or movement was created.</p>}
+    {readOnly && <FinishedGoodsHandoff packagingRunId={run.id} packagingRunRevision={run.revision}/>}
     <details><summary>Audit history ({snapshot.events.length})</summary><ol>{snapshot.events.map((event) =>
       <li key={String(event.id)}>{String(event.event_type)} · {new Date(String(event.occurred_at)).toLocaleString("en-GB")}</li>)}</ol></details>
   </article>;
