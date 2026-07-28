@@ -26,6 +26,12 @@ describe('durable Production Readiness UI contract',()=>{
     expect(page).toContain("navigate('/procurement')")
     expect(css).toContain('.scenario-grid{grid-template-columns:1fr}')
   })
+  it('exposes immutable approval and verification without any order creation action',()=>{
+    for(const value of ['Approve immutable plan','Immutable purchase plans','Confirm','Record change','Unavailable','Not applicable','Mark checkout ready','Cancel plan','Open procurement research'])expect(page).toContain(value)
+    for(const operation of ['approveProductionScenario','recordPlanVerification','waivePlanVerification','markPlanCheckoutReady','cancelInternalPlan'])expect(page).toContain(operation)
+    expect(page).toContain('checkout readiness never creates a Purchase Order')
+    expect(page).not.toContain('createPurchaseOrder')
+  })
   it('distinguishes unknown, zero, and not-calculated states accessibly',()=>{
     expect(page).toContain("'Unknown'")
     expect(page).toContain('Not calculated')

@@ -107,7 +107,11 @@ The RPCs derive identity from `auth.uid()`, require an active owned workspace, l
 
 ## Approval, ordering, and receiving semantics
 
-Purchase Plans now represent internal purchasing decisions only. Their lifecycle contains no ordered, shipped, or received state. Approval and checkout verification remain future controlled transitions over this internal record.
+Purchase Plans now represent internal purchasing decisions only. Their lifecycle contains no ordered, shipped, or received state. A feasible Published Scenario may be explicitly approved into one supplier-neutral, immutable, versioned plan header with frozen supplier baskets and lines. Approval is idempotent and requires explicit supersession when another active plan exists.
+
+The generated manual gate separately records Norway delivery, shipping, tax/import, conditional discount, current package price, stock, package identity/MOQ/quantity, and required-document checks. It preserves expected and verified values, evidence references, actor/time, mismatch classification, resolution, policy version, and audit history. Version `1.0.0` accepts package-price increases through 5% and shipping increases through 10%; larger increases and hard identity/evidence changes block checkout and require a new plan. Required checks cannot be waived.
+
+`checkout_ready` means only that every required check resolved under the recorded policy. It creates no Purchase Order, receipt, incoming-stock record, lot, movement, payment, provider action, or discount consumption. Cancellation and supersession preserve snapshots, checks, and audit events.
 
 External execution is represented by `purchase_orders` and immutable `purchase_order_lines`. An eligible internal plan creates no order automatically. The explicit plan-to-order RPC snapshots the plan and supplier data into a draft order; a separate placement RPC records an order that the owner already placed outside Koalafrog.
 
@@ -119,10 +123,9 @@ Production readiness should create or link existing procurement requested items 
 
 ## Known limitations and next slices
 
-- The durable workflow now persists rounds, exact formula bases, requirements, sources, and inventory gaps; matches, cross-supplier scenarios, and approval snapshots remain future slices.
+- The durable workflow persists rounds, exact formula bases, requirements, sources, inventory gaps, matches, cross-supplier scenarios, immutable approval snapshots, and checkout verification.
 - General stock reservations are not yet a first-class aggregate; outstanding Lab and Production allocations are recorded as allocated stock, while `reserved_quantity` remains zero.
 - Requirement-to-Supplier Product matching and purchasing specifications need the durable match slice.
-- Cross-supplier optimizer publication and immutable approval snapshots need the scenario/approval slice.
 - Weight-tier shipping, exclusions, dangerous-goods handling, landed-cost ranges, and exchange-rate snapshots need commercial schema extensions.
 - External-order line progress and receiving handoff need integration with existing purchase-plan and inventory actions.
 

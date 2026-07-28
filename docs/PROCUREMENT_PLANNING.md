@@ -217,7 +217,13 @@ Quote lines retain supplier currency. Merchandise, shipping, duties, tax, paymen
 
 ## Purchase Plans
 
-Lifecycle: Draft → Ready for review → Approved internally → Ordered externally → Partially received → Received. Cancelled and Archived are explicit terminal paths. “Approved internally” is not an external order. “Ordered externally” only records that a human placed the order elsewhere.
+Production procurement uses the current supplier-neutral lifecycle:
+
+`Published Scenario → verification required → checkout ready`
+
+Superseded and Cancelled are explicit terminal states. Approval freezes one versioned header, its supplier baskets, line-level canonical Ingredient/INCI and Supplier Product/package snapshots, costs, commercial assumptions, documents, freshness, warnings, and provenance. It does not create or place an order.
+
+Checkout readiness requires manual checks for delivery to Norway, shipping, tax/import, discount eligibility, package price, stock, package identity/MOQ/quantity, and required documents. Expected and verified facts remain separate. Policy `1.0.0` permits price increases up to 5% and shipping increases up to 10%; larger or hard identity/evidence changes require a new plan. Required verification is not waivable.
 
 Creating or reviewing a plan creates no Inventory Lot, Inventory Movement, packaging lot, payable, payment, or external transaction. Receipt automation is deliberately deferred behind a future explicit transactional review boundary; current receipts continue through their authoritative domain workflows.
 ## Semantic lifecycle boundary
