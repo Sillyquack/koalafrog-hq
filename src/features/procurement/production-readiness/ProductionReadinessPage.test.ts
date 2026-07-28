@@ -50,6 +50,10 @@ describe('durable Production Readiness UI contract',()=>{
     expect(page).toContain('rel="noopener noreferrer"')
     expect(page).toContain('No Receipt, lot, movement, or stock was created.')
   })
+  it('shows physical receiving, inspection, discrepancy and quarantine boundaries',()=>{
+    for(const value of ['Record physical receipt','Physical arrival only.','Packages physically received','Record physically received item','Physically received quantity','Supplier lot number','Received-lot COA present','Record discrepancy','Record inspection','Complete receiving checks','Place eligible quantity into quarantine','Not released · Not available for production.'])expect(page).toContain(value)
+    for(const operation of ['createOrderReceipt','recordOrderReceiptLine','recordReceiptDiscrepancy','recordReceiptInspection','completeOrderReceiving','quarantineOrderReceipt'])expect(page).toContain(operation)
+  })
   it('has a 390px-compatible single-column layout and full-width keyboard buttons',()=>{
     expect(css).toContain('@media(max-width:520px)')
     expect(css).toContain('.readiness-round-meta{grid-template-columns:1fr}')

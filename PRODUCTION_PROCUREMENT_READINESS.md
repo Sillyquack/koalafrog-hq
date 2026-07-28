@@ -205,3 +205,9 @@ Legacy `ordered_external`, `partially_received`, and `received` plans are migrat
 `purchase_plan_lines.received_quantity` remains temporarily for migration compatibility, is deprecated, and is neither writable nor read as receipt truth. It can be removed after a dedicated Receipt model has reconciled every historical record.
 
 The compatibility boundary is intentionally narrow: legacy history is inspectable, but new external execution uses only Purchase Orders. Provider calls, live checkout, payment, shipment creation, receiving, inventory creation, discount consumption, deployment, and remote migration remain excluded.
+
+## Physical receiving and quarantine
+
+Owner-recorded receipts explicitly link shipments and preserve package evidence, condition, location, and physical-arrival time. Receipt lines preserve ordered, confirmed, and shipped snapshots beside explicit received, damaged, held, rejected, and quarantine-candidate quantities. Carrier delivery never supplies received quantity.
+
+Discrepancies are durable and inspections are append-only versions under receiving policy `1.0.0`. Eligible quantities may enter `inventory_quarantine_intakes`, which is not an Inventory Lot or Movement and is excluded from balances and Production allocation. Quarantined means physically present, not released, and not available for production.

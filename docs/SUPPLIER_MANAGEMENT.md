@@ -25,3 +25,5 @@ Koalafrog does not place orders, execute payments, create payables, or run auton
 Manual external placement, supplier confirmation versions, owner decisions, and shipment logistics append structured supplier events linked to the Purchase Order and source Purchase Plan. Backorders, unavailable lines, proposed substitutions, shipment preparation, dispatch, delay, and carrier-reported delivery remain distinct facts. Idempotency keys prevent retry duplicates.
 
 Supplier history never turns a carrier report into physical receipt. `shipment_received` remains legacy reliability history; new execution uses `shipment_delivery_reported` until a separate owner-recorded Receipt and inspection exists. No supplier event creates a lot, movement, or available stock.
+
+Owner-recorded receipt, damage, discrepancy, inspection, and quarantine events retain structured Purchase Order and receipt references. Retry keys prevent duplicate operational events. A supplier claim may be marked as needed, but the workflow never contacts the supplier or creates a claim automatically.

@@ -251,3 +251,5 @@ Supplier responses are stored in versioned `purchase_order_confirmations` and li
 `purchase_order_shipments` supports multiple shipments per order and immutable line allocations. Cumulative shipped quantity may not exceed the accepted confirmation. Carrier, tracking, dispatch, delay, customs, and delivery-report evidence are logistics facts only. Opening a safe HTTP(S) link has no lifecycle effect.
 
 `delivery_reported` is deliberately not `received`: physical receipt, quantity inspection, document inspection, acceptance/rejection, lots, movements, and stock availability remain downstream. Confirmation and shipment RPCs authenticate the owner, validate the active workspace, lock aggregates, guard revisions, deduplicate retries and supplier events, and never mutate the Purchase Plan.
+
+Physical receiving is a separate aggregate linked explicitly to one or more shipments. Receipt lines preserve ordered, confirmed, and shipped snapshots alongside owner-entered physical counts. Discrepancies are append-only, inspections are versioned, and eligible quantities can enter quarantine without creating an Inventory Lot, Inventory Movement, or production availability.

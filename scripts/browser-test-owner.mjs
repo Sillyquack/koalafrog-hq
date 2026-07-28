@@ -17,6 +17,12 @@ if(process.argv[2]==='orphans'){
   if(!id)throw new Error('Usage: node scripts/browser-test-owner.mjs delete <user-id>')
   if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id))throw new Error('Browser test owner ID must be a UUID.')
   const cleanup=`begin;
+delete from public.inventory_quarantine_intakes where owner_id='${id}'::uuid;
+delete from public.purchase_order_receipt_inspections where owner_id='${id}'::uuid;
+delete from public.purchase_order_receipt_discrepancies where owner_id='${id}'::uuid;
+delete from public.purchase_order_receipt_lines where owner_id='${id}'::uuid;
+delete from public.purchase_order_receipt_shipments where owner_id='${id}'::uuid;
+delete from public.purchase_order_receipts where owner_id='${id}'::uuid;
 delete from public.purchase_order_shipment_events where owner_id='${id}'::uuid;
 delete from public.purchase_order_shipment_lines where owner_id='${id}'::uuid;
 delete from public.purchase_order_shipments where owner_id='${id}'::uuid;
