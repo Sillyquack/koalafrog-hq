@@ -99,6 +99,21 @@ flowchart LR
 
 Removal is not authorized by this milestone. It requires a separate, reviewed migration after hosted cutover evidence exists.
 
+## Release-candidate retention plan
+
+| Structure | Classification | Allowed readers | Forbidden writers | Active callers | Removal prerequisite | Early-removal risk | Planned milestone |
+|---|---|---|---|---|---|---|---|
+| `finished_goods_batches` | legacy frozen | authenticated legacy views, service reconciliation | authenticated browser and new workflows | read-only legacy routes | hosted reconciliation, export, zero canonical dependencies | historical loss and broken old workspaces | post-hosted cutover cleanup |
+| `finished_goods_movements` | legacy frozen ledger | authenticated history, service reconciliation | browser DML and canonical workflows | legacy balance views | movement reconciliation and retained export | historical balance loss | post-hosted cutover cleanup |
+| `packaging_allocations` | compatibility read-only | legacy history | authenticated mutation | legacy adapters only | prove Packaging Run parity and zero callers | packaging provenance loss | post-hosted cutover cleanup |
+| `workspace_records` | v9 rollback compatibility | reconciliation/service readers | all new domain writes | import/recovery tooling | rollback window closed and hosted relational reconciliation | loss of rollback evidence | later platform cleanup |
+| legacy Finished Goods write RPCs | service-only deprecated | service role | anon/authenticated | migration/reconciliation only | zero callers plus reviewed removal migration | old import path failure | post-hosted cutover cleanup |
+| old route adapters | read-only compatibility | authenticated operator | all mutation controls | legacy URLs | route telemetry and retained redirect plan | broken bookmarks/history access | later UI cleanup |
+| generated compatibility types | generated compatibility | build and adapters | hand editing | typed legacy readers | source objects removed and types regenerated | build/runtime contract drift | with object removal |
+| local v9 aggregate | retained rollback source | Local repository/recovery tools | Supabase-controlled workflow | local development fallback | explicit cutover and rollback-window closure | destructive loss of recovery source | after hosted stabilization |
+
+No compatibility structure is removed during RC closeout. Evidence required before removal includes hosted reconciliation, retained export, dependency and browser-write inventories with zero canonical callers, owner approval, rollback proof, and regenerated types/audits.
+
 ## Failure handling
 
 ```mermaid

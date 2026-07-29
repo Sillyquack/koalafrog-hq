@@ -1,5 +1,25 @@
 # Architecture
 
+## Finished Goods, Traceability & Recall local RC
+
+The finalized operational chain is:
+
+```mermaid
+flowchart LR
+  P["Procurement"] --> R["Raw-Material Inventory"]
+  R --> M["Production"]
+  M --> K["Packaging"]
+  K --> F["Finished Goods"]
+  F --> Q["Quality Release"]
+  Q --> A["Active Inventory"]
+  A --> T["Traceability"]
+  T --> C["Recall Readiness"]
+```
+
+The local Release Candidate is `1.0.0-rc.1`, documented by [release notes](FINISHED_GOODS_TRACEABILITY_RECALL_RC_1.md), the [milestone closeout](FINISHED_GOODS_TRACEABILITY_RECALL_MILESTONE_CLOSEOUT.md), and the generated [RC manifest](generated/finished-goods-traceability-recall-rc.json).
+
+Downstream reservation, customer allocation, dispatch, shipment, distribution/customer tracing, notifications, returns, destruction execution, accounting, legal classification, and Recall Execution are excluded. Recall approval freezes an internal assessment package; it does not perform an operational action. Merge readiness and deployment readiness remain separate decisions.
+
 ## Ingredient Knowledge boundary
 
 `Reference Ingredient → Workspace Ingredient → Ingredient Knowledge → Product Studio / Formula / Lab / Testing`. Profiles remain subordinate to canonical Workspace Ingredients. Repeatable roles, compatibility, and evidence are relational and owner-isolated. Downstream workflows consume known values and preserve weak fallback semantics. See [INGREDIENT_KNOWLEDGE.md](INGREDIENT_KNOWLEDGE.md).
@@ -138,7 +158,7 @@ Slice 6 adds no ledger and no lifecycle mutation. Authenticated bounded RPCs rec
 
 The 2026-07-29 [Platform Architecture Review](PLATFORM_ARCHITECTURE_REVIEW_2026-07-29.md) confirms that the supplier-to-released-Finished-Goods lifecycle, three physical ledgers, server-authority boundary, immutable evidence, costing snapshots, and traceability graph remain coherent.
 
-The current scaling boundary is architectural classification rather than a new ledger: `workspace_records`, legacy `finished_goods_batches`, `finished_goods_movements`, `packaging_allocations`, and their established RPCs remain compatibility surfaces and must receive no new controlled-workflow responsibility. The next slice inventories and marks those boundaries, automates privilege/RLS/FK-index review, keeps history queries bounded, and reduces selected provider/error-handling concentration before Recall Readiness.
+The current scaling boundary is architectural classification rather than a new ledger: `workspace_records`, legacy `finished_goods_batches`, `finished_goods_movements`, `packaging_allocations`, and their established RPCs remain compatibility surfaces and must receive no new controlled-workflow responsibility. Platform Hardening inventories and freezes those boundaries, automates privilege/RLS/FK-index review, keeps history queries bounded, and reduces selected provider/error-handling concentration. Recall Readiness consumes only canonical Slice 5 inventory and Slice 6 genealogy authority.
 # Recall Readiness authority
 
 Recall Readiness reuses the canonical Batch Genealogy trace and movement-derived Finished Goods inventory snapshot. Its cases, immutable revisions, frozen scopes, evidence metadata, reviews, and fingerprint-specific approvals are RPC-only authorities. Approval performs no recall, inventory, shipment, notification, return, destruction, accounting, or legal action. See [Recall Readiness V1](RECALL_READINESS_V1.md).

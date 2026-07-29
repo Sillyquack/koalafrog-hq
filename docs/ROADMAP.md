@@ -1,8 +1,8 @@
 # Roadmap
 
-Current milestone: Finished Goods & Batch Genealogy V1. Slices 1–6 are **PASS**: controlled Production Output, Packaging Run control, Finished Goods Lot quarantine, finished-product inspection and release, active Finished Goods inventory, and bidirectional batch traceability are complete locally.
+Current milestone: Finished Goods, Traceability & Recall Readiness closeout. Finished Goods & Batch Genealogy V1 Slices 1–6, the [Platform Architecture Review](PLATFORM_ARCHITECTURE_REVIEW_2026-07-29.md), Platform Hardening & Legacy Authority Classification V1, Recall Readiness V1, and the Milestone Closeout and Release-Candidate Baseline are **PASS locally**.
 
-The [post-traceability platform architecture review](PLATFORM_ARCHITECTURE_REVIEW_2026-07-29.md) is **PASS**. Its recommended next slice is **Platform Hardening & Legacy Authority Classification V1**, followed by Recall Readiness, release-candidate/deployment hardening, and then downstream reservation and dispatch.
+The local RC is documented in [release notes](FINISHED_GOODS_TRACEABILITY_RECALL_RC_1.md) and the [milestone closeout](FINISHED_GOODS_TRACEABILITY_RECALL_MILESTONE_CLOSEOUT.md). It has not been deployed.
 
 ## Phase 1: Foundation — Complete
 
@@ -86,7 +86,7 @@ The closeout and architecture review are recorded in [Production Inventory Contr
 
 ### Finished Goods & Batch Genealogy V1
 
-**Status:** Slices 1–6 PASS. Post-foundation architecture review PASS.
+**Status:** COMPLETE locally; Slices 1–6 PASS, architecture review PASS, platform hardening PASS, Recall Readiness PASS, and RC closeout PASS.
 
 High-level objective: transform completed Production output into controlled Finished Goods Lots with immutable batch genealogy, yield reconciliation, quality release, packaging identity, and traceability back to every consumed raw-material lot.
 
@@ -95,15 +95,23 @@ This milestone hardens and extends the lightweight Finished Goods/output registr
 Approved implementation sequence:
 
 1. Production Output & Yield Reconciliation — **PASS**
-2. Packaging Run Planning, Bulk Allocation & Packaging Control
-3. Finished Goods Lot Creation & Quarantine
-4. Finished Goods Inspection & Quality Release
-5. Finished Goods Inventory & Cost
-6. Batch Genealogy & Traceability
-7. Platform Hardening & Legacy Authority Classification — **Next**
-8. Recall Readiness — implemented locally on `feature/finished-goods-batch-genealogy-v1`; internal assessment only, with immutable scopes and no execution actions. See [Recall Readiness V1](RECALL_READINESS_V1.md).
-9. Release-Candidate & Deployment Hardening
-10. Downstream Reservation & Dispatch
+2. Packaging Run Planning, Bulk Allocation & Packaging Control — **PASS**
+3. Finished Goods Lot Creation & Quarantine — **PASS**
+4. Finished Goods Inspection & Quality Release — **PASS**
+5. Finished Goods Inventory & Cost — **PASS**
+6. Batch Genealogy & Traceability — **PASS**
+7. Platform Hardening & Legacy Authority Classification — **PASS**
+8. Recall Readiness — **PASS locally**; internal assessment only, with immutable scopes and no execution actions. See [Recall Readiness V1](RECALL_READINESS_V1.md).
+9. Milestone Closeout and Release-Candidate Baseline — **PASS locally**
+
+Exact future sequence:
+
+1. Release Candidate & Deployment Hardening.
+2. Downstream Reservation & Controlled Dispatch.
+3. Shipment and Distribution Traceability.
+4. Controlled Recall Execution.
+
+Local development may proceed only according to the selected roadmap. Hosted backup, migration, configuration, validation, deployment, and any remote mutation require explicit authorization. Recall Execution must not be implemented before distribution/customer data authorities and responsible governance exist.
 
 Slice 2 owns durable packaging allocations and reservations, reservation-aware availability, concurrency-safe bulk and component allocation, release and safe staged return, exactly-once consumption, waste/damage, reconciliation, readiness, cost provenance and genealogy. It creates no Finished Goods Lot and performs no Finished Goods release or opening movement.
 
@@ -147,7 +155,7 @@ The repository now contains a typed, searchable, cross-linked in-app operations 
 Finished-product inspection, immutable deviations, partial Hold/Reject/Release disposition, controlled active-inventory creation, and exactly-once opening movements are implemented locally. See [Finished-Product Inspection, Disposition & Controlled Quality Release](FINISHED_PRODUCT_INSPECTION_AND_QUALITY_RELEASE.md).
 # Slice 5 checkpoint
 
-Active Finished Goods Inventory Controls, Valuation & Operational Availability are implemented on `feature/finished-goods-batch-genealogy-v1`; see [ACTIVE_FINISHED_GOODS_INVENTORY_CONTROLS.md](ACTIVE_FINISHED_GOODS_INVENTORY_CONTROLS.md). Downstream reservation, shipment, sales, recall cases, and accounting remain future slices.
+Active Finished Goods Inventory Controls, Valuation & Operational Availability are implemented on `feature/finished-goods-batch-genealogy-v1`; see [ACTIVE_FINISHED_GOODS_INVENTORY_CONTROLS.md](ACTIVE_FINISHED_GOODS_INVENTORY_CONTROLS.md). Recall Readiness is implemented separately as an internal assessment authority. Downstream reservation, shipment, sales, Recall Execution, and accounting remain future milestones.
 
 ### Finished Goods & Batch Genealogy V1 — Slice 6
 

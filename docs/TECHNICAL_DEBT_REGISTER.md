@@ -12,8 +12,12 @@ This register records bounded follow-up work; it is not an authorization to expa
 | TD-006 | Static accessibility gate is not a WCAG conformance test | Keyboard, focus, contrast, or screen-reader defects can escape | Representative browser journeys plus a deterministic source gate | Automated axe/keyboard coverage across critical routes |
 | TD-007 | No hosted restore rehearsal evidence exists | Recovery-time assumptions are unproven | Local reset and restore runbook | Dated hosted rehearsal with checksum and smoke evidence |
 | TD-008 | Product-wide genealogy aggregation is not materialized | Trace queries may become expensive at scale | Lot-scoped, owner-scoped canonical RPCs and recorded query plans | Production-shaped volume test and measured aggregation strategy |
+| TD-009 | Hosted migration, grants, RLS, Auth, Storage, and two-owner evidence are absent for the RC | Local PASS could be mistaken for deployment readiness | RC manifest states `deploy_ready_now=false`; hosted cutover checklist remains mandatory | Authorized hosted rehearsal and post-migration evidence package |
+| TD-010 | Full Supabase Auth-data restore is not proven by the portable local schema rehearsal | Recovery assumptions may omit managed identities | Schema restore is proven; supported hosted backup/restore is a deployment blocker | Dated isolated restore with Auth, Storage metadata, checksums, and smoke validation |
 # Recall Readiness boundary debt
 
 - Customer, distributor, shipment, and sales-order tracing remain unavailable; Recall Readiness records this as an explicit distribution limitation.
 - Recall execution remains a separate future milestone and has no operational mutation path in V1.
 - Documented non-lifecycle sources require linkage to a canonical trace root before affected goods can be calculated.
+
+Closeout status: TD-001 through TD-010 remain open and non-blocking for merge review. TD-007, TD-009, and TD-010 block deployment until their exit evidence exists. No closed item was deleted.

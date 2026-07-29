@@ -1,0 +1,855 @@
+{
+  "version": "1.0.0",
+  "generatedFrom": "f1cc783..15c8db0",
+  "branch": "feature/finished-goods-batch-genealogy-v1",
+  "baseCommit": "f1cc783ec7223bebbfea43d1039c77117698bd25",
+  "headCommit": "15c8db0330a0c5ad153be0b962f601d23ffb6052",
+  "count": 36,
+  "commits": [
+    {
+      "hash": "61e825c769ce24c9ff52c4b858411442865d5135",
+      "shortHash": "61e825c",
+      "author": "Robert Alm Haugen",
+      "date": "2026-07-28T17:28:02+02:00",
+      "subject": "docs: audit finished goods and batch genealogy architecture",
+      "milestone": "Architecture Audit",
+      "changeType": "docs",
+      "migrationsChanged": [],
+      "applicationDomainsChanged": [],
+      "testsChanged": [],
+      "docsChanged": [
+        "docs/FINISHED_GOODS_BATCH_GENEALOGY_ARCHITECTURE_AUDIT.md"
+      ],
+      "releaseRelevance": "in_scope",
+      "revertStatus": "not_reverted",
+      "mergeStatus": "unmerged_feature_branch",
+      "notes": "documentation-only"
+    },
+    {
+      "hash": "e80fabfefd8b63c47aa042175d133bf60c2f56de",
+      "shortHash": "e80fabf",
+      "author": "Robert Alm Haugen",
+      "date": "2026-07-28T18:14:05+02:00",
+      "subject": "feat: add production output database contracts",
+      "milestone": "Slice 1",
+      "changeType": "feat",
+      "migrationsChanged": [
+        "supabase/migrations/20260728154754_production_output_yield_reconciliation_v1.sql"
+      ],
+      "applicationDomainsChanged": [
+        "platform",
+        "production"
+      ],
+      "testsChanged": [
+        "supabase/tests/production_output_yield_reconciliation.sql"
+      ],
+      "docsChanged": [],
+      "releaseRelevance": "in_scope",
+      "revertStatus": "not_reverted",
+      "mergeStatus": "unmerged_feature_branch",
+      "notes": "implementation"
+    },
+    {
+      "hash": "9ba38dd4a4d874bcd2d4d2789e2d8f590b9aa89e",
+      "shortHash": "9ba38dd",
+      "author": "Robert Alm Haugen",
+      "date": "2026-07-28T18:14:32+02:00",
+      "subject": "feat: add production output reconciliation workflow",
+      "milestone": "Slice 1",
+      "changeType": "feat",
+      "migrationsChanged": [],
+      "applicationDomainsChanged": [
+        "production"
+      ],
+      "testsChanged": [
+        "e2e/productionInventoryControl.e2e.ts",
+        "scripts/test-supabase.mjs",
+        "src/features/production/data/productionOutput.integration.test.ts"
+      ],
+      "docsChanged": [],
+      "releaseRelevance": "in_scope",
+      "revertStatus": "not_reverted",
+      "mergeStatus": "unmerged_feature_branch",
+      "notes": "implementation"
+    },
+    {
+      "hash": "c52934794119bd47b0141499f0eb2570f4103369",
+      "shortHash": "c529347",
+      "author": "Robert Alm Haugen",
+      "date": "2026-07-28T18:14:48+02:00",
+      "subject": "docs: record production output milestone evidence",
+      "milestone": "Slice 1",
+      "changeType": "docs",
+      "migrationsChanged": [],
+      "applicationDomainsChanged": [],
+      "testsChanged": [],
+      "docsChanged": [
+        "docs/FINISHED_GOODS_BATCH_GENEALOGY_ARCHITECTURE_AUDIT.md",
+        "docs/PRODUCTION_INVENTORY_CONTROL.md",
+        "docs/PRODUCTION_OUTPUT_AND_YIELD_RECONCILIATION.md",
+        "docs/ROADMAP.md"
+      ],
+      "releaseRelevance": "in_scope",
+      "revertStatus": "not_reverted",
+      "mergeStatus": "unmerged_feature_branch",
+      "notes": "documentation-only"
+    },
+    {
+      "hash": "2fbf943a70b5185e8ed474e31cfc694b5e75e30f",
+      "shortHash": "2fbf943",
+      "author": "Robert Alm Haugen",
+      "date": "2026-07-28T21:15:02+02:00",
+      "subject": "docs: approve packaging control within slice 2",
+      "milestone": "Slice 2",
+      "changeType": "docs",
+      "migrationsChanged": [],
+      "applicationDomainsChanged": [],
+      "testsChanged": [],
+      "docsChanged": [
+        "docs/ARCHITECTURE.md",
+        "docs/FINISHED_GOODS_BATCH_GENEALOGY_ARCHITECTURE_AUDIT.md",
+        "docs/PRODUCTION_INVENTORY_CONTROL_RELEASE_CLOSEOUT.md",
+        "docs/PRODUCTION_OUTPUT_AND_YIELD_RECONCILIATION.md",
+        "docs/ROADMAP.md"
+      ],
+      "releaseRelevance": "in_scope",
+      "revertStatus": "not_reverted",
+      "mergeStatus": "unmerged_feature_branch",
+      "notes": "documentation-only"
+    },
+    {
+      "hash": "a7d8bd972a74d4673296fcbc10a9c1b111e79daa",
+      "shortHash": "a7d8bd9",
+      "author": "Robert Alm Haugen",
+      "date": "2026-07-28T22:16:04+02:00",
+      "subject": "feat: add packaging run control contracts",
+      "milestone": "Slice 2",
+      "changeType": "feat",
+      "migrationsChanged": [
+        "supabase/migrations/20260728170000_packaging_run_planning_consumption_v1.sql"
+      ],
+      "applicationDomainsChanged": [
+        "platform"
+      ],
+      "testsChanged": [],
+      "docsChanged": [],
+      "releaseRelevance": "in_scope",
+      "revertStatus": "not_reverted",
+      "mergeStatus": "unmerged_feature_branch",
+      "notes": "implementation"
+    },
+    {
+      "hash": "1c58695a7aec782d1b0792276785917ca77371cd",
+      "shortHash": "1c58695",
+      "author": "Robert Alm Haugen",
+      "date": "2026-07-28T22:16:31+02:00",
+      "subject": "feat: add packaging run operator workflow",
+      "milestone": "Slice 2",
+      "changeType": "feat",
+      "migrationsChanged": [],
+      "applicationDomainsChanged": [
+        "packaging-run",
+        "production"
+      ],
+      "testsChanged": [],
+      "docsChanged": [],
+      "releaseRelevance": "in_scope",
+      "revertStatus": "not_reverted",
+      "mergeStatus": "unmerged_feature_branch",
+      "notes": "implementation"
+    },
+    {
+      "hash": "43ddb6bed0e013279185767354123f92330bf924",
+      "shortHash": "43ddb6b",
+      "author": "Robert Alm Haugen",
+      "date": "2026-07-28T22:16:50+02:00",
+      "subject": "test: validate packaging run concurrency and lifecycle",
+      "milestone": "Slice 2",
+      "changeType": "test",
+      "migrationsChanged": [],
+      "applicationDomainsChanged": [
+        "packaging-run"
+      ],
+      "testsChanged": [
+        "e2e/productionInventoryControl.e2e.ts",
+        "scripts/test-packaging-run.mjs",
+        "scripts/test-supabase.mjs",
+        "src/features/packaging-run/data/packagingRun.integration.test.ts",
+        "supabase/tests/packaging_run_planning_control.sql"
+      ],
+      "docsChanged": [],
+      "releaseRelevance": "in_scope",
+      "revertStatus": "not_reverted",
+      "mergeStatus": "unmerged_feature_branch",
+      "notes": "test evidence"
+    },
+    {
+      "hash": "f18ed354dc6ad8349cf94345b529cb0fc471d51d",
+      "shortHash": "f18ed35",
+      "author": "Robert Alm Haugen",
+      "date": "2026-07-28T22:17:20+02:00",
+      "subject": "docs: document packaging run planning and control",
+      "milestone": "Slice 2",
+      "changeType": "docs",
+      "migrationsChanged": [],
+      "applicationDomainsChanged": [],
+      "testsChanged": [],
+      "docsChanged": [
+        "docs/APPLICATION_ACTIONS_AND_REPOSITORIES.md",
+        "docs/ARCHITECTURE.md",
+        "docs/FINISHED_GOODS_BATCH_GENEALOGY_ARCHITECTURE_AUDIT.md",
+        "docs/PACKAGING_RUN_PLANNING_AND_CONTROL.md",
+        "docs/PRODUCTION_OUTPUT_AND_YIELD_RECONCILIATION.md",
+        "docs/ROADMAP.md"
+      ],
+      "releaseRelevance": "in_scope",
+      "revertStatus": "not_reverted",
+      "mergeStatus": "unmerged_feature_branch",
+      "notes": "documentation-only"
+    },
+    {
+      "hash": "21b3c3dc32d43480b473aa28c41f5ec5cd589813",
+      "shortHash": "21b3c3d",
+      "author": "Robert Alm Haugen",
+      "date": "2026-07-28T23:08:46+02:00",
+      "subject": "feat: add finished goods lot and quarantine contracts",
+      "milestone": "Slice 3",
+      "changeType": "feat",
+      "migrationsChanged": [
+        "supabase/migrations/20260728203257_finished_goods_lot_creation_quarantine_v1.sql"
+      ],
+      "applicationDomainsChanged": [
+        "platform"
+      ],
+      "testsChanged": [],
+      "docsChanged": [],
+      "releaseRelevance": "in_scope",
+      "revertStatus": "not_reverted",
+      "mergeStatus": "unmerged_feature_branch",
+      "notes": "implementation"
+    },
+    {
+      "hash": "330f5068f8b3afcf8fc4c2c84dd499e6201b19bf",
+      "shortHash": "330f506",
+      "author": "Robert Alm Haugen",
+      "date": "2026-07-28T23:09:19+02:00",
+      "subject": "feat: expose finished goods lot repository and workflow",
+      "milestone": "Slice 3",
+      "changeType": "feat",
+      "migrationsChanged": [],
+      "applicationDomainsChanged": [
+        "finished-goods-control",
+        "packaging-run"
+      ],
+      "testsChanged": [],
+      "docsChanged": [],
+      "releaseRelevance": "in_scope",
+      "revertStatus": "not_reverted",
+      "mergeStatus": "unmerged_feature_branch",
+      "notes": "implementation"
+    },
+    {
+      "hash": "ba449afa0b3ec997890219e23890f494bcc2b5ce",
+      "shortHash": "ba449af",
+      "author": "Robert Alm Haugen",
+      "date": "2026-07-28T23:09:40+02:00",
+      "subject": "test: validate finished goods lot creation lifecycle",
+      "milestone": "Slice 3",
+      "changeType": "test",
+      "migrationsChanged": [],
+      "applicationDomainsChanged": [
+        "finished-goods-control"
+      ],
+      "testsChanged": [
+        "e2e/productionInventoryControl.e2e.ts",
+        "scripts/test-finished-goods-lots.mjs",
+        "scripts/test-supabase.mjs",
+        "src/features/finished-goods-control/data/finishedGoodsLot.integration.test.ts",
+        "supabase/tests/finished_goods_lot_creation_quarantine.sql"
+      ],
+      "docsChanged": [],
+      "releaseRelevance": "in_scope",
+      "revertStatus": "not_reverted",
+      "mergeStatus": "unmerged_feature_branch",
+      "notes": "test evidence"
+    },
+    {
+      "hash": "4581f69c7a02e7dc919e151e24008c809e0f1d7e",
+      "shortHash": "4581f69",
+      "author": "Robert Alm Haugen",
+      "date": "2026-07-28T23:10:00+02:00",
+      "subject": "docs: document finished goods lot creation and quarantine",
+      "milestone": "Slice 3",
+      "changeType": "docs",
+      "migrationsChanged": [],
+      "applicationDomainsChanged": [],
+      "testsChanged": [],
+      "docsChanged": [
+        "docs/ARCHITECTURE.md",
+        "docs/FINISHED_GOODS_BATCH_GENEALOGY_ARCHITECTURE_AUDIT.md",
+        "docs/FINISHED_GOODS_LOT_CREATION_AND_QUARANTINE.md",
+        "docs/PACKAGING_RUN_PLANNING_AND_CONTROL.md",
+        "docs/PRODUCTION_OUTPUT_AND_YIELD_RECONCILIATION.md",
+        "docs/ROADMAP.md"
+      ],
+      "releaseRelevance": "in_scope",
+      "revertStatus": "not_reverted",
+      "mergeStatus": "unmerged_feature_branch",
+      "notes": "documentation-only"
+    },
+    {
+      "hash": "f802fbbafb7710ec4fb161323803819eedad0659",
+      "shortHash": "f802fbb",
+      "author": "Robert Alm Haugen",
+      "date": "2026-07-29T07:02:20+02:00",
+      "subject": "feat: add finished goods quality release contracts",
+      "milestone": "Slice 4",
+      "changeType": "feat",
+      "migrationsChanged": [
+        "supabase/migrations/20260729043721_finished_product_quality_release_v1.sql"
+      ],
+      "applicationDomainsChanged": [
+        "platform"
+      ],
+      "testsChanged": [],
+      "docsChanged": [],
+      "releaseRelevance": "in_scope",
+      "revertStatus": "not_reverted",
+      "mergeStatus": "unmerged_feature_branch",
+      "notes": "implementation"
+    },
+    {
+      "hash": "2f1ebaa64c9a68ac184e25eb736bd0da3f880a1c",
+      "shortHash": "2f1ebaa",
+      "author": "Robert Alm Haugen",
+      "date": "2026-07-29T07:02:39+02:00",
+      "subject": "feat: add finished goods quality operator workflow",
+      "milestone": "Slice 4",
+      "changeType": "feat",
+      "migrationsChanged": [],
+      "applicationDomainsChanged": [
+        "finished-goods-control"
+      ],
+      "testsChanged": [],
+      "docsChanged": [],
+      "releaseRelevance": "in_scope",
+      "revertStatus": "not_reverted",
+      "mergeStatus": "unmerged_feature_branch",
+      "notes": "implementation"
+    },
+    {
+      "hash": "11d3226e3ccc8d86d770aae4d10e62b2a430150c",
+      "shortHash": "11d3226",
+      "author": "Robert Alm Haugen",
+      "date": "2026-07-29T07:02:59+02:00",
+      "subject": "test: validate finished goods inspection and release lifecycle",
+      "milestone": "Slice 4",
+      "changeType": "test",
+      "migrationsChanged": [],
+      "applicationDomainsChanged": [
+        "finished-goods-control"
+      ],
+      "testsChanged": [
+        "e2e/productionInventoryControl.e2e.ts",
+        "scripts/test-finished-goods-lots.mjs",
+        "src/features/finished-goods-control/data/finishedGoodsLot.integration.test.ts",
+        "supabase/tests/finished_goods_lot_creation_quarantine.sql",
+        "supabase/tests/finished_product_quality_release.sql"
+      ],
+      "docsChanged": [],
+      "releaseRelevance": "in_scope",
+      "revertStatus": "not_reverted",
+      "mergeStatus": "unmerged_feature_branch",
+      "notes": "test evidence"
+    },
+    {
+      "hash": "dd8199b60891c9e68b6796acf123e01f3292c16f",
+      "shortHash": "dd8199b",
+      "author": "Robert Alm Haugen",
+      "date": "2026-07-29T07:03:19+02:00",
+      "subject": "docs: document finished product inspection and quality release",
+      "milestone": "Slice 4",
+      "changeType": "docs",
+      "migrationsChanged": [],
+      "applicationDomainsChanged": [],
+      "testsChanged": [],
+      "docsChanged": [
+        "docs/ARCHITECTURE.md",
+        "docs/FINISHED_GOODS_BATCH_GENEALOGY_ARCHITECTURE_AUDIT.md",
+        "docs/FINISHED_GOODS_LOT_CREATION_AND_QUARANTINE.md",
+        "docs/FINISHED_PRODUCT_INSPECTION_AND_QUALITY_RELEASE.md",
+        "docs/PACKAGING_RUN_PLANNING_AND_CONTROL.md",
+        "docs/ROADMAP.md"
+      ],
+      "releaseRelevance": "in_scope",
+      "revertStatus": "not_reverted",
+      "mergeStatus": "unmerged_feature_branch",
+      "notes": "documentation-only"
+    },
+    {
+      "hash": "941d768d5cbdc62f9843155fede4454b25c243c6",
+      "shortHash": "941d768",
+      "author": "Robert Alm Haugen",
+      "date": "2026-07-29T08:20:22+02:00",
+      "subject": "feat: add active finished goods inventory controls",
+      "milestone": "Slice 5",
+      "changeType": "feat",
+      "migrationsChanged": [
+        "supabase/migrations/20260729054425_active_finished_goods_inventory_controls_v1.sql"
+      ],
+      "applicationDomainsChanged": [
+        "platform"
+      ],
+      "testsChanged": [],
+      "docsChanged": [],
+      "releaseRelevance": "in_scope",
+      "revertStatus": "not_reverted",
+      "mergeStatus": "unmerged_feature_branch",
+      "notes": "implementation"
+    },
+    {
+      "hash": "6f99e63751071835b57fde06c2d2f041f4dbccbb",
+      "shortHash": "6f99e63",
+      "author": "Robert Alm Haugen",
+      "date": "2026-07-29T08:21:04+02:00",
+      "subject": "feat: expose finished goods inventory workflow",
+      "milestone": "Slice 5",
+      "changeType": "feat",
+      "migrationsChanged": [],
+      "applicationDomainsChanged": [
+        "finished-goods-control"
+      ],
+      "testsChanged": [],
+      "docsChanged": [],
+      "releaseRelevance": "in_scope",
+      "revertStatus": "not_reverted",
+      "mergeStatus": "unmerged_feature_branch",
+      "notes": "implementation"
+    },
+    {
+      "hash": "5abb210503419d8c55ad35ac73bfb54ee0eb7a20",
+      "shortHash": "5abb210",
+      "author": "Robert Alm Haugen",
+      "date": "2026-07-29T08:21:14+02:00",
+      "subject": "test: validate finished goods inventory lifecycle",
+      "milestone": "Slice 5",
+      "changeType": "test",
+      "migrationsChanged": [],
+      "applicationDomainsChanged": [
+        "finished-goods-control"
+      ],
+      "testsChanged": [
+        "e2e/productionInventoryControl.e2e.ts",
+        "scripts/test-finished-goods-lots.mjs",
+        "src/features/finished-goods-control/data/finishedGoodsLot.integration.test.ts",
+        "supabase/tests/active_finished_goods_inventory_controls.sql",
+        "supabase/tests/active_finished_goods_inventory_performance.sql"
+      ],
+      "docsChanged": [],
+      "releaseRelevance": "in_scope",
+      "revertStatus": "not_reverted",
+      "mergeStatus": "unmerged_feature_branch",
+      "notes": "test evidence"
+    },
+    {
+      "hash": "e3e1adf4971f0dc18c48072e60f5c3a34ac8256c",
+      "shortHash": "e3e1adf",
+      "author": "Robert Alm Haugen",
+      "date": "2026-07-29T08:21:24+02:00",
+      "subject": "docs: document active finished goods inventory controls",
+      "milestone": "Slice 5",
+      "changeType": "docs",
+      "migrationsChanged": [],
+      "applicationDomainsChanged": [],
+      "testsChanged": [],
+      "docsChanged": [
+        "docs/ACTIVE_FINISHED_GOODS_INVENTORY_CONTROLS.md",
+        "docs/ARCHITECTURE.md",
+        "docs/FINISHED_GOODS_BATCH_GENEALOGY_ARCHITECTURE_AUDIT.md",
+        "docs/FINISHED_PRODUCT_INSPECTION_AND_QUALITY_RELEASE.md",
+        "docs/ROADMAP.md"
+      ],
+      "releaseRelevance": "in_scope",
+      "revertStatus": "not_reverted",
+      "mergeStatus": "unmerged_feature_branch",
+      "notes": "documentation-only"
+    },
+    {
+      "hash": "0460e4f0d4fbac5d7a55144834f027ab433d1b19",
+      "shortHash": "0460e4f",
+      "author": "Robert Alm Haugen",
+      "date": "2026-07-29T09:19:35+02:00",
+      "subject": "feat: add canonical batch genealogy queries",
+      "milestone": "Slice 6",
+      "changeType": "feat",
+      "migrationsChanged": [
+        "supabase/migrations/20260729065048_batch_genealogy_traceability_v1.sql"
+      ],
+      "applicationDomainsChanged": [
+        "finished-goods-control",
+        "platform",
+        "traceability"
+      ],
+      "testsChanged": [
+        "src/features/finished-goods-control/data/finishedGoodsLot.integration.test.ts",
+        "supabase/tests/batch_genealogy_traceability.sql"
+      ],
+      "docsChanged": [],
+      "releaseRelevance": "in_scope",
+      "revertStatus": "not_reverted",
+      "mergeStatus": "unmerged_feature_branch",
+      "notes": "implementation"
+    },
+    {
+      "hash": "dbc1bddcc40252f1d7a184bb3ae40ce9ec1c72fb",
+      "shortHash": "dbc1bdd",
+      "author": "Robert Alm Haugen",
+      "date": "2026-07-29T09:19:45+02:00",
+      "subject": "feat: add batch traceability workspace",
+      "milestone": "Slice 6",
+      "changeType": "feat",
+      "migrationsChanged": [],
+      "applicationDomainsChanged": [
+        "finished-goods-control",
+        "traceability"
+      ],
+      "testsChanged": [
+        "e2e/productionInventoryControl.e2e.ts"
+      ],
+      "docsChanged": [],
+      "releaseRelevance": "in_scope",
+      "revertStatus": "not_reverted",
+      "mergeStatus": "unmerged_feature_branch",
+      "notes": "implementation"
+    },
+    {
+      "hash": "6f53694a2b1ed6798a38bad8b443789da74953b0",
+      "shortHash": "6f53694",
+      "author": "Robert Alm Haugen",
+      "date": "2026-07-29T09:20:13+02:00",
+      "subject": "docs: document batch genealogy and traceability",
+      "milestone": "Slice 6",
+      "changeType": "docs",
+      "migrationsChanged": [],
+      "applicationDomainsChanged": [],
+      "testsChanged": [],
+      "docsChanged": [
+        "docs/ACTIVE_FINISHED_GOODS_INVENTORY_CONTROLS.md",
+        "docs/APPLICATION_ACTIONS_AND_REPOSITORIES.md",
+        "docs/ARCHITECTURE.md",
+        "docs/BATCH_GENEALOGY_AND_TRACEABILITY.md",
+        "docs/FINISHED_GOODS_BATCH_GENEALOGY_ARCHITECTURE_AUDIT.md",
+        "docs/FINISHED_GOODS_LOT_CREATION_AND_QUARANTINE.md",
+        "docs/FINISHED_PRODUCT_INSPECTION_AND_QUALITY_RELEASE.md",
+        "docs/PACKAGING_RUN_PLANNING_AND_CONTROL.md",
+        "docs/PRODUCTION_INVENTORY_CONTROL.md",
+        "docs/ROADMAP.md",
+        "docs/SUPABASE_MIGRATION.md"
+      ],
+      "releaseRelevance": "in_scope",
+      "revertStatus": "not_reverted",
+      "mergeStatus": "unmerged_feature_branch",
+      "notes": "documentation-only"
+    },
+    {
+      "hash": "eea06d21916fd9a0a51def482c28884c08096406",
+      "shortHash": "eea06d2",
+      "author": "Robert Alm Haugen",
+      "date": "2026-07-29T09:55:27+02:00",
+      "subject": "docs: review koalafrog platform architecture",
+      "milestone": "Platform Architecture Review",
+      "changeType": "docs",
+      "migrationsChanged": [],
+      "applicationDomainsChanged": [],
+      "testsChanged": [],
+      "docsChanged": [
+        "docs/ARCHITECTURE.md",
+        "docs/PLATFORM_ARCHITECTURE_REVIEW_2026-07-29.md",
+        "docs/ROADMAP.md"
+      ],
+      "releaseRelevance": "in_scope",
+      "revertStatus": "not_reverted",
+      "mergeStatus": "unmerged_feature_branch",
+      "notes": "documentation-only"
+    },
+    {
+      "hash": "984b19ad71343c8c22e2f2fab0d2319862df09a9",
+      "shortHash": "984b19a",
+      "author": "Robert Alm Haugen",
+      "date": "2026-07-29T11:08:53+02:00",
+      "subject": "fix: enforce platform authority boundaries",
+      "milestone": "Platform Hardening",
+      "changeType": "fix",
+      "migrationsChanged": [
+        "supabase/migrations/20260729083226_platform_authority_hardening_v1.sql"
+      ],
+      "applicationDomainsChanged": [
+        "packaging-run",
+        "platform",
+        "procurement",
+        "production"
+      ],
+      "testsChanged": [
+        "e2e/productionInventoryControl.e2e.ts",
+        "src/features/packaging-run/data/packagingRun.integration.test.ts",
+        "src/features/procurement/production-readiness/data/productionReadinessRepository.integration.test.ts",
+        "src/features/production/data/productionInventoryControl.integration.test.ts",
+        "src/platform/repository/relationalMigration.integration.test.ts",
+        "src/platform/security/securityStorage.integration.test.ts",
+        "supabase/tests/active_finished_goods_inventory_performance.sql",
+        "supabase/tests/platform_authority_hardening.sql"
+      ],
+      "docsChanged": [],
+      "releaseRelevance": "in_scope",
+      "revertStatus": "not_reverted",
+      "mergeStatus": "unmerged_feature_branch",
+      "notes": "corrective or hardening"
+    },
+    {
+      "hash": "8f844f820cbdc03e43c3267cf3c2d382ec477b55",
+      "shortHash": "8f844f8",
+      "author": "Robert Alm Haugen",
+      "date": "2026-07-29T11:09:14+02:00",
+      "subject": "refactor: split routes and freeze legacy ui",
+      "milestone": "Platform Hardening",
+      "changeType": "refactor",
+      "migrationsChanged": [],
+      "applicationDomainsChanged": [
+        "finished-goods",
+        "procurement"
+      ],
+      "testsChanged": [],
+      "docsChanged": [],
+      "releaseRelevance": "in_scope",
+      "revertStatus": "not_reverted",
+      "mergeStatus": "unmerged_feature_branch",
+      "notes": "implementation"
+    },
+    {
+      "hash": "039285045ce2cff90273912a41604660efec1828",
+      "shortHash": "0392850",
+      "author": "Robert Alm Haugen",
+      "date": "2026-07-29T11:09:32+02:00",
+      "subject": "chore: add deterministic platform audits",
+      "milestone": "Platform Hardening",
+      "changeType": "chore",
+      "migrationsChanged": [],
+      "applicationDomainsChanged": [],
+      "testsChanged": [],
+      "docsChanged": [
+        "docs/generated/accessibility-audit.json",
+        "docs/generated/browser-mutation-inventory.json",
+        "docs/generated/bundle-analysis.json",
+        "docs/generated/canonical-policy-ownership.json",
+        "docs/generated/database-object-inventory.json",
+        "docs/generated/documentation-audit.json",
+        "docs/generated/event-type-inventory.json",
+        "docs/generated/foreign-key-index-audit.json",
+        "docs/generated/function-rpc-inventory.json",
+        "docs/generated/legacy-dependency-audit.json",
+        "docs/generated/module-ownership-inventory.json",
+        "docs/generated/platform-authority-inventory.json",
+        "docs/generated/platform-release-baseline.json",
+        "docs/generated/privilege-audit.json"
+      ],
+      "releaseRelevance": "in_scope",
+      "revertStatus": "not_reverted",
+      "mergeStatus": "unmerged_feature_branch",
+      "notes": "generated evidence or tooling"
+    },
+    {
+      "hash": "ee4587e4e19b3b9ff6f93353d8f72155883dcd4f",
+      "shortHash": "ee4587e",
+      "author": "Robert Alm Haugen",
+      "date": "2026-07-29T11:10:25+02:00",
+      "subject": "docs: classify platform authority and release gates",
+      "milestone": "Platform Hardening",
+      "changeType": "docs",
+      "migrationsChanged": [],
+      "applicationDomainsChanged": [],
+      "testsChanged": [],
+      "docsChanged": [
+        "docs/ARCHITECTURE.md",
+        "docs/COMPATIBILITY_AND_LEGACY_AUTHORITY.md",
+        "docs/PLATFORM_ARCHITECTURE_REVIEW_2026-07-29.md",
+        "docs/PLATFORM_DOCUMENTATION_INDEX.md",
+        "docs/PLATFORM_HARDENING_VALIDATION_2026-07-29.md",
+        "docs/TECHNICAL_DEBT_REGISTER.md",
+        "docs/runbooks/HOSTED_CUTOVER_CHECKLIST.md",
+        "docs/runbooks/LOCAL_BACKUP_RESTORE_REHEARSAL.md"
+      ],
+      "releaseRelevance": "in_scope",
+      "revertStatus": "not_reverted",
+      "mergeStatus": "unmerged_feature_branch",
+      "notes": "documentation-only"
+    },
+    {
+      "hash": "c6cbde0008f7967a93f9e5a3517b998312aed77f",
+      "shortHash": "c6cbde0",
+      "author": "Robert Alm Haugen",
+      "date": "2026-07-29T11:11:14+02:00",
+      "subject": "fix: stabilize generated release evidence",
+      "milestone": "Platform Hardening",
+      "changeType": "fix",
+      "migrationsChanged": [],
+      "applicationDomainsChanged": [],
+      "testsChanged": [],
+      "docsChanged": [
+        "docs/generated/documentation-audit.json",
+        "docs/generated/platform-authority-inventory.json",
+        "docs/generated/platform-release-baseline.json"
+      ],
+      "releaseRelevance": "in_scope",
+      "revertStatus": "not_reverted",
+      "mergeStatus": "unmerged_feature_branch",
+      "notes": "corrective or hardening"
+    },
+    {
+      "hash": "8c3dbd8fa60a0756b11a1ce293714ea7f6ab4814",
+      "shortHash": "8c3dbd8",
+      "author": "Robert Alm Haugen",
+      "date": "2026-07-29T12:21:46+02:00",
+      "subject": "feat: add recall readiness case and scope authority",
+      "milestone": "Recall Readiness",
+      "changeType": "feat",
+      "migrationsChanged": [
+        "supabase/migrations/20260729094510_recall_readiness_v1.sql"
+      ],
+      "applicationDomainsChanged": [
+        "platform"
+      ],
+      "testsChanged": [],
+      "docsChanged": [],
+      "releaseRelevance": "in_scope",
+      "revertStatus": "not_reverted",
+      "mergeStatus": "unmerged_feature_branch",
+      "notes": "implementation"
+    },
+    {
+      "hash": "e71aae0cb57e48b8f0c990fc9277723a18ef712f",
+      "shortHash": "e71aae0",
+      "author": "Robert Alm Haugen",
+      "date": "2026-07-29T12:21:56+02:00",
+      "subject": "feat: expose recall readiness repository and workspace",
+      "milestone": "Recall Readiness",
+      "changeType": "feat",
+      "migrationsChanged": [],
+      "applicationDomainsChanged": [
+        "recall-readiness",
+        "traceability"
+      ],
+      "testsChanged": [
+        "src/features/recall-readiness/data/recallReadiness.integration.test.ts",
+        "src/features/recall-readiness/data/recallReadinessRepository.test.ts"
+      ],
+      "docsChanged": [],
+      "releaseRelevance": "in_scope",
+      "revertStatus": "not_reverted",
+      "mergeStatus": "unmerged_feature_branch",
+      "notes": "implementation"
+    },
+    {
+      "hash": "a7ac74114c75346633b4e577bf1b11eda13659d6",
+      "shortHash": "a7ac741",
+      "author": "Robert Alm Haugen",
+      "date": "2026-07-29T12:22:05+02:00",
+      "subject": "test: validate recall readiness lifecycle and isolation",
+      "milestone": "Recall Readiness",
+      "changeType": "test",
+      "migrationsChanged": [],
+      "applicationDomainsChanged": [
+        "finished-goods-control"
+      ],
+      "testsChanged": [
+        "e2e/recallReadiness.e2e.ts",
+        "e2e/recallReadiness.helpers.ts",
+        "e2e/recallReadiness.mobile.e2e.ts",
+        "scripts/test-supabase.mjs",
+        "src/features/finished-goods-control/data/finishedGoodsLot.integration.test.ts",
+        "supabase/tests/recall_readiness_performance.sql",
+        "supabase/tests/recall_readiness_v1.sql"
+      ],
+      "docsChanged": [],
+      "releaseRelevance": "in_scope",
+      "revertStatus": "not_reverted",
+      "mergeStatus": "unmerged_feature_branch",
+      "notes": "test evidence"
+    },
+    {
+      "hash": "85c221ead06b1a5b771d0b3362d0b7e8df2aad4e",
+      "shortHash": "85c221e",
+      "author": "Robert Alm Haugen",
+      "date": "2026-07-29T12:22:13+02:00",
+      "subject": "chore: classify recall readiness authority",
+      "milestone": "Recall Readiness",
+      "changeType": "chore",
+      "migrationsChanged": [],
+      "applicationDomainsChanged": [],
+      "testsChanged": [],
+      "docsChanged": [
+        "docs/generated/accessibility-audit.json",
+        "docs/generated/browser-mutation-inventory.json",
+        "docs/generated/bundle-analysis.json",
+        "docs/generated/canonical-policy-ownership.json",
+        "docs/generated/database-object-inventory.json",
+        "docs/generated/documentation-audit.json",
+        "docs/generated/event-type-inventory.json",
+        "docs/generated/foreign-key-index-audit.json",
+        "docs/generated/function-rpc-inventory.json",
+        "docs/generated/module-ownership-inventory.json",
+        "docs/generated/platform-authority-inventory.json",
+        "docs/generated/platform-release-baseline.json"
+      ],
+      "releaseRelevance": "in_scope",
+      "revertStatus": "not_reverted",
+      "mergeStatus": "unmerged_feature_branch",
+      "notes": "generated evidence or tooling"
+    },
+    {
+      "hash": "570224738df0ddce500d8f55a01e9345c43815c6",
+      "shortHash": "5702247",
+      "author": "Robert Alm Haugen",
+      "date": "2026-07-29T12:22:24+02:00",
+      "subject": "docs: document recall readiness v1",
+      "milestone": "Recall Readiness",
+      "changeType": "docs",
+      "migrationsChanged": [],
+      "applicationDomainsChanged": [],
+      "testsChanged": [],
+      "docsChanged": [
+        "docs/ACTIVE_FINISHED_GOODS_INVENTORY_CONTROLS.md",
+        "docs/ARCHITECTURE.md",
+        "docs/BATCH_GENEALOGY_AND_TRACEABILITY.md",
+        "docs/COMPATIBILITY_AND_LEGACY_AUTHORITY.md",
+        "docs/PLATFORM_ARCHITECTURE_REVIEW_2026-07-29.md",
+        "docs/RECALL_READINESS_V1.md",
+        "docs/ROADMAP.md",
+        "docs/TECHNICAL_DEBT_REGISTER.md"
+      ],
+      "releaseRelevance": "in_scope",
+      "revertStatus": "not_reverted",
+      "mergeStatus": "unmerged_feature_branch",
+      "notes": "documentation-only"
+    },
+    {
+      "hash": "15c8db0330a0c5ad153be0b962f601d23ffb6052",
+      "shortHash": "15c8db0",
+      "author": "Robert Alm Haugen",
+      "date": "2026-07-29T12:22:57+02:00",
+      "subject": "fix: stabilize recall authority evidence",
+      "milestone": "Recall Readiness",
+      "changeType": "fix",
+      "migrationsChanged": [],
+      "applicationDomainsChanged": [],
+      "testsChanged": [],
+      "docsChanged": [
+        "docs/generated/module-ownership-inventory.json",
+        "docs/generated/platform-authority-inventory.json"
+      ],
+      "releaseRelevance": "in_scope",
+      "revertStatus": "not_reverted",
+      "mergeStatus": "unmerged_feature_branch",
+      "notes": "corrective or hardening"
+    }
+  ]
+}

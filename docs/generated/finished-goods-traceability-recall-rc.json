@@ -1,0 +1,84 @@
+{
+  "version": "1.0.0-rc.1",
+  "rcName": "Finished Goods, Traceability & Recall Readiness V1 — Local Release Candidate 1",
+  "branch": "feature/finished-goods-batch-genealogy-v1",
+  "headCommitBeforeCloseout": "15c8db0330a0c5ad153be0b962f601d23ffb6052",
+  "closeoutCommit": null,
+  "tag": "finished-goods-traceability-recall-v1-rc1",
+  "localMigrationHead": "20260729094510",
+  "milestones": [
+    "Architecture Audit",
+    "Slice 1",
+    "Slice 2",
+    "Slice 3",
+    "Slice 4",
+    "Slice 5",
+    "Slice 6",
+    "Platform Architecture Review",
+    "Platform Hardening",
+    "Recall Readiness"
+  ],
+  "commitCount": 36,
+  "migrationCount": 8,
+  "databaseObjectCounts": {
+    "foreignKeys": 625,
+    "functions": 206,
+    "indexes": 637,
+    "materializedViews": 0,
+    "policies": 186,
+    "providers": 5,
+    "repositories": 16,
+    "routes": 63,
+    "tables": 198,
+    "triggers": 59,
+    "views": 0
+  },
+  "authorityInventoryVersion": "1.0.0",
+  "authorityInventorySourceHash": "c88056e8dcec72a7b04c34422b0c655ac27a564ecce400c5ca80947a95bf47e7",
+  "releaseBaselineVersion": "1.0.0",
+  "testCounts": {
+    "pgTap": 1212,
+    "supabaseIntegration": 53,
+    "unitPassed": 895,
+    "unitSkipped": 53
+  },
+  "e2eCounts": {
+    "desktopPassed": 14,
+    "mobilePassed": 9
+  },
+  "warningSummary": [
+    "Largest measured JavaScript chunk remains above 500 kB after route splitting",
+    "PlatformPage dynamic import is ineffective because WorkspaceRuntime imports it eagerly",
+    "two established database lint warnings",
+    "Supabase CLI update notice",
+    "NO_COLOR is ignored when Playwright forces colour"
+  ],
+  "acceptedLimitations": [
+    "No downstream reservation, dispatch, shipment, customer/distribution tracing, or Recall Execution",
+    "Cross-level mass-to-unit attribution remains unknown",
+    "Hosted backup, restore, migration, security, advisor, and smoke evidence remain deployment prerequisites"
+  ],
+  "mergeReadiness": {
+    "ready": true,
+    "blockers": []
+  },
+  "deploymentReadiness": {
+    "readyNow": false,
+    "blockers": [
+      "hosted migration approval",
+      "post-migration hosted advisor review",
+      "hosted backup and restore rehearsal",
+      "two-owner hosted proof",
+      "production smoke approval"
+    ]
+  },
+  "nextLocalMilestone": "Release Candidate & Deployment Hardening",
+  "nextDeploymentMilestone": "Authorized hosted backup/restore and migration rehearsal",
+  "generatedAt": "2026-07-29T13:00:00+02:00",
+  "environmentClassification": "local_only",
+  "localOnly": true,
+  "pushed": false,
+  "merged": false,
+  "deployed": false,
+  "remoteMigrationApplied": false
+}

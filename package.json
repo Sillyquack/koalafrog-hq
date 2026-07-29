@@ -29,6 +29,7 @@
     "audit:browser-writes": "node scripts/platform-audit.mjs --check",
     "audit:legacy": "node scripts/platform-audit.mjs --check",
     "audit:events": "node scripts/platform-audit.mjs --check",
+    "audit:finished-goods-rc": "node scripts/finished-goods-rc-evidence.mjs",
     "build:analyze": "node scripts/build-analysis.mjs",
     "test:accessibility": "node scripts/accessibility-audit.mjs",
     "test:docs": "node scripts/documentation-audit.mjs",
