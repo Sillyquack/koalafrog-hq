@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { StatusPill } from "../../../components/ui/StatusPill";
 import { FinishedGoodsQualityRepository, qualityEvidence } from "../data/finishedGoodsQualityRepository";
 import type {
@@ -10,7 +11,7 @@ export function FinishedGoodsQualityWorkspaceView({lotId}:{lotId:string}) {
   const [workspace,setWorkspace]=useState<FinishedGoodsQualityWorkspace>(),[error,setError]=useState(""),[busy,setBusy]=useState(false);
   const status=useRef<HTMLDivElement>(null);
   const refresh=async()=>{try{setWorkspace(await repository.workspace(lotId));setError("");}catch(cause){setError(cause instanceof Error?cause.message:"Quality workspace could not be loaded.");}};
-  useEffect(()=>{void refresh();},[lotId]);
+  useEffect(()=>{let active=true;void repository.workspace(lotId).then(result=>{if(active){setWorkspace(result);setError("");}}).catch(cause=>{if(active)setError(cause instanceof Error?cause.message:"Quality workspace could not be loaded.");});return()=>{active=false;};},[lotId,repository]);
   const run=async(command:()=>Promise<unknown>)=>{setBusy(true);setError("");try{await command();await refresh();requestAnimationFrame(()=>status.current?.focus());}catch(cause){setError(cause instanceof Error?cause.message:"Quality action failed.");requestAnimationFrame(()=>status.current?.focus());}finally{setBusy(false);}};
   if(!workspace)return <section className="panel" aria-busy={!error}><h2>Finished-product quality</h2><p>{error||"Loading authoritative inspection policy…"}</p></section>;
   const {readiness,inspectionPlan,inspections,deviations,dispositionReviews,inventoryLots,openingMovements}=workspace;
@@ -38,7 +39,7 @@ export function FinishedGoodsQualityWorkspaceView({lotId}:{lotId:string}) {
     <section className="panel"><h3>Inspection plan</h3><p>Not tested, Not applicable, and Inconclusive are distinct recorded states.</p>
       <div className="inspection-grid">{inspectionPlan.requirements.map(requirement=><InspectionCard key={requirement.requirementCode}
         requirement={requirement} current={current.get(requirement.requirementCode)} revision={readiness.quarantineRevision}
-        disabled={busy} record={(values)=>run(()=>repository.recordInspection({...values,target_finished_goods_lot_id:lotId,expected_quarantine_revision:readiness.quarantineRevision}))}/>)}</div>
+        disabled={busy} record={(values)=>run(()=>repository.recordInspection({...values,target_finished_goods_lot_id:lotId,expected_quarantine_revision:readiness.quarantineRevision} as never))}/>)}</div>
     </section>
     <DeviationPanel disabled={busy} lotId={lotId} revision={readiness.quarantineRevision} deviations={deviations} run={run} repository={repository}/>
     <DispositionPanel disabled={busy} lotId={lotId} readiness={readiness} run={run} repository={repository}/>
@@ -50,7 +51,8 @@ export function FinishedGoodsQualityWorkspaceView({lotId}:{lotId:string}) {
       return <article className="released-lot" key={item.id}><StatusPill tone="green">Active</StatusPill><h4>{item.consumer_batch_code} · {item.quantity_released} {item.unit}</h4>
         <p>Inventory lot <code>{item.id}</code><br/>Release review <code>{item.release_review_id}</code><br/>Opening movement <code>{movement?.id}</code></p>
         <p>{item.manufacturing_date} → {item.expiry_date} · {item.location}</p>
-        <p>Cost: {item.total_cost==null?"Unknown":`${item.total_cost} ${item.currency}`} · {item.cost_confidence}</p></article>;
+        <p>Cost: {item.total_cost==null?"Unknown":`${item.total_cost} ${item.currency}`} · {item.cost_confidence}</p>
+        <Link className="button secondary" to={`/finished-goods-inventory/${item.id}`}>Open inventory controls</Link></article>;
     })}</section>
   </section>;
 }

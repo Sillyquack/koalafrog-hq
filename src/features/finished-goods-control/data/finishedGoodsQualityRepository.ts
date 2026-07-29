@@ -25,13 +25,13 @@ export class FinishedGoodsQualityRepository {
   genealogy(releasedInventoryLotId: string) {
     return this.call<FinishedGoodsReleaseGenealogy>("get_released_finished_goods_genealogy_v1", { target_released_inventory_lot_id: releasedInventoryLotId });
   }
-  recordInspection(args: Functions["record_finished_goods_inspection_v1"]["Args"]) {
+  recordInspection(args: Record<string, unknown>) {
     return this.call<Record<string, unknown>>("record_finished_goods_inspection_v1", args);
   }
-  openDeviation(args: Functions["open_finished_goods_deviation_v1"]["Args"]) {
+  openDeviation(args: Record<string, unknown>) {
     return this.call<Record<string, unknown>>("open_finished_goods_deviation_v1", args);
   }
-  resolveDeviation(args: Functions["resolve_finished_goods_deviation_v1"]["Args"]) {
+  resolveDeviation(args: Record<string, unknown>) {
     return this.call<Record<string, unknown>>("resolve_finished_goods_deviation_v1", args);
   }
   holdQuantity(args: Omit<Functions["record_finished_goods_disposition_v1"]["Args"], "candidate_decision">) {
@@ -47,7 +47,9 @@ export class FinishedGoodsQualityRepository {
     return this.call<FinishedGoodsReleaseResult>("record_finished_goods_disposition_v1", args);
   }
   private async call<T>(name: keyof Functions, args: Record<string, unknown>): Promise<T> {
-    const result = await this.client.rpc(name, args as never);
+    const rpc = this.client.rpc as unknown as (functionName: string, functionArgs: Record<string, unknown>) =>
+      Promise<{ data: unknown; error: { message: string; code?: string } | null }>;
+    const result = await rpc.call(this.client, name, args);
     if (result.error) throw finishedGoodsError(result.error);
     if (!result.data || typeof result.data !== "object") throw new Error("Finished Goods Quality RPC returned an invalid response.");
     return result.data as unknown as T;
