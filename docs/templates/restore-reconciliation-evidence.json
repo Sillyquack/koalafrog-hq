@@ -1,0 +1,26 @@
+{
+  "templateVersion": "1.0.0",
+  "sourceEnvironment": null,
+  "sourceProject": null,
+  "sourceMigrationHead": null,
+  "sourceRc": "finished-goods-traceability-recall-v1-rc1",
+  "backupTimestamp": null,
+  "restoreTarget": null,
+  "restoredMigrationHead": null,
+  "objectCounts": {
+    "tables": null,
+    "functions": null,
+    "policies": null,
+    "triggers": null,
+    "indexes": null
+  },
+  "rowCountComparisons": [],
+  "checksumComparisons": [],
+  "authReconciliation": null,
+  "storageReconciliation": null,
+  "warnings": [],
+  "discrepancies": [],
+  "decision": null,
+  "approver": null,
+  "timestamp": null
+}
