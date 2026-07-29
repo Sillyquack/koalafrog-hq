@@ -20001,7 +20001,7 @@
     }
   ],
   "generatedAt": "2026-07-29T12:00:00+02:00",
-  "sourceCommit": "eea06d21916fd9a0a51def482c28884c08096406",
+  "sourceCommit": "content-addressed-by-sourceHash",
   "sourceHash": "764f481ae7106154bc923c86b040fea3b9fcd7897474185774fb9e9771d19a43",
   "version": "1.0.0"
 }

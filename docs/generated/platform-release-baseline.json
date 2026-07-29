@@ -41,6 +41,6 @@
     "triggers": 59,
     "views": 0
   },
-  "sourceCommit": "eea06d21916fd9a0a51def482c28884c08096406",
+  "sourceCommit": "content-addressed-by-sourceHash",
   "version": "1.0.0"
 }

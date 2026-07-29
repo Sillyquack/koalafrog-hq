@@ -328,7 +328,7 @@ function buildArtifacts() {
   const legacy = legacyDependencyFindings(modules)
   const privileges = privilegeFindings(catalogue)
   const events = eventTypes()
-  const commit = execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim()
+  const commit = "content-addressed-by-sourceHash"
   const counts = {
     tables: catalogue.relations.filter(item => item.objectType === "table").length,
     views: catalogue.relations.filter(item => item.objectType === "view").length,
