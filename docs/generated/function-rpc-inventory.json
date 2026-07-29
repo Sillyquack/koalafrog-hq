@@ -1,0 +1,3226 @@
+{
+  "functions": [
+    {
+      "approximateComplexity": 20,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "accept_procurement_offer_candidate",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "TABLE(supplier_id uuid, offer_id uuid)",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": false,
+      "signature": "candidate_workspace_id uuid, candidate_id uuid, selected_supplier_id uuid, create_supplier boolean",
+      "sourceLength": 76,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 24,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "accept_supplier_product_ingredient_mapping",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "uuid",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "target_requirement_id uuid, target_supplier_product_id text, expected_round_revision bigint, acceptance_note text",
+      "sourceLength": 28,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 1,
+      "grants": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "acknowledge_procurement_background_submission",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "boolean",
+      "schema": "public",
+      "searchPath": "pg_catalog, public, pg_temp",
+      "securityDefiner": true,
+      "signature": "candidate_attempt_id uuid",
+      "sourceLength": 15,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 26,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "allocate_bulk_to_packaging_run_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "target_packaging_run_id uuid, expected_run_revision bigint, candidate_quantity numeric, candidate_unit text, candidate_allocation_method text, candidate_idempotency_key uuid",
+      "sourceLength": 44,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 18,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "append_inventory_movement_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "\"\"",
+      "securityDefiner": true,
+      "signature": "candidate_movement jsonb",
+      "sourceLength": 46,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 18,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "append_packaging_inventory_movement_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "\"\"",
+      "securityDefiner": true,
+      "signature": "candidate_movement jsonb",
+      "sourceLength": 46,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 68,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "approve_production_procurement_scenario",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "uuid",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "target_scenario_id uuid, expected_scenario_revision bigint, candidate_approval_key uuid, candidate_title text, candidate_notes text, target_replaces_plan_id uuid",
+      "sourceLength": 118,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 16,
+      "grants": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "attach_procurement_background_operation",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "text",
+      "schema": "public",
+      "searchPath": "pg_catalog, public, pg_temp",
+      "securityDefiner": true,
+      "signature": "candidate_attempt_id uuid, candidate_owner_id uuid, candidate_provider_operation_id text, candidate_provider_status text",
+      "sourceLength": 66,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 5,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "begin_beard_provider_attempt",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "boolean",
+      "schema": "public",
+      "searchPath": "pg_catalog, public, pg_temp",
+      "securityDefiner": true,
+      "signature": "candidate_workspace_id uuid, candidate_analysis_id uuid, candidate_provider text, candidate_model text, candidate_prompt_version text",
+      "sourceLength": 28,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 5,
+      "grants": [
+        "postgres=X/postgres"
+      ],
+      "name": "begin_beard_provider_attempt_v5",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "boolean",
+      "schema": "public",
+      "searchPath": "pg_catalog, public, pg_temp",
+      "securityDefiner": true,
+      "signature": "candidate_workspace_id uuid, candidate_analysis_id uuid, candidate_provider text, candidate_model text, candidate_prompt_version text",
+      "sourceLength": 34,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 21,
+      "grants": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "begin_procurement_background_submission",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "TABLE(attempt_id uuid, client_request_id uuid, submission_state text)",
+      "schema": "public",
+      "searchPath": "pg_catalog, public, pg_temp",
+      "securityDefiner": true,
+      "signature": "candidate_workspace_id uuid, candidate_job_id uuid, candidate_owner_id uuid, maximum_daily_invocations integer",
+      "sourceLength": 71,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 17,
+      "grants": [
+        "postgres=X/postgres"
+      ],
+      "name": "begin_procurement_live_invocation",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "timestamp with time zone",
+      "schema": "public",
+      "searchPath": "pg_catalog, public, pg_temp",
+      "securityDefiner": false,
+      "signature": "candidate_workspace_id uuid, candidate_job_id uuid, maximum_daily_invocations integer",
+      "sourceLength": 58,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 17,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "cancel_draft_purchase_order",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "bigint",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "target_order_id uuid, expected_revision bigint, candidate_reason text",
+      "sourceLength": 21,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 17,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "cancel_internal_purchase_plan",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "bigint",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "target_plan_id uuid, expected_revision bigint, candidate_cancellation_reason text",
+      "sourceLength": 21,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 11,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "cancel_production_procurement_round",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "bigint",
+      "schema": "public",
+      "searchPath": "pg_catalog, public, pg_temp",
+      "securityDefiner": true,
+      "signature": "target_round_id uuid, expected_revision bigint",
+      "sourceLength": 18,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 9,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "cancel_purchase_order_receipt",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "bigint",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "target_receipt_id uuid, expected_receipt_revision bigint, candidate_reason text",
+      "sourceLength": 16,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 3,
+      "grants": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "claim_procurement_background_operation",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "boolean",
+      "schema": "public",
+      "searchPath": "pg_catalog, public, pg_temp",
+      "securityDefiner": true,
+      "signature": "candidate_attempt_id uuid, candidate_worker_id uuid, candidate_stage text, lease_seconds integer",
+      "sourceLength": 21,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 15,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "clear_production_requirement_match",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "bigint",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "target_requirement_id uuid, expected_round_revision bigint, expected_match_revision bigint, unresolved_note text",
+      "sourceLength": 22,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 32,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "commit_lab_consumption",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "batch_id text, commits jsonb",
+      "sourceLength": 29,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 40,
+      "grants": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "commit_packaging_consumption",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": false,
+      "signature": "target_finished_goods_batch_id text, commits jsonb, receipt jsonb",
+      "sourceLength": 24,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 32,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "commit_production_consumption",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "run_id text, commits jsonb",
+      "sourceLength": 26,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 16,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "complete_packaging_run_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "target_packaging_run_id uuid, expected_run_revision bigint, candidate_completed_at timestamp with time zone, candidate_idempotency_key uuid",
+      "sourceLength": 31,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 18,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "complete_production_output_stage_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "target_production_run_id text, expected_batch_revision bigint, candidate_completed_at timestamp with time zone, candidate_idempotency_key uuid",
+      "sourceLength": 26,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 24,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "complete_purchase_order_receiving",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "text",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "target_receipt_id uuid, expected_receipt_revision bigint, candidate_idempotency_key uuid",
+      "sourceLength": 26,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 6,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "complete_v9_reconciliation",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "void",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": false,
+      "signature": "run_id uuid, report jsonb",
+      "sourceLength": 14,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 62,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "consume_reserved_batch_material",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "target_reservation_id uuid, expected_reservation_revision bigint, target_weighing_id uuid, productive_quantity numeric, waste_quantity numeric, consumption_unit text, waste_category text, reason text, evidence_reference text, candidate_idempotency_key uuid",
+      "sourceLength": 122,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 12,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "convert_supplier_candidate",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "uuid",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "candidate_id uuid, idempotency uuid",
+      "sourceLength": 7,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 6,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "create_clean_workspace",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "uuid",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "",
+      "sourceLength": 26,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 30,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "create_development_experiment",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "uuid",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "plan jsonb",
+      "sourceLength": 27,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 59,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "create_draft_purchase_orders_from_plan",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "target_plan_id uuid, expected_plan_revision bigint, candidate_handoff_key uuid",
+      "sourceLength": 104,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 67,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "create_finished_goods_lot_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "target_packaging_run_id uuid, expected_run_revision bigint, candidate_quantity numeric, candidate_unit text, candidate_internal_lot_code text, candidate_consumer_batch_code text, candidate_lot_label text, candidate_manufacturing_date date, candidate_shelf_life_basis text, candidate_shelf_life_duration integer, candidate_shelf_life_unit text, candidate_expiry_override date, candidate_expiry_override_reason text, candidate_expiry_override_evidence text, candidate_pao_value integer, candidate_pao_unit text, candidate_location text, candidate_manual_code_override boolean, candidate_code_override_reason text, candidate_code_override_evidence text, candidate_acknowledged boolean, candidate_created_at timestamp with time zone, candidate_idempotency_key uuid",
+      "sourceLength": 77,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 33,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "create_formula_branch_from_experiment",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "text",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "target_experiment uuid, target_variant uuid, idempotency uuid",
+      "sourceLength": 15,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 18,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "create_lab_batch_from_experiment",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "text",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "target_experiment uuid, target_variant uuid, formula_version text, batch_size numeric, batch_unit text, idempotency uuid",
+      "sourceLength": 13,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 31,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "create_packaging_run_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "target_production_output_id uuid, candidate_packaging_specification_version_id text, candidate_run_label text, candidate_planned_bulk_quantity numeric, candidate_planned_bulk_unit text, candidate_planned_unit_count numeric, candidate_nominal_fill_quantity numeric, candidate_nominal_fill_unit text, candidate_location text, candidate_idempotency_key uuid",
+      "sourceLength": 82,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 20,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "create_product_studio_formula_handoff",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "concept_id text, product jsonb, formula jsonb, formula_version jsonb, formula_lines jsonb",
+      "sourceLength": 91,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 14,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "create_product_studio_purchase_plan",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "uuid",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "concept_id text, lines jsonb",
+      "sourceLength": 24,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 36,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "create_production_output_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "target_production_run_id text, expected_batch_revision bigint, candidate_output_type text, candidate_output_label text, candidate_theoretical_quantity numeric, candidate_theoretical_unit text, candidate_theoretical_basis text, candidate_override_reason text, candidate_override_evidence text, candidate_measurement_basis text, candidate_location text, candidate_idempotency_key uuid",
+      "sourceLength": 53,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 17,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "create_production_procurement_round",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "uuid",
+      "schema": "public",
+      "searchPath": "pg_catalog, public, pg_temp",
+      "securityDefiner": true,
+      "signature": "candidate_workspace_id uuid, candidate_title text, candidate_notes text, candidate_base_currency text, idempotency_key uuid",
+      "sourceLength": 36,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 28,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "create_purchase_order_from_plan",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "uuid",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "target_plan_id uuid, candidate_handoff_key uuid",
+      "sourceLength": 28,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 36,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "create_purchase_order_receipt",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "uuid",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "target_order_id uuid, expected_order_revision bigint, candidate_idempotency_key uuid, receipt_payload jsonb",
+      "sourceLength": 38,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 41,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "create_purchase_order_shipment",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "uuid",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "target_order_id uuid, target_confirmation_id uuid, expected_order_revision bigint, candidate_idempotency_key uuid, shipment_payload jsonb",
+      "sourceLength": 56,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 30,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "decide_purchase_order_confirmation",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "bigint",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "target_confirmation_id uuid, expected_revision bigint, candidate_decision text, candidate_reason text, line_decisions jsonb",
+      "sourceLength": 31,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 0,
+      "grants": [],
+      "name": "default_production_output_stage",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "trigger",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": false,
+      "signature": "",
+      "sourceLength": 10,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 16,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "delete_draft_production_procurement_scenario",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "bigint",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "target_scenario_id uuid, expected_scenario_revision bigint, expected_round_revision bigint",
+      "sourceLength": 20,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 12,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "eligible_batch_material_lots",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "TABLE(inventory_lot_id text, internal_lot_number text, supplier_lot_number text, received_date date, released_at timestamp with time zone, expiry_or_retest_date date, location text, unit text, movement_balance numeric, reserved_balance numeric, available_balance numeric, unit_cost numeric, cost_currency text, cost_confidence text, fefo_rank bigint, eligibility_policy_version text)",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "target_batch_kind text, target_batch_id text, target_requirement_id text",
+      "sourceLength": 50,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 9,
+      "grants": [],
+      "name": "enforce_batch_inventory_completion",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "trigger",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "",
+      "sourceLength": 26,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 6,
+      "grants": [
+        "postgres=X/postgres"
+      ],
+      "name": "enforce_beard_analysis_limits",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "trigger",
+      "schema": "public",
+      "searchPath": "pg_catalog, public, pg_temp",
+      "securityDefiner": true,
+      "signature": "",
+      "sourceLength": 28,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 7,
+      "grants": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "expire_procurement_unmatched_webhooks",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "integer",
+      "schema": "public",
+      "searchPath": "pg_catalog, public, pg_temp",
+      "securityDefiner": true,
+      "signature": "maximum_rows integer",
+      "sourceLength": 47,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 32,
+      "grants": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "finalize_procurement_background_operation",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "text",
+      "schema": "public",
+      "searchPath": "pg_catalog, public, pg_temp",
+      "securityDefiner": true,
+      "signature": "candidate_attempt_id uuid, candidate_worker_id uuid, candidate_event_id text, candidate_provider_status text, candidate_candidates jsonb, candidate_partial boolean, candidate_error_code text, candidate_error_details text, candidate_terminal_source text",
+      "sourceLength": 127,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 29,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "finish_beard_analysis_review",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "pg_catalog, public, pg_temp",
+      "securityDefiner": true,
+      "signature": "candidate_workspace_id uuid, candidate_analysis_id uuid, candidate_decisions jsonb, candidate_summary_snapshot jsonb, candidate_trim_plan_snapshot jsonb",
+      "sourceLength": 81,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 64,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "generate_production_procurement_scenarios",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "bigint",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "target_round_id uuid, expected_round_revision bigint",
+      "sourceLength": 114,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 44,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "generate_production_requirement_candidates",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "bigint",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "target_requirement_id uuid, expected_round_revision bigint",
+      "sourceLength": 109,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 11,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "get_batch_material_completion_readiness_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "target_batch_kind text, target_batch_id text",
+      "sourceLength": 16,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 54,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "get_batch_material_provenance_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "target_batch_kind text, target_batch_id text, target_requirement_id text",
+      "sourceLength": 114,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 12,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "get_finished_goods_backward_genealogy_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "\"\"",
+      "securityDefiner": true,
+      "signature": "target_finished_goods_lot_id uuid, target_released_inventory_lot_id uuid",
+      "sourceLength": 31,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 5,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "get_finished_goods_inspection_plan_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "\"\"",
+      "securityDefiner": true,
+      "signature": "target_finished_goods_lot_id uuid",
+      "sourceLength": 14,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 10,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "get_finished_goods_inventory_workspace_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "\"\"",
+      "securityDefiner": true,
+      "signature": "target_released_inventory_lot_id uuid",
+      "sourceLength": 20,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 10,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "get_finished_goods_lot_genealogy_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "target_finished_goods_lot_id uuid",
+      "sourceLength": 21,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 13,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "get_finished_goods_quality_workspace_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "\"\"",
+      "securityDefiner": true,
+      "signature": "target_finished_goods_lot_id uuid",
+      "sourceLength": 25,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 5,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "get_finished_goods_release_readiness_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "\"\"",
+      "securityDefiner": true,
+      "signature": "target_finished_goods_lot_id uuid",
+      "sourceLength": 14,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 5,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "get_packaging_available_bulk_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "target_production_output_id uuid",
+      "sourceLength": 14,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 9,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "get_packaging_eligible_lots_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "target_packaging_requirement_id uuid",
+      "sourceLength": 36,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 3,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "get_packaging_lot_forward_trace_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "\"\"",
+      "securityDefiner": true,
+      "signature": "target_packaging_inventory_lot_id text",
+      "sourceLength": 12,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 3,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "get_packaging_run_completion_readiness_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "target_packaging_run_id uuid",
+      "sourceLength": 10,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 5,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "get_packaging_run_finished_goods_readiness_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "target_packaging_run_id uuid",
+      "sourceLength": 14,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 10,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "get_packaging_run_genealogy_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "target_packaging_run_id uuid",
+      "sourceLength": 21,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 12,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "get_packaging_run_trace_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "\"\"",
+      "securityDefiner": true,
+      "signature": "target_packaging_run_id uuid",
+      "sourceLength": 19,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 11,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "get_production_batch_trace_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "\"\"",
+      "securityDefiner": true,
+      "signature": "target_production_batch_id text",
+      "sourceLength": 18,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 6,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "get_production_output_completion_readiness_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "target_production_run_id text",
+      "sourceLength": 13,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 8,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "get_production_output_genealogy_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "target_production_output_id uuid",
+      "sourceLength": 21,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 3,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "get_raw_material_lot_forward_trace_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "\"\"",
+      "securityDefiner": true,
+      "signature": "target_inventory_lot_id text",
+      "sourceLength": 12,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 9,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "get_released_finished_goods_genealogy_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "\"\"",
+      "securityDefiner": true,
+      "signature": "target_released_inventory_lot_id uuid",
+      "sourceLength": 19,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 0,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "get_traceability_integrity_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "\"\"",
+      "securityDefiner": true,
+      "signature": "target_finished_goods_lot_id uuid, target_released_inventory_lot_id uuid",
+      "sourceLength": 13,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 2,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "get_traceability_readiness_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "\"\"",
+      "securityDefiner": true,
+      "signature": "target_finished_goods_lot_id uuid, target_released_inventory_lot_id uuid",
+      "sourceLength": 19,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 2,
+      "grants": [],
+      "name": "guard_development_experiment_status",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "trigger",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": false,
+      "signature": "",
+      "sourceLength": 7,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 2,
+      "grants": [],
+      "name": "guard_experiment_provenance",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "trigger",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": false,
+      "signature": "",
+      "sourceLength": 7,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 2,
+      "grants": [
+        "postgres=X/postgres"
+      ],
+      "name": "guard_procurement_background_job_state",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "trigger",
+      "schema": "public",
+      "searchPath": "pg_catalog, public, pg_temp",
+      "securityDefiner": false,
+      "signature": "",
+      "sourceLength": 15,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 6,
+      "grants": [
+        "postgres=X/postgres"
+      ],
+      "name": "guard_procurement_live_invocation_state",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "trigger",
+      "schema": "public",
+      "searchPath": "pg_catalog, public, pg_temp",
+      "securityDefiner": false,
+      "signature": "",
+      "sourceLength": 24,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 2,
+      "grants": [
+        "postgres=X/postgres"
+      ],
+      "name": "guard_procurement_webhook_terminal_state",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "trigger",
+      "schema": "public",
+      "searchPath": "pg_catalog, public, pg_temp",
+      "securityDefiner": false,
+      "signature": "",
+      "sourceLength": 15,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 8,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "import_procurement_purchasing_snapshot",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "void",
+      "schema": "public",
+      "searchPath": "pg_catalog, public, pg_temp",
+      "securityDefiner": false,
+      "signature": "candidate_workspace_id uuid, payload jsonb",
+      "sourceLength": 70,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 11,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "import_procurement_snapshot",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "void",
+      "schema": "public",
+      "searchPath": "pg_catalog, public, pg_temp",
+      "securityDefiner": false,
+      "signature": "candidate_workspace_id uuid, payload jsonb",
+      "sourceLength": 75,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 7,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "import_v9_relational",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "payload jsonb",
+      "sourceLength": 22,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 272,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "import_v9_relational_pre_ingredient_knowledge",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": false,
+      "signature": "payload jsonb",
+      "sourceLength": 59,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 3,
+      "grants": [],
+      "name": "inherit_formula_process_metadata",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "trigger",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": false,
+      "signature": "",
+      "sourceLength": 19,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 2,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "is_active_owned_workspace",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "boolean",
+      "schema": "public",
+      "searchPath": "pg_catalog, public, pg_temp",
+      "securityDefiner": true,
+      "signature": "candidate_workspace_id uuid",
+      "sourceLength": 12,
+      "volatility": "s"
+    },
+    {
+      "approximateComplexity": 1,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "kf_active_reserved_balance",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "numeric",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": false,
+      "signature": "target_workspace_id uuid, target_lot_id text",
+      "sourceLength": 15,
+      "volatility": "s"
+    },
+    {
+      "approximateComplexity": 30,
+      "grants": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "kf_batch_material_completion_readiness_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": false,
+      "signature": "target_workspace_id uuid, target_batch_kind text, target_batch_id text",
+      "sourceLength": 79,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 5,
+      "grants": [],
+      "name": "kf_completed_packaging_run_immutable",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "trigger",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": false,
+      "signature": "",
+      "sourceLength": 11,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 1,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "kf_convert_quantity",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "numeric",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": false,
+      "signature": "q numeric, from_unit text, to_unit text",
+      "sourceLength": 16,
+      "volatility": "i"
+    },
+    {
+      "approximateComplexity": 0,
+      "grants": [],
+      "name": "kf_finished_goods_append_only",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "trigger",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": false,
+      "signature": "",
+      "sourceLength": 7,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 35,
+      "grants": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "kf_finished_goods_backward_trace_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "\"\"",
+      "securityDefiner": true,
+      "signature": "target_workspace_id uuid, target_finished_goods_lot_id uuid",
+      "sourceLength": 94,
+      "volatility": "s"
+    },
+    {
+      "approximateComplexity": 4,
+      "grants": [],
+      "name": "kf_finished_goods_inspection_plan_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "\"\"",
+      "securityDefiner": false,
+      "signature": "target_workspace_id uuid, target_finished_goods_lot_id uuid",
+      "sourceLength": 26,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 18,
+      "grants": [],
+      "name": "kf_finished_goods_inventory_snapshot_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "\"\"",
+      "securityDefiner": true,
+      "signature": "target_workspace_id uuid, target_lot_id uuid",
+      "sourceLength": 52,
+      "volatility": "s"
+    },
+    {
+      "approximateComplexity": 8,
+      "grants": [],
+      "name": "kf_finished_goods_quality_guard",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "trigger",
+      "schema": "public",
+      "searchPath": "\"\"",
+      "securityDefiner": false,
+      "signature": "",
+      "sourceLength": 32,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 13,
+      "grants": [],
+      "name": "kf_finished_goods_readiness_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": false,
+      "signature": "target_workspace_id uuid, target_packaging_run_id uuid",
+      "sourceLength": 30,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 25,
+      "grants": [],
+      "name": "kf_finished_goods_release_readiness_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "\"\"",
+      "securityDefiner": false,
+      "signature": "target_workspace_id uuid, target_finished_goods_lot_id uuid",
+      "sourceLength": 49,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 12,
+      "grants": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "kf_forward_trace_result_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "\"\"",
+      "securityDefiner": true,
+      "signature": "target_workspace_id uuid, target_source_type text, target_lot_id text",
+      "sourceLength": 51,
+      "volatility": "s"
+    },
+    {
+      "approximateComplexity": 1,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "kf_inventory_available_balance",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "numeric",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": false,
+      "signature": "target_workspace_id uuid, target_lot_id text",
+      "sourceLength": 10,
+      "volatility": "s"
+    },
+    {
+      "approximateComplexity": 1,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "kf_inventory_balance",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "numeric",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": false,
+      "signature": "wid uuid, lot_id text",
+      "sourceLength": 13,
+      "volatility": "s"
+    },
+    {
+      "approximateComplexity": 1,
+      "grants": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "kf_output_normalize",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "TABLE(quantity numeric, unit text)",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": false,
+      "signature": "q numeric, u text",
+      "sourceLength": 13,
+      "volatility": "i"
+    },
+    {
+      "approximateComplexity": 9,
+      "grants": [],
+      "name": "kf_packaging_available_bulk_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": false,
+      "signature": "target_workspace_id uuid, target_output_id uuid",
+      "sourceLength": 28,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 1,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "kf_packaging_balance",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "numeric",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": false,
+      "signature": "wid uuid, lot_id text",
+      "sourceLength": 13,
+      "volatility": "s"
+    },
+    {
+      "approximateComplexity": 0,
+      "grants": [],
+      "name": "kf_packaging_run_append_only",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "trigger",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": false,
+      "signature": "",
+      "sourceLength": 7,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 27,
+      "grants": [],
+      "name": "kf_packaging_run_completion_readiness_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": false,
+      "signature": "target_workspace_id uuid, target_packaging_run_id uuid",
+      "sourceLength": 47,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 16,
+      "grants": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "kf_production_output_readiness_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": false,
+      "signature": "target_workspace_id uuid, target_run_id text",
+      "sourceLength": 45,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 1,
+      "grants": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "kf_traceability_inventory_impact_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "\"\"",
+      "securityDefiner": true,
+      "signature": "target_workspace_id uuid, target_finished_goods_lot_id uuid",
+      "sourceLength": 13,
+      "volatility": "s"
+    },
+    {
+      "approximateComplexity": 2,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "list_beard_analysis_history",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "pg_catalog, public, pg_temp",
+      "securityDefiner": true,
+      "signature": "candidate_workspace_id uuid, candidate_limit integer, candidate_before timestamp with time zone, candidate_before_id uuid",
+      "sourceLength": 30,
+      "volatility": "s"
+    },
+    {
+      "approximateComplexity": 4,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "list_finished_goods_inventory_fefo_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "\"\"",
+      "securityDefiner": true,
+      "signature": "target_product_id text",
+      "sourceLength": 16,
+      "volatility": "s"
+    },
+    {
+      "approximateComplexity": 11,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "lookup_beard_analysis_support_diagnostic",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "pg_catalog, public, pg_temp",
+      "securityDefiner": true,
+      "signature": "candidate_workspace_id uuid, candidate_support_id text",
+      "sourceLength": 48,
+      "volatility": "s"
+    },
+    {
+      "approximateComplexity": 4,
+      "grants": [
+        "postgres=X/postgres"
+      ],
+      "name": "lookup_beard_analysis_support_diagnostic_v24",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "pg_catalog, public, pg_temp",
+      "securityDefiner": true,
+      "signature": "candidate_workspace_id uuid, candidate_support_id text",
+      "sourceLength": 119,
+      "volatility": "s"
+    },
+    {
+      "approximateComplexity": 1,
+      "grants": [
+        "postgres=X/postgres"
+      ],
+      "name": "lookup_beard_analysis_support_diagnostic_v25",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "pg_catalog, public, pg_temp",
+      "securityDefiner": true,
+      "signature": "candidate_workspace_id uuid, candidate_support_id text",
+      "sourceLength": 12,
+      "volatility": "s"
+    },
+    {
+      "approximateComplexity": 12,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "mark_packaging_supplier_product_preferred",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "void",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "p_product_id text, p_expected_updated_at text",
+      "sourceLength": 19,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 14,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "mark_packaging_supplier_product_preferred",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "void",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "p_product_id text, p_expected_updated_at text, p_new_updated_at text",
+      "sourceLength": 20,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 8,
+      "grants": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "mark_procurement_background_submission_ambiguous",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "boolean",
+      "schema": "public",
+      "searchPath": "pg_catalog, public, pg_temp",
+      "securityDefiner": true,
+      "signature": "candidate_attempt_id uuid, safe_failure_code text",
+      "sourceLength": 28,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 3,
+      "grants": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "mark_procurement_background_webhook_retry",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "boolean",
+      "schema": "public",
+      "searchPath": "pg_catalog, public, pg_temp",
+      "securityDefiner": true,
+      "signature": "candidate_event_id text, safe_failure_code text, delay_seconds integer",
+      "sourceLength": 20,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 20,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "mark_purchase_plan_checkout_ready",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "bigint",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "target_plan_id uuid, expected_verification_revision bigint",
+      "sourceLength": 22,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 12,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "mark_supplier_product_preferred",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "void",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "p_product_id text, p_expected_updated_at text",
+      "sourceLength": 19,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 14,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "mark_supplier_product_preferred",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "void",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "p_product_id text, p_expected_updated_at text, p_new_updated_at text",
+      "sourceLength": 20,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 14,
+      "grants": [],
+      "name": "normalize_production_inventory_legacy_write",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "trigger",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": false,
+      "signature": "",
+      "sourceLength": 69,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 22,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "open_finished_goods_deviation_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "\"\"",
+      "securityDefiner": true,
+      "signature": "target_finished_goods_lot_id uuid, expected_quarantine_revision bigint, candidate_inspection_id uuid, candidate_category text, candidate_severity text, candidate_affected_quantity numeric, candidate_unit text, candidate_description text, candidate_evidence jsonb, candidate_disposition_impact text, candidate_opened_at timestamp with time zone, candidate_idempotency_key uuid",
+      "sourceLength": 32,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 6,
+      "grants": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "persist_beard_analysis_result",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "pg_catalog, public, pg_temp",
+      "securityDefiner": true,
+      "signature": "candidate_workspace_id uuid, candidate_analysis_id uuid, candidate_correlation_id uuid, candidate_result jsonb, candidate_observations jsonb, candidate_recommendations jsonb, candidate_provider_usage jsonb",
+      "sourceLength": 34,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 36,
+      "grants": [
+        "postgres=X/postgres"
+      ],
+      "name": "persist_beard_analysis_result_v5",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "pg_catalog, public, pg_temp",
+      "securityDefiner": true,
+      "signature": "candidate_workspace_id uuid, candidate_analysis_id uuid, candidate_correlation_id uuid, candidate_result jsonb, candidate_observations jsonb, candidate_recommendations jsonb, candidate_provider_usage jsonb",
+      "sourceLength": 167,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 18,
+      "grants": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "persist_procurement_provider_diagnostic",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "boolean",
+      "schema": "public",
+      "searchPath": "pg_catalog, public, pg_temp",
+      "securityDefiner": true,
+      "signature": "candidate_workspace_id uuid, candidate_job_id uuid, candidate_owner_id uuid, diagnostic_provider_called boolean, diagnostic_provider_stage text, diagnostic_headers_elapsed_ms integer, diagnostic_body_elapsed_ms integer, diagnostic_parse_elapsed_ms integer, diagnostic_validation_elapsed_ms integer, diagnostic_provider_elapsed_ms integer, diagnostic_function_elapsed_ms integer, diagnostic_timeout_limit_ms integer, diagnostic_timeout_stage text, diagnostic_abort_source text, diagnostic_provider_http_status integer, diagnostic_usage_present boolean, diagnostic_candidate_count integer, diagnostic_terminal_error_code text",
+      "sourceLength": 108,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 0,
+      "grants": [],
+      "name": "phase10_supplier_product_defaults",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "trigger",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": false,
+      "signature": "",
+      "sourceLength": 6,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 46,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "place_purchase_order_receipt_into_quarantine",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "uuid[]",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "target_receipt_id uuid, expected_receipt_revision bigint, candidate_idempotency_key uuid, quarantine_payload jsonb",
+      "sourceLength": 43,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 0,
+      "grants": [],
+      "name": "prevent_batch_material_event_mutation",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "trigger",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": false,
+      "signature": "",
+      "sourceLength": 7,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 3,
+      "grants": [],
+      "name": "prevent_beard_log_mutation",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "trigger",
+      "schema": "public",
+      "searchPath": "pg_catalog, public, pg_temp",
+      "securityDefiner": false,
+      "signature": "",
+      "sourceLength": 13,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 0,
+      "grants": [],
+      "name": "prevent_completed_batch_material_mutation",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "trigger",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": false,
+      "signature": "",
+      "sourceLength": 7,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 0,
+      "grants": [],
+      "name": "prevent_production_output_history_mutation",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "trigger",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": false,
+      "signature": "",
+      "sourceLength": 7,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 2,
+      "grants": [],
+      "name": "prevent_quality_release_review_mutation",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "trigger",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": false,
+      "signature": "",
+      "sourceLength": 10,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 4,
+      "grants": [],
+      "name": "prevent_supplier_event_execution_forgery",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "trigger",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": false,
+      "signature": "",
+      "sourceLength": 13,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 1,
+      "grants": [],
+      "name": "production_unit_factor",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "numeric",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": false,
+      "signature": "candidate_unit text",
+      "sourceLength": 7,
+      "volatility": "i"
+    },
+    {
+      "approximateComplexity": 1,
+      "grants": [],
+      "name": "production_unit_family",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "text",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": false,
+      "signature": "candidate_unit text",
+      "sourceLength": 7,
+      "volatility": "i"
+    },
+    {
+      "approximateComplexity": 10,
+      "grants": [],
+      "name": "protect_inventory_lot_eligibility_controls",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "trigger",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": false,
+      "signature": "",
+      "sourceLength": 26,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 4,
+      "grants": [],
+      "name": "protect_linked_ingredient_knowledge_evidence",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "trigger",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": false,
+      "signature": "",
+      "sourceLength": 13,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 2,
+      "grants": [],
+      "name": "protect_quality_released_lot_provenance",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "trigger",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": false,
+      "signature": "",
+      "sourceLength": 20,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 13,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "publish_procurement_research_results",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "integer",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": false,
+      "signature": "candidate_workspace_id uuid, candidate_job_id uuid, candidates jsonb, terminal_status text, provider_request_id text",
+      "sourceLength": 58,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 18,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "publish_production_procurement_scenario",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "bigint",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "target_scenario_id uuid, expected_scenario_revision bigint, expected_round_revision bigint",
+      "sourceLength": 21,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 31,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "reconcile_batch_material_requirement",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "target_batch_kind text, target_batch_id text, target_requirement_id text, variance_reason text, variance_evidence text, variance_approval_state text, candidate_idempotency_key uuid",
+      "sourceLength": 83,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 20,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "reconcile_packaging_run_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "target_packaging_run_id uuid, expected_run_revision bigint, candidate_pending_finished_goods_quantity numeric, candidate_retained_bulk_quantity numeric, candidate_bulk_waste_quantity numeric, candidate_unexplained_bulk_variance numeric, candidate_unexplained_packaging_variance numeric, candidate_reason text, candidate_evidence_reference text, candidate_approve_variance boolean, candidate_reconciled_at timestamp with time zone, candidate_idempotency_key uuid",
+      "sourceLength": 44,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 28,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "reconcile_production_output_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "target_production_output_id uuid, expected_output_revision bigint, candidate_tolerance_quantity numeric, candidate_reason text, candidate_evidence_reference text, candidate_approve_variance boolean, candidate_reconciled_at timestamp with time zone, candidate_idempotency_key uuid",
+      "sourceLength": 45,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 53,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "record_batch_material_return",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "target_reservation_id uuid, expected_reservation_revision bigint, target_weighing_id uuid, original_consumption_id uuid, return_quantity numeric, return_unit text, return_kind text, condition_assessment text, reason text, evidence_reference text, candidate_idempotency_key uuid",
+      "sourceLength": 99,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 32,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "record_batch_material_weighing",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "target_reservation_id uuid, expected_reservation_revision bigint, record_type text, weighing_quantity numeric, weighing_unit text, equipment_reference text, evidence_reference text, operator_note text, candidate_idempotency_key uuid",
+      "sourceLength": 55,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 40,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "record_batch_material_weighing_v2",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "target_reservation_id uuid, expected_reservation_revision bigint, record_type text, weighing_quantity numeric, weighing_unit text, planned_sequence integer, planned_container text, equipment_reference text, evidence_reference text, operator_note text, candidate_idempotency_key uuid",
+      "sourceLength": 64,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 54,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "record_finished_goods_disposition_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "\"\"",
+      "securityDefiner": true,
+      "signature": "target_finished_goods_lot_id uuid, expected_quarantine_revision bigint, candidate_decision text, candidate_quantity numeric, candidate_unit text, candidate_reason text, candidate_evidence jsonb, candidate_location text, candidate_acknowledged boolean, candidate_reviewed_at timestamp with time zone, candidate_idempotency_key uuid",
+      "sourceLength": 103,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 32,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "record_finished_goods_inspection_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "\"\"",
+      "securityDefiner": true,
+      "signature": "target_finished_goods_lot_id uuid, expected_quarantine_revision bigint, candidate_requirement_code text, candidate_result_status text, candidate_measured_value numeric, candidate_unit text, candidate_textual_observation text, candidate_evidence jsonb, candidate_equipment_reference text, candidate_method_reference text, candidate_sample_quantity numeric, candidate_inspected_at timestamp with time zone, candidate_supersedes_inspection_id uuid, candidate_idempotency_key uuid",
+      "sourceLength": 45,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 59,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "record_finished_goods_inventory_operation_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "\"\"",
+      "securityDefiner": true,
+      "signature": "target_released_inventory_lot_id uuid, expected_inventory_revision bigint, candidate_operation_type text, candidate_quantity numeric, candidate_unit text, candidate_from_location text, candidate_to_location text, candidate_reason text, candidate_evidence jsonb, candidate_related_record_id uuid, candidate_occurred_at timestamp with time zone, candidate_idempotency_key uuid",
+      "sourceLength": 119,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 15,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "record_inventory_lot_receipt_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "\"\"",
+      "securityDefiner": true,
+      "signature": "candidate_lot jsonb, candidate_movement jsonb",
+      "sourceLength": 56,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 35,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "record_packaged_output_reconciliation_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "target_packaging_run_id uuid, expected_run_revision bigint, candidate_total_packaged_quantity numeric, candidate_accepted_quantity numeric, candidate_rejected_quantity numeric, candidate_damaged_quantity numeric, candidate_sample_quantity numeric, candidate_retention_quantity numeric, candidate_unresolved_variance numeric, candidate_unit text, candidate_evidence_reference text, candidate_note text, candidate_recorded_at timestamp with time zone, candidate_idempotency_key uuid",
+      "sourceLength": 40,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 23,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "record_packaging_bulk_transfer_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "target_bulk_allocation_id uuid, expected_run_revision bigint, candidate_quantity numeric, candidate_unit text, candidate_measurement_method text, candidate_equipment_reference text, candidate_source_vessel text, candidate_destination_vessel text, candidate_evidence_reference text, candidate_note text, candidate_transferred_at timestamp with time zone, candidate_idempotency_key uuid",
+      "sourceLength": 43,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 27,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "record_packaging_inventory_use_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "target_packaging_reservation_id uuid, expected_run_revision bigint, candidate_use_type text, candidate_quantity numeric, candidate_unit text, candidate_category text, candidate_reason text, candidate_evidence_reference text, candidate_occurred_at timestamp with time zone, candidate_idempotency_key uuid",
+      "sourceLength": 60,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 15,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "record_packaging_lot_receipt_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "\"\"",
+      "securityDefiner": true,
+      "signature": "candidate_lot jsonb, candidate_movement jsonb",
+      "sourceLength": 55,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 24,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "record_production_output_component_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "target_production_output_id uuid, expected_output_revision bigint, candidate_component_type text, candidate_quantity numeric, candidate_unit text, candidate_reason text, candidate_evidence_reference text, candidate_approval_state text, candidate_recorded_at timestamp with time zone, candidate_idempotency_key uuid",
+      "sourceLength": 31,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 26,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "record_production_output_measurement_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "target_production_output_id uuid, expected_output_revision bigint, candidate_quantity numeric, candidate_unit text, candidate_method text, candidate_equipment_reference text, candidate_vessel_reference text, candidate_gross_quantity numeric, candidate_tare_quantity numeric, candidate_evidence_reference text, candidate_note text, candidate_measured_at timestamp with time zone, candidate_idempotency_key uuid",
+      "sourceLength": 36,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 16,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "record_purchase_order_placement",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "bigint",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "target_order_id uuid, expected_revision bigint, external_reference text, placed_at timestamp with time zone",
+      "sourceLength": 22,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 18,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "record_purchase_order_receipt_discrepancy",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "uuid",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "target_receipt_id uuid, expected_receipt_revision bigint, candidate_idempotency_key uuid, discrepancy_payload jsonb",
+      "sourceLength": 24,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 19,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "record_purchase_order_receipt_inspection",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "uuid",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "target_receipt_id uuid, expected_receipt_revision bigint, candidate_idempotency_key uuid, inspection_payload jsonb",
+      "sourceLength": 26,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 32,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "record_purchase_order_receipt_line",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "uuid",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "target_receipt_id uuid, expected_receipt_revision bigint, candidate_idempotency_key uuid, line_payload jsonb",
+      "sourceLength": 35,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 25,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "record_purchase_order_shipment_status",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "bigint",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "target_shipment_id uuid, expected_revision bigint, candidate_status text, status_payload jsonb, candidate_idempotency_key uuid",
+      "sourceLength": 36,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 57,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "record_purchase_order_supplier_confirmation",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "uuid",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "target_order_id uuid, expected_order_revision bigint, candidate_idempotency_key uuid, confirmation_payload jsonb",
+      "sourceLength": 117,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 27,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "record_purchase_plan_verification",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "bigint",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "target_verification_id uuid, expected_revision bigint, candidate_state text, candidate_verified_value jsonb, candidate_unit_or_currency text, candidate_method text, candidate_evidence text, candidate_note text",
+      "sourceLength": 42,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 14,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "record_scent_memory_checkpoint",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "uuid",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "target_session_id uuid, checkpoint jsonb, correction_of uuid",
+      "sourceLength": 44,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 4,
+      "grants": [],
+      "name": "record_supplier_quote_event",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "trigger",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": false,
+      "signature": "",
+      "sourceLength": 21,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 8,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "record_v9_migration_failure",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "uuid",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": false,
+      "signature": "error_message text",
+      "sourceLength": 6,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 76,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "record_verified_purchase_order_placement",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "bigint",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "target_order_id uuid, expected_revision bigint, candidate_placement_key uuid, placement_payload jsonb",
+      "sourceLength": 120,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 41,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "regenerate_production_procurement_requirements",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "bigint",
+      "schema": "public",
+      "searchPath": "pg_catalog, public, pg_temp",
+      "securityDefiner": true,
+      "signature": "target_round_id uuid, expected_revision bigint",
+      "sourceLength": 115,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 16,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "register_document_object",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "document_objects",
+      "schema": "public",
+      "searchPath": "public",
+      "securityDefiner": false,
+      "signature": "document_id text, dossier_id text, object_bucket text, path text, file_name text, content_type text, byte_size bigint, content_checksum text",
+      "sourceLength": 31,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 25,
+      "grants": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "register_finished_goods_output",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": false,
+      "signature": "batch jsonb, receipt jsonb",
+      "sourceLength": 18,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 20,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "reject_production_requirement_candidate",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "bigint",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "target_candidate_id uuid, expected_round_revision bigint, rejection_note text",
+      "sourceLength": 22,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 26,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "release_batch_material_reservation",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "target_reservation_id uuid, expected_reservation_revision bigint, release_quantity numeric, release_reason text, candidate_idempotency_key uuid",
+      "sourceLength": 39,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 23,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "release_packaging_reservation_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "target_packaging_reservation_id uuid, expected_run_revision bigint, candidate_staged_return boolean, candidate_reason text, candidate_evidence_reference text, candidate_condition_acceptable boolean, candidate_idempotency_key uuid",
+      "sourceLength": 40,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 20,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "release_packaging_run_bulk_allocation_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "target_bulk_allocation_id uuid, expected_run_revision bigint, candidate_reason text, candidate_idempotency_key uuid",
+      "sourceLength": 32,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 3,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "remove_current_document_object",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "document_objects",
+      "schema": "public",
+      "searchPath": "public",
+      "securityDefiner": false,
+      "signature": "document_id text",
+      "sourceLength": 16,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 2,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "reopen_beard_analysis",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "pg_catalog, public, pg_temp",
+      "securityDefiner": true,
+      "signature": "candidate_workspace_id uuid, candidate_analysis_id uuid",
+      "sourceLength": 20,
+      "volatility": "s"
+    },
+    {
+      "approximateComplexity": 8,
+      "grants": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "reschedule_procurement_background_operation",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "boolean",
+      "schema": "public",
+      "searchPath": "pg_catalog, public, pg_temp",
+      "securityDefiner": true,
+      "signature": "candidate_attempt_id uuid, candidate_worker_id uuid, safe_failure_code text, delay_seconds integer, increment_failure boolean",
+      "sourceLength": 34,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 47,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "reserve_batch_material_inventory",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "target_batch_kind text, target_batch_id text, target_requirement_id text, target_inventory_lot_id text, reservation_quantity numeric, reservation_unit text, allocation_method text, expected_batch_revision bigint, candidate_idempotency_key uuid",
+      "sourceLength": 99,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 36,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "reserve_packaging_run_requirement_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "target_packaging_requirement_id uuid, target_packaging_inventory_lot_id text, expected_run_revision bigint, candidate_quantity numeric, candidate_unit text, candidate_idempotency_key uuid",
+      "sourceLength": 57,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 20,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "reserve_packaging_run_requirements_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "target_packaging_run_id uuid, expected_run_revision bigint, candidates jsonb, candidate_idempotency_key uuid",
+      "sourceLength": 37,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 16,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "resolve_finished_goods_deviation_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "\"\"",
+      "securityDefiner": true,
+      "signature": "target_deviation_id uuid, candidate_resolution text, candidate_evidence jsonb, candidate_approval jsonb, candidate_resolved_at timestamp with time zone, candidate_idempotency_key uuid",
+      "sourceLength": 29,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 58,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "review_quarantined_inventory",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "target_quarantine_intake_id uuid, expected_intake_revision bigint, candidate_idempotency_key uuid, review_payload jsonb",
+      "sourceLength": 201,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 70,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "save_beard_studio_workspace",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": false,
+      "signature": "payload jsonb",
+      "sourceLength": 105,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 38,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "save_ingredient_knowledge_aggregate",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": false,
+      "signature": "aggregate jsonb, expected_updated_at text",
+      "sourceLength": 45,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 14,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "search_finished_goods_traceability_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "\"\"",
+      "securityDefiner": true,
+      "signature": "candidate_query text, candidate_limit integer",
+      "sourceLength": 38,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 31,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "select_production_requirement_supplier_product",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "bigint",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "target_requirement_id uuid, target_candidate_id uuid, expected_round_revision bigint, expected_match_revision bigint",
+      "sourceLength": 31,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 7,
+      "grants": [],
+      "name": "snapshot_experiment_lab_process",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "trigger",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": false,
+      "signature": "",
+      "sourceLength": 37,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 13,
+      "grants": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "start_procurement_background_submission",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "boolean",
+      "schema": "public",
+      "searchPath": "pg_catalog, public, pg_temp",
+      "securityDefiner": true,
+      "signature": "candidate_attempt_id uuid",
+      "sourceLength": 34,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 9,
+      "grants": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "store_procurement_background_webhook",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "text",
+      "schema": "public",
+      "searchPath": "pg_catalog, public, pg_temp",
+      "securityDefiner": true,
+      "signature": "candidate_event_id text, candidate_provider_operation_id text, candidate_event_type text",
+      "sourceLength": 43,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 18,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "transition_development_experiment",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "bigint",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "target_id uuid, target_status text, expected_revision bigint, note text",
+      "sourceLength": 14,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 62,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "update_production_procurement_round_products",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "bigint",
+      "schema": "public",
+      "searchPath": "pg_catalog, public, pg_temp",
+      "securityDefiner": true,
+      "signature": "target_round_id uuid, expected_revision bigint, round_title text, round_notes text, product_selections jsonb",
+      "sourceLength": 105,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 6,
+      "grants": [],
+      "name": "validate_ingredient_knowledge_evidence_links",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "trigger",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": false,
+      "signature": "",
+      "sourceLength": 15,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 17,
+      "grants": [
+        "postgres=X/postgres"
+      ],
+      "name": "validate_scent_memory_context",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "trigger",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": false,
+      "signature": "",
+      "sourceLength": 35,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 19,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "waive_purchase_plan_verification",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "bigint",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "target_verification_id uuid, expected_revision bigint, waiver_reason text",
+      "sourceLength": 24,
+      "volatility": "v"
+    }
+  ],
+  "generatedAt": "2026-07-29T12:00:00+02:00",
+  "version": "1.0.0"
+}

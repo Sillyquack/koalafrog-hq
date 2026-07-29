@@ -1,0 +1,90 @@
+{
+  "generatedAt": "2026-07-29T12:00:00+02:00",
+  "policies": [
+    {
+      "browserAuthoritative": false,
+      "domainOwner": "inventory",
+      "policy": "raw_material_balance",
+      "serverAuthority": "public.kf_inventory_lot_balance_v1",
+      "version": "1.0.0"
+    },
+    {
+      "browserAuthoritative": false,
+      "domainOwner": "finished-goods",
+      "policy": "finished_goods_balance",
+      "serverAuthority": "public.kf_finished_goods_inventory_snapshot_v1",
+      "version": "1.0.0"
+    },
+    {
+      "browserAuthoritative": false,
+      "domainOwner": "production",
+      "policy": "production_availability",
+      "serverAuthority": "public.list_eligible_inventory_lots_v1",
+      "version": "1.0.0"
+    },
+    {
+      "browserAuthoritative": false,
+      "domainOwner": "production",
+      "policy": "raw_material_fefo",
+      "serverAuthority": "public.list_eligible_inventory_lots_v1",
+      "version": "1.0.0"
+    },
+    {
+      "browserAuthoritative": false,
+      "domainOwner": "finished-goods",
+      "policy": "finished_goods_expiry",
+      "serverAuthority": "public.kf_finished_goods_inventory_snapshot_v1",
+      "version": "1.0.0"
+    },
+    {
+      "browserAuthoritative": false,
+      "domainOwner": "quality",
+      "policy": "finished_goods_release_readiness",
+      "serverAuthority": "public.kf_finished_goods_release_readiness_v1",
+      "version": "1.0.0"
+    },
+    {
+      "browserAuthoritative": false,
+      "domainOwner": "production",
+      "policy": "production_completion",
+      "serverAuthority": "public.get_batch_inventory_completion_readiness_v1",
+      "version": "1.0.0"
+    },
+    {
+      "browserAuthoritative": false,
+      "domainOwner": "packaging",
+      "policy": "packaging_run_readiness",
+      "serverAuthority": "public.get_packaging_run_completion_readiness_v1",
+      "version": "1.0.0"
+    },
+    {
+      "browserAuthoritative": false,
+      "domainOwner": "traceability",
+      "policy": "traceability_confidence",
+      "serverAuthority": "public.kf_finished_goods_backward_trace_v1",
+      "version": "1.0.0"
+    },
+    {
+      "browserAuthoritative": false,
+      "domainOwner": "costing",
+      "policy": "production_cost_snapshot",
+      "serverAuthority": "public.get_production_output_workspace_v1",
+      "version": "1.0.0"
+    },
+    {
+      "browserAuthoritative": false,
+      "domainOwner": "finished-goods",
+      "policy": "positive_correction_eligibility",
+      "serverAuthority": "public.record_finished_goods_inventory_operation_v1",
+      "version": "1.0.0"
+    },
+    {
+      "browserAuthoritative": false,
+      "domainOwner": "production",
+      "policy": "raw_reservation_eligibility",
+      "serverAuthority": "public.reserve_batch_inventory_lot_v1",
+      "version": "1.0.0"
+    }
+  ],
+  "version": "1.0.0"
+}

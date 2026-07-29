@@ -1,0 +1,46 @@
+{
+  "acceptedDebt": [
+    "Product-wide trace aggregation threshold",
+    "legacy compatibility retained read-only",
+    "event envelope remains domain-specific"
+  ],
+  "authorityInventoryVersion": "1.0.0",
+  "branch": "feature/finished-goods-batch-genealogy-v1",
+  "deploymentApprovalGranted": false,
+  "deploymentPrerequisites": [
+    "hosted migration approval",
+    "post-migration hosted advisor review",
+    "hosted backup and restore rehearsal",
+    "two-owner hosted proof",
+    "production smoke approval"
+  ],
+  "environmentClassification": "local_only",
+  "generatedAt": "2026-07-29T12:00:00+02:00",
+  "hostedMigrationApplied": false,
+  "knownWarnings": [
+    "Largest measured JavaScript chunk remains above 500 kB after route splitting",
+    "PlatformPage dynamic import is ineffective because WorkspaceRuntime imports it eagerly",
+    "two established database lint warnings",
+    "Supabase CLI update notice",
+    "NO_COLOR is ignored when Playwright forces colour"
+  ],
+  "locallyValidated": true,
+  "migrationHead": "20260729083226",
+  "milestone": "Platform Hardening & Legacy Authority Classification V1",
+  "remotelyDeployed": false,
+  "schemaCounts": {
+    "foreignKeys": 579,
+    "functions": 192,
+    "indexes": 608,
+    "materializedViews": 0,
+    "policies": 186,
+    "providers": 5,
+    "repositories": 15,
+    "routes": 62,
+    "tables": 187,
+    "triggers": 59,
+    "views": 0
+  },
+  "sourceCommit": "eea06d21916fd9a0a51def482c28884c08096406",
+  "version": "1.0.0"
+}
