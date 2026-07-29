@@ -2957,6 +2957,463 @@ export type Database = {
           },
         ]
       }
+      finished_goods_deviations: {
+        Row: {
+          affected_quantity: number
+          approval: Json | null
+          category: string
+          created_at: string
+          description: string
+          disposition_impact: string
+          evidence: Json
+          finished_goods_lot_id: string
+          id: string
+          idempotency_key: string
+          inspection_id: string | null
+          investigation: string
+          opened_at: string
+          opened_by: string
+          owner_id: string
+          packaging_run_id: string
+          payload_fingerprint: string
+          production_run_id: string
+          quarantine_id: string
+          resolution: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          revision: number
+          severity: string
+          status: string
+          supersedes_deviation_id: string | null
+          unit: string
+          workspace_id: string
+        }
+        Insert: {
+          affected_quantity: number
+          approval?: Json | null
+          category: string
+          created_at?: string
+          description: string
+          disposition_impact: string
+          evidence?: Json
+          finished_goods_lot_id: string
+          id?: string
+          idempotency_key: string
+          inspection_id?: string | null
+          investigation?: string
+          opened_at: string
+          opened_by: string
+          owner_id: string
+          packaging_run_id: string
+          payload_fingerprint: string
+          production_run_id: string
+          quarantine_id: string
+          resolution?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          revision: number
+          severity: string
+          status: string
+          supersedes_deviation_id?: string | null
+          unit: string
+          workspace_id: string
+        }
+        Update: {
+          affected_quantity?: number
+          approval?: Json | null
+          category?: string
+          created_at?: string
+          description?: string
+          disposition_impact?: string
+          evidence?: Json
+          finished_goods_lot_id?: string
+          id?: string
+          idempotency_key?: string
+          inspection_id?: string | null
+          investigation?: string
+          opened_at?: string
+          opened_by?: string
+          owner_id?: string
+          packaging_run_id?: string
+          payload_fingerprint?: string
+          production_run_id?: string
+          quarantine_id?: string
+          resolution?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          revision?: number
+          severity?: string
+          status?: string
+          supersedes_deviation_id?: string | null
+          unit?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finished_goods_deviations_inspection_id_fkey"
+            columns: ["inspection_id"]
+            isOneToOne: false
+            referencedRelation: "finished_goods_inspections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finished_goods_deviations_supersedes_deviation_id_fkey"
+            columns: ["supersedes_deviation_id"]
+            isOneToOne: false
+            referencedRelation: "finished_goods_deviations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finished_goods_deviations_workspace_id_finished_goods_lot__fkey"
+            columns: ["workspace_id", "finished_goods_lot_id"]
+            isOneToOne: false
+            referencedRelation: "finished_goods_lots"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "finished_goods_deviations_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finished_goods_deviations_workspace_id_quarantine_id_fkey"
+            columns: ["workspace_id", "quarantine_id"]
+            isOneToOne: false
+            referencedRelation: "finished_goods_quarantines"
+            referencedColumns: ["workspace_id", "id"]
+          },
+        ]
+      }
+      finished_goods_disposition_reviews: {
+        Row: {
+          blocker_snapshot: Json
+          created_at: string
+          decision: string
+          deviation_snapshot: Json
+          evidence: Json
+          finished_goods_lot_id: string
+          id: string
+          idempotency_key: string
+          inspection_summary_snapshot: Json
+          normalized_quantity: number
+          opening_movement_id: string | null
+          owner_id: string
+          payload_fingerprint: string
+          policy_version: string
+          quantity: number
+          quarantine_id: string
+          reason: string
+          released_inventory_lot_id: string | null
+          review_sequence: number
+          reviewed_at: string
+          reviewed_by: string
+          source_quarantine_revision: number
+          unit: string
+          workspace_id: string
+        }
+        Insert: {
+          blocker_snapshot: Json
+          created_at?: string
+          decision: string
+          deviation_snapshot: Json
+          evidence?: Json
+          finished_goods_lot_id: string
+          id?: string
+          idempotency_key: string
+          inspection_summary_snapshot: Json
+          normalized_quantity: number
+          opening_movement_id?: string | null
+          owner_id: string
+          payload_fingerprint: string
+          policy_version?: string
+          quantity: number
+          quarantine_id: string
+          reason: string
+          released_inventory_lot_id?: string | null
+          review_sequence: number
+          reviewed_at: string
+          reviewed_by: string
+          source_quarantine_revision: number
+          unit: string
+          workspace_id: string
+        }
+        Update: {
+          blocker_snapshot?: Json
+          created_at?: string
+          decision?: string
+          deviation_snapshot?: Json
+          evidence?: Json
+          finished_goods_lot_id?: string
+          id?: string
+          idempotency_key?: string
+          inspection_summary_snapshot?: Json
+          normalized_quantity?: number
+          opening_movement_id?: string | null
+          owner_id?: string
+          payload_fingerprint?: string
+          policy_version?: string
+          quantity?: number
+          quarantine_id?: string
+          reason?: string
+          released_inventory_lot_id?: string | null
+          review_sequence?: number
+          reviewed_at?: string
+          reviewed_by?: string
+          source_quarantine_revision?: number
+          unit?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finished_goods_disposition_re_workspace_id_finished_goods__fkey"
+            columns: ["workspace_id", "finished_goods_lot_id"]
+            isOneToOne: false
+            referencedRelation: "finished_goods_lots"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "finished_goods_disposition_re_workspace_id_opening_movemen_fkey"
+            columns: ["workspace_id", "opening_movement_id"]
+            isOneToOne: false
+            referencedRelation: "finished_goods_inventory_movements"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "finished_goods_disposition_re_workspace_id_released_invent_fkey"
+            columns: ["workspace_id", "released_inventory_lot_id"]
+            isOneToOne: false
+            referencedRelation: "released_finished_goods_inventory_lots"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "finished_goods_disposition_revi_workspace_id_quarantine_id_fkey"
+            columns: ["workspace_id", "quarantine_id"]
+            isOneToOne: false
+            referencedRelation: "finished_goods_quarantines"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "finished_goods_disposition_reviews_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      finished_goods_inspections: {
+        Row: {
+          created_at: string
+          equipment_reference: string | null
+          evidence: Json
+          finished_goods_lot_id: string
+          id: string
+          idempotency_key: string
+          inspected_at: string
+          inspected_by: string
+          inspection_category: string
+          inspection_plan_version: string
+          lower_bound: number | null
+          measured_value: number | null
+          method_reference: string | null
+          owner_id: string
+          payload_fingerprint: string
+          quarantine_id: string
+          requirement_code: string
+          requirement_snapshot: Json
+          result_status: string
+          revision: number
+          sample_quantity: number | null
+          supersedes_inspection_id: string | null
+          textual_observation: string
+          unit: string | null
+          upper_bound: number | null
+          workspace_id: string
+        }
+        Insert: {
+          created_at?: string
+          equipment_reference?: string | null
+          evidence?: Json
+          finished_goods_lot_id: string
+          id?: string
+          idempotency_key: string
+          inspected_at: string
+          inspected_by: string
+          inspection_category: string
+          inspection_plan_version?: string
+          lower_bound?: number | null
+          measured_value?: number | null
+          method_reference?: string | null
+          owner_id: string
+          payload_fingerprint: string
+          quarantine_id: string
+          requirement_code: string
+          requirement_snapshot: Json
+          result_status: string
+          revision: number
+          sample_quantity?: number | null
+          supersedes_inspection_id?: string | null
+          textual_observation?: string
+          unit?: string | null
+          upper_bound?: number | null
+          workspace_id: string
+        }
+        Update: {
+          created_at?: string
+          equipment_reference?: string | null
+          evidence?: Json
+          finished_goods_lot_id?: string
+          id?: string
+          idempotency_key?: string
+          inspected_at?: string
+          inspected_by?: string
+          inspection_category?: string
+          inspection_plan_version?: string
+          lower_bound?: number | null
+          measured_value?: number | null
+          method_reference?: string | null
+          owner_id?: string
+          payload_fingerprint?: string
+          quarantine_id?: string
+          requirement_code?: string
+          requirement_snapshot?: Json
+          result_status?: string
+          revision?: number
+          sample_quantity?: number | null
+          supersedes_inspection_id?: string | null
+          textual_observation?: string
+          unit?: string | null
+          upper_bound?: number | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finished_goods_inspections_supersedes_inspection_id_fkey"
+            columns: ["supersedes_inspection_id"]
+            isOneToOne: false
+            referencedRelation: "finished_goods_inspections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finished_goods_inspections_workspace_id_finished_goods_lot_fkey"
+            columns: ["workspace_id", "finished_goods_lot_id"]
+            isOneToOne: false
+            referencedRelation: "finished_goods_lots"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "finished_goods_inspections_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finished_goods_inspections_workspace_id_quarantine_id_fkey"
+            columns: ["workspace_id", "quarantine_id"]
+            isOneToOne: false
+            referencedRelation: "finished_goods_quarantines"
+            referencedColumns: ["workspace_id", "id"]
+          },
+        ]
+      }
+      finished_goods_inventory_movements: {
+        Row: {
+          actor_id: string
+          created_at: string
+          currency: string | null
+          event_key: string
+          finished_goods_lot_id: string
+          id: string
+          idempotency_key: string
+          movement_type: string
+          normalized_quantity: number
+          occurred_at: string
+          owner_id: string
+          provenance: Json
+          quantity: number
+          release_review_id: string
+          released_inventory_lot_id: string
+          total_cost: number | null
+          unit: string
+          unit_cost: number | null
+          workspace_id: string
+        }
+        Insert: {
+          actor_id: string
+          created_at?: string
+          currency?: string | null
+          event_key: string
+          finished_goods_lot_id: string
+          id?: string
+          idempotency_key: string
+          movement_type: string
+          normalized_quantity: number
+          occurred_at: string
+          owner_id: string
+          provenance: Json
+          quantity: number
+          release_review_id: string
+          released_inventory_lot_id: string
+          total_cost?: number | null
+          unit: string
+          unit_cost?: number | null
+          workspace_id: string
+        }
+        Update: {
+          actor_id?: string
+          created_at?: string
+          currency?: string | null
+          event_key?: string
+          finished_goods_lot_id?: string
+          id?: string
+          idempotency_key?: string
+          movement_type?: string
+          normalized_quantity?: number
+          occurred_at?: string
+          owner_id?: string
+          provenance?: Json
+          quantity?: number
+          release_review_id?: string
+          released_inventory_lot_id?: string
+          total_cost?: number | null
+          unit?: string
+          unit_cost?: number | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finished_goods_inventory_move_workspace_id_finished_goods__fkey"
+            columns: ["workspace_id", "finished_goods_lot_id"]
+            isOneToOne: false
+            referencedRelation: "finished_goods_lots"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "finished_goods_inventory_move_workspace_id_release_review__fkey"
+            columns: ["workspace_id", "release_review_id"]
+            isOneToOne: false
+            referencedRelation: "finished_goods_disposition_reviews"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "finished_goods_inventory_move_workspace_id_released_invent_fkey"
+            columns: ["workspace_id", "released_inventory_lot_id"]
+            isOneToOne: false
+            referencedRelation: "released_finished_goods_inventory_lots"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "finished_goods_inventory_movements_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       finished_goods_lot_events: {
         Row: {
           actor_id: string
@@ -3341,6 +3798,97 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "workspaces"
             referencedColumns: ["id"]
+          },
+        ]
+      }
+      finished_goods_quality_events: {
+        Row: {
+          actor_id: string
+          decision: string | null
+          deviation_id: string | null
+          disposition_review_id: string | null
+          event_key: string
+          event_type: string
+          finished_goods_lot_id: string
+          id: string
+          inspection_id: string | null
+          metadata: Json
+          movement_id: string | null
+          occurred_at: string
+          owner_id: string
+          policy_version: string
+          quantity: number | null
+          quarantine_id: string
+          released_inventory_lot_id: string | null
+          revision: number
+          unit: string | null
+          workspace_id: string
+        }
+        Insert: {
+          actor_id: string
+          decision?: string | null
+          deviation_id?: string | null
+          disposition_review_id?: string | null
+          event_key: string
+          event_type: string
+          finished_goods_lot_id: string
+          id?: string
+          inspection_id?: string | null
+          metadata?: Json
+          movement_id?: string | null
+          occurred_at: string
+          owner_id: string
+          policy_version: string
+          quantity?: number | null
+          quarantine_id: string
+          released_inventory_lot_id?: string | null
+          revision: number
+          unit?: string | null
+          workspace_id: string
+        }
+        Update: {
+          actor_id?: string
+          decision?: string | null
+          deviation_id?: string | null
+          disposition_review_id?: string | null
+          event_key?: string
+          event_type?: string
+          finished_goods_lot_id?: string
+          id?: string
+          inspection_id?: string | null
+          metadata?: Json
+          movement_id?: string | null
+          occurred_at?: string
+          owner_id?: string
+          policy_version?: string
+          quantity?: number | null
+          quarantine_id?: string
+          released_inventory_lot_id?: string | null
+          revision?: number
+          unit?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finished_goods_quality_events_workspace_id_finished_goods__fkey"
+            columns: ["workspace_id", "finished_goods_lot_id"]
+            isOneToOne: false
+            referencedRelation: "finished_goods_lots"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "finished_goods_quality_events_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finished_goods_quality_events_workspace_id_quarantine_id_fkey"
+            columns: ["workspace_id", "quarantine_id"]
+            isOneToOne: false
+            referencedRelation: "finished_goods_quarantines"
+            referencedColumns: ["workspace_id", "id"]
           },
         ]
       }
@@ -13871,6 +14419,149 @@ export type Database = {
           },
         ]
       }
+      released_finished_goods_inventory_lots: {
+        Row: {
+          consumer_batch_code: string
+          cost_confidence: string
+          cost_snapshot: Json
+          created_at: string
+          currency: string | null
+          expiry_date: string
+          finished_goods_lot_id: string
+          formula_version_id: string
+          id: string
+          internal_lot_code: string
+          location: string
+          manufacturing_date: string
+          normalized_quantity: number
+          owner_id: string
+          packaging_run_id: string
+          packaging_specification_version_id: string
+          period_after_opening_unit: string | null
+          period_after_opening_value: number | null
+          product_id: string
+          product_snapshot: Json
+          production_output_id: string
+          production_run_id: string
+          provenance: Json
+          quantity_released: number
+          quarantine_id: string
+          release_policy_version: string
+          release_review_id: string
+          released_at: string
+          released_by: string
+          revision: number
+          status: string
+          total_cost: number | null
+          unit: string
+          unit_cost: number | null
+          workspace_id: string
+        }
+        Insert: {
+          consumer_batch_code: string
+          cost_confidence: string
+          cost_snapshot: Json
+          created_at?: string
+          currency?: string | null
+          expiry_date: string
+          finished_goods_lot_id: string
+          formula_version_id: string
+          id?: string
+          internal_lot_code: string
+          location: string
+          manufacturing_date: string
+          normalized_quantity: number
+          owner_id: string
+          packaging_run_id: string
+          packaging_specification_version_id: string
+          period_after_opening_unit?: string | null
+          period_after_opening_value?: number | null
+          product_id: string
+          product_snapshot: Json
+          production_output_id: string
+          production_run_id: string
+          provenance: Json
+          quantity_released: number
+          quarantine_id: string
+          release_policy_version?: string
+          release_review_id: string
+          released_at: string
+          released_by: string
+          revision?: number
+          status?: string
+          total_cost?: number | null
+          unit: string
+          unit_cost?: number | null
+          workspace_id: string
+        }
+        Update: {
+          consumer_batch_code?: string
+          cost_confidence?: string
+          cost_snapshot?: Json
+          created_at?: string
+          currency?: string | null
+          expiry_date?: string
+          finished_goods_lot_id?: string
+          formula_version_id?: string
+          id?: string
+          internal_lot_code?: string
+          location?: string
+          manufacturing_date?: string
+          normalized_quantity?: number
+          owner_id?: string
+          packaging_run_id?: string
+          packaging_specification_version_id?: string
+          period_after_opening_unit?: string | null
+          period_after_opening_value?: number | null
+          product_id?: string
+          product_snapshot?: Json
+          production_output_id?: string
+          production_run_id?: string
+          provenance?: Json
+          quantity_released?: number
+          quarantine_id?: string
+          release_policy_version?: string
+          release_review_id?: string
+          released_at?: string
+          released_by?: string
+          revision?: number
+          status?: string
+          total_cost?: number | null
+          unit?: string
+          unit_cost?: number | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "released_finished_goods_inven_workspace_id_finished_goods__fkey"
+            columns: ["workspace_id", "finished_goods_lot_id"]
+            isOneToOne: false
+            referencedRelation: "finished_goods_lots"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "released_finished_goods_inven_workspace_id_release_review__fkey"
+            columns: ["workspace_id", "release_review_id"]
+            isOneToOne: true
+            referencedRelation: "finished_goods_disposition_reviews"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "released_finished_goods_invento_workspace_id_quarantine_id_fkey"
+            columns: ["workspace_id", "quarantine_id"]
+            isOneToOne: false
+            referencedRelation: "finished_goods_quarantines"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "released_finished_goods_inventory_lots_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       responsible_persons: {
         Row: {
           country: string
@@ -16250,7 +16941,19 @@ export type Database = {
         }
         Returns: Json
       }
+      get_finished_goods_inspection_plan_v1: {
+        Args: { target_finished_goods_lot_id: string }
+        Returns: Json
+      }
       get_finished_goods_lot_genealogy_v1: {
+        Args: { target_finished_goods_lot_id: string }
+        Returns: Json
+      }
+      get_finished_goods_quality_workspace_v1: {
+        Args: { target_finished_goods_lot_id: string }
+        Returns: Json
+      }
+      get_finished_goods_release_readiness_v1: {
         Args: { target_finished_goods_lot_id: string }
         Returns: Json
       }
@@ -16280,6 +16983,10 @@ export type Database = {
       }
       get_production_output_genealogy_v1: {
         Args: { target_production_output_id: string }
+        Returns: Json
+      }
+      get_released_finished_goods_genealogy_v1: {
+        Args: { target_released_inventory_lot_id: string }
         Returns: Json
       }
       import_procurement_purchasing_snapshot: {
@@ -16315,8 +17022,22 @@ export type Database = {
         Args: { from_unit: string; q: number; to_unit: string }
         Returns: number
       }
+      kf_finished_goods_inspection_plan_v1: {
+        Args: {
+          target_finished_goods_lot_id: string
+          target_workspace_id: string
+        }
+        Returns: Json
+      }
       kf_finished_goods_readiness_v1: {
         Args: { target_packaging_run_id: string; target_workspace_id: string }
+        Returns: Json
+      }
+      kf_finished_goods_release_readiness_v1: {
+        Args: {
+          target_finished_goods_lot_id: string
+          target_workspace_id: string
+        }
         Returns: Json
       }
       kf_inventory_available_balance: {
@@ -16413,6 +17134,23 @@ export type Database = {
             }
             Returns: undefined
           }
+      open_finished_goods_deviation_v1: {
+        Args: {
+          candidate_affected_quantity: number
+          candidate_category: string
+          candidate_description: string
+          candidate_disposition_impact: string
+          candidate_evidence: Json
+          candidate_idempotency_key: string
+          candidate_inspection_id: string
+          candidate_opened_at: string
+          candidate_severity: string
+          candidate_unit: string
+          expected_quarantine_revision: number
+          target_finished_goods_lot_id: string
+        }
+        Returns: Json
+      }
       persist_beard_analysis_result: {
         Args: {
           candidate_analysis_id: string
@@ -16580,6 +17318,41 @@ export type Database = {
           target_reservation_id: string
           weighing_quantity: number
           weighing_unit: string
+        }
+        Returns: Json
+      }
+      record_finished_goods_disposition_v1: {
+        Args: {
+          candidate_acknowledged: boolean
+          candidate_decision: string
+          candidate_evidence: Json
+          candidate_idempotency_key: string
+          candidate_location: string
+          candidate_quantity: number
+          candidate_reason: string
+          candidate_reviewed_at: string
+          candidate_unit: string
+          expected_quarantine_revision: number
+          target_finished_goods_lot_id: string
+        }
+        Returns: Json
+      }
+      record_finished_goods_inspection_v1: {
+        Args: {
+          candidate_equipment_reference: string
+          candidate_evidence: Json
+          candidate_idempotency_key: string
+          candidate_inspected_at: string
+          candidate_measured_value: number
+          candidate_method_reference: string
+          candidate_requirement_code: string
+          candidate_result_status: string
+          candidate_sample_quantity: number
+          candidate_supersedes_inspection_id: string
+          candidate_textual_observation: string
+          candidate_unit: string
+          expected_quarantine_revision: number
+          target_finished_goods_lot_id: string
         }
         Returns: Json
       }
@@ -16913,6 +17686,17 @@ export type Database = {
           candidates: Json
           expected_run_revision: number
           target_packaging_run_id: string
+        }
+        Returns: Json
+      }
+      resolve_finished_goods_deviation_v1: {
+        Args: {
+          candidate_approval: Json
+          candidate_evidence: Json
+          candidate_idempotency_key: string
+          candidate_resolution: string
+          candidate_resolved_at: string
+          target_deviation_id: string
         }
         Returns: Json
       }
