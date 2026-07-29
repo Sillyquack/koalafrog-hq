@@ -14559,6 +14559,887 @@ export type Database = {
           },
         ]
       }
+      recall_readiness_affected_goods: {
+        Row: {
+          attribution_type: string
+          confidence: string
+          consumer_batch_code: string
+          expiry_date: string | null
+          finished_goods_lot_id: string
+          formula_snapshot: Json
+          id: string
+          label_snapshot: Json
+          locations: Json
+          operational_state: string
+          packaging_run_id: string | null
+          packaging_snapshot: Json
+          product_snapshot: Json
+          production_batch_id: string | null
+          production_output_id: string | null
+          quantity_active_on_hand: number | null
+          quantity_available: number | null
+          quantity_blocked: number | null
+          quantity_created: number | null
+          quantity_damaged: number | null
+          quantity_destroyed: number | null
+          quantity_expired: number | null
+          quantity_held: number | null
+          quantity_lost: number | null
+          quantity_quarantined: number | null
+          quantity_rejected: number | null
+          quantity_released: number | null
+          quantity_unavailable: number | null
+          quantity_unknown: number | null
+          release_reviews: Json
+          scope_snapshot_id: string
+          trace_path: Json
+          unit: string | null
+          workspace_id: string
+        }
+        Insert: {
+          attribution_type: string
+          confidence: string
+          consumer_batch_code: string
+          expiry_date?: string | null
+          finished_goods_lot_id: string
+          formula_snapshot?: Json
+          id?: string
+          label_snapshot?: Json
+          locations?: Json
+          operational_state: string
+          packaging_run_id?: string | null
+          packaging_snapshot?: Json
+          product_snapshot: Json
+          production_batch_id?: string | null
+          production_output_id?: string | null
+          quantity_active_on_hand?: number | null
+          quantity_available?: number | null
+          quantity_blocked?: number | null
+          quantity_created?: number | null
+          quantity_damaged?: number | null
+          quantity_destroyed?: number | null
+          quantity_expired?: number | null
+          quantity_held?: number | null
+          quantity_lost?: number | null
+          quantity_quarantined?: number | null
+          quantity_rejected?: number | null
+          quantity_released?: number | null
+          quantity_unavailable?: number | null
+          quantity_unknown?: number | null
+          release_reviews?: Json
+          scope_snapshot_id: string
+          trace_path: Json
+          unit?: string | null
+          workspace_id: string
+        }
+        Update: {
+          attribution_type?: string
+          confidence?: string
+          consumer_batch_code?: string
+          expiry_date?: string | null
+          finished_goods_lot_id?: string
+          formula_snapshot?: Json
+          id?: string
+          label_snapshot?: Json
+          locations?: Json
+          operational_state?: string
+          packaging_run_id?: string | null
+          packaging_snapshot?: Json
+          product_snapshot?: Json
+          production_batch_id?: string | null
+          production_output_id?: string | null
+          quantity_active_on_hand?: number | null
+          quantity_available?: number | null
+          quantity_blocked?: number | null
+          quantity_created?: number | null
+          quantity_damaged?: number | null
+          quantity_destroyed?: number | null
+          quantity_expired?: number | null
+          quantity_held?: number | null
+          quantity_lost?: number | null
+          quantity_quarantined?: number | null
+          quantity_rejected?: number | null
+          quantity_released?: number | null
+          quantity_unavailable?: number | null
+          quantity_unknown?: number | null
+          release_reviews?: Json
+          scope_snapshot_id?: string
+          trace_path?: Json
+          unit?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recall_readiness_affected_goods_finished_goods_lot_id_fkey"
+            columns: ["finished_goods_lot_id"]
+            isOneToOne: false
+            referencedRelation: "finished_goods_lots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recall_readiness_affected_goods_scope_snapshot_id_fkey"
+            columns: ["scope_snapshot_id"]
+            isOneToOne: false
+            referencedRelation: "recall_readiness_scope_snapshots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recall_readiness_affected_goods_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recall_readiness_approvals: {
+        Row: {
+          approved_at: string
+          approved_by: string
+          case_id: string
+          distribution_limitation_acknowledged: boolean
+          id: string
+          non_execution_acknowledged: boolean
+          revision_fingerprint: string
+          revision_id: string
+          scope_fingerprint: string
+          workspace_id: string
+        }
+        Insert: {
+          approved_at?: string
+          approved_by: string
+          case_id: string
+          distribution_limitation_acknowledged: boolean
+          id?: string
+          non_execution_acknowledged: boolean
+          revision_fingerprint: string
+          revision_id: string
+          scope_fingerprint: string
+          workspace_id: string
+        }
+        Update: {
+          approved_at?: string
+          approved_by?: string
+          case_id?: string
+          distribution_limitation_acknowledged?: boolean
+          id?: string
+          non_execution_acknowledged?: boolean
+          revision_fingerprint?: string
+          revision_id?: string
+          scope_fingerprint?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recall_readiness_approvals_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "recall_readiness_cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recall_readiness_approvals_revision_id_fkey"
+            columns: ["revision_id"]
+            isOneToOne: true
+            referencedRelation: "recall_readiness_case_revisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recall_readiness_approvals_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recall_readiness_case_revisions: {
+        Row: {
+          assessment_data: Json
+          case_id: string
+          compliance_narrative: string
+          concern_category: string
+          created_at: string
+          created_by: string
+          distribution_boundary: string
+          distribution_limitation_acknowledged: boolean
+          evidence_pending_acknowledged: boolean
+          exposure_state: string
+          exposure_unknown_acknowledged: boolean
+          fingerprint: string
+          health_hazard_narrative: string
+          id: string
+          initiating_identity: Json
+          operator_recommendation: string
+          owner_id: string
+          recommended_action: string
+          revision_number: number
+          severity: string
+          status: string
+          supersedes_revision_id: string | null
+          supersession_reason: string | null
+          urgency: string
+          workspace_id: string
+        }
+        Insert: {
+          assessment_data?: Json
+          case_id: string
+          compliance_narrative?: string
+          concern_category: string
+          created_at?: string
+          created_by: string
+          distribution_boundary?: string
+          distribution_limitation_acknowledged?: boolean
+          evidence_pending_acknowledged?: boolean
+          exposure_state: string
+          exposure_unknown_acknowledged?: boolean
+          fingerprint: string
+          health_hazard_narrative?: string
+          id?: string
+          initiating_identity: Json
+          operator_recommendation?: string
+          owner_id: string
+          recommended_action: string
+          revision_number: number
+          severity: string
+          status?: string
+          supersedes_revision_id?: string | null
+          supersession_reason?: string | null
+          urgency: string
+          workspace_id: string
+        }
+        Update: {
+          assessment_data?: Json
+          case_id?: string
+          compliance_narrative?: string
+          concern_category?: string
+          created_at?: string
+          created_by?: string
+          distribution_boundary?: string
+          distribution_limitation_acknowledged?: boolean
+          evidence_pending_acknowledged?: boolean
+          exposure_state?: string
+          exposure_unknown_acknowledged?: boolean
+          fingerprint?: string
+          health_hazard_narrative?: string
+          id?: string
+          initiating_identity?: Json
+          operator_recommendation?: string
+          owner_id?: string
+          recommended_action?: string
+          revision_number?: number
+          severity?: string
+          status?: string
+          supersedes_revision_id?: string | null
+          supersession_reason?: string | null
+          urgency?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recall_readiness_case_revisions_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "recall_readiness_cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recall_readiness_case_revisions_supersedes_revision_id_fkey"
+            columns: ["supersedes_revision_id"]
+            isOneToOne: false
+            referencedRelation: "recall_readiness_case_revisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recall_readiness_case_revisions_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recall_readiness_case_sequences: {
+        Row: {
+          calendar_year: number
+          last_value: number
+          workspace_id: string
+        }
+        Insert: {
+          calendar_year: number
+          last_value: number
+          workspace_id: string
+        }
+        Update: {
+          calendar_year?: number
+          last_value?: number
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recall_readiness_case_sequences_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recall_readiness_cases: {
+        Row: {
+          approved_revision_id: string | null
+          case_code: string
+          closed_at: string | null
+          closed_by: string | null
+          closure_reason: string | null
+          concern_category: string
+          created_at: string
+          created_by: string
+          discovered_by: string
+          id: string
+          initial_discovery_at: string
+          initiating_source_code: string
+          initiating_source_id: string
+          initiating_source_type: string
+          issue_summary: string
+          latest_revision_id: string | null
+          lifecycle_state: string
+          owner_id: string
+          revision: number
+          title: string
+          updated_at: string
+          workspace_id: string
+        }
+        Insert: {
+          approved_revision_id?: string | null
+          case_code: string
+          closed_at?: string | null
+          closed_by?: string | null
+          closure_reason?: string | null
+          concern_category: string
+          created_at?: string
+          created_by: string
+          discovered_by: string
+          id?: string
+          initial_discovery_at: string
+          initiating_source_code: string
+          initiating_source_id: string
+          initiating_source_type: string
+          issue_summary: string
+          latest_revision_id?: string | null
+          lifecycle_state?: string
+          owner_id: string
+          revision?: number
+          title: string
+          updated_at?: string
+          workspace_id: string
+        }
+        Update: {
+          approved_revision_id?: string | null
+          case_code?: string
+          closed_at?: string | null
+          closed_by?: string | null
+          closure_reason?: string | null
+          concern_category?: string
+          created_at?: string
+          created_by?: string
+          discovered_by?: string
+          id?: string
+          initial_discovery_at?: string
+          initiating_source_code?: string
+          initiating_source_id?: string
+          initiating_source_type?: string
+          issue_summary?: string
+          latest_revision_id?: string | null
+          lifecycle_state?: string
+          owner_id?: string
+          revision?: number
+          title?: string
+          updated_at?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recall_readiness_cases_approved_revision_fk"
+            columns: ["approved_revision_id"]
+            isOneToOne: false
+            referencedRelation: "recall_readiness_case_revisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recall_readiness_cases_latest_revision_fk"
+            columns: ["latest_revision_id"]
+            isOneToOne: false
+            referencedRelation: "recall_readiness_case_revisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recall_readiness_cases_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recall_readiness_events: {
+        Row: {
+          actor_id: string
+          case_id: string
+          event_type: string
+          id: string
+          idempotency_key: string
+          metadata: Json
+          occurred_at: string
+          payload_fingerprint: string
+          revision_id: string | null
+          workspace_id: string
+        }
+        Insert: {
+          actor_id: string
+          case_id: string
+          event_type: string
+          id?: string
+          idempotency_key: string
+          metadata?: Json
+          occurred_at?: string
+          payload_fingerprint: string
+          revision_id?: string | null
+          workspace_id: string
+        }
+        Update: {
+          actor_id?: string
+          case_id?: string
+          event_type?: string
+          id?: string
+          idempotency_key?: string
+          metadata?: Json
+          occurred_at?: string
+          payload_fingerprint?: string
+          revision_id?: string | null
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recall_readiness_events_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "recall_readiness_cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recall_readiness_events_revision_id_fkey"
+            columns: ["revision_id"]
+            isOneToOne: false
+            referencedRelation: "recall_readiness_case_revisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recall_readiness_events_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recall_readiness_evidence: {
+        Row: {
+          case_id: string
+          content_hash: string | null
+          description: string
+          document_reference: string | null
+          evidence_type: string
+          id: string
+          metadata: Json
+          owner_id: string
+          revision_id: string | null
+          storage_reference: string | null
+          superseded: boolean
+          supersedes_evidence_id: string | null
+          title: string
+          uploaded_at: string
+          uploaded_by: string
+          workspace_id: string
+        }
+        Insert: {
+          case_id: string
+          content_hash?: string | null
+          description: string
+          document_reference?: string | null
+          evidence_type: string
+          id?: string
+          metadata?: Json
+          owner_id: string
+          revision_id?: string | null
+          storage_reference?: string | null
+          superseded?: boolean
+          supersedes_evidence_id?: string | null
+          title: string
+          uploaded_at?: string
+          uploaded_by: string
+          workspace_id: string
+        }
+        Update: {
+          case_id?: string
+          content_hash?: string | null
+          description?: string
+          document_reference?: string | null
+          evidence_type?: string
+          id?: string
+          metadata?: Json
+          owner_id?: string
+          revision_id?: string | null
+          storage_reference?: string | null
+          superseded?: boolean
+          supersedes_evidence_id?: string | null
+          title?: string
+          uploaded_at?: string
+          uploaded_by?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recall_readiness_evidence_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "recall_readiness_cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recall_readiness_evidence_revision_id_fkey"
+            columns: ["revision_id"]
+            isOneToOne: false
+            referencedRelation: "recall_readiness_case_revisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recall_readiness_evidence_supersedes_evidence_id_fkey"
+            columns: ["supersedes_evidence_id"]
+            isOneToOne: false
+            referencedRelation: "recall_readiness_evidence"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recall_readiness_evidence_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recall_readiness_gaps: {
+        Row: {
+          code: string
+          id: string
+          node_identity: Json | null
+          policy_version: string
+          readiness_impact: string
+          reason: string
+          relationship: string | null
+          revision_id: string
+          scope_impact: string
+          scope_snapshot_id: string | null
+          severity: string
+          workspace_id: string
+        }
+        Insert: {
+          code: string
+          id?: string
+          node_identity?: Json | null
+          policy_version: string
+          readiness_impact: string
+          reason: string
+          relationship?: string | null
+          revision_id: string
+          scope_impact: string
+          scope_snapshot_id?: string | null
+          severity: string
+          workspace_id: string
+        }
+        Update: {
+          code?: string
+          id?: string
+          node_identity?: Json | null
+          policy_version?: string
+          readiness_impact?: string
+          reason?: string
+          relationship?: string | null
+          revision_id?: string
+          scope_impact?: string
+          scope_snapshot_id?: string | null
+          severity?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recall_readiness_gaps_revision_id_fkey"
+            columns: ["revision_id"]
+            isOneToOne: false
+            referencedRelation: "recall_readiness_case_revisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recall_readiness_gaps_scope_snapshot_id_fkey"
+            columns: ["scope_snapshot_id"]
+            isOneToOne: false
+            referencedRelation: "recall_readiness_scope_snapshots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recall_readiness_gaps_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recall_readiness_inventory_impacts: {
+        Row: {
+          affected_good_id: string
+          available_quantity: number
+          blocked_quantity: number
+          damaged_quantity: number
+          destroyed_quantity: number
+          evaluated_at: string
+          expired_quantity: number
+          held_quantity: number
+          id: string
+          location: string | null
+          lost_quantity: number
+          on_hand_quantity: number
+          operational_readiness: string
+          released_inventory_lot_id: string
+          reserved_quantity: number
+          scope_snapshot_id: string
+          source_policy_version: string
+          valuation_snapshot: Json
+          workspace_id: string
+        }
+        Insert: {
+          affected_good_id: string
+          available_quantity: number
+          blocked_quantity: number
+          damaged_quantity: number
+          destroyed_quantity: number
+          evaluated_at: string
+          expired_quantity?: number
+          held_quantity: number
+          id?: string
+          location?: string | null
+          lost_quantity: number
+          on_hand_quantity: number
+          operational_readiness: string
+          released_inventory_lot_id: string
+          reserved_quantity?: number
+          scope_snapshot_id: string
+          source_policy_version: string
+          valuation_snapshot?: Json
+          workspace_id: string
+        }
+        Update: {
+          affected_good_id?: string
+          available_quantity?: number
+          blocked_quantity?: number
+          damaged_quantity?: number
+          destroyed_quantity?: number
+          evaluated_at?: string
+          expired_quantity?: number
+          held_quantity?: number
+          id?: string
+          location?: string | null
+          lost_quantity?: number
+          on_hand_quantity?: number
+          operational_readiness?: string
+          released_inventory_lot_id?: string
+          reserved_quantity?: number
+          scope_snapshot_id?: string
+          source_policy_version?: string
+          valuation_snapshot?: Json
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recall_readiness_inventory_impac_released_inventory_lot_id_fkey"
+            columns: ["released_inventory_lot_id"]
+            isOneToOne: false
+            referencedRelation: "released_finished_goods_inventory_lots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recall_readiness_inventory_impacts_affected_good_id_fkey"
+            columns: ["affected_good_id"]
+            isOneToOne: false
+            referencedRelation: "recall_readiness_affected_goods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recall_readiness_inventory_impacts_scope_snapshot_id_fkey"
+            columns: ["scope_snapshot_id"]
+            isOneToOne: false
+            referencedRelation: "recall_readiness_scope_snapshots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recall_readiness_inventory_impacts_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recall_readiness_reviews: {
+        Row: {
+          blockers_observed: Json
+          case_id: string
+          decision: string
+          evidence_reviewed: Json
+          id: string
+          rationale: string
+          reviewed_at: string
+          reviewer_id: string
+          reviewer_role: string
+          revision_fingerprint: string
+          revision_id: string
+          signature_metadata: Json
+          workspace_id: string
+        }
+        Insert: {
+          blockers_observed?: Json
+          case_id: string
+          decision: string
+          evidence_reviewed?: Json
+          id?: string
+          rationale: string
+          reviewed_at?: string
+          reviewer_id: string
+          reviewer_role: string
+          revision_fingerprint: string
+          revision_id: string
+          signature_metadata?: Json
+          workspace_id: string
+        }
+        Update: {
+          blockers_observed?: Json
+          case_id?: string
+          decision?: string
+          evidence_reviewed?: Json
+          id?: string
+          rationale?: string
+          reviewed_at?: string
+          reviewer_id?: string
+          reviewer_role?: string
+          revision_fingerprint?: string
+          revision_id?: string
+          signature_metadata?: Json
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recall_readiness_reviews_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "recall_readiness_cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recall_readiness_reviews_revision_id_fkey"
+            columns: ["revision_id"]
+            isOneToOne: false
+            referencedRelation: "recall_readiness_case_revisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recall_readiness_reviews_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recall_readiness_scope_snapshots: {
+        Row: {
+          case_id: string
+          distribution_boundary: string
+          evaluated_at: string
+          fingerprint: string
+          generated_at: string
+          generated_by: string
+          id: string
+          owner_id: string
+          policy_version: string
+          quantity_totals: Json
+          revision_id: string
+          scope_confidence: string
+          traceability_fingerprint: string
+          traceability_policy_version: string
+          traceability_snapshot: Json
+          workspace_id: string
+        }
+        Insert: {
+          case_id: string
+          distribution_boundary: string
+          evaluated_at: string
+          fingerprint: string
+          generated_at?: string
+          generated_by: string
+          id?: string
+          owner_id: string
+          policy_version?: string
+          quantity_totals: Json
+          revision_id: string
+          scope_confidence: string
+          traceability_fingerprint: string
+          traceability_policy_version: string
+          traceability_snapshot: Json
+          workspace_id: string
+        }
+        Update: {
+          case_id?: string
+          distribution_boundary?: string
+          evaluated_at?: string
+          fingerprint?: string
+          generated_at?: string
+          generated_by?: string
+          id?: string
+          owner_id?: string
+          policy_version?: string
+          quantity_totals?: Json
+          revision_id?: string
+          scope_confidence?: string
+          traceability_fingerprint?: string
+          traceability_policy_version?: string
+          traceability_snapshot?: Json
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recall_readiness_scope_snapshots_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "recall_readiness_cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recall_readiness_scope_snapshots_revision_id_fkey"
+            columns: ["revision_id"]
+            isOneToOne: true
+            referencedRelation: "recall_readiness_case_revisions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recall_readiness_scope_snapshots_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       regulatory_review_sources: {
         Row: {
           owner_id: string
@@ -16862,6 +17743,19 @@ export type Database = {
         }
         Returns: string
       }
+      approve_recall_readiness_revision_v1: {
+        Args: {
+          candidate_distribution_acknowledged: boolean
+          candidate_idempotency_key: string
+          candidate_non_execution_acknowledged: boolean
+          candidate_revision_fingerprint: string
+          candidate_scope_fingerprint: string
+          expected_case_revision: number
+          target_case_id: string
+          target_revision_id: string
+        }
+        Returns: Json
+      }
       attach_procurement_background_operation: {
         Args: {
           candidate_attempt_id: string
@@ -16958,6 +17852,16 @@ export type Database = {
         }
         Returns: number
       }
+      close_recall_readiness_case_v1: {
+        Args: {
+          candidate_closure_state: string
+          candidate_idempotency_key: string
+          candidate_reason: string
+          expected_case_revision: number
+          target_case_id: string
+        }
+        Returns: Json
+      }
       commit_lab_consumption: {
         Args: { batch_id: string; commits: Json }
         Returns: Json
@@ -16972,6 +17876,17 @@ export type Database = {
       }
       commit_production_consumption: {
         Args: { commits: Json; run_id: string }
+        Returns: Json
+      }
+      compare_recall_readiness_revisions_v1: {
+        Args: {
+          target_left_revision_id: string
+          target_right_revision_id: string
+        }
+        Returns: Json
+      }
+      compare_recall_scope_to_live_inventory_v1: {
+        Args: { target_revision_id: string }
         Returns: Json
       }
       complete_packaging_run_v1: {
@@ -17159,6 +18074,38 @@ export type Database = {
         }
         Returns: string
       }
+      create_recall_readiness_case_v1: {
+        Args: {
+          candidate_concern_category: string
+          candidate_discovery_at: string
+          candidate_evidence_pending: boolean
+          candidate_idempotency_key: string
+          candidate_issue_summary: string
+          candidate_source_id: string
+          candidate_source_type: string
+          candidate_title: string
+        }
+        Returns: Json
+      }
+      create_recall_readiness_revision_v1: {
+        Args: {
+          candidate_compliance_narrative: string
+          candidate_distribution_limitation_acknowledged: boolean
+          candidate_evidence_pending_acknowledged: boolean
+          candidate_exposure_state: string
+          candidate_exposure_unknown_acknowledged: boolean
+          candidate_health_hazard_narrative: string
+          candidate_idempotency_key: string
+          candidate_operator_recommendation: string
+          candidate_recommended_action: string
+          candidate_severity: string
+          candidate_supersession_reason: string
+          candidate_urgency: string
+          expected_case_revision: number
+          target_case_id: string
+        }
+        Returns: Json
+      }
       decide_purchase_order_confirmation: {
         Args: {
           candidate_decision: string
@@ -17237,6 +18184,16 @@ export type Database = {
       generate_production_requirement_candidates: {
         Args: { expected_round_revision: number; target_requirement_id: string }
         Returns: number
+      }
+      generate_recall_readiness_scope_v1: {
+        Args: {
+          candidate_idempotency_key: string
+          candidate_scope_policy_version: string
+          expected_case_revision: number
+          target_case_id: string
+          target_revision_id: string
+        }
+        Returns: Json
       }
       get_batch_material_completion_readiness_v1: {
         Args: { target_batch_id: string; target_batch_kind: string }
@@ -17319,6 +18276,14 @@ export type Database = {
       }
       get_raw_material_lot_forward_trace_v1: {
         Args: { target_inventory_lot_id: string }
+        Returns: Json
+      }
+      get_recall_readiness_case_v1: {
+        Args: { target_case_id: string }
+        Returns: Json
+      }
+      get_recall_readiness_decision_readiness_v1: {
+        Args: { target_case_id: string; target_revision_id: string }
         Returns: Json
       }
       get_released_finished_goods_genealogy_v1: {
@@ -17440,6 +18405,11 @@ export type Database = {
         Args: { target_run_id: string; target_workspace_id: string }
         Returns: Json
       }
+      kf_recall_validate_identity_v1: {
+        Args: { source_id: string; source_type: string; wid: string }
+        Returns: Json
+      }
+      kf_recall_workspace_v1: { Args: never; Returns: string }
       kf_traceability_inventory_impact_v1: {
         Args: {
           target_finished_goods_lot_id: string
@@ -17458,6 +18428,14 @@ export type Database = {
       }
       list_finished_goods_inventory_fefo_v1: {
         Args: { target_product_id?: string }
+        Returns: Json
+      }
+      list_recall_readiness_cases_v1: {
+        Args: {
+          candidate_filters?: Json
+          candidate_limit?: number
+          candidate_offset?: number
+        }
         Returns: Json
       }
       lookup_beard_analysis_support_diagnostic: {
@@ -17979,6 +18957,21 @@ export type Database = {
         Args: { batch: Json; receipt?: Json }
         Returns: Json
       }
+      register_recall_readiness_evidence_v1: {
+        Args: {
+          candidate_content_hash: string
+          candidate_description: string
+          candidate_document_reference: string
+          candidate_idempotency_key: string
+          candidate_metadata: Json
+          candidate_storage_reference: string
+          candidate_title: string
+          candidate_type: string
+          target_case_id: string
+          target_revision_id: string
+        }
+        Returns: Json
+      }
       reject_production_requirement_candidate: {
         Args: {
           expected_round_revision: number
@@ -18143,6 +19136,19 @@ export type Database = {
           candidate_provider_operation_id: string
         }
         Returns: string
+      }
+      submit_recall_readiness_review_v1: {
+        Args: {
+          candidate_decision: string
+          candidate_evidence_reviewed: Json
+          candidate_idempotency_key: string
+          candidate_rationale: string
+          candidate_revision_fingerprint: string
+          candidate_role: string
+          target_case_id: string
+          target_revision_id: string
+        }
+        Returns: Json
       }
       transition_development_experiment: {
         Args: {
