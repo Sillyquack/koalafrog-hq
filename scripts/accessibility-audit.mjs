@@ -7,6 +7,7 @@ const checks=[
   ["production","src/features/production/ProductionPage.tsx"],
   ["finished-goods","src/features/finished-goods-control/FinishedGoodsLotPage.tsx"],
   ["traceability","src/features/traceability/TraceabilityPage.tsx"],
+  ["recall-readiness","src/features/recall-readiness/RecallReadinessPage.tsx"],
   ["compliance","src/features/compliance/CompliancePage.tsx"],
 ]
 const findings=[]

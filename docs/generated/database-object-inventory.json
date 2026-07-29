@@ -1,14 +1,14 @@
 {
   "counts": {
-    "foreignKeys": 579,
-    "functions": 192,
-    "indexes": 608,
+    "foreignKeys": 625,
+    "functions": 206,
+    "indexes": 637,
     "materializedViews": 0,
     "policies": 186,
     "providers": 5,
-    "repositories": 15,
-    "routes": 62,
-    "tables": 187,
+    "repositories": 16,
+    "routes": 63,
+    "tables": 198,
     "triggers": 59,
     "views": 0
   },
@@ -206,7 +206,7 @@
           "name": "batch_material_events_metadata_check"
         }
       ],
-      "estimatedRows": 52,
+      "estimatedRows": -1,
       "foreignKeys": [
         {
           "columns": [
@@ -1095,7 +1095,7 @@
           "name": "beard_length_map_zones_zone_name_check"
         }
       ],
-      "estimatedRows": 22,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -1485,7 +1485,7 @@
           "name": "beard_profiles_texture_check"
         }
       ],
-      "estimatedRows": 0,
+      "estimatedRows": -1,
       "foreignKeys": [
         {
           "columns": [
@@ -1745,7 +1745,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": 34,
+      "estimatedRows": 12,
       "foreignKeys": [
         {
           "columns": [
@@ -1908,7 +1908,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": 41,
+      "estimatedRows": 14,
       "foreignKeys": [
         {
           "columns": [
@@ -2573,7 +2573,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": 21,
+      "estimatedRows": -1,
       "foreignKeys": [
         {
           "columns": [
@@ -3625,7 +3625,7 @@
           "name": "finished_goods_inspections_sample_quantity_check"
         }
       ],
-      "estimatedRows": 93,
+      "estimatedRows": 82,
       "foreignKeys": [
         {
           "columns": [
@@ -3732,7 +3732,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": 30,
+      "estimatedRows": -1,
       "foreignKeys": [
         {
           "columns": [
@@ -3851,7 +3851,7 @@
           "name": "finished_goods_inventory_movements_quantity_check"
         }
       ],
-      "estimatedRows": 24,
+      "estimatedRows": -1,
       "foreignKeys": [
         {
           "columns": [
@@ -4001,7 +4001,7 @@
           "name": "finished_goods_inventory_operations_reason_check"
         }
       ],
-      "estimatedRows": 30,
+      "estimatedRows": -1,
       "foreignKeys": [
         {
           "columns": [
@@ -4192,7 +4192,7 @@
           "name": "finished_goods_lot_events_event_type_check"
         }
       ],
-      "estimatedRows": 111,
+      "estimatedRows": 86,
       "foreignKeys": [
         {
           "columns": [
@@ -4668,7 +4668,7 @@
           "name": "finished_goods_movements_quantity_check"
         }
       ],
-      "estimatedRows": 34,
+      "estimatedRows": 12,
       "foreignKeys": [
         {
           "columns": [
@@ -4726,7 +4726,7 @@
           "name": "finished_goods_quality_events_event_type_check"
         }
       ],
-      "estimatedRows": 138,
+      "estimatedRows": 120,
       "foreignKeys": [
         {
           "columns": [
@@ -4947,7 +4947,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": 356,
+      "estimatedRows": 136,
       "foreignKeys": [
         {
           "columns": [
@@ -5015,7 +5015,7 @@
           "name": "formula_versions_phase_definitions_check"
         }
       ],
-      "estimatedRows": 137,
+      "estimatedRows": 74,
       "foreignKeys": [
         {
           "columns": [
@@ -5090,7 +5090,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": 120,
+      "estimatedRows": 68,
       "foreignKeys": [
         {
           "columns": [
@@ -5732,7 +5732,7 @@
           "name": "ingredients_cosing_verification_status_check"
         }
       ],
-      "estimatedRows": 188,
+      "estimatedRows": 72,
       "foreignKeys": [
         {
           "columns": [
@@ -6307,7 +6307,7 @@
           "name": "intelligence_recommendations_review_status_check"
         }
       ],
-      "estimatedRows": 0,
+      "estimatedRows": -1,
       "foreignKeys": [
         {
           "columns": [
@@ -6518,7 +6518,7 @@
           "name": "inventory_lots_restriction_snapshot_check"
         }
       ],
-      "estimatedRows": 106,
+      "estimatedRows": 44,
       "foreignKeys": [
         {
           "columns": [
@@ -6606,7 +6606,7 @@
           "name": "inventory_movements_quantity_check"
         }
       ],
-      "estimatedRows": 214,
+      "estimatedRows": 84,
       "foreignKeys": [
         {
           "columns": [
@@ -7225,7 +7225,7 @@
           "name": "lab_batch_lines_tolerance_quantity_check"
         }
       ],
-      "estimatedRows": 34,
+      "estimatedRows": 12,
       "foreignKeys": [
         {
           "columns": [
@@ -7309,7 +7309,7 @@
           "name": "lab_batches_revision_check"
         }
       ],
-      "estimatedRows": 34,
+      "estimatedRows": 12,
       "foreignKeys": [
         {
           "columns": [
@@ -7473,7 +7473,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": 34,
+      "estimatedRows": 12,
       "foreignKeys": [
         {
           "columns": [
@@ -7537,7 +7537,7 @@
           "name": "lab_process_temperature_range"
         }
       ],
-      "estimatedRows": 34,
+      "estimatedRows": 12,
       "foreignKeys": [
         {
           "columns": [
@@ -7663,7 +7663,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": 170,
+      "estimatedRows": 60,
       "foreignKeys": [
         {
           "columns": [
@@ -7773,7 +7773,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": 34,
+      "estimatedRows": 12,
       "foreignKeys": [
         {
           "columns": [
@@ -7883,7 +7883,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": 17,
+      "estimatedRows": 6,
       "foreignKeys": [
         {
           "columns": [
@@ -8095,7 +8095,7 @@
           "name": "packaging_allocations_quantity_check"
         }
       ],
-      "estimatedRows": 34,
+      "estimatedRows": 12,
       "foreignKeys": [
         {
           "columns": [
@@ -8172,7 +8172,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": 69,
+      "estimatedRows": 30,
       "foreignKeys": [
         {
           "columns": [
@@ -8220,7 +8220,7 @@
           "name": "packaging_inventory_lots_opening_quantity_check"
         }
       ],
-      "estimatedRows": 52,
+      "estimatedRows": 24,
       "foreignKeys": [
         {
           "columns": [
@@ -8308,7 +8308,7 @@
           "name": "packaging_inventory_movements_quantity_check"
         }
       ],
-      "estimatedRows": 95,
+      "estimatedRows": 42,
       "foreignKeys": [
         {
           "columns": [
@@ -8659,7 +8659,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": 57,
+      "estimatedRows": -1,
       "foreignKeys": [
         {
           "columns": [
@@ -9473,7 +9473,7 @@
           "name": "packaging_runs_status_check"
         }
       ],
-      "estimatedRows": 30,
+      "estimatedRows": -1,
       "foreignKeys": [
         {
           "columns": [
@@ -9653,7 +9653,7 @@
           "name": "packaging_specification_lines_quantity_per_unit_check"
         }
       ],
-      "estimatedRows": 86,
+      "estimatedRows": 36,
       "foreignKeys": [
         {
           "columns": [
@@ -9712,7 +9712,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": 61,
+      "estimatedRows": 32,
       "foreignKeys": [
         {
           "columns": [
@@ -9771,7 +9771,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": 44,
+      "estimatedRows": 26,
       "foreignKeys": [
         {
           "columns": [
@@ -9899,7 +9899,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": 85,
+      "estimatedRows": 30,
       "foreignKeys": [
         {
           "columns": [
@@ -11050,7 +11050,7 @@
           "name": "procurement_research_jobs_status_check"
         }
       ],
-      "estimatedRows": 26,
+      "estimatedRows": -1,
       "foreignKeys": [
         {
           "columns": [
@@ -11698,7 +11698,7 @@
           "name": "production_lot_allocations_quantity_check"
         }
       ],
-      "estimatedRows": 34,
+      "estimatedRows": 12,
       "foreignKeys": [
         {
           "columns": [
@@ -11884,7 +11884,7 @@
           "name": "production_output_events_event_type_check"
         }
       ],
-      "estimatedRows": 59,
+      "estimatedRows": -1,
       "foreignKeys": [
         {
           "columns": [
@@ -12244,7 +12244,7 @@
           "name": "production_outputs_unresolved_cost_count_check"
         }
       ],
-      "estimatedRows": 20,
+      "estimatedRows": 22,
       "foreignKeys": [
         {
           "columns": [
@@ -12524,7 +12524,7 @@
           "name": "production_procurement_requirement_sources_percentage_check"
         }
       ],
-      "estimatedRows": 28,
+      "estimatedRows": -1,
       "foreignKeys": [
         {
           "columns": [
@@ -12668,7 +12668,7 @@
           "name": "production_procurement_requirements_state_check"
         }
       ],
-      "estimatedRows": 12,
+      "estimatedRows": -1,
       "foreignKeys": [
         {
           "columns": [
@@ -12788,7 +12788,7 @@
           "name": "production_procurement_round_products_planned_batch_count_check"
         }
       ],
-      "estimatedRows": 28,
+      "estimatedRows": -1,
       "foreignKeys": [
         {
           "columns": [
@@ -12916,7 +12916,7 @@
           "name": "production_procurement_rounds_title_check"
         }
       ],
-      "estimatedRows": 6,
+      "estimatedRows": 4,
       "foreignKeys": [
         {
           "columns": [
@@ -13041,7 +13041,7 @@
           "name": "production_procurement_scenario_baskets_vat_state_check"
         }
       ],
-      "estimatedRows": 63,
+      "estimatedRows": 21,
       "foreignKeys": [
         {
           "columns": [
@@ -13159,7 +13159,7 @@
           "name": "production_procurement_scenario_lines_unit_price_check"
         }
       ],
-      "estimatedRows": 63,
+      "estimatedRows": 21,
       "foreignKeys": [
         {
           "columns": [
@@ -13317,7 +13317,7 @@
           "name": "production_procurement_scenarios_warning_count_check"
         }
       ],
-      "estimatedRows": 42,
+      "estimatedRows": 28,
       "foreignKeys": [
         {
           "columns": [
@@ -13508,7 +13508,7 @@
           "name": "production_requirement_supplier_candidates_status_check"
         }
       ],
-      "estimatedRows": 22,
+      "estimatedRows": -1,
       "foreignKeys": [
         {
           "columns": [
@@ -13725,7 +13725,7 @@
           "name": "production_run_lines_tolerance_quantity_check"
         }
       ],
-      "estimatedRows": 40,
+      "estimatedRows": 16,
       "foreignKeys": [
         {
           "columns": [
@@ -13805,7 +13805,7 @@
           "name": "production_runs_revision_check"
         }
       ],
-      "estimatedRows": 69,
+      "estimatedRows": 42,
       "foreignKeys": [
         {
           "columns": [
@@ -13881,7 +13881,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": 161,
+      "estimatedRows": 82,
       "foreignKeys": [
         {
           "columns": [
@@ -13949,7 +13949,7 @@
           "name": "purchase_order_audit_events_metadata_check"
         }
       ],
-      "estimatedRows": 69,
+      "estimatedRows": -1,
       "foreignKeys": [
         {
           "columns": [
@@ -16008,7 +16008,7 @@
           "name": "purchase_plan_audit_events_metadata_check"
         }
       ],
-      "estimatedRows": 111,
+      "estimatedRows": 74,
       "foreignKeys": [
         {
           "columns": [
@@ -16133,7 +16133,7 @@
           "name": "purchase_plan_baskets_verification_required_count_check"
         }
       ],
-      "estimatedRows": 15,
+      "estimatedRows": 10,
       "foreignKeys": [
         {
           "columns": [
@@ -16371,7 +16371,7 @@
           "name": "purchase_plan_verifications_verification_state_check"
         }
       ],
-      "estimatedRows": 111,
+      "estimatedRows": 74,
       "foreignKeys": [
         {
           "columns": [
@@ -16509,7 +16509,7 @@
           "name": "purchase_plans_version_check"
         }
       ],
-      "estimatedRows": 22,
+      "estimatedRows": 12,
       "foreignKeys": [
         {
           "columns": [
@@ -16662,7 +16662,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": 34,
+      "estimatedRows": 12,
       "foreignKeys": [
         {
           "columns": [
@@ -16708,6 +16708,870 @@
           "withCheck": "(owner_id = auth.uid())"
         }
       ],
+      "rlsEnabled": true,
+      "schema": "public"
+    },
+    {
+      "checks": [],
+      "estimatedRows": -1,
+      "foreignKeys": [
+        {
+          "columns": [
+            "finished_goods_lot_id"
+          ],
+          "name": "recall_readiness_affected_goods_finished_goods_lot_id_fkey",
+          "references": "finished_goods_lots"
+        },
+        {
+          "columns": [
+            "scope_snapshot_id"
+          ],
+          "name": "recall_readiness_affected_goods_scope_snapshot_id_fkey",
+          "references": "recall_readiness_scope_snapshots"
+        },
+        {
+          "columns": [
+            "workspace_id"
+          ],
+          "name": "recall_readiness_affected_goods_workspace_id_fkey",
+          "references": "workspaces"
+        }
+      ],
+      "generatedColumns": [],
+      "grants": [
+        "postgres=arwdDxtm/postgres",
+        "service_role=Dxtm/postgres"
+      ],
+      "indexes": [
+        {
+          "columns": [
+            "scope_snapshot_id",
+            "finished_goods_lot_id"
+          ],
+          "name": "recall_readiness_affected_goo_scope_snapshot_id_finished_go_key",
+          "unique": true,
+          "valid": true
+        },
+        {
+          "columns": [
+            "id"
+          ],
+          "name": "recall_readiness_affected_goods_pkey",
+          "unique": true,
+          "valid": true
+        },
+        {
+          "columns": [
+            "scope_snapshot_id",
+            "finished_goods_lot_id"
+          ],
+          "name": "recall_readiness_affected_scope_idx",
+          "unique": false,
+          "valid": true
+        }
+      ],
+      "name": "recall_readiness_affected_goods",
+      "objectType": "table",
+      "policies": [],
+      "rlsEnabled": true,
+      "schema": "public"
+    },
+    {
+      "checks": [],
+      "estimatedRows": -1,
+      "foreignKeys": [
+        {
+          "columns": [
+            "approved_by"
+          ],
+          "name": "recall_readiness_approvals_approved_by_fkey",
+          "references": "auth.users"
+        },
+        {
+          "columns": [
+            "case_id"
+          ],
+          "name": "recall_readiness_approvals_case_id_fkey",
+          "references": "recall_readiness_cases"
+        },
+        {
+          "columns": [
+            "revision_id"
+          ],
+          "name": "recall_readiness_approvals_revision_id_fkey",
+          "references": "recall_readiness_case_revisions"
+        },
+        {
+          "columns": [
+            "workspace_id"
+          ],
+          "name": "recall_readiness_approvals_workspace_id_fkey",
+          "references": "workspaces"
+        }
+      ],
+      "generatedColumns": [],
+      "grants": [
+        "postgres=arwdDxtm/postgres",
+        "service_role=Dxtm/postgres"
+      ],
+      "indexes": [
+        {
+          "columns": [
+            "id"
+          ],
+          "name": "recall_readiness_approvals_pkey",
+          "unique": true,
+          "valid": true
+        },
+        {
+          "columns": [
+            "revision_id"
+          ],
+          "name": "recall_readiness_approvals_revision_id_key",
+          "unique": true,
+          "valid": true
+        }
+      ],
+      "name": "recall_readiness_approvals",
+      "objectType": "table",
+      "policies": [],
+      "rlsEnabled": true,
+      "schema": "public"
+    },
+    {
+      "checks": [
+        {
+          "definition": "CHECK ((distribution_boundary = ANY (ARRAY['no_distribution_records_implemented'::text, 'internal_inventory_only'::text, 'downstream_scope_incomplete'::text, 'customer_scope_unknown'::text, 'distribution_scope_not_applicable'::text, 'legacy_distribution_data_unavailable'::text])))",
+          "name": "recall_readiness_case_revisions_distribution_boundary_check"
+        },
+        {
+          "definition": "CHECK ((exposure_state = ANY (ARRAY['no_known_exposure'::text, 'possible_exposure'::text, 'confirmed_internal_distribution_only'::text, 'possible_consumer_exposure'::text, 'confirmed_consumer_exposure'::text, 'unknown'::text])))",
+          "name": "recall_readiness_case_revisions_exposure_state_check"
+        },
+        {
+          "definition": "CHECK ((recommended_action = ANY (ARRAY['continue_investigation'::text, 'no_action_recommended'::text, 'internal_hold_recommended'::text, 'withdrawal_assessment_recommended'::text, 'recall_assessment_recommended'::text, 'supplier_escalation_recommended'::text, 'regulatory_review_recommended'::text, 'destruction_assessment_recommended'::text, 'other'::text])))",
+          "name": "recall_readiness_case_revisions_recommended_action_check"
+        },
+        {
+          "definition": "CHECK ((revision_number > 0))",
+          "name": "recall_readiness_case_revisions_revision_number_check"
+        },
+        {
+          "definition": "CHECK ((severity = ANY (ARRAY['low'::text, 'moderate'::text, 'serious'::text, 'critical'::text, 'unknown'::text])))",
+          "name": "recall_readiness_case_revisions_severity_check"
+        },
+        {
+          "definition": "CHECK ((status = ANY (ARRAY['draft'::text, 'awaiting_review'::text, 'approved'::text, 'superseded'::text])))",
+          "name": "recall_readiness_case_revisions_status_check"
+        },
+        {
+          "definition": "CHECK ((urgency = ANY (ARRAY['routine'::text, 'prompt'::text, 'urgent'::text, 'immediate'::text, 'unknown'::text])))",
+          "name": "recall_readiness_case_revisions_urgency_check"
+        }
+      ],
+      "estimatedRows": -1,
+      "foreignKeys": [
+        {
+          "columns": [
+            "case_id"
+          ],
+          "name": "recall_readiness_case_revisions_case_id_fkey",
+          "references": "recall_readiness_cases"
+        },
+        {
+          "columns": [
+            "created_by"
+          ],
+          "name": "recall_readiness_case_revisions_created_by_fkey",
+          "references": "auth.users"
+        },
+        {
+          "columns": [
+            "owner_id"
+          ],
+          "name": "recall_readiness_case_revisions_owner_id_fkey",
+          "references": "auth.users"
+        },
+        {
+          "columns": [
+            "supersedes_revision_id"
+          ],
+          "name": "recall_readiness_case_revisions_supersedes_revision_id_fkey",
+          "references": "recall_readiness_case_revisions"
+        },
+        {
+          "columns": [
+            "workspace_id"
+          ],
+          "name": "recall_readiness_case_revisions_workspace_id_fkey",
+          "references": "workspaces"
+        }
+      ],
+      "generatedColumns": [],
+      "grants": [
+        "postgres=arwdDxtm/postgres",
+        "service_role=Dxtm/postgres"
+      ],
+      "indexes": [
+        {
+          "columns": [
+            "case_id",
+            "fingerprint"
+          ],
+          "name": "recall_readiness_case_revisions_case_id_fingerprint_key",
+          "unique": true,
+          "valid": true
+        },
+        {
+          "columns": [
+            "case_id",
+            "revision_number"
+          ],
+          "name": "recall_readiness_case_revisions_case_id_revision_number_key",
+          "unique": true,
+          "valid": true
+        },
+        {
+          "columns": [
+            "id"
+          ],
+          "name": "recall_readiness_case_revisions_pkey",
+          "unique": true,
+          "valid": true
+        },
+        {
+          "columns": [
+            "workspace_id",
+            "case_id",
+            "revision_number"
+          ],
+          "name": "recall_readiness_revisions_case_idx",
+          "unique": false,
+          "valid": true
+        }
+      ],
+      "name": "recall_readiness_case_revisions",
+      "objectType": "table",
+      "policies": [],
+      "rlsEnabled": true,
+      "schema": "public"
+    },
+    {
+      "checks": [
+        {
+          "definition": "CHECK ((last_value > 0))",
+          "name": "recall_readiness_case_sequences_last_value_check"
+        }
+      ],
+      "estimatedRows": -1,
+      "foreignKeys": [
+        {
+          "columns": [
+            "workspace_id"
+          ],
+          "name": "recall_readiness_case_sequences_workspace_id_fkey",
+          "references": "workspaces"
+        }
+      ],
+      "generatedColumns": [],
+      "grants": [
+        "postgres=arwdDxtm/postgres",
+        "service_role=Dxtm/postgres"
+      ],
+      "indexes": [
+        {
+          "columns": [
+            "workspace_id",
+            "calendar_year"
+          ],
+          "name": "recall_readiness_case_sequences_pkey",
+          "unique": true,
+          "valid": true
+        }
+      ],
+      "name": "recall_readiness_case_sequences",
+      "objectType": "table",
+      "policies": [],
+      "rlsEnabled": true,
+      "schema": "public"
+    },
+    {
+      "checks": [
+        {
+          "definition": "CHECK ((concern_category = ANY (ARRAY['raw_material_quality'::text, 'packaging_quality'::text, 'microbiological_concern'::text, 'contamination_concern'::text, 'allergen_concern'::text, 'formulation_error'::text, 'manufacturing_deviation'::text, 'packaging_failure'::text, 'label_error'::text, 'missing_warning'::text, 'expiry_or_shelf_life'::text, 'supplier_notification'::text, 'consumer_safety_concern'::text, 'regulatory_nonconformity'::text, 'traceability_gap'::text, 'counterfeit_or_identity_concern'::text, 'other'::text])))",
+          "name": "recall_readiness_cases_concern_category_check"
+        },
+        {
+          "definition": "CHECK ((initiating_source_type = ANY (ARRAY['raw_material_inventory_lot'::text, 'supplier_raw_material_lot'::text, 'packaging_inventory_lot'::text, 'supplier_packaging_lot'::text, 'production_batch'::text, 'production_output'::text, 'packaging_run'::text, 'finished_goods_lot'::text, 'released_finished_goods_inventory_lot'::text, 'consumer_batch_code'::text, 'finished_goods_quality_review'::text, 'traceability_integrity_finding'::text, 'other_documented_source'::text])))",
+          "name": "recall_readiness_cases_initiating_source_type_check"
+        },
+        {
+          "definition": "CHECK (((length(btrim(issue_summary)) >= 3) AND (length(btrim(issue_summary)) <= 4000)))",
+          "name": "recall_readiness_cases_issue_summary_check"
+        },
+        {
+          "definition": "CHECK ((lifecycle_state = ANY (ARRAY['draft'::text, 'under_assessment'::text, 'awaiting_review'::text, 'approved_readiness'::text, 'closed_no_action'::text, 'superseded'::text, 'cancelled'::text])))",
+          "name": "recall_readiness_cases_lifecycle_state_check"
+        },
+        {
+          "definition": "CHECK (((length(btrim(title)) >= 3) AND (length(btrim(title)) <= 200)))",
+          "name": "recall_readiness_cases_title_check"
+        }
+      ],
+      "estimatedRows": -1,
+      "foreignKeys": [
+        {
+          "columns": [
+            "approved_revision_id"
+          ],
+          "name": "recall_readiness_cases_approved_revision_fk",
+          "references": "recall_readiness_case_revisions"
+        },
+        {
+          "columns": [
+            "closed_by"
+          ],
+          "name": "recall_readiness_cases_closed_by_fkey",
+          "references": "auth.users"
+        },
+        {
+          "columns": [
+            "created_by"
+          ],
+          "name": "recall_readiness_cases_created_by_fkey",
+          "references": "auth.users"
+        },
+        {
+          "columns": [
+            "discovered_by"
+          ],
+          "name": "recall_readiness_cases_discovered_by_fkey",
+          "references": "auth.users"
+        },
+        {
+          "columns": [
+            "latest_revision_id"
+          ],
+          "name": "recall_readiness_cases_latest_revision_fk",
+          "references": "recall_readiness_case_revisions"
+        },
+        {
+          "columns": [
+            "owner_id"
+          ],
+          "name": "recall_readiness_cases_owner_id_fkey",
+          "references": "auth.users"
+        },
+        {
+          "columns": [
+            "workspace_id"
+          ],
+          "name": "recall_readiness_cases_workspace_id_fkey",
+          "references": "workspaces"
+        }
+      ],
+      "generatedColumns": [],
+      "grants": [
+        "postgres=arwdDxtm/postgres",
+        "service_role=Dxtm/postgres"
+      ],
+      "indexes": [
+        {
+          "columns": [
+            "workspace_id",
+            "updated_at",
+            "id"
+          ],
+          "name": "recall_readiness_cases_list_idx",
+          "unique": false,
+          "valid": true
+        },
+        {
+          "columns": [
+            "id"
+          ],
+          "name": "recall_readiness_cases_pkey",
+          "unique": true,
+          "valid": true
+        },
+        {
+          "columns": [
+            "workspace_id",
+            "case_code"
+          ],
+          "name": "recall_readiness_cases_workspace_id_case_code_key",
+          "unique": true,
+          "valid": true
+        }
+      ],
+      "name": "recall_readiness_cases",
+      "objectType": "table",
+      "policies": [],
+      "rlsEnabled": true,
+      "schema": "public"
+    },
+    {
+      "checks": [
+        {
+          "definition": "CHECK ((event_type = ANY (ARRAY['case_created'::text, 'evidence_added'::text, 'assessment_revision_created'::text, 'scope_generated'::text, 'scope_regenerated_for_new_revision'::text, 'review_submitted'::text, 'revision_requested'::text, 'readiness_approved'::text, 'case_closed'::text, 'case_superseded'::text])))",
+          "name": "recall_readiness_events_event_type_check"
+        }
+      ],
+      "estimatedRows": -1,
+      "foreignKeys": [
+        {
+          "columns": [
+            "actor_id"
+          ],
+          "name": "recall_readiness_events_actor_id_fkey",
+          "references": "auth.users"
+        },
+        {
+          "columns": [
+            "case_id"
+          ],
+          "name": "recall_readiness_events_case_id_fkey",
+          "references": "recall_readiness_cases"
+        },
+        {
+          "columns": [
+            "revision_id"
+          ],
+          "name": "recall_readiness_events_revision_id_fkey",
+          "references": "recall_readiness_case_revisions"
+        },
+        {
+          "columns": [
+            "workspace_id"
+          ],
+          "name": "recall_readiness_events_workspace_id_fkey",
+          "references": "workspaces"
+        }
+      ],
+      "generatedColumns": [],
+      "grants": [
+        "postgres=arwdDxtm/postgres",
+        "service_role=Dxtm/postgres"
+      ],
+      "indexes": [
+        {
+          "columns": [
+            "workspace_id",
+            "case_id",
+            "occurred_at",
+            "id"
+          ],
+          "name": "recall_readiness_events_case_idx",
+          "unique": false,
+          "valid": true
+        },
+        {
+          "columns": [
+            "id"
+          ],
+          "name": "recall_readiness_events_pkey",
+          "unique": true,
+          "valid": true
+        },
+        {
+          "columns": [
+            "workspace_id",
+            "idempotency_key"
+          ],
+          "name": "recall_readiness_events_workspace_id_idempotency_key_key",
+          "unique": true,
+          "valid": true
+        }
+      ],
+      "name": "recall_readiness_events",
+      "objectType": "table",
+      "policies": [],
+      "rlsEnabled": true,
+      "schema": "public"
+    },
+    {
+      "checks": [
+        {
+          "definition": "CHECK ((evidence_type = ANY (ARRAY['supplier_notice'::text, 'certificate_of_analysis'::text, 'laboratory_result'::text, 'deviation_report'::text, 'inspection_photo'::text, 'complaint_summary'::text, 'internal_note'::text, 'regulatory_correspondence'::text, 'traceability_export'::text, 'other'::text])))",
+          "name": "recall_readiness_evidence_evidence_type_check"
+        }
+      ],
+      "estimatedRows": -1,
+      "foreignKeys": [
+        {
+          "columns": [
+            "case_id"
+          ],
+          "name": "recall_readiness_evidence_case_id_fkey",
+          "references": "recall_readiness_cases"
+        },
+        {
+          "columns": [
+            "owner_id"
+          ],
+          "name": "recall_readiness_evidence_owner_id_fkey",
+          "references": "auth.users"
+        },
+        {
+          "columns": [
+            "revision_id"
+          ],
+          "name": "recall_readiness_evidence_revision_id_fkey",
+          "references": "recall_readiness_case_revisions"
+        },
+        {
+          "columns": [
+            "supersedes_evidence_id"
+          ],
+          "name": "recall_readiness_evidence_supersedes_evidence_id_fkey",
+          "references": "recall_readiness_evidence"
+        },
+        {
+          "columns": [
+            "uploaded_by"
+          ],
+          "name": "recall_readiness_evidence_uploaded_by_fkey",
+          "references": "auth.users"
+        },
+        {
+          "columns": [
+            "workspace_id"
+          ],
+          "name": "recall_readiness_evidence_workspace_id_fkey",
+          "references": "workspaces"
+        }
+      ],
+      "generatedColumns": [],
+      "grants": [
+        "postgres=arwdDxtm/postgres",
+        "service_role=Dxtm/postgres"
+      ],
+      "indexes": [
+        {
+          "columns": [
+            "workspace_id",
+            "case_id",
+            "uploaded_at",
+            "id"
+          ],
+          "name": "recall_readiness_evidence_case_idx",
+          "unique": false,
+          "valid": true
+        },
+        {
+          "columns": [
+            "id"
+          ],
+          "name": "recall_readiness_evidence_pkey",
+          "unique": true,
+          "valid": true
+        }
+      ],
+      "name": "recall_readiness_evidence",
+      "objectType": "table",
+      "policies": [],
+      "rlsEnabled": true,
+      "schema": "public"
+    },
+    {
+      "checks": [
+        {
+          "definition": "CHECK ((severity = ANY (ARRAY['warning'::text, 'blocked'::text])))",
+          "name": "recall_readiness_gaps_severity_check"
+        }
+      ],
+      "estimatedRows": -1,
+      "foreignKeys": [
+        {
+          "columns": [
+            "revision_id"
+          ],
+          "name": "recall_readiness_gaps_revision_id_fkey",
+          "references": "recall_readiness_case_revisions"
+        },
+        {
+          "columns": [
+            "scope_snapshot_id"
+          ],
+          "name": "recall_readiness_gaps_scope_snapshot_id_fkey",
+          "references": "recall_readiness_scope_snapshots"
+        },
+        {
+          "columns": [
+            "workspace_id"
+          ],
+          "name": "recall_readiness_gaps_workspace_id_fkey",
+          "references": "workspaces"
+        }
+      ],
+      "generatedColumns": [],
+      "grants": [
+        "postgres=arwdDxtm/postgres",
+        "service_role=Dxtm/postgres"
+      ],
+      "indexes": [
+        {
+          "columns": [
+            "id"
+          ],
+          "name": "recall_readiness_gaps_pkey",
+          "unique": true,
+          "valid": true
+        },
+        {
+          "columns": [
+            "revision_id",
+            "code",
+            "relationship"
+          ],
+          "name": "recall_readiness_gaps_revision_id_code_relationship_key",
+          "unique": true,
+          "valid": true
+        },
+        {
+          "columns": [
+            "revision_id",
+            "severity",
+            "code"
+          ],
+          "name": "recall_readiness_gaps_revision_idx",
+          "unique": false,
+          "valid": true
+        }
+      ],
+      "name": "recall_readiness_gaps",
+      "objectType": "table",
+      "policies": [],
+      "rlsEnabled": true,
+      "schema": "public"
+    },
+    {
+      "checks": [],
+      "estimatedRows": -1,
+      "foreignKeys": [
+        {
+          "columns": [
+            "released_inventory_lot_id"
+          ],
+          "name": "recall_readiness_inventory_impac_released_inventory_lot_id_fkey",
+          "references": "released_finished_goods_inventory_lots"
+        },
+        {
+          "columns": [
+            "affected_good_id"
+          ],
+          "name": "recall_readiness_inventory_impacts_affected_good_id_fkey",
+          "references": "recall_readiness_affected_goods"
+        },
+        {
+          "columns": [
+            "scope_snapshot_id"
+          ],
+          "name": "recall_readiness_inventory_impacts_scope_snapshot_id_fkey",
+          "references": "recall_readiness_scope_snapshots"
+        },
+        {
+          "columns": [
+            "workspace_id"
+          ],
+          "name": "recall_readiness_inventory_impacts_workspace_id_fkey",
+          "references": "workspaces"
+        }
+      ],
+      "generatedColumns": [],
+      "grants": [
+        "postgres=arwdDxtm/postgres",
+        "service_role=Dxtm/postgres"
+      ],
+      "indexes": [
+        {
+          "columns": [
+            "scope_snapshot_id",
+            "released_inventory_lot_id"
+          ],
+          "name": "recall_readiness_impact_scope_idx",
+          "unique": false,
+          "valid": true
+        },
+        {
+          "columns": [
+            "scope_snapshot_id",
+            "released_inventory_lot_id",
+            "location"
+          ],
+          "name": "recall_readiness_inventory_im_scope_snapshot_id_released_in_key",
+          "unique": true,
+          "valid": true
+        },
+        {
+          "columns": [
+            "id"
+          ],
+          "name": "recall_readiness_inventory_impacts_pkey",
+          "unique": true,
+          "valid": true
+        }
+      ],
+      "name": "recall_readiness_inventory_impacts",
+      "objectType": "table",
+      "policies": [],
+      "rlsEnabled": true,
+      "schema": "public"
+    },
+    {
+      "checks": [
+        {
+          "definition": "CHECK ((decision = ANY (ARRAY['approve_readiness'::text, 'request_revision'::text, 'reject_assessment'::text, 'acknowledge_only'::text])))",
+          "name": "recall_readiness_reviews_decision_check"
+        },
+        {
+          "definition": "CHECK ((reviewer_role = ANY (ARRAY['owner'::text, 'quality_reviewer'::text, 'responsible_person_candidate'::text, 'compliance_reviewer'::text, 'operational_reviewer'::text, 'other'::text])))",
+          "name": "recall_readiness_reviews_reviewer_role_check"
+        }
+      ],
+      "estimatedRows": -1,
+      "foreignKeys": [
+        {
+          "columns": [
+            "case_id"
+          ],
+          "name": "recall_readiness_reviews_case_id_fkey",
+          "references": "recall_readiness_cases"
+        },
+        {
+          "columns": [
+            "reviewer_id"
+          ],
+          "name": "recall_readiness_reviews_reviewer_id_fkey",
+          "references": "auth.users"
+        },
+        {
+          "columns": [
+            "revision_id"
+          ],
+          "name": "recall_readiness_reviews_revision_id_fkey",
+          "references": "recall_readiness_case_revisions"
+        },
+        {
+          "columns": [
+            "workspace_id"
+          ],
+          "name": "recall_readiness_reviews_workspace_id_fkey",
+          "references": "workspaces"
+        }
+      ],
+      "generatedColumns": [],
+      "grants": [
+        "postgres=arwdDxtm/postgres",
+        "service_role=Dxtm/postgres"
+      ],
+      "indexes": [
+        {
+          "columns": [
+            "id"
+          ],
+          "name": "recall_readiness_reviews_pkey",
+          "unique": true,
+          "valid": true
+        },
+        {
+          "columns": [
+            "revision_id",
+            "reviewer_id",
+            "decision"
+          ],
+          "name": "recall_readiness_reviews_revision_id_reviewer_id_decision_key",
+          "unique": true,
+          "valid": true
+        },
+        {
+          "columns": [
+            "revision_id",
+            "reviewed_at",
+            "id"
+          ],
+          "name": "recall_readiness_reviews_revision_idx",
+          "unique": false,
+          "valid": true
+        }
+      ],
+      "name": "recall_readiness_reviews",
+      "objectType": "table",
+      "policies": [],
+      "rlsEnabled": true,
+      "schema": "public"
+    },
+    {
+      "checks": [
+        {
+          "definition": "CHECK ((scope_confidence = ANY (ARRAY['complete_for_internal_inventory'::text, 'complete_with_optional_gaps'::text, 'partial'::text, 'blocked'::text, 'legacy_incomplete'::text, 'distribution_incomplete'::text])))",
+          "name": "recall_readiness_scope_snapshots_scope_confidence_check"
+        }
+      ],
+      "estimatedRows": -1,
+      "foreignKeys": [
+        {
+          "columns": [
+            "case_id"
+          ],
+          "name": "recall_readiness_scope_snapshots_case_id_fkey",
+          "references": "recall_readiness_cases"
+        },
+        {
+          "columns": [
+            "generated_by"
+          ],
+          "name": "recall_readiness_scope_snapshots_generated_by_fkey",
+          "references": "auth.users"
+        },
+        {
+          "columns": [
+            "owner_id"
+          ],
+          "name": "recall_readiness_scope_snapshots_owner_id_fkey",
+          "references": "auth.users"
+        },
+        {
+          "columns": [
+            "revision_id"
+          ],
+          "name": "recall_readiness_scope_snapshots_revision_id_fkey",
+          "references": "recall_readiness_case_revisions"
+        },
+        {
+          "columns": [
+            "workspace_id"
+          ],
+          "name": "recall_readiness_scope_snapshots_workspace_id_fkey",
+          "references": "workspaces"
+        }
+      ],
+      "generatedColumns": [],
+      "grants": [
+        "postgres=arwdDxtm/postgres",
+        "service_role=Dxtm/postgres"
+      ],
+      "indexes": [
+        {
+          "columns": [
+            "id"
+          ],
+          "name": "recall_readiness_scope_snapshots_pkey",
+          "unique": true,
+          "valid": true
+        },
+        {
+          "columns": [
+            "revision_id"
+          ],
+          "name": "recall_readiness_scope_snapshots_revision_id_key",
+          "unique": true,
+          "valid": true
+        }
+      ],
+      "name": "recall_readiness_scope_snapshots",
+      "objectType": "table",
+      "policies": [],
       "rlsEnabled": true,
       "schema": "public"
     },
@@ -17650,7 +18514,7 @@
           "name": "supplier_events_title_check"
         }
       ],
-      "estimatedRows": 42,
+      "estimatedRows": -1,
       "foreignKeys": [
         {
           "columns": [
@@ -17907,7 +18771,7 @@
           "name": "supplier_products_verification_object"
         }
       ],
-      "estimatedRows": 86,
+      "estimatedRows": 36,
       "foreignKeys": [
         {
           "columns": [
@@ -18230,7 +19094,7 @@
           "name": "suppliers_verification_state_check"
         }
       ],
-      "estimatedRows": 46,
+      "estimatedRows": -1,
       "foreignKeys": [
         {
           "columns": [
@@ -18293,7 +19157,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": 68,
+      "estimatedRows": 24,
       "foreignKeys": [
         {
           "columns": [
@@ -18464,7 +19328,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": 68,
+      "estimatedRows": 24,
       "foreignKeys": [
         {
           "columns": [
@@ -18709,7 +19573,7 @@
           "name": "trim_recipe_steps_trim_direction_check"
         }
       ],
-      "estimatedRows": 20,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -19005,7 +19869,7 @@
           "name": "workspaces_lifecycle_state_check"
         }
       ],
-      "estimatedRows": 61,
+      "estimatedRows": 42,
       "foreignKeys": [
         {
           "columns": [

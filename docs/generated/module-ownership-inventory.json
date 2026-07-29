@@ -20,8 +20,8 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 12176,
-        "lines": 136
+        "bytes": 12390,
+        "lines": 138
       }
     },
     {
@@ -139,8 +139,8 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 3353,
-        "lines": 63
+        "bytes": 3447,
+        "lines": 64
       }
     },
     {
@@ -1333,10 +1333,11 @@
       }
     },
     {
-      "canonicalRepository": "../../traceability/data/traceabilityRepository",
+      "canonicalRepository": "../../recall-readiness/data/recallReadinessRepository",
       "classification": "compatibility_read_only",
       "crossDomainDependencies": [
         "../../../platform/supabase/generated/database.types",
+        "../../recall-readiness/data/recallReadinessRepository",
         "../../traceability/data/traceabilityRepository"
       ],
       "domainOwner": "finished-goods-control",
@@ -1348,14 +1349,15 @@
       "responsibility": "module",
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [
+        "../../recall-readiness/data/recallReadinessRepository",
         "../../traceability/data/traceabilityRepository",
         "./finishedGoodsInventoryRepository",
         "./finishedGoodsLotRepository",
         "./finishedGoodsQualityRepository"
       ],
       "sizeMetrics": {
-        "bytes": 21689,
-        "lines": 64
+        "bytes": 23805,
+        "lines": 66
       }
     },
     {
@@ -5391,6 +5393,98 @@
       }
     },
     {
+      "canonicalRepository": "./recallReadinessRepository",
+      "classification": "canonical_read_model",
+      "crossDomainDependencies": [
+        "../../../platform/supabase/generated/database.types"
+      ],
+      "domainOwner": "recall-readiness",
+      "legacyDependency": [],
+      "modulePath": "src/features/recall-readiness/data/recallReadiness.integration.test.ts",
+      "objectType": "module",
+      "responsibility": "module",
+      "riskNotes": [],
+      "serverAuthoritativePoliciesConsumed": [
+        "./recallReadinessRepository"
+      ],
+      "sizeMetrics": {
+        "bytes": 6564,
+        "lines": 65
+      }
+    },
+    {
+      "canonicalRepository": "./recallReadinessRepository",
+      "classification": "canonical_read_model",
+      "crossDomainDependencies": [],
+      "domainOwner": "recall-readiness",
+      "legacyDependency": [],
+      "modulePath": "src/features/recall-readiness/data/recallReadinessRepository.test.ts",
+      "objectType": "module",
+      "responsibility": "module",
+      "riskNotes": [],
+      "serverAuthoritativePoliciesConsumed": [
+        "./recallReadinessRepository"
+      ],
+      "sizeMetrics": {
+        "bytes": 1816,
+        "lines": 26
+      }
+    },
+    {
+      "canonicalRepository": null,
+      "classification": "canonical_read_model",
+      "crossDomainDependencies": [
+        "../../../platform/supabase/client",
+        "../../../platform/supabase/generated/database.types",
+        "../domain/recallReadiness"
+      ],
+      "domainOwner": "recall-readiness",
+      "legacyDependency": [],
+      "modulePath": "src/features/recall-readiness/data/recallReadinessRepository.ts",
+      "objectType": "repository",
+      "responsibility": "repository",
+      "riskNotes": [],
+      "serverAuthoritativePoliciesConsumed": [],
+      "sizeMetrics": {
+        "bytes": 7335,
+        "lines": 91
+      }
+    },
+    {
+      "canonicalRepository": null,
+      "classification": "canonical_read_model",
+      "crossDomainDependencies": [],
+      "domainOwner": "recall-readiness",
+      "legacyDependency": [],
+      "modulePath": "src/features/recall-readiness/domain/recallReadiness.ts",
+      "objectType": "domain_module",
+      "responsibility": "domain module",
+      "riskNotes": [],
+      "serverAuthoritativePoliciesConsumed": [],
+      "sizeMetrics": {
+        "bytes": 7522,
+        "lines": 91
+      }
+    },
+    {
+      "canonicalRepository": "./data/recallReadinessRepository",
+      "classification": "canonical_read_model",
+      "crossDomainDependencies": [],
+      "domainOwner": "recall-readiness",
+      "legacyDependency": [],
+      "modulePath": "src/features/recall-readiness/RecallReadinessPage.tsx",
+      "objectType": "route_module",
+      "responsibility": "route module",
+      "riskNotes": [],
+      "serverAuthoritativePoliciesConsumed": [
+        "./data/recallReadinessRepository"
+      ],
+      "sizeMetrics": {
+        "bytes": 25352,
+        "lines": 194
+      }
+    },
+    {
       "canonicalRepository": null,
       "classification": "canonical_read_model",
       "crossDomainDependencies": [],
@@ -5603,8 +5697,8 @@
         "./data/traceabilityRepository"
       ],
       "sizeMetrics": {
-        "bytes": 12904,
-        "lines": 139
+        "bytes": 13300,
+        "lines": 141
       }
     },
     {
@@ -6907,8 +7001,8 @@
       ],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 624240,
-        "lines": 18309
+        "bytes": 657559,
+        "lines": 19316
       }
     },
     {

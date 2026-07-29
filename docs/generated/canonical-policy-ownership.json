@@ -66,6 +66,20 @@
     },
     {
       "browserAuthoritative": false,
+      "domainOwner": "recall-readiness",
+      "policy": "recall_scope",
+      "serverAuthority": "public.generate_recall_readiness_scope_v1",
+      "version": "1.0.0"
+    },
+    {
+      "browserAuthoritative": false,
+      "domainOwner": "recall-readiness",
+      "policy": "recall_decision_readiness",
+      "serverAuthority": "public.get_recall_readiness_decision_readiness_v1",
+      "version": "1.0.0"
+    },
+    {
+      "browserAuthoritative": false,
       "domainOwner": "costing",
       "policy": "production_cost_snapshot",
       "serverAuthority": "public.get_production_output_workspace_v1",

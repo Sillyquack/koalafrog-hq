@@ -123,6 +123,23 @@
       "volatility": "v"
     },
     {
+      "approximateComplexity": 24,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "approve_recall_readiness_revision_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "\"\"",
+      "securityDefiner": true,
+      "signature": "target_case_id uuid, target_revision_id uuid, candidate_revision_fingerprint text, candidate_scope_fingerprint text, candidate_distribution_acknowledged boolean, candidate_non_execution_acknowledged boolean, expected_case_revision integer, candidate_idempotency_key uuid",
+      "sourceLength": 40,
+      "volatility": "v"
+    },
+    {
       "approximateComplexity": 16,
       "grants": [
         "postgres=X/postgres",
@@ -309,6 +326,23 @@
       "volatility": "v"
     },
     {
+      "approximateComplexity": 15,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "close_recall_readiness_case_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "\"\"",
+      "securityDefiner": true,
+      "signature": "target_case_id uuid, expected_case_revision integer, candidate_closure_state text, candidate_reason text, candidate_idempotency_key uuid",
+      "sourceLength": 28,
+      "volatility": "v"
+    },
+    {
       "approximateComplexity": 32,
       "grants": [
         "postgres=X/postgres",
@@ -360,6 +394,40 @@
       "signature": "run_id text, commits jsonb",
       "sourceLength": 26,
       "volatility": "v"
+    },
+    {
+      "approximateComplexity": 10,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "compare_recall_readiness_revisions_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "\"\"",
+      "securityDefiner": true,
+      "signature": "target_left_revision_id uuid, target_right_revision_id uuid",
+      "sourceLength": 22,
+      "volatility": "s"
+    },
+    {
+      "approximateComplexity": 4,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "compare_recall_scope_to_live_inventory_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "\"\"",
+      "securityDefiner": true,
+      "signature": "target_revision_id uuid",
+      "sourceLength": 26,
+      "volatility": "s"
     },
     {
       "approximateComplexity": 16,
@@ -706,6 +774,40 @@
       "volatility": "v"
     },
     {
+      "approximateComplexity": 10,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "create_recall_readiness_case_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "\"\"",
+      "securityDefiner": true,
+      "signature": "candidate_title text, candidate_issue_summary text, candidate_concern_category text, candidate_discovery_at timestamp with time zone, candidate_source_type text, candidate_source_id text, candidate_evidence_pending boolean, candidate_idempotency_key uuid",
+      "sourceLength": 33,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 21,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "create_recall_readiness_revision_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "\"\"",
+      "securityDefiner": true,
+      "signature": "target_case_id uuid, expected_case_revision integer, candidate_severity text, candidate_urgency text, candidate_exposure_state text, candidate_exposure_unknown_acknowledged boolean, candidate_health_hazard_narrative text, candidate_compliance_narrative text, candidate_operator_recommendation text, candidate_recommended_action text, candidate_distribution_limitation_acknowledged boolean, candidate_evidence_pending_acknowledged boolean, candidate_supersession_reason text, candidate_idempotency_key uuid",
+      "sourceLength": 46,
+      "volatility": "v"
+    },
+    {
       "approximateComplexity": 30,
       "grants": [
         "postgres=X/postgres",
@@ -884,6 +986,23 @@
       "securityDefiner": true,
       "signature": "target_requirement_id uuid, expected_round_revision bigint",
       "sourceLength": 109,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 51,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "generate_recall_readiness_scope_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "\"\"",
+      "securityDefiner": true,
+      "signature": "target_case_id uuid, target_revision_id uuid, candidate_scope_policy_version text, candidate_idempotency_key uuid, expected_case_revision integer",
+      "sourceLength": 145,
       "volatility": "v"
     },
     {
@@ -1225,6 +1344,40 @@
       "signature": "target_inventory_lot_id text",
       "sourceLength": 12,
       "volatility": "v"
+    },
+    {
+      "approximateComplexity": 12,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "get_recall_readiness_case_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "\"\"",
+      "securityDefiner": true,
+      "signature": "target_case_id uuid",
+      "sourceLength": 22,
+      "volatility": "s"
+    },
+    {
+      "approximateComplexity": 30,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "get_recall_readiness_decision_readiness_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "\"\"",
+      "securityDefiner": true,
+      "signature": "target_case_id uuid, target_revision_id uuid",
+      "sourceLength": 40,
+      "volatility": "s"
     },
     {
       "approximateComplexity": 9,
@@ -1768,6 +1921,38 @@
       "volatility": "v"
     },
     {
+      "approximateComplexity": 17,
+      "grants": [
+        "postgres=X/postgres"
+      ],
+      "name": "kf_recall_validate_identity_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "\"\"",
+      "securityDefiner": true,
+      "signature": "wid uuid, source_type text, source_id text",
+      "sourceLength": 37,
+      "volatility": "s"
+    },
+    {
+      "approximateComplexity": 5,
+      "grants": [
+        "postgres=X/postgres"
+      ],
+      "name": "kf_recall_workspace_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "uuid",
+      "schema": "public",
+      "searchPath": "\"\"",
+      "securityDefiner": true,
+      "signature": "",
+      "sourceLength": 14,
+      "volatility": "s"
+    },
+    {
       "approximateComplexity": 1,
       "grants": [
         "postgres=X/postgres",
@@ -1817,6 +2002,23 @@
       "securityDefiner": true,
       "signature": "target_product_id text",
       "sourceLength": 16,
+      "volatility": "s"
+    },
+    {
+      "approximateComplexity": 4,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "list_recall_readiness_cases_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "\"\"",
+      "securityDefiner": true,
+      "signature": "candidate_filters jsonb, candidate_limit integer, candidate_offset integer",
+      "sourceLength": 27,
       "volatility": "s"
     },
     {
@@ -2810,6 +3012,23 @@
       "volatility": "v"
     },
     {
+      "approximateComplexity": 16,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "register_recall_readiness_evidence_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "\"\"",
+      "securityDefiner": true,
+      "signature": "target_case_id uuid, target_revision_id uuid, candidate_type text, candidate_title text, candidate_description text, candidate_storage_reference text, candidate_document_reference text, candidate_content_hash text, candidate_metadata jsonb, candidate_idempotency_key uuid",
+      "sourceLength": 31,
+      "volatility": "v"
+    },
+    {
       "approximateComplexity": 20,
       "grants": [
         "postgres=X/postgres",
@@ -3137,6 +3356,23 @@
       "securityDefiner": true,
       "signature": "candidate_event_id text, candidate_provider_operation_id text, candidate_event_type text",
       "sourceLength": 43,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 18,
+      "grants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "name": "submit_recall_readiness_review_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "\"\"",
+      "securityDefiner": true,
+      "signature": "target_case_id uuid, target_revision_id uuid, candidate_revision_fingerprint text, candidate_role text, candidate_decision text, candidate_rationale text, candidate_evidence_reviewed jsonb, candidate_idempotency_key uuid",
+      "sourceLength": 32,
       "volatility": "v"
     },
     {

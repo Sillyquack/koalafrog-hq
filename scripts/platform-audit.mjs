@@ -92,7 +92,7 @@ function domainFor(name) {
     ["inventory", "inventory"], ["procurement", "procurement"], ["purchase", "procurement"],
     ["supplier", "suppliers"], ["formula", "formulas"], ["ingredient", "ingredients"],
     ["compliance", "compliance"], ["launch", "launch"], ["beard", "beard-studio"],
-    ["traceability", "traceability"], ["lab_", "lab"], ["test_", "testing"],
+    ["recall_readiness", "recall-readiness"], ["traceability", "traceability"], ["lab_", "lab"], ["test_", "testing"],
   ]
   return rules.find(([token]) => name.includes(token))?.[1] ?? "platform"
 }
@@ -357,7 +357,7 @@ function buildArtifacts() {
     ["event-type-inventory.json", { version: auditVersion, generatedAt, eventTypes: events }],
     ["canonical-policy-ownership.json", { version: auditVersion, generatedAt, policies: canonicalPolicies.map(([policy, serverAuthority, domainOwner, version]) => ({ policy, serverAuthority, domainOwner, version, browserAuthoritative: false })) }],
     ["platform-release-baseline.json", {
-      version: auditVersion, milestone: "Platform Hardening & Legacy Authority Classification V1", generatedAt,
+      version: auditVersion, milestone: "Recall Readiness V1", generatedAt,
       branch: execFileSync("git", ["branch", "--show-current"], { encoding: "utf8" }).trim(), sourceCommit: commit,
       environmentClassification: "local_only", locallyValidated: true, remotelyDeployed: false, hostedMigrationApplied: false,
       deploymentApprovalGranted: false, authorityInventoryVersion: auditVersion,

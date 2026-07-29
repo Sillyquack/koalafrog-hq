@@ -90,6 +90,15 @@
       "documented": true,
       "domainOwner": "platform",
       "sources": [
+        "supabase/migrations/20260729094510_recall_readiness_v1.sql"
+      ],
+      "type": "consumer_batch_code"
+    },
+    {
+      "classification": "audit_only",
+      "documented": true,
+      "domainOwner": "platform",
+      "sources": [
         "supabase/migrations/20260728170000_packaging_run_planning_consumption_v1.sql",
         "supabase/migrations/20260728203257_finished_goods_lot_creation_quarantine_v1.sql",
         "supabase/migrations/20260729065048_batch_genealogy_traceability_v1.sql"
@@ -149,6 +158,24 @@
     {
       "classification": "audit_only",
       "documented": true,
+      "domainOwner": "finished-goods",
+      "sources": [
+        "supabase/migrations/20260729094510_recall_readiness_v1.sql"
+      ],
+      "type": "finished_goods_lot"
+    },
+    {
+      "classification": "audit_only",
+      "documented": true,
+      "domainOwner": "finished-goods",
+      "sources": [
+        "supabase/migrations/20260729094510_recall_readiness_v1.sql"
+      ],
+      "type": "finished_goods_quality_review"
+    },
+    {
+      "classification": "audit_only",
+      "documented": true,
       "domainOwner": "platform",
       "sources": [
         "supabase/migrations/20260725093000_procurement_purchasing_intelligence.sql",
@@ -164,6 +191,15 @@
         "supabase/migrations/20260729054425_active_finished_goods_inventory_controls_v1.sql"
       ],
       "type": "held"
+    },
+    {
+      "classification": "audit_only",
+      "documented": true,
+      "domainOwner": "platform",
+      "sources": [
+        "supabase/migrations/20260729094510_recall_readiness_v1.sql"
+      ],
+      "type": "id"
     },
     {
       "classification": "audit_only",
@@ -215,7 +251,8 @@
       "documented": true,
       "domainOwner": "packaging",
       "sources": [
-        "supabase/migrations/20260729065048_batch_genealogy_traceability_v1.sql"
+        "supabase/migrations/20260729065048_batch_genealogy_traceability_v1.sql",
+        "supabase/migrations/20260729094510_recall_readiness_v1.sql"
       ],
       "type": "packaging_inventory_lot"
     },
@@ -224,7 +261,8 @@
       "documented": true,
       "domainOwner": "packaging",
       "sources": [
-        "supabase/migrations/20260729065048_batch_genealogy_traceability_v1.sql"
+        "supabase/migrations/20260729065048_batch_genealogy_traceability_v1.sql",
+        "supabase/migrations/20260729094510_recall_readiness_v1.sql"
       ],
       "type": "packaging_run"
     },
@@ -271,9 +309,19 @@
       "documented": true,
       "domainOwner": "production",
       "sources": [
-        "supabase/migrations/20260729065048_batch_genealogy_traceability_v1.sql"
+        "supabase/migrations/20260729065048_batch_genealogy_traceability_v1.sql",
+        "supabase/migrations/20260729094510_recall_readiness_v1.sql"
       ],
       "type": "production_batch"
+    },
+    {
+      "classification": "audit_only",
+      "documented": true,
+      "domainOwner": "production",
+      "sources": [
+        "supabase/migrations/20260729094510_recall_readiness_v1.sql"
+      ],
+      "type": "production_output"
     },
     {
       "classification": "audit_only",
@@ -309,7 +357,8 @@
       "documented": true,
       "domainOwner": "inventory",
       "sources": [
-        "supabase/migrations/20260729065048_batch_genealogy_traceability_v1.sql"
+        "supabase/migrations/20260729065048_batch_genealogy_traceability_v1.sql",
+        "supabase/migrations/20260729094510_recall_readiness_v1.sql"
       ],
       "type": "raw_material_inventory_lot"
     },
@@ -353,6 +402,15 @@
     {
       "classification": "audit_only",
       "documented": true,
+      "domainOwner": "finished-goods",
+      "sources": [
+        "supabase/migrations/20260729094510_recall_readiness_v1.sql"
+      ],
+      "type": "released_finished_goods_inventory_lot"
+    },
+    {
+      "classification": "audit_only",
+      "documented": true,
       "domainOwner": "platform",
       "sources": [
         "supabase/migrations/20260716130000_development_experiments.sql"
@@ -372,11 +430,38 @@
     {
       "classification": "audit_only",
       "documented": true,
+      "domainOwner": "packaging",
+      "sources": [
+        "supabase/migrations/20260729094510_recall_readiness_v1.sql"
+      ],
+      "type": "supplier_packaging_lot"
+    },
+    {
+      "classification": "audit_only",
+      "documented": true,
+      "domainOwner": "suppliers",
+      "sources": [
+        "supabase/migrations/20260729094510_recall_readiness_v1.sql"
+      ],
+      "type": "supplier_raw_material_lot"
+    },
+    {
+      "classification": "audit_only",
+      "documented": true,
       "domainOwner": "suppliers",
       "sources": [
         "supabase/migrations/20260726120000_supplier_documentation.sql"
       ],
       "type": "supplier_wide"
+    },
+    {
+      "classification": "audit_only",
+      "documented": true,
+      "domainOwner": "platform",
+      "sources": [
+        "supabase/migrations/20260729094510_recall_readiness_v1.sql"
+      ],
+      "type": "title"
     },
     {
       "classification": "audit_only",

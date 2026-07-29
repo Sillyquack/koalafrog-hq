@@ -19,8 +19,8 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 12176,
-        "lines": 136
+        "bytes": 12390,
+        "lines": 138
       }
     },
     {
@@ -138,8 +138,8 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 3353,
-        "lines": 63
+        "bytes": 3447,
+        "lines": 64
       }
     },
     {
@@ -1332,10 +1332,11 @@
       }
     },
     {
-      "canonicalRepository": "../../traceability/data/traceabilityRepository",
+      "canonicalRepository": "../../recall-readiness/data/recallReadinessRepository",
       "classification": "compatibility_read_only",
       "crossDomainDependencies": [
         "../../../platform/supabase/generated/database.types",
+        "../../recall-readiness/data/recallReadinessRepository",
         "../../traceability/data/traceabilityRepository"
       ],
       "domainOwner": "finished-goods-control",
@@ -1347,14 +1348,15 @@
       "responsibility": "module",
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [
+        "../../recall-readiness/data/recallReadinessRepository",
         "../../traceability/data/traceabilityRepository",
         "./finishedGoodsInventoryRepository",
         "./finishedGoodsLotRepository",
         "./finishedGoodsQualityRepository"
       ],
       "sizeMetrics": {
-        "bytes": 21689,
-        "lines": 64
+        "bytes": 23805,
+        "lines": 66
       }
     },
     {
@@ -5390,6 +5392,98 @@
       }
     },
     {
+      "canonicalRepository": "./recallReadinessRepository",
+      "classification": "canonical_read_model",
+      "crossDomainDependencies": [
+        "../../../platform/supabase/generated/database.types"
+      ],
+      "domainOwner": "recall-readiness",
+      "legacyDependency": [],
+      "modulePath": "src/features/recall-readiness/data/recallReadiness.integration.test.ts",
+      "objectType": "module",
+      "responsibility": "module",
+      "riskNotes": [],
+      "serverAuthoritativePoliciesConsumed": [
+        "./recallReadinessRepository"
+      ],
+      "sizeMetrics": {
+        "bytes": 6564,
+        "lines": 65
+      }
+    },
+    {
+      "canonicalRepository": "./recallReadinessRepository",
+      "classification": "canonical_read_model",
+      "crossDomainDependencies": [],
+      "domainOwner": "recall-readiness",
+      "legacyDependency": [],
+      "modulePath": "src/features/recall-readiness/data/recallReadinessRepository.test.ts",
+      "objectType": "module",
+      "responsibility": "module",
+      "riskNotes": [],
+      "serverAuthoritativePoliciesConsumed": [
+        "./recallReadinessRepository"
+      ],
+      "sizeMetrics": {
+        "bytes": 1816,
+        "lines": 26
+      }
+    },
+    {
+      "canonicalRepository": null,
+      "classification": "canonical_read_model",
+      "crossDomainDependencies": [
+        "../../../platform/supabase/client",
+        "../../../platform/supabase/generated/database.types",
+        "../domain/recallReadiness"
+      ],
+      "domainOwner": "recall-readiness",
+      "legacyDependency": [],
+      "modulePath": "src/features/recall-readiness/data/recallReadinessRepository.ts",
+      "objectType": "repository",
+      "responsibility": "repository",
+      "riskNotes": [],
+      "serverAuthoritativePoliciesConsumed": [],
+      "sizeMetrics": {
+        "bytes": 7335,
+        "lines": 91
+      }
+    },
+    {
+      "canonicalRepository": null,
+      "classification": "canonical_read_model",
+      "crossDomainDependencies": [],
+      "domainOwner": "recall-readiness",
+      "legacyDependency": [],
+      "modulePath": "src/features/recall-readiness/domain/recallReadiness.ts",
+      "objectType": "domain_module",
+      "responsibility": "domain module",
+      "riskNotes": [],
+      "serverAuthoritativePoliciesConsumed": [],
+      "sizeMetrics": {
+        "bytes": 7522,
+        "lines": 91
+      }
+    },
+    {
+      "canonicalRepository": "./data/recallReadinessRepository",
+      "classification": "canonical_read_model",
+      "crossDomainDependencies": [],
+      "domainOwner": "recall-readiness",
+      "legacyDependency": [],
+      "modulePath": "src/features/recall-readiness/RecallReadinessPage.tsx",
+      "objectType": "route_module",
+      "responsibility": "route module",
+      "riskNotes": [],
+      "serverAuthoritativePoliciesConsumed": [
+        "./data/recallReadinessRepository"
+      ],
+      "sizeMetrics": {
+        "bytes": 25352,
+        "lines": 194
+      }
+    },
+    {
       "canonicalRepository": null,
       "classification": "canonical_read_model",
       "crossDomainDependencies": [],
@@ -5602,8 +5696,8 @@
         "./data/traceabilityRepository"
       ],
       "sizeMetrics": {
-        "bytes": 12904,
-        "lines": 139
+        "bytes": 13300,
+        "lines": 141
       }
     },
     {
@@ -6906,8 +7000,8 @@
       ],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 624240,
-        "lines": 18309
+        "bytes": 657559,
+        "lines": 19316
       }
     },
     {
@@ -7187,6 +7281,28 @@
       "writeAuthority": "public.approve_production_procurement_scenario"
     },
     {
+      "browserWritable": true,
+      "classification": "compatibility_read_only",
+      "deprecationState": "compatibility_read_only",
+      "domainOwner": "recall-readiness",
+      "evidenceSource": "local PostgreSQL catalogue and migration source",
+      "expectedGrants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "historicalOrCurrent": "historical",
+      "mutationPath": "authenticated RPC or internal helper",
+      "name": "approve_recall_readiness_revision_v1",
+      "notes": "",
+      "objectType": "function",
+      "readAuthority": "result only",
+      "replacement": null,
+      "rlsEnabled": null,
+      "schema": "public",
+      "signature": "target_case_id uuid, target_revision_id uuid, candidate_revision_fingerprint text, candidate_scope_fingerprint text, candidate_distribution_acknowledged boolean, candidate_non_execution_acknowledged boolean, expected_case_revision integer, candidate_idempotency_key uuid",
+      "writeAuthority": "public.approve_recall_readiness_revision_v1"
+    },
+    {
       "browserWritable": false,
       "classification": "canonical_write_authority",
       "deprecationState": "canonical_write_authority",
@@ -7429,6 +7545,28 @@
     },
     {
       "browserWritable": true,
+      "classification": "compatibility_read_only",
+      "deprecationState": "compatibility_read_only",
+      "domainOwner": "recall-readiness",
+      "evidenceSource": "local PostgreSQL catalogue and migration source",
+      "expectedGrants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "historicalOrCurrent": "historical",
+      "mutationPath": "authenticated RPC or internal helper",
+      "name": "close_recall_readiness_case_v1",
+      "notes": "",
+      "objectType": "function",
+      "readAuthority": "result only",
+      "replacement": null,
+      "rlsEnabled": null,
+      "schema": "public",
+      "signature": "target_case_id uuid, expected_case_revision integer, candidate_closure_state text, candidate_reason text, candidate_idempotency_key uuid",
+      "writeAuthority": "public.close_recall_readiness_case_v1"
+    },
+    {
+      "browserWritable": true,
       "classification": "canonical_write_authority",
       "deprecationState": "canonical_write_authority",
       "domainOwner": "lab",
@@ -7494,6 +7632,50 @@
       "schema": "public",
       "signature": "run_id text, commits jsonb",
       "writeAuthority": "public.commit_production_consumption"
+    },
+    {
+      "browserWritable": true,
+      "classification": "compatibility_read_only",
+      "deprecationState": "compatibility_read_only",
+      "domainOwner": "recall-readiness",
+      "evidenceSource": "local PostgreSQL catalogue and migration source",
+      "expectedGrants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "historicalOrCurrent": "historical",
+      "mutationPath": "authenticated RPC or internal helper",
+      "name": "compare_recall_readiness_revisions_v1",
+      "notes": "",
+      "objectType": "function",
+      "readAuthority": "result only",
+      "replacement": null,
+      "rlsEnabled": null,
+      "schema": "public",
+      "signature": "target_left_revision_id uuid, target_right_revision_id uuid",
+      "writeAuthority": "public.compare_recall_readiness_revisions_v1"
+    },
+    {
+      "browserWritable": true,
+      "classification": "compatibility_read_only",
+      "deprecationState": "compatibility_read_only",
+      "domainOwner": "inventory",
+      "evidenceSource": "local PostgreSQL catalogue and migration source",
+      "expectedGrants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "historicalOrCurrent": "historical",
+      "mutationPath": "authenticated RPC or internal helper",
+      "name": "compare_recall_scope_to_live_inventory_v1",
+      "notes": "",
+      "objectType": "function",
+      "readAuthority": "result only",
+      "replacement": null,
+      "rlsEnabled": null,
+      "schema": "public",
+      "signature": "target_revision_id uuid",
+      "writeAuthority": "public.compare_recall_scope_to_live_inventory_v1"
     },
     {
       "browserWritable": true,
@@ -7941,6 +8123,50 @@
     },
     {
       "browserWritable": true,
+      "classification": "compatibility_read_only",
+      "deprecationState": "compatibility_read_only",
+      "domainOwner": "recall-readiness",
+      "evidenceSource": "local PostgreSQL catalogue and migration source",
+      "expectedGrants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "historicalOrCurrent": "historical",
+      "mutationPath": "authenticated RPC or internal helper",
+      "name": "create_recall_readiness_case_v1",
+      "notes": "",
+      "objectType": "function",
+      "readAuthority": "result only",
+      "replacement": null,
+      "rlsEnabled": null,
+      "schema": "public",
+      "signature": "candidate_title text, candidate_issue_summary text, candidate_concern_category text, candidate_discovery_at timestamp with time zone, candidate_source_type text, candidate_source_id text, candidate_evidence_pending boolean, candidate_idempotency_key uuid",
+      "writeAuthority": "public.create_recall_readiness_case_v1"
+    },
+    {
+      "browserWritable": true,
+      "classification": "compatibility_read_only",
+      "deprecationState": "compatibility_read_only",
+      "domainOwner": "recall-readiness",
+      "evidenceSource": "local PostgreSQL catalogue and migration source",
+      "expectedGrants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "historicalOrCurrent": "historical",
+      "mutationPath": "authenticated RPC or internal helper",
+      "name": "create_recall_readiness_revision_v1",
+      "notes": "",
+      "objectType": "function",
+      "readAuthority": "result only",
+      "replacement": null,
+      "rlsEnabled": null,
+      "schema": "public",
+      "signature": "target_case_id uuid, expected_case_revision integer, candidate_severity text, candidate_urgency text, candidate_exposure_state text, candidate_exposure_unknown_acknowledged boolean, candidate_health_hazard_narrative text, candidate_compliance_narrative text, candidate_operator_recommendation text, candidate_recommended_action text, candidate_distribution_limitation_acknowledged boolean, candidate_evidence_pending_acknowledged boolean, candidate_supersession_reason text, candidate_idempotency_key uuid",
+      "writeAuthority": "public.create_recall_readiness_revision_v1"
+    },
+    {
+      "browserWritable": true,
       "classification": "canonical_write_authority",
       "deprecationState": "canonical_write_authority",
       "domainOwner": "procurement",
@@ -8174,6 +8400,28 @@
       "schema": "public",
       "signature": "target_requirement_id uuid, expected_round_revision bigint",
       "writeAuthority": "public.generate_production_requirement_candidates"
+    },
+    {
+      "browserWritable": true,
+      "classification": "compatibility_read_only",
+      "deprecationState": "compatibility_read_only",
+      "domainOwner": "recall-readiness",
+      "evidenceSource": "local PostgreSQL catalogue and migration source",
+      "expectedGrants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "historicalOrCurrent": "historical",
+      "mutationPath": "authenticated RPC or internal helper",
+      "name": "generate_recall_readiness_scope_v1",
+      "notes": "",
+      "objectType": "function",
+      "readAuthority": "result only",
+      "replacement": null,
+      "rlsEnabled": null,
+      "schema": "public",
+      "signature": "target_case_id uuid, target_revision_id uuid, candidate_scope_policy_version text, candidate_idempotency_key uuid, expected_case_revision integer",
+      "writeAuthority": "public.generate_recall_readiness_scope_v1"
     },
     {
       "browserWritable": false,
@@ -8608,6 +8856,50 @@
       "rlsEnabled": null,
       "schema": "public",
       "signature": "target_inventory_lot_id text",
+      "writeAuthority": "none"
+    },
+    {
+      "browserWritable": false,
+      "classification": "canonical_read_model",
+      "deprecationState": "canonical_read_model",
+      "domainOwner": "recall-readiness",
+      "evidenceSource": "local PostgreSQL catalogue and migration source",
+      "expectedGrants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "historicalOrCurrent": "current",
+      "mutationPath": "none",
+      "name": "get_recall_readiness_case_v1",
+      "notes": "",
+      "objectType": "function",
+      "readAuthority": "public.get_recall_readiness_case_v1",
+      "replacement": null,
+      "rlsEnabled": null,
+      "schema": "public",
+      "signature": "target_case_id uuid",
+      "writeAuthority": "none"
+    },
+    {
+      "browserWritable": false,
+      "classification": "canonical_read_model",
+      "deprecationState": "canonical_read_model",
+      "domainOwner": "recall-readiness",
+      "evidenceSource": "local PostgreSQL catalogue and migration source",
+      "expectedGrants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "historicalOrCurrent": "current",
+      "mutationPath": "none",
+      "name": "get_recall_readiness_decision_readiness_v1",
+      "notes": "",
+      "objectType": "function",
+      "readAuthority": "public.get_recall_readiness_decision_readiness_v1",
+      "replacement": null,
+      "rlsEnabled": null,
+      "schema": "public",
+      "signature": "target_case_id uuid, target_revision_id uuid",
       "writeAuthority": "none"
     },
     {
@@ -9323,6 +9615,48 @@
     },
     {
       "browserWritable": false,
+      "classification": "compatibility_read_only",
+      "deprecationState": "compatibility_read_only",
+      "domainOwner": "platform",
+      "evidenceSource": "local PostgreSQL catalogue and migration source",
+      "expectedGrants": [
+        "postgres=X/postgres"
+      ],
+      "historicalOrCurrent": "historical",
+      "mutationPath": "authenticated RPC or internal helper",
+      "name": "kf_recall_validate_identity_v1",
+      "notes": "",
+      "objectType": "function",
+      "readAuthority": "result only",
+      "replacement": null,
+      "rlsEnabled": null,
+      "schema": "public",
+      "signature": "wid uuid, source_type text, source_id text",
+      "writeAuthority": "public.kf_recall_validate_identity_v1"
+    },
+    {
+      "browserWritable": false,
+      "classification": "compatibility_read_only",
+      "deprecationState": "compatibility_read_only",
+      "domainOwner": "platform",
+      "evidenceSource": "local PostgreSQL catalogue and migration source",
+      "expectedGrants": [
+        "postgres=X/postgres"
+      ],
+      "historicalOrCurrent": "historical",
+      "mutationPath": "authenticated RPC or internal helper",
+      "name": "kf_recall_workspace_v1",
+      "notes": "",
+      "objectType": "function",
+      "readAuthority": "result only",
+      "replacement": null,
+      "rlsEnabled": null,
+      "schema": "public",
+      "signature": "",
+      "writeAuthority": "public.kf_recall_workspace_v1"
+    },
+    {
+      "browserWritable": false,
       "classification": "canonical_read_model",
       "deprecationState": "canonical_read_model",
       "domainOwner": "inventory",
@@ -9386,6 +9720,28 @@
       "rlsEnabled": null,
       "schema": "public",
       "signature": "target_product_id text",
+      "writeAuthority": "none"
+    },
+    {
+      "browserWritable": false,
+      "classification": "canonical_read_model",
+      "deprecationState": "canonical_read_model",
+      "domainOwner": "recall-readiness",
+      "evidenceSource": "local PostgreSQL catalogue and migration source",
+      "expectedGrants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "historicalOrCurrent": "current",
+      "mutationPath": "none",
+      "name": "list_recall_readiness_cases_v1",
+      "notes": "",
+      "objectType": "function",
+      "readAuthority": "public.list_recall_readiness_cases_v1",
+      "replacement": null,
+      "rlsEnabled": null,
+      "schema": "public",
+      "signature": "candidate_filters jsonb, candidate_limit integer, candidate_offset integer",
       "writeAuthority": "none"
     },
     {
@@ -10680,6 +11036,28 @@
     },
     {
       "browserWritable": true,
+      "classification": "compatibility_read_only",
+      "deprecationState": "compatibility_read_only",
+      "domainOwner": "recall-readiness",
+      "evidenceSource": "local PostgreSQL catalogue and migration source",
+      "expectedGrants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "historicalOrCurrent": "historical",
+      "mutationPath": "authenticated RPC or internal helper",
+      "name": "register_recall_readiness_evidence_v1",
+      "notes": "",
+      "objectType": "function",
+      "readAuthority": "result only",
+      "replacement": null,
+      "rlsEnabled": null,
+      "schema": "public",
+      "signature": "target_case_id uuid, target_revision_id uuid, candidate_type text, candidate_title text, candidate_description text, candidate_storage_reference text, candidate_document_reference text, candidate_content_hash text, candidate_metadata jsonb, candidate_idempotency_key uuid",
+      "writeAuthority": "public.register_recall_readiness_evidence_v1"
+    },
+    {
+      "browserWritable": true,
       "classification": "canonical_write_authority",
       "deprecationState": "canonical_write_authority",
       "domainOwner": "production",
@@ -11102,6 +11480,28 @@
       "schema": "public",
       "signature": "candidate_event_id text, candidate_provider_operation_id text, candidate_event_type text",
       "writeAuthority": "public.store_procurement_background_webhook"
+    },
+    {
+      "browserWritable": true,
+      "classification": "compatibility_read_only",
+      "deprecationState": "compatibility_read_only",
+      "domainOwner": "recall-readiness",
+      "evidenceSource": "local PostgreSQL catalogue and migration source",
+      "expectedGrants": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres"
+      ],
+      "historicalOrCurrent": "historical",
+      "mutationPath": "authenticated RPC or internal helper",
+      "name": "submit_recall_readiness_review_v1",
+      "notes": "",
+      "objectType": "function",
+      "readAuthority": "result only",
+      "replacement": null,
+      "rlsEnabled": null,
+      "schema": "public",
+      "signature": "target_case_id uuid, target_revision_id uuid, candidate_revision_fingerprint text, candidate_role text, candidate_decision text, candidate_rationale text, candidate_evidence_reviewed jsonb, candidate_idempotency_key uuid",
+      "writeAuthority": "public.submit_recall_readiness_review_v1"
     },
     {
       "browserWritable": true,
@@ -18278,6 +18678,237 @@
       "writeAuthority": "versioned RPC or documented relational command"
     },
     {
+      "browserWritable": false,
+      "classification": "canonical_write_authority",
+      "deprecationState": "canonical_write_authority",
+      "domainOwner": "recall-readiness",
+      "evidenceSource": "local PostgreSQL catalogue",
+      "expectedGrants": [
+        "postgres=arwdDxtm/postgres",
+        "service_role=Dxtm/postgres"
+      ],
+      "historicalOrCurrent": "current",
+      "mutationPath": "RPC/service/migration only",
+      "name": "recall_readiness_affected_goods",
+      "notes": "",
+      "objectType": "table",
+      "readAuthority": "owner/workspace scoped relation",
+      "replacement": null,
+      "rlsEnabled": true,
+      "schema": "public",
+      "writeAuthority": "versioned RPC or documented relational command"
+    },
+    {
+      "browserWritable": false,
+      "classification": "canonical_write_authority",
+      "deprecationState": "canonical_write_authority",
+      "domainOwner": "recall-readiness",
+      "evidenceSource": "local PostgreSQL catalogue",
+      "expectedGrants": [
+        "postgres=arwdDxtm/postgres",
+        "service_role=Dxtm/postgres"
+      ],
+      "historicalOrCurrent": "current",
+      "mutationPath": "RPC/service/migration only",
+      "name": "recall_readiness_approvals",
+      "notes": "",
+      "objectType": "table",
+      "readAuthority": "owner/workspace scoped relation",
+      "replacement": null,
+      "rlsEnabled": true,
+      "schema": "public",
+      "writeAuthority": "versioned RPC or documented relational command"
+    },
+    {
+      "browserWritable": false,
+      "classification": "canonical_write_authority",
+      "deprecationState": "canonical_write_authority",
+      "domainOwner": "recall-readiness",
+      "evidenceSource": "local PostgreSQL catalogue",
+      "expectedGrants": [
+        "postgres=arwdDxtm/postgres",
+        "service_role=Dxtm/postgres"
+      ],
+      "historicalOrCurrent": "current",
+      "mutationPath": "RPC/service/migration only",
+      "name": "recall_readiness_case_revisions",
+      "notes": "",
+      "objectType": "table",
+      "readAuthority": "owner/workspace scoped relation",
+      "replacement": null,
+      "rlsEnabled": true,
+      "schema": "public",
+      "writeAuthority": "versioned RPC or documented relational command"
+    },
+    {
+      "browserWritable": false,
+      "classification": "canonical_write_authority",
+      "deprecationState": "canonical_write_authority",
+      "domainOwner": "recall-readiness",
+      "evidenceSource": "local PostgreSQL catalogue",
+      "expectedGrants": [
+        "postgres=arwdDxtm/postgres",
+        "service_role=Dxtm/postgres"
+      ],
+      "historicalOrCurrent": "current",
+      "mutationPath": "RPC/service/migration only",
+      "name": "recall_readiness_case_sequences",
+      "notes": "",
+      "objectType": "table",
+      "readAuthority": "owner/workspace scoped relation",
+      "replacement": null,
+      "rlsEnabled": true,
+      "schema": "public",
+      "writeAuthority": "versioned RPC or documented relational command"
+    },
+    {
+      "browserWritable": false,
+      "classification": "canonical_write_authority",
+      "deprecationState": "canonical_write_authority",
+      "domainOwner": "recall-readiness",
+      "evidenceSource": "local PostgreSQL catalogue",
+      "expectedGrants": [
+        "postgres=arwdDxtm/postgres",
+        "service_role=Dxtm/postgres"
+      ],
+      "historicalOrCurrent": "current",
+      "mutationPath": "RPC/service/migration only",
+      "name": "recall_readiness_cases",
+      "notes": "",
+      "objectType": "table",
+      "readAuthority": "owner/workspace scoped relation",
+      "replacement": null,
+      "rlsEnabled": true,
+      "schema": "public",
+      "writeAuthority": "versioned RPC or documented relational command"
+    },
+    {
+      "browserWritable": false,
+      "classification": "audit_only",
+      "deprecationState": "audit_only",
+      "domainOwner": "recall-readiness",
+      "evidenceSource": "local PostgreSQL catalogue",
+      "expectedGrants": [
+        "postgres=arwdDxtm/postgres",
+        "service_role=Dxtm/postgres"
+      ],
+      "historicalOrCurrent": "historical",
+      "mutationPath": "RPC/service/migration only",
+      "name": "recall_readiness_events",
+      "notes": "",
+      "objectType": "table",
+      "readAuthority": "owner/workspace scoped relation",
+      "replacement": null,
+      "rlsEnabled": true,
+      "schema": "public",
+      "writeAuthority": "none"
+    },
+    {
+      "browserWritable": false,
+      "classification": "canonical_write_authority",
+      "deprecationState": "canonical_write_authority",
+      "domainOwner": "recall-readiness",
+      "evidenceSource": "local PostgreSQL catalogue",
+      "expectedGrants": [
+        "postgres=arwdDxtm/postgres",
+        "service_role=Dxtm/postgres"
+      ],
+      "historicalOrCurrent": "current",
+      "mutationPath": "RPC/service/migration only",
+      "name": "recall_readiness_evidence",
+      "notes": "",
+      "objectType": "table",
+      "readAuthority": "owner/workspace scoped relation",
+      "replacement": null,
+      "rlsEnabled": true,
+      "schema": "public",
+      "writeAuthority": "versioned RPC or documented relational command"
+    },
+    {
+      "browserWritable": false,
+      "classification": "canonical_write_authority",
+      "deprecationState": "canonical_write_authority",
+      "domainOwner": "recall-readiness",
+      "evidenceSource": "local PostgreSQL catalogue",
+      "expectedGrants": [
+        "postgres=arwdDxtm/postgres",
+        "service_role=Dxtm/postgres"
+      ],
+      "historicalOrCurrent": "current",
+      "mutationPath": "RPC/service/migration only",
+      "name": "recall_readiness_gaps",
+      "notes": "",
+      "objectType": "table",
+      "readAuthority": "owner/workspace scoped relation",
+      "replacement": null,
+      "rlsEnabled": true,
+      "schema": "public",
+      "writeAuthority": "versioned RPC or documented relational command"
+    },
+    {
+      "browserWritable": false,
+      "classification": "canonical_write_authority",
+      "deprecationState": "canonical_write_authority",
+      "domainOwner": "inventory",
+      "evidenceSource": "local PostgreSQL catalogue",
+      "expectedGrants": [
+        "postgres=arwdDxtm/postgres",
+        "service_role=Dxtm/postgres"
+      ],
+      "historicalOrCurrent": "current",
+      "mutationPath": "RPC/service/migration only",
+      "name": "recall_readiness_inventory_impacts",
+      "notes": "",
+      "objectType": "table",
+      "readAuthority": "owner/workspace scoped relation",
+      "replacement": null,
+      "rlsEnabled": true,
+      "schema": "public",
+      "writeAuthority": "versioned RPC or documented relational command"
+    },
+    {
+      "browserWritable": false,
+      "classification": "immutable_history",
+      "deprecationState": "immutable_history",
+      "domainOwner": "recall-readiness",
+      "evidenceSource": "local PostgreSQL catalogue",
+      "expectedGrants": [
+        "postgres=arwdDxtm/postgres",
+        "service_role=Dxtm/postgres"
+      ],
+      "historicalOrCurrent": "historical",
+      "mutationPath": "RPC/service/migration only",
+      "name": "recall_readiness_reviews",
+      "notes": "",
+      "objectType": "table",
+      "readAuthority": "owner/workspace scoped relation",
+      "replacement": null,
+      "rlsEnabled": true,
+      "schema": "public",
+      "writeAuthority": "none"
+    },
+    {
+      "browserWritable": false,
+      "classification": "immutable_history",
+      "deprecationState": "immutable_history",
+      "domainOwner": "recall-readiness",
+      "evidenceSource": "local PostgreSQL catalogue",
+      "expectedGrants": [
+        "postgres=arwdDxtm/postgres",
+        "service_role=Dxtm/postgres"
+      ],
+      "historicalOrCurrent": "historical",
+      "mutationPath": "RPC/service/migration only",
+      "name": "recall_readiness_scope_snapshots",
+      "notes": "",
+      "objectType": "table",
+      "readAuthority": "owner/workspace scoped relation",
+      "replacement": null,
+      "rlsEnabled": true,
+      "schema": "public",
+      "writeAuthority": "none"
+    },
+    {
       "browserWritable": true,
       "classification": "canonical_write_authority",
       "deprecationState": "canonical_write_authority",
@@ -20002,6 +20633,6 @@
   ],
   "generatedAt": "2026-07-29T12:00:00+02:00",
   "sourceCommit": "content-addressed-by-sourceHash",
-  "sourceHash": "764f481ae7106154bc923c86b040fea3b9fcd7897474185774fb9e9771d19a43",
+  "sourceHash": "65a1b3555d8ebe94dedb66da7976c16625c99fe09e1bad89d4b088c64a458a63",
   "version": "1.0.0"
 }

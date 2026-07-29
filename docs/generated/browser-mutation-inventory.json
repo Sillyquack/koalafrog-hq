@@ -233,6 +233,16 @@
     {
       "controlledBoundaryViolation": false,
       "directTableWrites": [],
+      "domainOwner": "recall-readiness",
+      "idempotency": "present",
+      "modulePath": "src/features/recall-readiness/data/recallReadinessRepository.ts",
+      "revision": "present",
+      "rpcTargets": [],
+      "serverDerivedActor": true
+    },
+    {
+      "controlledBoundaryViolation": false,
+      "directTableWrites": [],
       "domainOwner": "traceability",
       "idempotency": "not_detected",
       "modulePath": "src/features/traceability/data/traceabilityRepository.ts",
