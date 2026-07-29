@@ -177,3 +177,5 @@ V1 does not model destructive execution, shipment, reservations, customer alloca
 # Active inventory handoff
 
 A release tranche hands off to the Slice 5 active inventory workspace without changing its release review, opening movement, cost snapshot, or genealogy. Operational controls are documented in [ACTIVE_FINISHED_GOODS_INVENTORY_CONTROLS.md](ACTIVE_FINISHED_GOODS_INVENTORY_CONTROLS.md).
+
+Both the quarantined Finished Goods Lot and each released tranche are supported roots for the Slice 6 read-only reconstruction described in [Batch Genealogy and Traceability](BATCH_GENEALOGY_AND_TRACEABILITY.md).

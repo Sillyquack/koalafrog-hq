@@ -134,3 +134,5 @@ The reproducible performance harness is `supabase/tests/active_finished_goods_in
 ## Limitations and Slice 6 entry
 
 No downstream reservation exists, so `reservedQuantity` is always zero and is labelled as a boundary, never inferred. There is no shipment, customer allocation, consumer return, recall-case workflow, or accounting posting. Slice 6 may begin only from these RPCs and must add a separate downstream commitment identity without rewriting movements, availability history, or cost snapshots.
+
+Slice 6 is implemented as [Batch Genealogy and Traceability](BATCH_GENEALOGY_AND_TRACEABILITY.md). It reads this canonical movement-derived snapshot for current impact and adds no downstream commitment, recall, or inventory mutation.

@@ -33,6 +33,8 @@ Four audit-critical operations use dedicated authenticated, transactional RPCs:
 - Packaging consumption commitment
 - Finished Goods Batch creation/output registration
 
+- Traceability uses a typed read-only repository over authenticated search, backward/forward trace, readiness, integrity, Production Batch, and Packaging Run RPCs. It exposes no persistent command and creates no event; underlying immutable lifecycle events remain authoritative.
+
 Each RPC validates ownership, available ledger balance, compatible units, duplicate commitment, and linked allocation/movement state inside one database transaction. Production allocation cost snapshots are written at commitment and remain historical. Live local-Supabase regression tests cover the critical workflows, every major domain, normalized children, fresh hydration, stale-write rejection, duplicate rejection, rollback, and repository isolation. Local remains the default; selecting Supabase at startup is explicitly deferred to Phase 8B.3.
 
 ## Mutation and fresh-hydration verification matrix

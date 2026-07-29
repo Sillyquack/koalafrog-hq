@@ -127,3 +127,7 @@ Finished-product quality release is documented in [Finished-Product Inspection, 
 # Active Finished Goods inventory
 
 Quality-released Finished Goods use their own append-only movement ledger and append-only operational-state overlay. On-hand, locations, availability, and valuation are server-derived through authenticated RPCs. See [ACTIVE_FINISHED_GOODS_INVENTORY_CONTROLS.md](ACTIVE_FINISHED_GOODS_INVENTORY_CONTROLS.md).
+
+## Batch genealogy and traceability
+
+Slice 6 adds no ledger and no lifecycle mutation. Authenticated bounded RPCs reconstruct a canonical DAG from exact immutable foreign keys, preserve historical snapshots, expose explicit missing-link/confidence states, and delegate current released-stock impact to Slice 5. See [Batch Genealogy and Traceability](BATCH_GENEALOGY_AND_TRACEABILITY.md).

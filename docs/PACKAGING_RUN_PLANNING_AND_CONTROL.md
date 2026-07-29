@@ -104,3 +104,5 @@ Representative plans live in `scripts/performance/packaging-run-plans.sql`. The 
 
 Slice 3 is implemented by [Finished Goods Lot Creation and Quarantine](FINISHED_GOODS_LOT_CREATION_AND_QUARANTINE.md). It begins only from a completed Packaging Run and creates quarantined identity without an active inventory movement.
 Completed packaged output enters the downstream quality lifecycle described in [Finished-Product Inspection, Disposition & Controlled Quality Release](FINISHED_PRODUCT_INSPECTION_AND_QUALITY_RELEASE.md). Packaging completion itself creates no active Finished Goods inventory.
+
+Exact packaging-lot use and Packaging Run identity feed Slice 6 backward and forward tracing without crossing into the raw-material ledger. See [Batch Genealogy and Traceability](BATCH_GENEALOGY_AND_TRACEABILITY.md).

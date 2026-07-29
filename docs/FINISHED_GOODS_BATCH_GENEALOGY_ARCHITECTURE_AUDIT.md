@@ -636,3 +636,5 @@ Slice 4 implements the audit’s additive released-lot recommendation; see [Fini
 # Slice 5 implementation reference
 
 The audited active-inventory boundary is implemented in [ACTIVE_FINISHED_GOODS_INVENTORY_CONTROLS.md](ACTIVE_FINISHED_GOODS_INVENTORY_CONTROLS.md): Finished Goods retain a separate movement ledger, movement-derived balance, append-only operational overlays, immutable release cost, and RPC-only writes.
+
+Slice 6 closes the audit's read-model gap with [Batch Genealogy and Traceability](BATCH_GENEALOGY_AND_TRACEABILITY.md): exact backward and forward lot reconstruction, deterministic search, integrity/readiness, and current inventory impact without recall or lifecycle mutation.

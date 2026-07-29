@@ -144,3 +144,7 @@ Finished-product inspection, immutable deviations, partial Hold/Reject/Release d
 # Slice 5 checkpoint
 
 Active Finished Goods Inventory Controls, Valuation & Operational Availability are implemented on `feature/finished-goods-batch-genealogy-v1`; see [ACTIVE_FINISHED_GOODS_INVENTORY_CONTROLS.md](ACTIVE_FINISHED_GOODS_INVENTORY_CONTROLS.md). Downstream reservation, shipment, sales, recall cases, and accounting remain future slices.
+
+### Finished Goods & Batch Genealogy V1 — Slice 6
+
+Canonical read-only backward genealogy, raw-material and packaging-lot forward trace, deterministic identity search, confidence/readiness, integrity findings, and current Slice 5 inventory impact are implemented locally. See [Batch Genealogy and Traceability](BATCH_GENEALOGY_AND_TRACEABILITY.md). Recall execution remains outside scope.

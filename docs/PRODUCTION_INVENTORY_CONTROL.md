@@ -110,4 +110,6 @@ Representative local `EXPLAIN (ANALYZE, BUFFERS)` measurements used a workspace 
 - Provenance retrieval: 20.028 ms, 4,594 shared-buffer hits.
 - Planned-weighing history: 0.038 ms, one five-row sequential scan, two matching rows, 25 kB quicksort.
 
+Committed raw-material lot consumption is a canonical upstream identity for Slice 6 read-only tracing; see [Batch Genealogy and Traceability](BATCH_GENEALOGY_AND_TRACEABILITY.md). Trace queries never rewrite reservations, weighings, consumption, or movements.
+
 PostgreSQL reports PL/pgSQL JSON evaluators as a `Result` node, so their internal joins are not expanded in the outer plan. At this fixture size, the history scan is cheaper than an index lookup and row estimates are close (estimated one, actual two). No new index was justified by these measurements. The evaluator plans should be repeated at production-like history volume before adding speculative foreign-key indexes.
