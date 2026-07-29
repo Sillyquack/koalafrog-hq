@@ -16843,6 +16843,14 @@ export type Database = {
         }
         Returns: Json
       }
+      append_inventory_movement_v1: {
+        Args: { candidate_movement: Json }
+        Returns: Json
+      }
+      append_packaging_inventory_movement_v1: {
+        Args: { candidate_movement: Json }
+        Returns: Json
+      }
       approve_production_procurement_scenario: {
         Args: {
           candidate_approval_key: string
@@ -17745,6 +17753,10 @@ export type Database = {
         }
         Returns: Json
       }
+      record_inventory_lot_receipt_v1: {
+        Args: { candidate_lot: Json; candidate_movement: Json }
+        Returns: Json
+      }
       record_packaged_output_reconciliation_v1: {
         Args: {
           candidate_accepted_quantity: number
@@ -17794,6 +17806,10 @@ export type Database = {
           expected_run_revision: number
           target_packaging_reservation_id: string
         }
+        Returns: Json
+      }
+      record_packaging_lot_receipt_v1: {
+        Args: { candidate_lot: Json; candidate_movement: Json }
         Returns: Json
       }
       record_production_output_component_v1: {

@@ -1,5 +1,6 @@
 \set ON_ERROR_STOP on
 begin;
+select plan(6);
 create temporary table perf_finished_goods_lots(
   id bigint primary key, workspace_id integer not null, product_id integer not null,
   consumer_batch_code text not null, expiry_date date not null, released_at timestamptz not null,
@@ -39,14 +40,21 @@ analyze perf_finished_goods_lots; analyze perf_finished_goods_movements; analyze
 
 \echo 'BALANCE 1,000,000 movements'
 explain(analyze,buffers) select sum(quantity) from perf_finished_goods_movements where workspace_id=1 and lot_id=50000;
+select pass('balance plan executes against 1,000,000 movements');
 \echo 'STATE 250,000 records'
 explain(analyze,buffers) select state_type,sum(quantity_delta) from perf_finished_goods_states where workspace_id=1 and lot_id=50000 group by state_type;
+select pass('state plan executes against 250,000 records');
 \echo 'FEFO 100,000 lots'
 explain(analyze,buffers) select * from perf_finished_goods_lots where workspace_id=1 and product_id=42 order by expiry_date,released_at,manufacturing_date,id limit 50;
+select pass('FEFO plan executes against 100,000 lots');
 \echo 'BATCH LOOKUP 100,000 lots'
 explain(analyze,buffers) select * from perf_finished_goods_lots where workspace_id=1 and consumer_batch_code='PERF-50000';
+select pass('batch lookup plan executes against 100,000 lots');
 \echo 'CORRECTION BASIS 1,000,000 movements'
 explain(analyze,buffers) select sum(quantity) from perf_finished_goods_movements where workspace_id=1 and related_movement_id=50000;
+select pass('correction basis plan executes against 1,000,000 movements');
 \echo 'AUDIT 500,000 events'
 explain(analyze,buffers) select * from perf_finished_goods_events where workspace_id=1 and lot_id=50000 order by occurred_at,id;
+select pass('audit plan executes against 500,000 events');
+select * from finish();
 rollback;

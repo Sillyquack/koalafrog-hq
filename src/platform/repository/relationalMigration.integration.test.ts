@@ -8,8 +8,6 @@ import type { FormulaState, SupplierProductVerification } from '../../types/doma
 import { executeWorkspaceAction } from '../actions/workspaceActionExecutor'
 import type { WorkspaceActionName, WorkspaceStateMutation } from '../actions/workspaceActions'
 import { lotBalance } from '../../features/inventory/domain/inventoryLogic'
-import { packagingLotBalance } from '../../features/packaging/domain/packagingLogic'
-import { finishedGoodsBalance } from '../../features/finished-goods/domain/finishedGoodsLogic'
 import { actualMaterialCost, additionalCostTotal, productionCost } from '../../features/costing/domain/costingLogic'
 import { LocalWorkspaceRepository } from './localWorkspaceRepository'
 import type { WorkspaceRepository } from './workspaceRepository'
@@ -180,31 +178,10 @@ run('relational v9 migration against local Supabase', () => {
 
     const fgBatch={id:'fg-rpc',finished_goods_batch_number:'KF-FG-RPC',production_run_id:'pr-rpc',product_id:'p1',formula_version_id:'fv-bo-01',status:'Active',production_date:'2026-07-15',initial_quantity:2,unit:'pcs',notes:'',created_at:'2026-07-15',updated_at:'2026-07-15'}
     const fgReceipt={id:'fgm-rpc',finished_goods_batch_id:'fg-rpc',type:'ProductionReceipt',quantity:2,unit:'pcs',reason:'RPC output',reference_type:'ProductionRun',reference_id:'pr-rpc',notes:'',occurred_at:'2026-07-15',created_at:'2026-07-15'}
-    expect((await client.rpc('register_finished_goods_output',{batch:fgBatch,receipt:fgReceipt})).error).toBeNull()
-    const before=(await client.from('finished_goods_batches').select('id').eq('production_run_id','pr-rpc')).data!.length
-    const excess=await client.rpc('register_finished_goods_output',{batch:{...fgBatch,id:'fg-excess',finished_goods_batch_number:'KF-FG-EXCESS',initial_quantity:4},receipt:{...fgReceipt,id:'fgm-excess',finished_goods_batch_id:'fg-excess',quantity:4}})
-    expect(excess.error?.message).toContain('exceeds')
-    expect((await client.from('finished_goods_batches').select('id').eq('production_run_id','pr-rpc')).data).toHaveLength(before)
-    expect((await client.from('finished_goods_movements').select('id').eq('id','fgm-excess')).data).toHaveLength(0)
-
-    await insert('production_runs',{id:'pr-pkg-rpc',production_run_number:'KF-PR-PKG-RPC',product_id:'p1',formula_id:'f-bo-original',formula_version_id:'fv-bo-01',status:'Completed',planned_batch_size:10,planned_batch_unit:'g',planned_units:2,actual_units_produced:2,created_at:'2026-07-15',updated_at:'2026-07-15',purpose:'Packaging RPC test',notes:'',summary:''})
-    const packagedBatch={...fgBatch,id:'fg-pkg-rpc',finished_goods_batch_number:'KF-FG-PKG-RPC',production_run_id:'pr-pkg-rpc',packaging_specification_version_id:'pkgv-10',status:'Quarantined',initial_quantity:2}
-    expect((await client.rpc('register_finished_goods_output',{batch:packagedBatch,receipt:null})).error).toBeNull()
-    await insert('packaging_inventory_lots',{id:'pl-label-rpc',packaging_component_id:'pc-label',internal_lot_number:'KF-PKG-LABEL-RPC',received_date:'2026-07-15',opening_quantity:10,unit:'pcs',location:'Test',status:'Active',notes:'',created_at:'2026-07-15',updated_at:'2026-07-15'})
-    await insert('packaging_inventory_movements',{id:'pm-label-rpc',packaging_inventory_lot_id:'pl-label-rpc',type:'Receipt',quantity:10,unit:'pcs',reason:'Test receipt',notes:'',occurred_at:'2026-07-15',created_at:'2026-07-15'})
-    await insert('packaging_allocations',{id:'pa-bottle-rpc',finished_goods_batch_id:'fg-pkg-rpc',packaging_specification_line_id:'pkgl-bottle',packaging_inventory_lot_id:'pl-bottle',quantity:2,unit:'pcs'})
-    await insert('packaging_allocations',{id:'pa-dropper-rpc',finished_goods_batch_id:'fg-pkg-rpc',packaging_specification_line_id:'pkgl-dropper',packaging_inventory_lot_id:'pl-dropper',quantity:2,unit:'pcs'})
-    await insert('packaging_allocations',{id:'pa-label-rpc',finished_goods_batch_id:'fg-pkg-rpc',packaging_specification_line_id:'pkgl-label',packaging_inventory_lot_id:'pl-label-rpc',quantity:2,unit:'pcs'})
-    const packagingCommits=['bottle','dropper','label'].map(name=>({allocation_id:`pa-${name}-rpc`,movement_id:`pm-${name}-consume-rpc`,occurred_at:'2026-07-15',created_at:'2026-07-15'}))
-    const packagingReceipt={id:'fgm-pkg-rpc',occurred_at:'2026-07-15',created_at:'2026-07-15'}
-    expect((await client.from('packaging_allocations').update({quantity:20}).eq('id','pa-label-rpc')).error).toBeNull()
-    expect((await client.rpc('commit_packaging_consumption',{target_finished_goods_batch_id:'fg-pkg-rpc',commits:packagingCommits,receipt:packagingReceipt})).error).not.toBeNull()
-    expect((await client.from('packaging_inventory_movements').select('id').like('id','%-consume-rpc')).data).toHaveLength(0)
-    expect((await client.from('finished_goods_movements').select('id').eq('id','fgm-pkg-rpc')).data).toHaveLength(0)
-    expect((await client.from('packaging_allocations').update({quantity:2}).eq('id','pa-label-rpc')).error).toBeNull()
-    expect((await client.rpc('commit_packaging_consumption',{target_finished_goods_batch_id:'fg-pkg-rpc',commits:packagingCommits,receipt:packagingReceipt})).error).toBeNull()
-    expect((await client.rpc('commit_packaging_consumption',{target_finished_goods_batch_id:'fg-pkg-rpc',commits:packagingCommits,receipt:packagingReceipt})).error?.message).toContain('already committed')
-    expect((await client.from('packaging_inventory_movements').select('id').like('id','%-consume-rpc')).data).toHaveLength(3)
+    expect((await client.rpc('register_finished_goods_output',{batch:fgBatch,receipt:fgReceipt})).error?.message).toContain('permission denied')
+    expect((await client.rpc('commit_packaging_consumption',{target_finished_goods_batch_id:'fg-rpc',commits:[],receipt:{}})).error?.message).toContain('permission denied')
+    expect((await client.from('finished_goods_batches').insert({workspace_id:wid,owner_id:ownerId,...fgBatch})).error).not.toBeNull()
+    expect((await client.from('finished_goods_batches').select('id').eq('id','fg-rpc')).data).toHaveLength(0)
   })
 
   it('persists normalized children, refreshes them, and rejects a stale mutable write', async () => {
@@ -292,15 +269,8 @@ run('relational v9 migration against local Supabase', () => {
     await act('receivePackagingStock',current=>({...current,packagingInventoryLots:[...current.packagingInventoryLots,{id:'pl-matrix-label',packagingComponentId:'pc-label',internalLotNumber:'KF-PKG-MATRIX-LABEL',receivedDate:'2026-07-15',openingQuantity:20,unit:'pcs',location:'Test',status:'Active',notes:'',totalAcquisitionCost:20,acquisitionCostCurrency:'NOK',createdAt:now,updatedAt:now}],packagingInventoryMovements:[...current.packagingInventoryMovements,{id:'pm-matrix-label-receipt',packagingInventoryLotId:'pl-matrix-label',type:'Receipt',quantity:20,unit:'pcs',reason:'Packaging verification receipt',notes:'',occurredAt:now,createdAt:now}]}))
 
     await act('createProductionRun',current=>({...current,productionRuns:[...current.productionRuns,{id:'pr-matrix-pack',productionRunNumber:'KF-PR-MATRIX-PACK',productId:'p1',formulaId:'f-bo-original',formulaVersionId:'fv-bo-02',status:'Completed',plannedBatchSize:2,plannedBatchUnit:'g',plannedUnits:2,actualUnitsProduced:2,createdAt:now,updatedAt:now,purpose:'Packaging verification',notes:'',summary:''}]}))
-    await act('createFinishedGoodsBatch',current=>({...current,finishedGoodsBatches:[...current.finishedGoodsBatches,{id:'fg-matrix-pack',finishedGoodsBatchNumber:'KF-FG-MATRIX-PACK',productionRunId:'pr-matrix-pack',productId:'p1',formulaVersionId:'fv-bo-02',packagingSpecificationVersionId:'pkgv-10',status:'Quarantined',productionDate:'2026-07-15',initialQuantity:2,unit:'pcs',notes:'Packaging verification',createdAt:now,updatedAt:now}]}))
-    await act('addPackagingAllocation',current=>({...current,packagingAllocations:[...current.packagingAllocations,...current.packagingSpecificationLines.filter(line=>line.packagingSpecificationVersionId==='pkgv-10').map((line,index)=>({id:`pa-matrix-${index}`,finishedGoodsBatchId:'fg-matrix-pack',packagingSpecificationLineId:line.id,packagingInventoryLotId:current.packagingInventoryLots.find(lot=>lot.packagingComponentId===line.packagingComponentId)!.id,quantity:line.quantityPerUnit*2,unit:line.unit}))]}))
-    await act('commitPackagingConsumption',current=>{const allocations=current.packagingAllocations.filter(item=>item.finishedGoodsBatchId==='fg-matrix-pack');const movements=allocations.map((allocation,index)=>({id:`pm-matrix-${index}`,packagingInventoryLotId:allocation.packagingInventoryLotId!,type:'Consumption' as const,quantity:allocation.quantity,unit:allocation.unit,reason:'Packaging verification',referenceType:'FinishedGoodsBatch',referenceId:'fg-matrix-pack',notes:'',occurredAt:now,createdAt:now}));return{...current,packagingInventoryMovements:[...current.packagingInventoryMovements,...movements],packagingAllocations:current.packagingAllocations.map(allocation=>{const index=allocations.findIndex(item=>item.id===allocation.id);return index<0?allocation:{...allocation,packagingInventoryMovementId:`pm-matrix-${index}`,unitCostSnapshot:1,costCurrencySnapshot:'NOK'}}),finishedGoodsMovements:[...current.finishedGoodsMovements,{id:'fgm-matrix-pack-receipt',finishedGoodsBatchId:'fg-matrix-pack',type:'ProductionReceipt',quantity:2,unit:'pcs',reason:'Packaging committed',referenceType:'ProductionRun',referenceId:'pr-matrix-pack',notes:'',occurredAt:now,createdAt:now}],finishedGoodsBatches:current.finishedGoodsBatches.map(batch=>batch.id==='fg-matrix-pack'?{...batch,status:'Active',updatedAt:now}:batch)}})
-    const bottleLot=state.packagingInventoryLots.find(item=>item.id==='pl-bottle')!
-    expect(packagingLotBalance(bottleLot,state.packagingInventoryMovements)).toBeLessThan(bottleLot.openingQuantity)
-
-    await act('createFinishedGoodsBatch',current=>({...current,finishedGoodsBatches:[...current.finishedGoodsBatches,{id:'fg-matrix',finishedGoodsBatchNumber:'KF-FG-MATRIX',productionRunId:'pr-matrix',productId:'p1',formulaVersionId:'fv-bo-02',status:'Active',productionDate:'2026-07-15',initialQuantity:4,unit:'pcs',notes:'Verification output',createdAt:now,updatedAt:now}],finishedGoodsMovements:[...current.finishedGoodsMovements,{id:'fgm-matrix-receipt',finishedGoodsBatchId:'fg-matrix',type:'ProductionReceipt',quantity:4,unit:'pcs',reason:'Verification output',referenceType:'ProductionRun',referenceId:'pr-matrix',notes:'',occurredAt:now,createdAt:now}]}))
-    await act('addFinishedGoodsMovement',current=>({...current,finishedGoodsMovements:[...current.finishedGoodsMovements,{id:'fgm-matrix-sample',finishedGoodsBatchId:'fg-matrix',type:'Sample',quantity:1,unit:'pcs',reason:'Verification sample',notes:'',occurredAt:now,createdAt:now}]}))
-    expect(finishedGoodsBalance(state.finishedGoodsBatches.find(item=>item.id==='fg-matrix')!,state.finishedGoodsMovements)).toBe(3)
+    await expect(act('createFinishedGoodsBatch',current=>({...current,finishedGoodsBatches:[...current.finishedGoodsBatches,{id:'fg-matrix-pack',finishedGoodsBatchNumber:'KF-FG-MATRIX-PACK',productionRunId:'pr-matrix-pack',productId:'p1',formulaVersionId:'fv-bo-02',packagingSpecificationVersionId:'pkgv-10',status:'Quarantined',productionDate:'2026-07-15',initialQuantity:2,unit:'pcs',notes:'Packaging verification',createdAt:now,updatedAt:now}]}))).rejects.toThrow('LEGACY_AUTHORITY_FROZEN')
+    expect(state.finishedGoodsBatches.some(item=>item.id==='fg-matrix-pack')).toBe(false)
 
     const snapshot=[{formulaLineId:'fl-fv-bo-02-1',ingredientId:'i1',ingredientNameSnapshot:'Jojoba Oil',inciNameSnapshot:'SIMMONDSIA CHINENSIS SEED OIL',concentration:75}]
     await act('createComplianceDossier',current=>({...current,complianceDossiers:[...current.complianceDossiers,{id:'cd-matrix',productId:'p1',formulaVersionId:'fv-bo-02',packagingSpecificationVersionId:'pkgv-10',labelArtworkVersionId:'lav1',responsiblePersonId:'rp-demo',targetMarket:'Norway',targetLanguage:'Norwegian',status:'Draft',internalOwner:'Owner',notes:'Matrix compliance',compositionSnapshot:snapshot,createdAt:now,updatedAt:now}]}))

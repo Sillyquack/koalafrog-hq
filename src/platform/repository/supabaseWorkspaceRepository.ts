@@ -118,6 +118,45 @@ export class SupabaseWorkspaceRepository implements WorkspaceRepository {
   }
 
   private async commitAtomic(change: WorkspaceCommit, client: SupabaseClient) {
+    if (['createFinishedGoodsBatch','addFinishedGoodsMovement','addPackagingAllocation','updatePackagingAllocation','commitPackagingConsumption'].includes(change.action)) {
+      throw new Error('LEGACY_AUTHORITY_FROZEN: this compatibility workflow is read-only; use the canonical Finished Goods workflow.')
+    }
+    if(change.action==='receiveStock'){
+      const lot=change.next.inventoryLots.find(item=>!change.previous.inventoryLots.some(previous=>previous.id===item.id))
+      const movement=change.next.inventoryMovements.find(item=>!change.previous.inventoryMovements.some(previous=>previous.id===item.id)&&item.inventoryLotId===lot?.id)
+      if(!lot||!movement)throw new Error('Raw-material receipt is missing its atomic lot and movement records.')
+      const result=await client.rpc('record_inventory_lot_receipt_v1',{
+        candidate_lot:toDatabaseValue(lot) as Json,
+        candidate_movement:toDatabaseValue(movement) as Json,
+      })
+      if(result.error)throw new Error(result.error.message)
+      return true
+    }
+    if(change.action==='addMovement'){
+      const movement=change.next.inventoryMovements.find(item=>!change.previous.inventoryMovements.some(previous=>previous.id===item.id))
+      if(!movement)throw new Error('Raw-material movement is missing its append-only record.')
+      const result=await client.rpc('append_inventory_movement_v1',{candidate_movement:toDatabaseValue(movement) as Json})
+      if(result.error)throw new Error(result.error.message)
+      return true
+    }
+    if(change.action==='receivePackagingStock'){
+      const lot=change.next.packagingInventoryLots.find(item=>!change.previous.packagingInventoryLots.some(previous=>previous.id===item.id))
+      const movement=change.next.packagingInventoryMovements.find(item=>!change.previous.packagingInventoryMovements.some(previous=>previous.id===item.id)&&item.packagingInventoryLotId===lot?.id)
+      if(!lot||!movement)throw new Error('Packaging receipt is missing its atomic lot and movement records.')
+      const result=await client.rpc('record_packaging_lot_receipt_v1',{
+        candidate_lot:toDatabaseValue(lot) as Json,
+        candidate_movement:toDatabaseValue(movement) as Json,
+      })
+      if(result.error)throw new Error(result.error.message)
+      return true
+    }
+    if(change.action==='addPackagingMovement'){
+      const movement=change.next.packagingInventoryMovements.find(item=>!change.previous.packagingInventoryMovements.some(previous=>previous.id===item.id))
+      if(!movement)throw new Error('Packaging movement is missing its append-only record.')
+      const result=await client.rpc('append_packaging_inventory_movement_v1',{candidate_movement:toDatabaseValue(movement) as Json})
+      if(result.error)throw new Error(result.error.message)
+      return true
+    }
     if(change.action==='saveBeardStudio'){
       const workspace=await client.from('workspaces').select('id').single()
       if(workspace.error)throw workspace.error
@@ -180,24 +219,6 @@ export class SupabaseWorkspaceRepository implements WorkspaceRepository {
       const movements = change.next.inventoryMovements.filter(item => !change.previous.inventoryMovements.some(previous => previous.id === item.id) && item.referenceType === 'ProductionRun')
       const commits = change.next.productionRunAllocations.filter(item => item.inventoryMovementId && !change.previous.productionRunAllocations.find(previous => previous.id === item.id)?.inventoryMovementId).map(allocation => { const movement=movements.find(item=>item.id===allocation.inventoryMovementId)!;return{allocation_id:allocation.id,movement_id:movement.id,notes:movement.notes,occurred_at:movement.occurredAt,created_at:movement.createdAt} })
       const result = await client.rpc('commit_production_consumption',{run_id:movements[0]?.referenceId,commits})
-      if (result.error) throw result.error
-      return true
-    }
-    if (change.action === 'commitPackagingConsumption') {
-      const movements = change.next.packagingInventoryMovements.filter(item => !change.previous.packagingInventoryMovements.some(previous => previous.id === item.id) && item.referenceType === 'FinishedGoodsBatch')
-      const commits = change.next.packagingAllocations.filter(item => item.packagingInventoryMovementId && !change.previous.packagingAllocations.find(previous => previous.id === item.id)?.packagingInventoryMovementId).map(allocation => { const movement=movements.find(item=>item.id===allocation.packagingInventoryMovementId)!;return{allocation_id:allocation.id,movement_id:movement.id,occurred_at:movement.occurredAt,created_at:movement.createdAt} })
-      const receipt = change.next.finishedGoodsMovements.find(item => !change.previous.finishedGoodsMovements.some(previous => previous.id === item.id) && item.type === 'ProductionReceipt')
-      const result = await client.rpc('commit_packaging_consumption',{target_finished_goods_batch_id:receipt?.finishedGoodsBatchId,commits,receipt:{id:receipt?.id,occurred_at:receipt?.occurredAt,created_at:receipt?.createdAt}})
-      if (result.error) throw result.error
-      return true
-    }
-    if (change.action === 'createFinishedGoodsBatch') {
-      const batch = change.next.finishedGoodsBatches.find(item => !change.previous.finishedGoodsBatches.some(previous => previous.id === item.id))
-      if (!batch) throw new Error('Finished Goods Batch mutation is missing its new record.')
-      const receipt = change.next.finishedGoodsMovements.find(item => !change.previous.finishedGoodsMovements.some(previous => previous.id === item.id) && item.finishedGoodsBatchId === batch.id)
-      const batchRow = toDatabaseValue(batch) as Record<string,unknown>
-      const receiptRow = receipt ? toDatabaseValue(receipt) as Record<string,unknown> : null
-      const result = await client.rpc('register_finished_goods_output',{batch:batchRow,receipt:receiptRow})
       if (result.error) throw result.error
       return true
     }
