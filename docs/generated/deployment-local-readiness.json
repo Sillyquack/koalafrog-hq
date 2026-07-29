@@ -1,0 +1,25 @@
+{
+  "version": "1.0.0",
+  "generatedAt": "2026-07-29T14:00:00+02:00",
+  "rcTag": "finished-goods-traceability-recall-v1-rc1",
+  "rcCommit": "bd5617c70dd8ca21611f63750f2293e40a83c8b4",
+  "environmentAudit": "PASS",
+  "migrationAudit": "PASS",
+  "secretClassification": "PASS",
+  "localPreparationReady": true,
+  "hostedRehearsalReady": false,
+  "deploymentReady": false,
+  "hostedRehearsalBlockers": [
+    "explicit authorization",
+    "approved isolated target",
+    "backup destination and restore owner",
+    "hosted credentials supplied out-of-band"
+  ],
+  "deploymentBlockers": [
+    "successful hosted rehearsal",
+    "hosted security and two-owner proof",
+    "rollback proof",
+    "production approval"
+  ],
+  "remoteActionsPerformed": false
+}

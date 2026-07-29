@@ -1,0 +1,24 @@
+{
+  "version": "1.0.0",
+  "generatedAt": "2026-07-29T14:00:00+02:00",
+  "environment": "local_disposable_database",
+  "sourceDatabase": "local Supabase postgres",
+  "dumpPersisted": false,
+  "schemaSha256": "e79767942da8c0c3698347100dd707777effbee1e35dfdba057eade4a8e9ff8c",
+  "source": {
+    "tables": 198,
+    "functions": 206,
+    "policies": 186,
+    "triggers": 59,
+    "indexes": 637
+  },
+  "restored": {
+    "tables": 198,
+    "functions": 206,
+    "policies": 186,
+    "triggers": 59,
+    "indexes": 637
+  },
+  "status": "PASS",
+  "hostedRecoveryProven": false
+}

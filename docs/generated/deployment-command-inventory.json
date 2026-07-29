@@ -1,0 +1,153 @@
+{
+  "version": "1.0.0",
+  "generatedAt": "2026-07-29T14:00:00+02:00",
+  "rcTag": "finished-goods-traceability-recall-v1-rc1",
+  "rcCommit": "bd5617c70dd8ca21611f63750f2293e40a83c8b4",
+  "noRemoteCommandExecuted": true,
+  "commands": [
+    {
+      "command": "npm run audit:environment",
+      "classification": "safe_local_read_only",
+      "purpose": "Classify environment and migration evidence",
+      "environment": "local",
+      "mutationRisk": false,
+      "requiredRole": "developer",
+      "requiredApproval": "none beyond task scope",
+      "expectedOutput": "recorded command result and evidence artifact",
+      "stopCondition": "unexpected target, credentials, mutation, error, drift, or evidence mismatch",
+      "evidenceCaptured": true
+    },
+    {
+      "command": "npm run deploy:preflight",
+      "classification": "safe_local_read_only",
+      "purpose": "Run local deployment preparation gates",
+      "environment": "local",
+      "mutationRisk": false,
+      "requiredRole": "developer",
+      "requiredApproval": "none beyond task scope",
+      "expectedOutput": "recorded command result and evidence artifact",
+      "stopCondition": "unexpected target, credentials, mutation, error, drift, or evidence mismatch",
+      "evidenceCaptured": true
+    },
+    {
+      "command": "npx supabase db reset --local",
+      "classification": "safe_local_mutation",
+      "purpose": "Recreate disposable local database",
+      "environment": "local",
+      "mutationRisk": true,
+      "requiredRole": "developer",
+      "requiredApproval": "none beyond task scope",
+      "expectedOutput": "recorded command result and evidence artifact",
+      "stopCondition": "unexpected target, credentials, mutation, error, drift, or evidence mismatch",
+      "evidenceCaptured": true
+    },
+    {
+      "command": "npm run restore:local:verify",
+      "classification": "safe_local_mutation",
+      "purpose": "Verify local schema recovery in a disposable database",
+      "environment": "local",
+      "mutationRisk": true,
+      "requiredRole": "developer",
+      "requiredApproval": "none beyond task scope",
+      "expectedOutput": "recorded command result and evidence artifact",
+      "stopCondition": "unexpected target, credentials, mutation, error, drift, or evidence mismatch",
+      "evidenceCaptured": true
+    },
+    {
+      "command": "supabase migration list --linked",
+      "classification": "remote_read_only",
+      "purpose": "Inspect hosted migration state",
+      "environment": "hosted_or_production",
+      "mutationRisk": false,
+      "requiredRole": "authorized operator",
+      "requiredApproval": "explicit phase approval",
+      "expectedOutput": "recorded command result and evidence artifact",
+      "stopCondition": "unexpected target, credentials, mutation, error, drift, or evidence mismatch",
+      "evidenceCaptured": true
+    },
+    {
+      "command": "supabase db dump --linked",
+      "classification": "remote_read_only_sensitive_output",
+      "purpose": "Capture authorized hosted logical backup",
+      "environment": "hosted_or_production",
+      "mutationRisk": false,
+      "requiredRole": "authorized operator",
+      "requiredApproval": "explicit phase approval",
+      "expectedOutput": "recorded command result and evidence artifact",
+      "stopCondition": "unexpected target, credentials, mutation, error, drift, or evidence mismatch",
+      "evidenceCaptured": true
+    },
+    {
+      "command": "supabase db push --linked",
+      "classification": "remote_mutation_requires_authorization",
+      "purpose": "Apply reviewed hosted migrations",
+      "environment": "hosted_or_production",
+      "mutationRisk": true,
+      "requiredRole": "authorized operator",
+      "requiredApproval": "explicit phase approval",
+      "expectedOutput": "recorded command result and evidence artifact",
+      "stopCondition": "unexpected target, credentials, mutation, error, drift, or evidence mismatch",
+      "evidenceCaptured": true
+    },
+    {
+      "command": "supabase functions deploy",
+      "classification": "remote_mutation_requires_authorization",
+      "purpose": "Deploy Edge Functions",
+      "environment": "hosted_or_production",
+      "mutationRisk": true,
+      "requiredRole": "authorized operator",
+      "requiredApproval": "explicit phase approval",
+      "expectedOutput": "recorded command result and evidence artifact",
+      "stopCondition": "unexpected target, credentials, mutation, error, drift, or evidence mismatch",
+      "evidenceCaptured": true
+    },
+    {
+      "command": "supabase secrets set",
+      "classification": "production_mutation_requires_final_approval",
+      "purpose": "Set hosted Edge Function secrets",
+      "environment": "hosted_or_production",
+      "mutationRisk": true,
+      "requiredRole": "authorized operator",
+      "requiredApproval": "explicit phase approval",
+      "expectedOutput": "recorded command result and evidence artifact",
+      "stopCondition": "unexpected target, credentials, mutation, error, drift, or evidence mismatch",
+      "evidenceCaptured": true
+    },
+    {
+      "command": "git push",
+      "classification": "remote_mutation_requires_authorization",
+      "purpose": "Publish reviewed branch",
+      "environment": "hosted_or_production",
+      "mutationRisk": true,
+      "requiredRole": "authorized operator",
+      "requiredApproval": "explicit phase approval",
+      "expectedOutput": "recorded command result and evidence artifact",
+      "stopCondition": "unexpected target, credentials, mutation, error, drift, or evidence mismatch",
+      "evidenceCaptured": true
+    },
+    {
+      "command": "git push --tags",
+      "classification": "remote_mutation_requires_authorization",
+      "purpose": "Publish approved tags",
+      "environment": "hosted_or_production",
+      "mutationRisk": true,
+      "requiredRole": "authorized operator",
+      "requiredApproval": "explicit phase approval",
+      "expectedOutput": "recorded command result and evidence artifact",
+      "stopCondition": "unexpected target, credentials, mutation, error, drift, or evidence mismatch",
+      "evidenceCaptured": true
+    },
+    {
+      "command": "destructive SQL against live production",
+      "classification": "prohibited_or_unsafe",
+      "purpose": "Never use as rehearsal rollback",
+      "environment": "hosted_or_production",
+      "mutationRisk": true,
+      "requiredRole": "authorized operator",
+      "requiredApproval": "explicit phase approval",
+      "expectedOutput": "recorded command result and evidence artifact",
+      "stopCondition": "unexpected target, credentials, mutation, error, drift, or evidence mismatch",
+      "evidenceCaptured": true
+    }
+  ]
+}
