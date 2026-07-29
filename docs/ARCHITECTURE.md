@@ -20,6 +20,14 @@ The local Release Candidate is `1.0.0-rc.1`, documented by [release notes](FINIS
 
 Downstream reservation, customer allocation, dispatch, shipment, distribution/customer tracing, notifications, returns, destruction execution, accounting, legal classification, and Recall Execution are excluded. Recall approval freezes an internal assessment package; it does not perform an operational action. Merge readiness and deployment readiness remain separate decisions.
 
+### Deployment boundary
+
+The frozen local RC tag remains `finished-goods-traceability-recall-v1-rc1` at `bd5617c`. Deployment-support commits occur after that baseline and cannot change its identity. Local Supabase, hosted rehearsal, and production are separate environments with separate targets, credentials, authorization, evidence, and stop conditions.
+
+Migrations in `supabase/migrations` are the schema authority; generated manifests are evidence, not executable replacements. A hosted operator must back up and prove an isolated restore before migration rehearsal. Code rollback does not imply schema rollback, and append-only history normally requires forward-fix after new-schema writes.
+
+Cloudflare hosts the browser artifact; Supabase owns hosted database, Auth, Storage, and Edge runtime. Browser builds receive only public client configuration. Server secrets remain out of Vite and source control. Release approval, monitoring, smoke acceptance, and rollback/forward-fix decisions are explicit governance records. Hosted targets remain unverified until [Deployment Hardening Local Preparation](DEPLOYMENT_HARDENING_LOCAL_PREPARATION.md) enters an authorized rehearsal.
+
 ## Ingredient Knowledge boundary
 
 `Reference Ingredient → Workspace Ingredient → Ingredient Knowledge → Product Studio / Formula / Lab / Testing`. Profiles remain subordinate to canonical Workspace Ingredients. Repeatable roles, compatibility, and evidence are relational and owner-isolated. Downstream workflows consume known values and preserve weak fallback semantics. See [INGREDIENT_KNOWLEDGE.md](INGREDIENT_KNOWLEDGE.md).

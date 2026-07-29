@@ -2,7 +2,7 @@
 
 Current milestone: Finished Goods, Traceability & Recall Readiness closeout. Finished Goods & Batch Genealogy V1 Slices 1–6, the [Platform Architecture Review](PLATFORM_ARCHITECTURE_REVIEW_2026-07-29.md), Platform Hardening & Legacy Authority Classification V1, Recall Readiness V1, and the Milestone Closeout and Release-Candidate Baseline are **PASS locally**.
 
-The local RC is documented in [release notes](FINISHED_GOODS_TRACEABILITY_RECALL_RC_1.md) and the [milestone closeout](FINISHED_GOODS_TRACEABILITY_RECALL_MILESTONE_CLOSEOUT.md). It has not been deployed.
+The local RC is documented in [release notes](FINISHED_GOODS_TRACEABILITY_RECALL_RC_1.md) and the [milestone closeout](FINISHED_GOODS_TRACEABILITY_RECALL_MILESTONE_CLOSEOUT.md). **Release Candidate & Deployment Hardening V1 — Local Preparation is PASS.** It has not been merged, rehearsed against hosted infrastructure, or deployed.
 
 ## Phase 1: Foundation — Complete
 
@@ -106,12 +106,12 @@ Approved implementation sequence:
 
 Exact future sequence:
 
-1. Release Candidate & Deployment Hardening.
-2. Downstream Reservation & Controlled Dispatch.
+1. Authorized Hosted Backup, Restore & Migration Rehearsal V1 — exact next deployment milestone.
+2. Downstream Reservation & Controlled Dispatch V1 — exact next local product milestone, on a separate branch.
 3. Shipment and Distribution Traceability.
 4. Controlled Recall Execution.
 
-Local development may proceed only according to the selected roadmap. Hosted backup, migration, configuration, validation, deployment, and any remote mutation require explicit authorization. Recall Execution must not be implemented before distribution/customer data authorities and responsible governance exist.
+Hosted rehearsal should normally precede production deployment. Local downstream development may proceed separately without moving or rewriting the frozen RC tag. Hosted backup, migration, configuration, validation, deployment, and any remote mutation require explicit authorization. Recall Execution must not be implemented before distribution/customer data authorities and responsible governance exist.
 
 Slice 2 owns durable packaging allocations and reservations, reservation-aware availability, concurrency-safe bulk and component allocation, release and safe staged return, exactly-once consumption, waste/damage, reconciliation, readiness, cost provenance and genealogy. It creates no Finished Goods Lot and performs no Finished Goods release or opening movement.
 

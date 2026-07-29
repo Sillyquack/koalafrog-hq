@@ -14,6 +14,12 @@ This register records bounded follow-up work; it is not an authorization to expa
 | TD-008 | Product-wide genealogy aggregation is not materialized | Trace queries may become expensive at scale | Lot-scoped, owner-scoped canonical RPCs and recorded query plans | Production-shaped volume test and measured aggregation strategy |
 | TD-009 | Hosted migration, grants, RLS, Auth, Storage, and two-owner evidence are absent for the RC | Local PASS could be mistaken for deployment readiness | RC manifest states `deploy_ready_now=false`; hosted cutover checklist remains mandatory | Authorized hosted rehearsal and post-migration evidence package |
 | TD-010 | Full Supabase Auth-data restore is not proven by the portable local schema rehearsal | Recovery assumptions may omit managed identities | Schema restore is proven; supported hosted backup/restore is a deployment blocker | Dated isolated restore with Auth, Storage metadata, checksums, and smoke validation |
+| TD-011 | `PlatformPage` remains both statically and dynamically imported | Expected route split is ineffective | Warning remains visible and artifact is measured | Remove mixed import without changing startup authority |
+| TD-012 | Local Supabase proxy can intermittently lose a browser/integration response | Validation noise can obscure real failures | Focused rerun plus complete-suite rerun is required | Root cause or stable harness evidence |
+| TD-013 | Hosted Auth, Storage, grants, RLS, advisors, and two-owner proof remain unverified | Local parity may differ from hosted behavior | Exact authorized rehearsal matrices and stop conditions exist | Hosted rehearsal PASS evidence |
+| TD-014 | Production monitoring and alert delivery are not configured | Failures may not be detected promptly | Vendor-neutral signal/threshold/privacy plan exists | Approved monitoring integration and tested incident path |
+| TD-015 | Stale-client handling relies on hashed assets and operator refresh guidance | Long-lived tabs may use an older API contract | No service worker; smoke covers chunks/deep links | Version compatibility/refresh behavior proven hosted |
+| TD-016 | Deployment automation is local/manual and no repository CI workflow exists | Operator ordering errors remain possible | Fail-closed local preflight and command classification | Protected pipeline with approvals and identical evidence |
 # Recall Readiness boundary debt
 
 - Customer, distributor, shipment, and sales-order tracing remain unavailable; Recall Readiness records this as an explicit distribution limitation.
@@ -21,3 +27,5 @@ This register records bounded follow-up work; it is not an authorization to expa
 - Documented non-lifecycle sources require linkage to a canonical trace root before affected goods can be calculated.
 
 Closeout status: TD-001 through TD-010 remain open and non-blocking for merge review. TD-007, TD-009, and TD-010 block deployment until their exit evidence exists. No closed item was deleted.
+
+Deployment impact: TD-002 and TD-011 are baseline performance warnings; TD-012 affects rehearsal reliability; TD-007, TD-009, TD-010, TD-013, and TD-014 block production deployment; TD-015 and TD-016 require explicit rehearsal disposition. Owners are respectively application, test-platform, database/recovery, security/storage, operations, and release-engineering roles. Target milestone for deployment-impacting items is Authorized Hosted Backup, Restore & Migration Rehearsal V1 unless a later production gate is explicitly recorded.
