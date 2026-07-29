@@ -30,6 +30,7 @@ import { FinishedGoodsPage } from '../features/finished-goods/FinishedGoodsPage'
 import { FinishedGoodsDetailPage } from '../features/finished-goods/FinishedGoodsDetailPage'
 import { FinishedGoodsLotPage } from '../features/finished-goods-control/FinishedGoodsLotPage'
 import { FinishedGoodsInventoryPage } from '../features/finished-goods-control/FinishedGoodsInventoryPage'
+import { TraceabilityPage } from '../features/traceability/TraceabilityPage'
 import { CompliancePage } from '../features/compliance/CompliancePage'
 import { ComplianceDossierPage } from '../features/compliance/ComplianceDossierPage'
 import { LaunchPage } from '../features/launch/LaunchPage'
@@ -105,6 +106,7 @@ export function App() {
         <Route path="finished-goods/:finishedGoodsBatchId" element={<FinishedGoodsDetailPage />} />
         <Route path="finished-goods-lots/:finishedGoodsLotId" element={<FinishedGoodsLotPage />} />
         <Route path="finished-goods-inventory/:releasedInventoryLotId" element={<FinishedGoodsInventoryPage />} />
+        <Route path="traceability" element={<TraceabilityPage />} />
         <Route path="compliance" element={<CompliancePage />} />
         <Route path="compliance/:complianceDossierId" element={<ComplianceDossierPage />} />
         <Route path="launch" element={<LaunchPage />} />

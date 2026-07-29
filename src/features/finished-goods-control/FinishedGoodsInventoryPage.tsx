@@ -31,6 +31,7 @@ export function FinishedGoodsInventoryPage() {
     <header className="page-header"><div><span className="eyebrow">Active Finished Goods inventory · policy {snapshot.policyVersion}</span>
       <h1>{snapshot.lot.consumer_batch_code}</h1><p>{snapshot.lot.internal_lot_code} · revision {snapshot.revision}</p></div>
       <strong>{snapshot.eligible ? "Eligible" : "Unavailable"}</strong></header>
+    <p><Link className="button secondary" to={`/traceability?type=released_finished_goods_inventory_lot&id=${snapshot.lot.id}`}>Open canonical Traceability</Link></p>
     {error && <p role="alert" className="form-error">{error}</p>}
     <section className="panel"><h2>Authoritative balance</h2><div className="stat-grid">
       <Metric label="On-hand" value={snapshot.onHandQuantity}/><Metric label="Available" value={snapshot.availableQuantity}/>

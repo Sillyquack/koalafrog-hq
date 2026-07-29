@@ -15,6 +15,7 @@ export function FinishedGoodsLotPage(){
   const raw=Array.isArray(genealogy.rawMaterialConsumptions)?genealogy.rawMaterialConsumptions:[],packagingUses=Array.isArray(packaging.inventoryUses)?packaging.inventoryUses:[];
   return <><Link className="back-link" to="/finished-goods"><ArrowLeft size={14}/>Finished Goods</Link>
     <PageHeader eyebrow="Traceable Finished Goods Lot" title={lot.consumer_batch_code} description="Immutable identity with server-controlled inspection, disposition, and quality release."/>
+    <p><Link className="button secondary" to={`/traceability?type=finished_goods_lot&id=${lot.id}`}>Open canonical Traceability</Link></p>
     <section className="batch-source"><div><span>Status</span><StatusPill tone="amber">Inspection required</StatusPill></div>
       <div><span>Internal lot</span><strong>{lot.internal_lot_code}</strong></div><div><span>Quantity</span><strong>{lot.quantity} {lot.unit}</strong></div>
       <div><span>Manufactured / expiry</span><strong>{lot.manufacturing_date} / {lot.expiry_date??"Unknown"}</strong></div></section>
