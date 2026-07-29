@@ -1,9 +1,13 @@
 # Finished Goods, Traceability & Recall Readiness V1 — Local RC 1
 
-Version: `1.0.0-rc.1`  
-Branch: `feature/finished-goods-batch-genealogy-v1`  
-Pre-closeout HEAD: `15c8db0`  
-Local tag: `finished-goods-traceability-recall-v1-rc1`  
+Version: `1.0.0-rc.1`
+
+Branch: `feature/finished-goods-batch-genealogy-v1`
+
+Pre-closeout HEAD: `15c8db0`
+
+Local tag: `finished-goods-traceability-recall-v1-rc1`
+
 Environment: local only
 
 ## 1. Executive summary

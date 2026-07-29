@@ -2,8 +2,10 @@
 
 ## 1. Executive verdict
 
-Finished Goods, Traceability & Recall Readiness  
-Milestone Closeout and Release-Candidate Baseline  
+Finished Goods, Traceability & Recall Readiness
+
+Milestone Closeout and Release-Candidate Baseline
+
 Status: PASS
 
 The completed line is internally coherent, locally validated, documented, and suitable for controlled merge review. It is not authorized or ready for hosted deployment.

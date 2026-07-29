@@ -3,7 +3,7 @@
   "rcName": "Finished Goods, Traceability & Recall Readiness V1 — Local Release Candidate 1",
   "branch": "feature/finished-goods-batch-genealogy-v1",
   "headCommitBeforeCloseout": "15c8db0330a0c5ad153be0b962f601d23ffb6052",
-  "closeoutCommit": null,
+  "closeoutCommit": "aaa864a1ff19103bf5349f6399d03e7c249bc48c",
   "tag": "finished-goods-traceability-recall-v1-rc1",
   "localMigrationHead": "20260729094510",
   "milestones": [
