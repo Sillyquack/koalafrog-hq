@@ -3319,23 +3319,126 @@ export type Database = {
           },
         ]
       }
-      finished_goods_inventory_movements: {
+      finished_goods_inventory_events: {
         Row: {
           actor_id: string
           created_at: string
+          event_key: string
+          event_type: string
+          finished_goods_lot_id: string
+          id: string
+          metadata: Json
+          movement_id: string | null
+          occurred_at: string
+          operation_id: string
+          owner_id: string
+          policy_version: string
+          quantity: number
+          released_inventory_lot_id: string
+          state_record_id: string | null
+          unit: string
+          workspace_id: string
+        }
+        Insert: {
+          actor_id: string
+          created_at?: string
+          event_key: string
+          event_type: string
+          finished_goods_lot_id: string
+          id?: string
+          metadata?: Json
+          movement_id?: string | null
+          occurred_at: string
+          operation_id: string
+          owner_id: string
+          policy_version?: string
+          quantity: number
+          released_inventory_lot_id: string
+          state_record_id?: string | null
+          unit: string
+          workspace_id: string
+        }
+        Update: {
+          actor_id?: string
+          created_at?: string
+          event_key?: string
+          event_type?: string
+          finished_goods_lot_id?: string
+          id?: string
+          metadata?: Json
+          movement_id?: string | null
+          occurred_at?: string
+          operation_id?: string
+          owner_id?: string
+          policy_version?: string
+          quantity?: number
+          released_inventory_lot_id?: string
+          state_record_id?: string | null
+          unit?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finished_goods_inventory_even_workspace_id_released_invent_fkey"
+            columns: ["workspace_id", "released_inventory_lot_id"]
+            isOneToOne: false
+            referencedRelation: "released_finished_goods_inventory_lots"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "finished_goods_inventory_events_movement_id_fkey"
+            columns: ["movement_id"]
+            isOneToOne: false
+            referencedRelation: "finished_goods_inventory_movements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finished_goods_inventory_events_operation_id_fkey"
+            columns: ["operation_id"]
+            isOneToOne: false
+            referencedRelation: "finished_goods_inventory_operations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finished_goods_inventory_events_state_record_id_fkey"
+            columns: ["state_record_id"]
+            isOneToOne: false
+            referencedRelation: "finished_goods_inventory_state_history"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finished_goods_inventory_events_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      finished_goods_inventory_movements: {
+        Row: {
+          actor_id: string
+          cost_confidence: string | null
+          created_at: string
           currency: string | null
           event_key: string
+          evidence: Json
           finished_goods_lot_id: string
+          from_location: string | null
           id: string
           idempotency_key: string
           movement_type: string
           normalized_quantity: number
           occurred_at: string
+          operation_id: string | null
           owner_id: string
           provenance: Json
           quantity: number
+          reason: string | null
+          related_movement_id: string | null
           release_review_id: string
           released_inventory_lot_id: string
+          to_location: string | null
           total_cost: number | null
           unit: string
           unit_cost: number | null
@@ -3343,20 +3446,27 @@ export type Database = {
         }
         Insert: {
           actor_id: string
+          cost_confidence?: string | null
           created_at?: string
           currency?: string | null
           event_key: string
+          evidence?: Json
           finished_goods_lot_id: string
+          from_location?: string | null
           id?: string
           idempotency_key: string
           movement_type: string
           normalized_quantity: number
           occurred_at: string
+          operation_id?: string | null
           owner_id: string
           provenance: Json
           quantity: number
+          reason?: string | null
+          related_movement_id?: string | null
           release_review_id: string
           released_inventory_lot_id: string
+          to_location?: string | null
           total_cost?: number | null
           unit: string
           unit_cost?: number | null
@@ -3364,20 +3474,27 @@ export type Database = {
         }
         Update: {
           actor_id?: string
+          cost_confidence?: string | null
           created_at?: string
           currency?: string | null
           event_key?: string
+          evidence?: Json
           finished_goods_lot_id?: string
+          from_location?: string | null
           id?: string
           idempotency_key?: string
           movement_type?: string
           normalized_quantity?: number
           occurred_at?: string
+          operation_id?: string | null
           owner_id?: string
           provenance?: Json
           quantity?: number
+          reason?: string | null
+          related_movement_id?: string | null
           release_review_id?: string
           released_inventory_lot_id?: string
+          to_location?: string | null
           total_cost?: number | null
           unit?: string
           unit_cost?: number | null
@@ -3406,7 +3523,191 @@ export type Database = {
             referencedColumns: ["workspace_id", "id"]
           },
           {
+            foreignKeyName: "finished_goods_inventory_movements_operation_id_fkey"
+            columns: ["operation_id"]
+            isOneToOne: false
+            referencedRelation: "finished_goods_inventory_operations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finished_goods_inventory_movements_related_movement_id_fkey"
+            columns: ["related_movement_id"]
+            isOneToOne: false
+            referencedRelation: "finished_goods_inventory_movements"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "finished_goods_inventory_movements_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      finished_goods_inventory_operations: {
+        Row: {
+          actor_id: string
+          created_at: string
+          evidence: Json
+          expected_revision: number
+          from_location: string | null
+          id: string
+          idempotency_key: string
+          movement_ids: string[]
+          occurred_at: string
+          operation_type: string
+          owner_id: string
+          policy_version: string
+          quantity: number
+          reason: string
+          related_record_id: string | null
+          released_inventory_lot_id: string
+          request_fingerprint: string
+          to_location: string | null
+          unit: string
+          workspace_id: string
+        }
+        Insert: {
+          actor_id: string
+          created_at?: string
+          evidence: Json
+          expected_revision: number
+          from_location?: string | null
+          id?: string
+          idempotency_key: string
+          movement_ids?: string[]
+          occurred_at: string
+          operation_type: string
+          owner_id: string
+          policy_version?: string
+          quantity: number
+          reason: string
+          related_record_id?: string | null
+          released_inventory_lot_id: string
+          request_fingerprint: string
+          to_location?: string | null
+          unit: string
+          workspace_id: string
+        }
+        Update: {
+          actor_id?: string
+          created_at?: string
+          evidence?: Json
+          expected_revision?: number
+          from_location?: string | null
+          id?: string
+          idempotency_key?: string
+          movement_ids?: string[]
+          occurred_at?: string
+          operation_type?: string
+          owner_id?: string
+          policy_version?: string
+          quantity?: number
+          reason?: string
+          related_record_id?: string | null
+          released_inventory_lot_id?: string
+          request_fingerprint?: string
+          to_location?: string | null
+          unit?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finished_goods_inventory_oper_workspace_id_released_invent_fkey"
+            columns: ["workspace_id", "released_inventory_lot_id"]
+            isOneToOne: false
+            referencedRelation: "released_finished_goods_inventory_lots"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "finished_goods_inventory_operations_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      finished_goods_inventory_state_history: {
+        Row: {
+          actor_id: string
+          created_at: string
+          event_key: string
+          evidence: Json
+          id: string
+          occurred_at: string
+          operation_id: string
+          owner_id: string
+          policy_version: string
+          quantity_delta: number
+          reason: string
+          related_state_id: string | null
+          released_inventory_lot_id: string
+          state_type: string
+          unit: string
+          workspace_id: string
+        }
+        Insert: {
+          actor_id: string
+          created_at?: string
+          event_key: string
+          evidence: Json
+          id?: string
+          occurred_at: string
+          operation_id: string
+          owner_id: string
+          policy_version?: string
+          quantity_delta: number
+          reason: string
+          related_state_id?: string | null
+          released_inventory_lot_id: string
+          state_type: string
+          unit: string
+          workspace_id: string
+        }
+        Update: {
+          actor_id?: string
+          created_at?: string
+          event_key?: string
+          evidence?: Json
+          id?: string
+          occurred_at?: string
+          operation_id?: string
+          owner_id?: string
+          policy_version?: string
+          quantity_delta?: number
+          reason?: string
+          related_state_id?: string | null
+          released_inventory_lot_id?: string
+          state_type?: string
+          unit?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finished_goods_inventory_stat_workspace_id_released_invent_fkey"
+            columns: ["workspace_id", "released_inventory_lot_id"]
+            isOneToOne: false
+            referencedRelation: "released_finished_goods_inventory_lots"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "finished_goods_inventory_state_history_operation_id_fkey"
+            columns: ["operation_id"]
+            isOneToOne: false
+            referencedRelation: "finished_goods_inventory_operations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finished_goods_inventory_state_history_related_state_id_fkey"
+            columns: ["related_state_id"]
+            isOneToOne: false
+            referencedRelation: "finished_goods_inventory_state_history"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finished_goods_inventory_state_history_workspace_id_fkey"
             columns: ["workspace_id"]
             isOneToOne: false
             referencedRelation: "workspaces"
@@ -16945,6 +17246,10 @@ export type Database = {
         Args: { target_finished_goods_lot_id: string }
         Returns: Json
       }
+      get_finished_goods_inventory_workspace_v1: {
+        Args: { target_released_inventory_lot_id: string }
+        Returns: Json
+      }
       get_finished_goods_lot_genealogy_v1: {
         Args: { target_finished_goods_lot_id: string }
         Returns: Json
@@ -17029,6 +17334,10 @@ export type Database = {
         }
         Returns: Json
       }
+      kf_finished_goods_inventory_snapshot_v1: {
+        Args: { target_lot_id: string; target_workspace_id: string }
+        Returns: Json
+      }
       kf_finished_goods_readiness_v1: {
         Args: { target_packaging_run_id: string; target_workspace_id: string }
         Returns: Json
@@ -17078,6 +17387,10 @@ export type Database = {
           candidate_limit?: number
           candidate_workspace_id: string
         }
+        Returns: Json
+      }
+      list_finished_goods_inventory_fefo_v1: {
+        Args: { target_product_id?: string }
         Returns: Json
       }
       lookup_beard_analysis_support_diagnostic: {
@@ -17353,6 +17666,23 @@ export type Database = {
           candidate_unit: string
           expected_quarantine_revision: number
           target_finished_goods_lot_id: string
+        }
+        Returns: Json
+      }
+      record_finished_goods_inventory_operation_v1: {
+        Args: {
+          candidate_evidence: Json
+          candidate_from_location: string
+          candidate_idempotency_key: string
+          candidate_occurred_at: string
+          candidate_operation_type: string
+          candidate_quantity: number
+          candidate_reason: string
+          candidate_related_record_id: string
+          candidate_to_location: string
+          candidate_unit: string
+          expected_inventory_revision: number
+          target_released_inventory_lot_id: string
         }
         Returns: Json
       }
