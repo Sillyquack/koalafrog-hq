@@ -423,3 +423,6 @@ Scope: ownership/deprecation inventory; automated grant/RLS/FK-index checks; bou
 Then implement **Recall Readiness V1** from immutable trace roots: recall case identity, scope snapshots, decisions, affected inventory, evidence, actions, reconciliation and closure. It must not imply customer tracing before dispatch/customer data exists.
 
 Stop and mark BLOCKED for direct browser writes to controlled facts, duplicate quantity truth, mutable released/consumed history, cross-owner access, mismatched readiness evaluator/enforcement, an unbounded safety-critical recall query, unreconciled migration loss, or Unknown coerced to safe/zero.
+# Recall Readiness follow-on
+
+Recall Readiness V1 is implemented as a new RPC-only assessment authority that consumes Slice 6 traceability and Slice 5 inventory without changing either authority. It creates no execution, legacy Finished Goods, notification, shipment, blocking, or destruction path. See [Recall Readiness V1](RECALL_READINESS_V1.md).

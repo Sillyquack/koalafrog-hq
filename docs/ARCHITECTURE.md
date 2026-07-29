@@ -139,3 +139,6 @@ Slice 6 adds no ledger and no lifecycle mutation. Authenticated bounded RPCs rec
 The 2026-07-29 [Platform Architecture Review](PLATFORM_ARCHITECTURE_REVIEW_2026-07-29.md) confirms that the supplier-to-released-Finished-Goods lifecycle, three physical ledgers, server-authority boundary, immutable evidence, costing snapshots, and traceability graph remain coherent.
 
 The current scaling boundary is architectural classification rather than a new ledger: `workspace_records`, legacy `finished_goods_batches`, `finished_goods_movements`, `packaging_allocations`, and their established RPCs remain compatibility surfaces and must receive no new controlled-workflow responsibility. The next slice inventories and marks those boundaries, automates privilege/RLS/FK-index review, keeps history queries bounded, and reduces selected provider/error-handling concentration before Recall Readiness.
+# Recall Readiness authority
+
+Recall Readiness reuses the canonical Batch Genealogy trace and movement-derived Finished Goods inventory snapshot. Its cases, immutable revisions, frozen scopes, evidence metadata, reviews, and fingerprint-specific approvals are RPC-only authorities. Approval performs no recall, inventory, shipment, notification, return, destruction, accounting, or legal action. See [Recall Readiness V1](RECALL_READINESS_V1.md).

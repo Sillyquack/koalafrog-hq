@@ -112,3 +112,6 @@ flowchart TD
 ```
 
 The Supabase repository never falls back to browser storage or a legacy write after a controlled command fails.
+# Recall Readiness compatibility rule
+
+Recall Readiness uses only canonical Finished Goods Lot, released inventory, Slice 6 traceability, and Slice 5 inventory authorities. It neither reads nor writes frozen `finished_goods_batches`, `finished_goods_movements`, or `packaging_allocations` for controlled scope decisions.

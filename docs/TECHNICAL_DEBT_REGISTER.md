@@ -12,3 +12,8 @@ This register records bounded follow-up work; it is not an authorization to expa
 | TD-006 | Static accessibility gate is not a WCAG conformance test | Keyboard, focus, contrast, or screen-reader defects can escape | Representative browser journeys plus a deterministic source gate | Automated axe/keyboard coverage across critical routes |
 | TD-007 | No hosted restore rehearsal evidence exists | Recovery-time assumptions are unproven | Local reset and restore runbook | Dated hosted rehearsal with checksum and smoke evidence |
 | TD-008 | Product-wide genealogy aggregation is not materialized | Trace queries may become expensive at scale | Lot-scoped, owner-scoped canonical RPCs and recorded query plans | Production-shaped volume test and measured aggregation strategy |
+# Recall Readiness boundary debt
+
+- Customer, distributor, shipment, and sales-order tracing remain unavailable; Recall Readiness records this as an explicit distribution limitation.
+- Recall execution remains a separate future milestone and has no operational mutation path in V1.
+- Documented non-lifecycle sources require linkage to a canonical trace root before affected goods can be calculated.

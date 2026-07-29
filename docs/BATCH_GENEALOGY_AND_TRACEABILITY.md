@@ -150,3 +150,6 @@ Performance plans are maintained in `scripts/performance/batch-genealogy-traceab
 - Search is intentionally bounded and is not fuzzy.
 
 Slice 7 may begin only from this immutable, workspace-isolated snapshot contract and must not turn traceability queries into lifecycle mutations.
+# Recall Readiness consumer
+
+Recall Readiness V1 consumes the canonical Slice 6 snapshot and fingerprint without creating a second genealogy ledger. Scope generation freezes the trace result and records the explicit customer/distribution boundary; approved scope is never silently recomputed. See [Recall Readiness V1](RECALL_READINESS_V1.md).

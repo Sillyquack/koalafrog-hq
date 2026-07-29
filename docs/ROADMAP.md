@@ -101,7 +101,7 @@ Approved implementation sequence:
 5. Finished Goods Inventory & Cost
 6. Batch Genealogy & Traceability
 7. Platform Hardening & Legacy Authority Classification — **Next**
-8. Recall Readiness
+8. Recall Readiness — implemented locally on `feature/finished-goods-batch-genealogy-v1`; internal assessment only, with immutable scopes and no execution actions. See [Recall Readiness V1](RECALL_READINESS_V1.md).
 9. Release-Candidate & Deployment Hardening
 10. Downstream Reservation & Dispatch
 
