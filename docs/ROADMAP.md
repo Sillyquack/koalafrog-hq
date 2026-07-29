@@ -106,10 +106,13 @@ Approved implementation sequence:
 
 Exact future sequence:
 
-1. Authorized Hosted Backup, Restore & Migration Rehearsal V1 — exact next deployment milestone.
-2. Downstream Reservation & Controlled Dispatch V1 — exact next local product milestone, on a separate branch.
-3. Shipment and Distribution Traceability.
-4. Controlled Recall Execution.
+1. Controlled Merge Review & Branch Integration V1 — **PASS locally**; branch not pushed, PR not created, and no merge performed.
+2. Explicit authorization to push the feature branch and create a Pull Request — exact next approval gate.
+3. Explicit authorization to merge after human review — separate later gate.
+4. Authorized Hosted Backup, Restore & Migration Rehearsal V1 — exact next deployment milestone.
+5. Downstream Reservation & Controlled Dispatch V1 — exact next local product milestone, on a separate branch.
+6. Shipment and Distribution Traceability.
+7. Controlled Recall Execution.
 
 Hosted rehearsal should normally precede production deployment. Local downstream development may proceed separately without moving or rewriting the frozen RC tag. Hosted backup, migration, configuration, validation, deployment, and any remote mutation require explicit authorization. Recall Execution must not be implemented before distribution/customer data authorities and responsible governance exist.
 

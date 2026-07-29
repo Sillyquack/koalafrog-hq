@@ -53,4 +53,3 @@ These commands are examples for a future authorized operator. They were not run.
 | G — production deployment | Use the approved deployment procedure and immutable candidate | Final production authorization |
 
 Never place credentials in commands or evidence. If the remote target or PR number differs, stop and re-verify rather than substituting assumptions.
-

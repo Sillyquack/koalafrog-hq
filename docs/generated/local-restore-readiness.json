@@ -4,7 +4,7 @@
   "environment": "local_disposable_database",
   "sourceDatabase": "local Supabase postgres",
   "dumpPersisted": false,
-  "schemaSha256": "e79767942da8c0c3698347100dd707777effbee1e35dfdba057eade4a8e9ff8c",
+  "schemaSha256": "13a6932007a50de3993ab6a7332e83893c0b7de32c41e667fabdb9d029560d49",
   "source": {
     "tables": 198,
     "functions": 206,

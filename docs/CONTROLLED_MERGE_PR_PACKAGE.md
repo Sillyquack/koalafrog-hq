@@ -119,4 +119,3 @@ This PR does not deploy, apply hosted migrations, alter Auth or Storage, change 
 ## After an actual merge
 
 Rerun database reset, pgTAP, lint, build, unit tests, authenticated integrations, desktop/mobile E2E, all deterministic audits, database lint/advisors, restore verification, and production-preview smoke testing. Regenerate integration evidence against the actual merge commit. Do not deploy automatically.
-

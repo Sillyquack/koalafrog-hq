@@ -2,8 +2,8 @@
 
 Integrates Production Inventory Control, Finished Goods genealogy and traceability, Recall Readiness, platform authority hardening, RC closeout, and local deployment preparation.
 
-Base: `main`  
-Compare: `feature/finished-goods-batch-genealogy-v1`  
+Base: `main`
+Compare: `feature/finished-goods-batch-genealogy-v1`
 Recommended merge: normal non-squash merge with an explicit merge commit.
 
 ## Evidence
@@ -21,4 +21,3 @@ Migration ordering, inventory and packaging ledgers, release/disposition authori
 ## Deployment boundary
 
 This PR does not deploy, apply hosted migrations, alter Auth or Storage, change hosted environment variables, create hosted users, or authorize hosted rehearsal.
-

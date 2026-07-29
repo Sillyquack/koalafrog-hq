@@ -20,6 +20,8 @@ This register records bounded follow-up work; it is not an authorization to expa
 | TD-014 | Production monitoring and alert delivery are not configured | Failures may not be detected promptly | Vendor-neutral signal/threshold/privacy plan exists | Approved monitoring integration and tested incident path |
 | TD-015 | Stale-client handling relies on hashed assets and operator refresh guidance | Long-lived tabs may use an older API contract | No service worker; smoke covers chunks/deep links | Version compatibility/refresh behavior proven hosted |
 | TD-016 | Deployment automation is local/manual and no repository CI workflow exists | Operator ordering errors remain possible | Fail-closed local preflight and command classification | Protected pipeline with approvals and identical evidence |
+| TD-017 | Platform audit previously included mutable PostgreSQL row estimates and catalogue ACL order | Identical schemas could produce generated-evidence churn after tests | Row estimates are excluded and grants normalized before hashing | Repeated reset/test/audit cycles remain byte-identical |
+| TD-018 | Current integration simulation becomes stale if `main` advances | A later target change can introduce unseen textual or semantic conflicts | Target HEAD and merge base are locked by the controlled-review audit | Re-run simulation and validation against the authorized remote target |
 # Recall Readiness boundary debt
 
 - Customer, distributor, shipment, and sales-order tracing remain unavailable; Recall Readiness records this as an explicit distribution limitation.
