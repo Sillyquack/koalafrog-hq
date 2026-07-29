@@ -52,6 +52,8 @@ Supabase provides:
 
 Backend clients, generated database types, and query details remain in the platform infrastructure area and do not leak into feature components.
 
+The current compatibility boundary, legacy authority classifications, canonical ledgers, and removal order are versioned in [Compatibility and legacy authority](COMPATIBILITY_AND_LEGACY_AUTHORITY.md). Generated inventories in `docs/generated` are deterministic audit evidence; they do not replace migrations or domain contracts.
+
 Product Studio Formula handoffs may attach optional ordered phase definitions and a structured manufacturing-process draft to an existing Formula Version. Formula Lines remain the canonical percentage composition and carry their phase association. Lab Batch creation snapshots those lines and process steps for execution; the Formula Version remains unchanged, and planning never creates Inventory Movements.
 
 The Core Formulation Engine separates reusable formulation archetypes from familiar Product Studio templates. The typed registry owns capability maturity and template-to-archetype mapping; shared handoff validation resolves capabilities from the saved concept type rather than product-name conditionals. See [FORMULATION_ENGINE.md](FORMULATION_ENGINE.md).

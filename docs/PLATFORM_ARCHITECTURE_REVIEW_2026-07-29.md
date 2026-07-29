@@ -1,5 +1,13 @@
 # Koalafrog Platform Architecture Review — 2026-07-29
 
+## Hardening follow-up
+
+Platform Hardening & Legacy Authority Classification V1 converted this review’s qualitative inventory into deterministic database, RPC, privilege, foreign-key, module, browser-write, legacy-dependency, event, policy, accessibility, documentation, release, and bundle artifacts under `docs/generated`.
+
+Authenticated direct writes to the raw-material and packaging movement ledgers are now denied. Owner-derived receipt and append RPCs preserve the existing UI commands, while legacy Finished Goods and `workspace_records` authority is read-only. The compatibility boundary and removal sequence are documented in [Compatibility and legacy authority](COMPATIBILITY_AND_LEGACY_AUTHORITY.md).
+
+Route-level lazy loading reduced the largest JavaScript chunk from 1,590,270 bytes to 664,699 bytes (gzip from approximately 407 kB to 185,081 bytes). The remaining chunk warning and broad Formula provider are retained in the [technical debt register](TECHNICAL_DEBT_REGISTER.md); they are not hidden or represented as resolved.
+
 ## 1. Executive verdict
 
 **Status: PASS.**
