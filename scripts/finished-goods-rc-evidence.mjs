@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process"
 import { createHash } from "node:crypto"
-import { readFileSync, writeFileSync } from "node:fs"
+import { existsSync, readFileSync, writeFileSync } from "node:fs"
 import { basename, join } from "node:path"
 
 const root = process.cwd()
@@ -11,6 +11,8 @@ const branch = execFileSync("git", ["branch", "--show-current"], { encoding: "ut
 const shortHead = execFileSync("git", ["rev-parse", "--short", implementationHead], { encoding: "utf8" }).trim()
 const authority = JSON.parse(readFileSync(join(generated, "platform-authority-inventory.json"), "utf8"))
 const baseline = JSON.parse(readFileSync(join(generated, "platform-release-baseline.json"), "utf8"))
+const rcPath = join(generated, "finished-goods-traceability-recall-rc.json")
+const existingRc = existsSync(rcPath) ? JSON.parse(readFileSync(rcPath, "utf8")) : {}
 
 const milestoneRules = [
   ["61e825c", "Architecture Audit"],
@@ -124,7 +126,7 @@ const rc = {
   rcName: "Finished Goods, Traceability & Recall Readiness V1 — Local Release Candidate 1",
   branch,
   headCommitBeforeCloseout: "15c8db0330a0c5ad153be0b962f601d23ffb6052",
-  closeoutCommit: process.env.RC_CLOSEOUT_COMMIT || null,
+  closeoutCommit: process.env.RC_CLOSEOUT_COMMIT || existingRc.closeoutCommit || null,
   tag: "finished-goods-traceability-recall-v1-rc1",
   localMigrationHead: baseline.migrationHead,
   milestones: ["Architecture Audit", "Slice 1", "Slice 2", "Slice 3", "Slice 4", "Slice 5", "Slice 6", "Platform Architecture Review", "Platform Hardening", "Recall Readiness"],
@@ -157,5 +159,5 @@ const rc = {
 
 writeFileSync(join(generated, "finished-goods-rc-commit-inventory.json"), `${JSON.stringify(commitInventory, null, 2)}\n`)
 writeFileSync(join(generated, "finished-goods-rc-migration-inventory.json"), `${JSON.stringify(migrationInventory, null, 2)}\n`)
-writeFileSync(join(generated, "finished-goods-traceability-recall-rc.json"), `${JSON.stringify(rc, null, 2)}\n`)
+writeFileSync(rcPath, `${JSON.stringify(rc, null, 2)}\n`)
 console.log(JSON.stringify({ status: "PASS", commits: commits.length, migrations: migrations.length, head: shortHead }, null, 2))

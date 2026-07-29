@@ -1800,7 +1800,7 @@
         "finished_goods_lot_id"
       ],
       "constraint": "finished_goods_inventory_move_workspace_id_finished_goods__fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 10,
       "recommendation": null,
       "references": "finished_goods_lots",
       "schema": "public",
@@ -1813,7 +1813,7 @@
         "release_review_id"
       ],
       "constraint": "finished_goods_inventory_move_workspace_id_release_review__fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 10,
       "recommendation": null,
       "references": "finished_goods_disposition_reviews",
       "schema": "public",
@@ -1826,7 +1826,7 @@
         "released_inventory_lot_id"
       ],
       "constraint": "finished_goods_inventory_move_workspace_id_released_invent_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 10,
       "recommendation": null,
       "references": "released_finished_goods_inventory_lots",
       "schema": "public",
@@ -1838,7 +1838,7 @@
         "operation_id"
       ],
       "constraint": "finished_goods_inventory_movements_operation_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 10,
       "recommendation": "Review index (operation_id) using query and growth evidence.",
       "references": "finished_goods_inventory_operations",
       "schema": "public",
@@ -1850,7 +1850,7 @@
         "related_movement_id"
       ],
       "constraint": "finished_goods_inventory_movements_related_movement_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 10,
       "recommendation": "Review index (related_movement_id) using query and growth evidence.",
       "references": "finished_goods_inventory_movements",
       "schema": "public",
@@ -1862,7 +1862,7 @@
         "workspace_id"
       ],
       "constraint": "finished_goods_inventory_movements_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 10,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -4209,7 +4209,7 @@
         "workspace_id"
       ],
       "constraint": "packaging_specifications_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 13,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -4222,7 +4222,7 @@
         "product_id"
       ],
       "constraint": "packaging_specifications_workspace_id_product_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 13,
       "recommendation": null,
       "references": "products",
       "schema": "public",

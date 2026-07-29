@@ -3851,7 +3851,7 @@
           "name": "finished_goods_inventory_movements_quantity_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 10,
       "foreignKeys": [
         {
           "columns": [
@@ -9771,7 +9771,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": -1,
+      "estimatedRows": 13,
       "foreignKeys": [
         {
           "columns": [
