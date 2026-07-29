@@ -174,3 +174,6 @@ The browser lifecycle covers real inspection and disposition on desktop and mobi
 ## Limitations and Slice 5 entry
 
 V1 does not model destructive execution, shipment, reservations, customer allocation, sales, recalls, unit serialization, returns, or accounting. Microbiological requirements remain unknown/non-blocking until an authoritative Product specification exists. Slice 5 may extend adjustments, inventory controls, valuation reconciliation, and operational availability without changing Release review or opening-movement identity.
+# Active inventory handoff
+
+A release tranche hands off to the Slice 5 active inventory workspace without changing its release review, opening movement, cost snapshot, or genealogy. Operational controls are documented in [ACTIVE_FINISHED_GOODS_INVENTORY_CONTROLS.md](ACTIVE_FINISHED_GOODS_INVENTORY_CONTROLS.md).

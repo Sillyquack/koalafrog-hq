@@ -633,3 +633,6 @@ Stop an implementation slice and do not broaden scope when:
 
 Slice 3 implements the approved next boundary in [Finished Goods Lot Creation and Quarantine](FINISHED_GOODS_LOT_CREATION_AND_QUARANTINE.md): append-only packaged-output reconciliation, immutable split lot conversion, snapshot authority, and explicit quarantine without active stock.
 Slice 4 implements the audit’s additive released-lot recommendation; see [Finished-Product Inspection, Disposition & Controlled Quality Release](FINISHED_PRODUCT_INSPECTION_AND_QUALITY_RELEASE.md). Legacy `finished_goods_batches` remains rollback-era history and is not the new active-stock authority.
+# Slice 5 implementation reference
+
+The audited active-inventory boundary is implemented in [ACTIVE_FINISHED_GOODS_INVENTORY_CONTROLS.md](ACTIVE_FINISHED_GOODS_INVENTORY_CONTROLS.md): Finished Goods retain a separate movement ledger, movement-derived balance, append-only operational overlays, immutable release cost, and RPC-only writes.

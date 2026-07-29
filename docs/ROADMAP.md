@@ -141,3 +141,6 @@ The repository now contains a typed, searchable, cross-linked in-app operations 
 ### Finished Goods & Batch Genealogy V1 — Slice 4
 
 Finished-product inspection, immutable deviations, partial Hold/Reject/Release disposition, controlled active-inventory creation, and exactly-once opening movements are implemented locally. See [Finished-Product Inspection, Disposition & Controlled Quality Release](FINISHED_PRODUCT_INSPECTION_AND_QUALITY_RELEASE.md).
+# Slice 5 checkpoint
+
+Active Finished Goods Inventory Controls, Valuation & Operational Availability are implemented on `feature/finished-goods-batch-genealogy-v1`; see [ACTIVE_FINISHED_GOODS_INVENTORY_CONTROLS.md](ACTIVE_FINISHED_GOODS_INVENTORY_CONTROLS.md). Downstream reservation, shipment, sales, recall cases, and accounting remain future slices.
