@@ -1095,7 +1095,7 @@
           "name": "beard_length_map_zones_zone_name_check"
         }
       ],
-      "estimatedRows": 55,
+      "estimatedRows": 22,
       "foreignKeys": [
         {
           "columns": [
@@ -1686,7 +1686,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": -1,
+      "estimatedRows": 6,
       "foreignKeys": [
         {
           "columns": [
@@ -1745,7 +1745,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": 6,
+      "estimatedRows": 12,
       "foreignKeys": [
         {
           "columns": [
@@ -1865,7 +1865,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": -1,
+      "estimatedRows": 6,
       "foreignKeys": [
         {
           "columns": [
@@ -1908,7 +1908,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": 7,
+      "estimatedRows": 14,
       "foreignKeys": [
         {
           "columns": [
@@ -2004,7 +2004,7 @@
           "name": "cost_lines_quantity_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 6,
       "foreignKeys": [
         {
           "columns": [
@@ -2047,7 +2047,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": -1,
+      "estimatedRows": 6,
       "foreignKeys": [
         {
           "columns": [
@@ -2114,7 +2114,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": -1,
+      "estimatedRows": 6,
       "foreignKeys": [
         {
           "columns": [
@@ -3255,7 +3255,7 @@
           "name": "finished_goods_batches_initial_quantity_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 6,
       "foreignKeys": [
         {
           "columns": [
@@ -3625,7 +3625,7 @@
           "name": "finished_goods_inspections_sample_quantity_check"
         }
       ],
-      "estimatedRows": 41,
+      "estimatedRows": 82,
       "foreignKeys": [
         {
           "columns": [
@@ -3851,7 +3851,7 @@
           "name": "finished_goods_inventory_movements_quantity_check"
         }
       ],
-      "estimatedRows": 10,
+      "estimatedRows": -1,
       "foreignKeys": [
         {
           "columns": [
@@ -4192,7 +4192,7 @@
           "name": "finished_goods_lot_events_event_type_check"
         }
       ],
-      "estimatedRows": 43,
+      "estimatedRows": 86,
       "foreignKeys": [
         {
           "columns": [
@@ -4668,7 +4668,7 @@
           "name": "finished_goods_movements_quantity_check"
         }
       ],
-      "estimatedRows": 6,
+      "estimatedRows": 12,
       "foreignKeys": [
         {
           "columns": [
@@ -4726,7 +4726,7 @@
           "name": "finished_goods_quality_events_event_type_check"
         }
       ],
-      "estimatedRows": 62,
+      "estimatedRows": 120,
       "foreignKeys": [
         {
           "columns": [
@@ -4947,7 +4947,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": 68,
+      "estimatedRows": 136,
       "foreignKeys": [
         {
           "columns": [
@@ -5015,7 +5015,7 @@
           "name": "formula_versions_phase_definitions_check"
         }
       ],
-      "estimatedRows": 38,
+      "estimatedRows": 74,
       "foreignKeys": [
         {
           "columns": [
@@ -5090,7 +5090,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": 35,
+      "estimatedRows": 68,
       "foreignKeys": [
         {
           "columns": [
@@ -5150,7 +5150,7 @@
           "name": "grooming_tool_attachments_name_check"
         }
       ],
-      "estimatedRows": 4,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -5298,7 +5298,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": -1,
+      "estimatedRows": 6,
       "foreignKeys": [
         {
           "columns": [
@@ -5732,7 +5732,7 @@
           "name": "ingredients_cosing_verification_status_check"
         }
       ],
-      "estimatedRows": 36,
+      "estimatedRows": 72,
       "foreignKeys": [
         {
           "columns": [
@@ -5954,7 +5954,7 @@
           "name": "intelligence_analyses_target_style_shape"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -6518,7 +6518,7 @@
           "name": "inventory_lots_restriction_snapshot_check"
         }
       ],
-      "estimatedRows": 22,
+      "estimatedRows": 43,
       "foreignKeys": [
         {
           "columns": [
@@ -6606,7 +6606,7 @@
           "name": "inventory_movements_quantity_check"
         }
       ],
-      "estimatedRows": 42,
+      "estimatedRows": 83,
       "foreignKeys": [
         {
           "columns": [
@@ -7225,7 +7225,7 @@
           "name": "lab_batch_lines_tolerance_quantity_check"
         }
       ],
-      "estimatedRows": 6,
+      "estimatedRows": 12,
       "foreignKeys": [
         {
           "columns": [
@@ -7309,7 +7309,7 @@
           "name": "lab_batches_revision_check"
         }
       ],
-      "estimatedRows": 6,
+      "estimatedRows": 12,
       "foreignKeys": [
         {
           "columns": [
@@ -7473,7 +7473,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": 6,
+      "estimatedRows": 12,
       "foreignKeys": [
         {
           "columns": [
@@ -7537,7 +7537,7 @@
           "name": "lab_process_temperature_range"
         }
       ],
-      "estimatedRows": 6,
+      "estimatedRows": 12,
       "foreignKeys": [
         {
           "columns": [
@@ -7588,7 +7588,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": -1,
+      "estimatedRows": 6,
       "foreignKeys": [
         {
           "columns": [
@@ -7663,7 +7663,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": 30,
+      "estimatedRows": 60,
       "foreignKeys": [
         {
           "columns": [
@@ -7773,7 +7773,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": 6,
+      "estimatedRows": 12,
       "foreignKeys": [
         {
           "columns": [
@@ -7824,7 +7824,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": -1,
+      "estimatedRows": 6,
       "foreignKeys": [
         {
           "columns": [
@@ -7883,7 +7883,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": -1,
+      "estimatedRows": 6,
       "foreignKeys": [
         {
           "columns": [
@@ -8095,7 +8095,7 @@
           "name": "packaging_allocations_quantity_check"
         }
       ],
-      "estimatedRows": 6,
+      "estimatedRows": 12,
       "foreignKeys": [
         {
           "columns": [
@@ -8172,7 +8172,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": 15,
+      "estimatedRows": 30,
       "foreignKeys": [
         {
           "columns": [
@@ -8220,7 +8220,7 @@
           "name": "packaging_inventory_lots_opening_quantity_check"
         }
       ],
-      "estimatedRows": 12,
+      "estimatedRows": 24,
       "foreignKeys": [
         {
           "columns": [
@@ -8308,7 +8308,7 @@
           "name": "packaging_inventory_movements_quantity_check"
         }
       ],
-      "estimatedRows": 21,
+      "estimatedRows": 42,
       "foreignKeys": [
         {
           "columns": [
@@ -8659,7 +8659,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": 30,
+      "estimatedRows": 38,
       "foreignKeys": [
         {
           "columns": [
@@ -9473,7 +9473,7 @@
           "name": "packaging_runs_status_check"
         }
       ],
-      "estimatedRows": 12,
+      "estimatedRows": 22,
       "foreignKeys": [
         {
           "columns": [
@@ -9653,7 +9653,7 @@
           "name": "packaging_specification_lines_quantity_per_unit_check"
         }
       ],
-      "estimatedRows": 18,
+      "estimatedRows": 36,
       "foreignKeys": [
         {
           "columns": [
@@ -9712,7 +9712,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": 16,
+      "estimatedRows": 32,
       "foreignKeys": [
         {
           "columns": [
@@ -9771,7 +9771,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": 13,
+      "estimatedRows": 26,
       "foreignKeys": [
         {
           "columns": [
@@ -9831,7 +9831,7 @@
           "name": "packaging_supplier_products_price_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 6,
       "foreignKeys": [
         {
           "columns": [
@@ -9899,7 +9899,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": 15,
+      "estimatedRows": 30,
       "foreignKeys": [
         {
           "columns": [
@@ -11698,7 +11698,7 @@
           "name": "production_lot_allocations_quantity_check"
         }
       ],
-      "estimatedRows": 6,
+      "estimatedRows": 12,
       "foreignKeys": [
         {
           "columns": [
@@ -11884,7 +11884,7 @@
           "name": "production_output_events_event_type_check"
         }
       ],
-      "estimatedRows": 29,
+      "estimatedRows": 44,
       "foreignKeys": [
         {
           "columns": [
@@ -12244,7 +12244,7 @@
           "name": "production_outputs_unresolved_cost_count_check"
         }
       ],
-      "estimatedRows": 12,
+      "estimatedRows": 22,
       "foreignKeys": [
         {
           "columns": [
@@ -12375,7 +12375,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": -1,
+      "estimatedRows": 6,
       "foreignKeys": [
         {
           "columns": [
@@ -12788,7 +12788,7 @@
           "name": "production_procurement_round_products_planned_batch_count_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 24,
       "foreignKeys": [
         {
           "columns": [
@@ -12916,7 +12916,7 @@
           "name": "production_procurement_rounds_title_check"
         }
       ],
-      "estimatedRows": 2,
+      "estimatedRows": 4,
       "foreignKeys": [
         {
           "columns": [
@@ -13041,7 +13041,7 @@
           "name": "production_procurement_scenario_baskets_vat_state_check"
         }
       ],
-      "estimatedRows": 21,
+      "estimatedRows": 40,
       "foreignKeys": [
         {
           "columns": [
@@ -13159,7 +13159,7 @@
           "name": "production_procurement_scenario_lines_unit_price_check"
         }
       ],
-      "estimatedRows": 21,
+      "estimatedRows": 40,
       "foreignKeys": [
         {
           "columns": [
@@ -13317,7 +13317,7 @@
           "name": "production_procurement_scenarios_warning_count_check"
         }
       ],
-      "estimatedRows": 14,
+      "estimatedRows": 27,
       "foreignKeys": [
         {
           "columns": [
@@ -13725,7 +13725,7 @@
           "name": "production_run_lines_tolerance_quantity_check"
         }
       ],
-      "estimatedRows": 8,
+      "estimatedRows": 16,
       "foreignKeys": [
         {
           "columns": [
@@ -13805,7 +13805,7 @@
           "name": "production_runs_revision_check"
         }
       ],
-      "estimatedRows": 21,
+      "estimatedRows": 42,
       "foreignKeys": [
         {
           "columns": [
@@ -13881,7 +13881,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": 42,
+      "estimatedRows": 82,
       "foreignKeys": [
         {
           "columns": [
@@ -13949,7 +13949,7 @@
           "name": "purchase_order_audit_events_metadata_check"
         }
       ],
-      "estimatedRows": 23,
+      "estimatedRows": 31,
       "foreignKeys": [
         {
           "columns": [
@@ -16008,7 +16008,7 @@
           "name": "purchase_plan_audit_events_metadata_check"
         }
       ],
-      "estimatedRows": 37,
+      "estimatedRows": 69,
       "foreignKeys": [
         {
           "columns": [
@@ -16133,7 +16133,7 @@
           "name": "purchase_plan_baskets_verification_required_count_check"
         }
       ],
-      "estimatedRows": 5,
+      "estimatedRows": 8,
       "foreignKeys": [
         {
           "columns": [
@@ -16371,7 +16371,7 @@
           "name": "purchase_plan_verifications_verification_state_check"
         }
       ],
-      "estimatedRows": 37,
+      "estimatedRows": 60,
       "foreignKeys": [
         {
           "columns": [
@@ -16509,7 +16509,7 @@
           "name": "purchase_plans_version_check"
         }
       ],
-      "estimatedRows": 6,
+      "estimatedRows": 11,
       "foreignKeys": [
         {
           "columns": [
@@ -16662,7 +16662,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": 6,
+      "estimatedRows": 12,
       "foreignKeys": [
         {
           "columns": [
@@ -17577,7 +17577,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": -1,
+      "estimatedRows": 6,
       "foreignKeys": [
         {
           "columns": [
@@ -17630,7 +17630,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": -1,
+      "estimatedRows": 6,
       "foreignKeys": [
         {
           "columns": [
@@ -17681,7 +17681,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": -1,
+      "estimatedRows": 6,
       "foreignKeys": [
         {
           "columns": [
@@ -17863,7 +17863,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": -1,
+      "estimatedRows": 6,
       "foreignKeys": [
         {
           "columns": [
@@ -18771,7 +18771,7 @@
           "name": "supplier_products_verification_object"
         }
       ],
-      "estimatedRows": 18,
+      "estimatedRows": 36,
       "foreignKeys": [
         {
           "columns": [
@@ -19157,7 +19157,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": 12,
+      "estimatedRows": 24,
       "foreignKeys": [
         {
           "columns": [
@@ -19210,7 +19210,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": -1,
+      "estimatedRows": 6,
       "foreignKeys": [
         {
           "columns": [
@@ -19269,7 +19269,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": -1,
+      "estimatedRows": 6,
       "foreignKeys": [
         {
           "columns": [
@@ -19328,7 +19328,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": 12,
+      "estimatedRows": 24,
       "foreignKeys": [
         {
           "columns": [
@@ -19372,7 +19372,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": -1,
+      "estimatedRows": 6,
       "foreignKeys": [
         {
           "columns": [
@@ -19415,7 +19415,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": -1,
+      "estimatedRows": 6,
       "foreignKeys": [
         {
           "columns": [
@@ -19573,7 +19573,7 @@
           "name": "trim_recipe_steps_trim_direction_check"
         }
       ],
-      "estimatedRows": 50,
+      "estimatedRows": 20,
       "foreignKeys": [
         {
           "columns": [
@@ -19869,7 +19869,7 @@
           "name": "workspaces_lifecycle_state_check"
         }
       ],
-      "estimatedRows": 22,
+      "estimatedRows": 42,
       "foreignKeys": [
         {
           "columns": [
