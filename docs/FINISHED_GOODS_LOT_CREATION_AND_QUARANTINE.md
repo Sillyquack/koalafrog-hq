@@ -128,3 +128,4 @@ The rollback-only performance fixture loads 10,000 Packaging Runs, 25,000 lots/q
 - Legacy active Finished Goods bookkeeping remains separate and is not migrated destructively.
 
 Slice 4 begins with immutable quarantined lots and adds finished-product inspection, evidence, disposition, and controlled release without rewriting Slice 3 history.
+The downstream controlled inspection and release boundary is implemented in [Finished-Product Inspection, Disposition & Controlled Quality Release](FINISHED_PRODUCT_INSPECTION_AND_QUALITY_RELEASE.md). Slice 3 lot identity, snapshots, batch code, expiry, cost, and genealogy remain immutable through partial disposition.
