@@ -17242,6 +17242,13 @@ export type Database = {
         }
         Returns: Json
       }
+      get_finished_goods_backward_genealogy_v1: {
+        Args: {
+          target_finished_goods_lot_id?: string
+          target_released_inventory_lot_id?: string
+        }
+        Returns: Json
+      }
       get_finished_goods_inspection_plan_v1: {
         Args: { target_finished_goods_lot_id: string }
         Returns: Json
@@ -17270,6 +17277,10 @@ export type Database = {
         Args: { target_packaging_requirement_id: string }
         Returns: Json
       }
+      get_packaging_lot_forward_trace_v1: {
+        Args: { target_packaging_inventory_lot_id: string }
+        Returns: Json
+      }
       get_packaging_run_completion_readiness_v1: {
         Args: { target_packaging_run_id: string }
         Returns: Json
@@ -17282,6 +17293,14 @@ export type Database = {
         Args: { target_packaging_run_id: string }
         Returns: Json
       }
+      get_packaging_run_trace_v1: {
+        Args: { target_packaging_run_id: string }
+        Returns: Json
+      }
+      get_production_batch_trace_v1: {
+        Args: { target_production_batch_id: string }
+        Returns: Json
+      }
       get_production_output_completion_readiness_v1: {
         Args: { target_production_run_id: string }
         Returns: Json
@@ -17290,8 +17309,26 @@ export type Database = {
         Args: { target_production_output_id: string }
         Returns: Json
       }
+      get_raw_material_lot_forward_trace_v1: {
+        Args: { target_inventory_lot_id: string }
+        Returns: Json
+      }
       get_released_finished_goods_genealogy_v1: {
         Args: { target_released_inventory_lot_id: string }
+        Returns: Json
+      }
+      get_traceability_integrity_v1: {
+        Args: {
+          target_finished_goods_lot_id?: string
+          target_released_inventory_lot_id?: string
+        }
+        Returns: Json
+      }
+      get_traceability_readiness_v1: {
+        Args: {
+          target_finished_goods_lot_id?: string
+          target_released_inventory_lot_id?: string
+        }
         Returns: Json
       }
       import_procurement_purchasing_snapshot: {
@@ -17327,6 +17364,13 @@ export type Database = {
         Args: { from_unit: string; q: number; to_unit: string }
         Returns: number
       }
+      kf_finished_goods_backward_trace_v1: {
+        Args: {
+          target_finished_goods_lot_id: string
+          target_workspace_id: string
+        }
+        Returns: Json
+      }
       kf_finished_goods_inspection_plan_v1: {
         Args: {
           target_finished_goods_lot_id: string
@@ -17345,6 +17389,14 @@ export type Database = {
       kf_finished_goods_release_readiness_v1: {
         Args: {
           target_finished_goods_lot_id: string
+          target_workspace_id: string
+        }
+        Returns: Json
+      }
+      kf_forward_trace_result_v1: {
+        Args: {
+          target_lot_id: string
+          target_source_type: string
           target_workspace_id: string
         }
         Returns: Json
@@ -17378,6 +17430,13 @@ export type Database = {
       }
       kf_production_output_readiness_v1: {
         Args: { target_run_id: string; target_workspace_id: string }
+        Returns: Json
+      }
+      kf_traceability_inventory_impact_v1: {
+        Args: {
+          target_finished_goods_lot_id: string
+          target_workspace_id: string
+        }
         Returns: Json
       }
       list_beard_analysis_history: {
@@ -18042,6 +18101,10 @@ export type Database = {
       save_beard_studio_workspace: { Args: { payload: Json }; Returns: Json }
       save_ingredient_knowledge_aggregate: {
         Args: { aggregate: Json; expected_updated_at?: string }
+        Returns: Json
+      }
+      search_finished_goods_traceability_v1: {
+        Args: { candidate_limit?: number; candidate_query: string }
         Returns: Json
       }
       select_production_requirement_supplier_product: {
