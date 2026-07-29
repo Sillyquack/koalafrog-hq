@@ -131,3 +131,9 @@ Quality-released Finished Goods use their own append-only movement ledger and ap
 ## Batch genealogy and traceability
 
 Slice 6 adds no ledger and no lifecycle mutation. Authenticated bounded RPCs reconstruct a canonical DAG from exact immutable foreign keys, preserve historical snapshots, expose explicit missing-link/confidence states, and delegate current released-stock impact to Slice 5. See [Batch Genealogy and Traceability](BATCH_GENEALOGY_AND_TRACEABILITY.md).
+
+## Post-traceability platform review
+
+The 2026-07-29 [Platform Architecture Review](PLATFORM_ARCHITECTURE_REVIEW_2026-07-29.md) confirms that the supplier-to-released-Finished-Goods lifecycle, three physical ledgers, server-authority boundary, immutable evidence, costing snapshots, and traceability graph remain coherent.
+
+The current scaling boundary is architectural classification rather than a new ledger: `workspace_records`, legacy `finished_goods_batches`, `finished_goods_movements`, `packaging_allocations`, and their established RPCs remain compatibility surfaces and must receive no new controlled-workflow responsibility. The next slice inventories and marks those boundaries, automates privilege/RLS/FK-index review, keeps history queries bounded, and reduces selected provider/error-handling concentration before Recall Readiness.

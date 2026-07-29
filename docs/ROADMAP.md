@@ -1,6 +1,8 @@
 # Roadmap
 
-Current milestone: Finished Goods & Batch Genealogy V1. Slice 1, controlled [Production Output & Yield Reconciliation](PRODUCTION_OUTPUT_AND_YIELD_RECONCILIATION.md), is **PASS**. Slice 2, [Packaging Run Planning, Bulk Allocation & Packaging Control](PACKAGING_RUN_PLANNING_AND_CONTROL.md), is implemented locally and undergoing release-candidate validation.
+Current milestone: Finished Goods & Batch Genealogy V1. Slices 1–6 are **PASS**: controlled Production Output, Packaging Run control, Finished Goods Lot quarantine, finished-product inspection and release, active Finished Goods inventory, and bidirectional batch traceability are complete locally.
+
+The [post-traceability platform architecture review](PLATFORM_ARCHITECTURE_REVIEW_2026-07-29.md) is **PASS**. Its recommended next slice is **Platform Hardening & Legacy Authority Classification V1**, followed by Recall Readiness, release-candidate/deployment hardening, and then downstream reservation and dispatch.
 
 ## Phase 1: Foundation — Complete
 
@@ -82,9 +84,9 @@ Completed capabilities:
 
 The closeout and architecture review are recorded in [Production Inventory Control V1 release closeout](PRODUCTION_INVENTORY_CONTROL_RELEASE_CLOSEOUT.md).
 
-### Next: Finished Goods & Batch Genealogy V1
+### Finished Goods & Batch Genealogy V1
 
-**Status:** In progress. Slice 1 is PASS; Slice 2 is implemented locally and in validation.
+**Status:** Slices 1–6 PASS. Post-foundation architecture review PASS.
 
 High-level objective: transform completed Production output into controlled Finished Goods Lots with immutable batch genealogy, yield reconciliation, quality release, packaging identity, and traceability back to every consumed raw-material lot.
 
@@ -98,8 +100,10 @@ Approved implementation sequence:
 4. Finished Goods Inspection & Quality Release
 5. Finished Goods Inventory & Cost
 6. Batch Genealogy & Traceability
-7. Recall Readiness
-8. Release-Candidate Hardening
+7. Platform Hardening & Legacy Authority Classification — **Next**
+8. Recall Readiness
+9. Release-Candidate & Deployment Hardening
+10. Downstream Reservation & Dispatch
 
 Slice 2 owns durable packaging allocations and reservations, reservation-aware availability, concurrency-safe bulk and component allocation, release and safe staged return, exactly-once consumption, waste/damage, reconciliation, readiness, cost provenance and genealogy. It creates no Finished Goods Lot and performs no Finished Goods release or opening movement.
 
