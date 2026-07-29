@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { GitBranch, Search } from "lucide-react";
 import { TraceabilityRepository } from "./data/traceabilityRepository";
 import type { BackwardGenealogy, ForwardTrace, TraceabilityIntegrityResult, TraceabilitySearchResult } from "./domain/traceability";
@@ -88,7 +88,8 @@ function BackwardView({ trace, integrity, open }: { trace: BackwardGenealogy; in
   return <div className="trace-result">
     <section className="panel"><h2>Overview</h2><p><strong>{trace.root.code}</strong> · Backward genealogy · policy {trace.policyVersion}</p>
       <p>Confidence: <strong>{label(trace.confidence.state)}</strong> · fingerprint <code>{trace.fingerprint}</code></p>
-      <p>This is a read-only reconstruction. It creates no recall, block, reservation, shipment, or allocation.</p></section>
+      <p>This is a read-only reconstruction. It creates no recall, block, reservation, shipment, or allocation.</p>
+      <Link className="button secondary" to={`/recall-readiness?sourceType=${trace.root.nodeType}&sourceId=${encodeURIComponent(trace.root.immutableId)}`}>Assess recall readiness</Link></section>
     <section className="panel"><h2>Backward genealogy</h2><ol className="trace-node-list">{trace.nodes.map(node => <li key={`${node.nodeType}-${node.immutableId}`}>
       <div><span className="eyebrow">{label(node.nodeType)}</span><strong>{node.historicalLabel || node.immutableId}</strong>
         <p>{node.lifecycleStatus || node.relationshipState} · {node.quantity ?? "Quantity unavailable"} {node.unit ?? ""}</p></div>
@@ -113,7 +114,8 @@ function BackwardView({ trace, integrity, open }: { trace: BackwardGenealogy; in
 function ForwardView({ trace }: { trace: ForwardTrace }) {
   return <div className="trace-result"><section className="panel"><h2>Forward trace</h2>
     <p><strong>{String(trace.source.code)}</strong> · {label(String(trace.source.nodeType))}</p>
-    <p>Confidence: <strong>{label(trace.confidence.state)}</strong> · {trace.distinctAffectedFinishedGoodsCount} distinct affected Finished Goods lot(s)</p></section>
+    <p>Confidence: <strong>{label(trace.confidence.state)}</strong> · {trace.distinctAffectedFinishedGoodsCount} distinct affected Finished Goods lot(s)</p>
+    <Link className="button secondary" to={`/recall-readiness?sourceType=${String(trace.source.nodeType)}&sourceId=${encodeURIComponent(String(trace.source.immutableId))}`}>Assess recall readiness</Link></section>
     <section className="panel"><h2>Affected Finished Goods</h2>{trace.affectedFinishedGoods.length === 0 ? <p>Not yet applicable — no productive downstream identity.</p> :
       trace.affectedFinishedGoods.map(item => <article key={item.finishedGoodsLotId}><span className="eyebrow">Consumer batch</span><h3>{item.consumerBatchCode}</h3>
         <p>Exact consumed quantity: {item.exactConsumedQuantity} {item.consumedUnit}</p><p>Exact Finished Goods Lot quantity: {item.exactFinishedGoodsLotQuantity} {item.unit}</p>

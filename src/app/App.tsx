@@ -33,6 +33,7 @@ const FinishedGoodsDetailPage=lazy(()=>import('../features/finished-goods/Finish
 const FinishedGoodsLotPage=lazy(()=>import('../features/finished-goods-control/FinishedGoodsLotPage').then(m=>({default:m.FinishedGoodsLotPage})))
 const FinishedGoodsInventoryPage=lazy(()=>import('../features/finished-goods-control/FinishedGoodsInventoryPage').then(m=>({default:m.FinishedGoodsInventoryPage})))
 const TraceabilityPage=lazy(()=>import('../features/traceability/TraceabilityPage').then(m=>({default:m.TraceabilityPage})))
+const RecallReadinessPage=lazy(()=>import('../features/recall-readiness/RecallReadinessPage').then(m=>({default:m.RecallReadinessPage})))
 const CompliancePage=lazy(()=>import('../features/compliance/CompliancePage').then(m=>({default:m.CompliancePage})))
 const ComplianceDossierPage=lazy(()=>import('../features/compliance/ComplianceDossierPage').then(m=>({default:m.ComplianceDossierPage})))
 const LaunchPage=lazy(()=>import('../features/launch/LaunchPage').then(m=>({default:m.LaunchPage})))
@@ -109,6 +110,7 @@ export function App() {
         <Route path="finished-goods-lots/:finishedGoodsLotId" element={<FinishedGoodsLotPage />} />
         <Route path="finished-goods-inventory/:releasedInventoryLotId" element={<FinishedGoodsInventoryPage />} />
         <Route path="traceability" element={<TraceabilityPage />} />
+        <Route path="recall-readiness" element={<RecallReadinessPage />} />
         <Route path="compliance" element={<CompliancePage />} />
         <Route path="compliance/:complianceDossierId" element={<ComplianceDossierPage />} />
         <Route path="launch" element={<LaunchPage />} />
