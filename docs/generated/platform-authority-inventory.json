@@ -8257,7 +8257,10 @@
       "deprecationState": "canonical_write_authority",
       "domainOwner": "inventory",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
-      "expectedGrants": [],
+      "expectedGrants": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated RPC or internal helper",
       "name": "enforce_batch_inventory_completion",
@@ -9353,7 +9356,10 @@
       "deprecationState": "canonical_read_model",
       "domainOwner": "finished-goods",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
-      "expectedGrants": [],
+      "expectedGrants": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
       "historicalOrCurrent": "current",
       "mutationPath": "none",
       "name": "kf_finished_goods_inventory_snapshot_v1",
@@ -20633,6 +20639,6 @@
   ],
   "generatedAt": "2026-07-29T12:00:00+02:00",
   "sourceCommit": "content-addressed-by-sourceHash",
-  "sourceHash": "8cfdb5cd897c44ea80289d0e006e734e404c09b97e364748268be68c0362e820",
+  "sourceHash": "5be371a31d25d72df3b37dd6be86e49ed5d414dc9d5eeb7fc363cb66e993b3d3",
   "version": "1.0.0"
 }

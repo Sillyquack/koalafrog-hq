@@ -875,7 +875,10 @@
     },
     {
       "approximateComplexity": 9,
-      "grants": [],
+      "grants": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
       "name": "enforce_batch_inventory_completion",
       "objectType": "function",
       "owner": "postgres",
@@ -1721,7 +1724,10 @@
     },
     {
       "approximateComplexity": 18,
-      "grants": [],
+      "grants": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
       "name": "kf_finished_goods_inventory_snapshot_v1",
       "objectType": "function",
       "owner": "postgres",

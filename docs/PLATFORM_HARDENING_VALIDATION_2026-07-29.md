@@ -62,8 +62,16 @@ The Finished Goods performance contract executes balance, state, FEFO, batch loo
 
 A full local cluster dump restored all 187 public tables, 192 public functions, and 186 policies, but emitted ownership and data-FK warnings because Supabase-managed Auth rows and role ownership are not portable through a plain application-role `pg_restore`. A schema-only cluster restore under `supabase_admin --no-owner` completed without errors and matched all three counts. Therefore local schema recovery is proven; a supported hosted backup restoration with Auth data remains a deployment prerequisite.
 
+## Hosted rehearsal security-fix closeout
+
+The authorized isolated hosted rehearsal against `koalafrog-hq-rc1-rehearsal` discovered that `enforce_batch_inventory_completion()` and `kf_finished_goods_inventory_snapshot_v1(uuid,uuid)` retained PostgreSQL's default `PUBLIC` execute privilege. Both are internal `SECURITY DEFINER` helpers: the first is a trigger function and the second is called by controlled Finished Goods RPCs. Neither is an intended browser RPC.
+
+Migration `20260729160000_rehearsal_definer_execute_hardening.sql` revokes execution from `PUBLIC`, `anon`, and `authenticated`, and retains execution for `service_role`. It changes no function body, table, policy, trigger binding, RPC signature, or business-domain state transition. The focused eight-assertion pgTAP contract and the canonical pgTAP suite verify the privilege boundary. The fix was applied locally and to only the authorized isolated rehearsal target; production was not mutated.
+
+This security-fix closeout does not change the rehearsal verdict. **Authorized Hosted Backup, Restore & Migration Rehearsal V1 remains BLOCKED** because managed Supabase Auth restoration was incomplete. Public relational restoration, migration application, hosted RLS/grant checks, and two-owner isolation do not substitute for managed Auth restore proof.
+
 ## Merge and deployment gates
 
 There are no local merge blockers after focused commits and a clean working tree.
 
-Deployment remains blocked pending explicit authorization, hosted migration review, supported hosted backup/restore rehearsal, post-migration hosted advisors, two-owner hosted proof, and production smoke approval.
+Deployment remains blocked pending a supported managed Auth restore rehearsal, complete hosted backup/restore acceptance, production environment approval, and production smoke approval. The isolated rehearsal security finding is resolved but the overall rehearsal remains BLOCKED.

@@ -56,7 +56,7 @@ The only browser variables are Supabase URL, publishable/legacy anon key, and re
 
 ## 5. Migration manifest and risks
 
-[Hosted migration manifest](generated/hosted-migration-rehearsal-manifest.json) records all 86 migrations through `20260729094510`, their commit, dependencies, extensions, object/data changes, locks/rewrite/destructive classification, rollback decision, verification, stop condition, source hash, and `pending_rehearsal` status.
+[Hosted migration manifest](generated/hosted-migration-rehearsal-manifest.json) records all 87 migrations through `20260729160000`, their commit, dependencies, extensions, object/data changes, locks/rewrite/destructive classification, rollback decision, verification, stop condition, source hash, and rehearsal status.
 
 Classifications are additive-safe, controlled/authority change, compatibility freeze, data backfill, potentially locking, or destructive-requires-review. Destructive syntax never becomes an automatic failure or approval: the exact statement and historical intent must be reviewed against restored data in rehearsal.
 
@@ -126,6 +126,8 @@ flowchart LR
 ```
 
 Advisor review does not require zero warnings. It requires zero unexplained critical findings. Existing FK and RLS-init-plan recommendations, two database lint warnings, and intentional authenticated security-definer workflows must be compared, explained, owned, and remediated where evidence warrants.
+
+The authorized isolated rehearsal discovered two internal `SECURITY DEFINER` helpers retaining PostgreSQL's default `PUBLIC` execute privilege. The focused `20260729160000_rehearsal_definer_execute_hardening.sql` migration revokes that unintended access without changing either helper's body or any domain workflow. The fix is validated locally and was applied only to the isolated rehearsal target. The rehearsal nevertheless remains **BLOCKED** because the source managed Auth identity was not restored through a supported secret-safe mechanism.
 
 ## 9. Application artifact, cache, and version strategy
 
@@ -200,7 +202,7 @@ It never links a hosted project, pushes Git, applies migrations, deploys functio
 
 ## 14. Current blockers and entry conditions
 
-Local preparation is merge-ready. Hosted rehearsal is not authorized yet. Production deployment is not ready.
+Local preparation is merge-ready. The authorized isolated hosted rehearsal remains BLOCKED on managed Auth restoration. Production deployment is not ready.
 
 Hosted rehearsal entry requires:
 

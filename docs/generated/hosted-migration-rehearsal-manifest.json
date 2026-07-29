@@ -3,9 +3,9 @@
   "generatedAt": "2026-07-29T14:00:00+02:00",
   "rcTag": "finished-goods-traceability-recall-v1-rc1",
   "rcCommit": "bd5617c70dd8ca21611f63750f2293e40a83c8b4",
-  "localMigrationHead": "20260729094510",
+  "localMigrationHead": "20260729160000",
   "hostedStateVerified": false,
-  "count": 86,
+  "count": 87,
   "migrations": [
     {
       "filename": "20260714210000_platform_foundation.sql",
@@ -3311,6 +3311,37 @@
       "hostedApplicationStatus": "pending_rehearsal",
       "authorizationRequired": true,
       "sourceHash": "f331d821e78607b122930dce7185355faf749ddcb12a6bc216e5b6809132eb94"
+    },
+    {
+      "filename": "20260729160000_rehearsal_definer_execute_hardening.sql",
+      "timestamp": "20260729160000",
+      "commit": null,
+      "milestone": "rehearsal definer execute hardening",
+      "purpose": "rehearsal definer execute hardening",
+      "dependencies": [
+        "20260729094510_recall_readiness_v1.sql"
+      ],
+      "requiredExtensions": [],
+      "expectedObjectChanges": {
+        "tables": [],
+        "functions": [],
+        "policies": [],
+        "indexes": 0
+      },
+      "expectedDataChanges": 0,
+      "lockRisk": "low",
+      "tableRewriteRisk": "not_detected",
+      "destructiveBehavior": "none detected",
+      "longTransactionRisk": "low_or_unknown",
+      "durationClass": "short_expected",
+      "classification": "authority_change",
+      "rollbackClassification": "code_rollback_or_forward_fix",
+      "forwardFixStrategy": "append a reviewed migration; never rewrite immutable business history",
+      "verificationQuery": "compare migration head, authority inventory, object counts, grants, RLS, and focused domain contracts",
+      "stopCondition": "migration error, drift, timeout, or object mismatch",
+      "hostedApplicationStatus": "pending_rehearsal",
+      "authorizationRequired": true,
+      "sourceHash": "6ed9dc04a9b1c5d081d834b26171a0e7e28ab85e50194975c323a999e59fa3e5"
     }
   ]
 }

@@ -25,7 +25,7 @@
     "NO_COLOR is ignored when Playwright forces colour"
   ],
   "locallyValidated": true,
-  "migrationHead": "20260729094510",
+  "migrationHead": "20260729160000",
   "milestone": "Recall Readiness V1",
   "remotelyDeployed": false,
   "schemaCounts": {
