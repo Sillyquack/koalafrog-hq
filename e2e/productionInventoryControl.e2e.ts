@@ -9,6 +9,9 @@ test.afterEach(()=>{
   if(!/^pic-[0-9a-f-]+$/i.test(prefix))throw new Error('Unsafe Production Inventory Control fixture prefix.')
   const cleanup=`begin;set local session_replication_role=replica;
 delete from public.finished_goods_quality_events where finished_goods_lot_id in(select id from public.finished_goods_lots where production_run_id like '${prefix}%');
+delete from public.finished_goods_inventory_events where finished_goods_lot_id in(select id from public.finished_goods_lots where production_run_id like '${prefix}%');
+delete from public.finished_goods_inventory_state_history where released_inventory_lot_id in(select id from public.released_finished_goods_inventory_lots where finished_goods_lot_id in(select id from public.finished_goods_lots where production_run_id like '${prefix}%'));
+delete from public.finished_goods_inventory_operations where released_inventory_lot_id in(select id from public.released_finished_goods_inventory_lots where finished_goods_lot_id in(select id from public.finished_goods_lots where production_run_id like '${prefix}%'));
 delete from public.finished_goods_inventory_movements where finished_goods_lot_id in(select id from public.finished_goods_lots where production_run_id like '${prefix}%');
 delete from public.released_finished_goods_inventory_lots where finished_goods_lot_id in(select id from public.finished_goods_lots where production_run_id like '${prefix}%');
 delete from public.finished_goods_disposition_reviews where finished_goods_lot_id in(select id from public.finished_goods_lots where production_run_id like '${prefix}%');
@@ -285,6 +288,44 @@ test('Production controlled-material workspace completes a multi-lot controlled 
  await decide('Release','3')
  await expect(page.getByRole('heading',{name:/KF-E2E-FG-01 · 3 pcs/})).toBeVisible()
  await expect(page.getByText(/Opening movement/)).toBeVisible()
+ await page.getByRole('link',{name:'Open inventory controls'}).click()
+ await expect(page.getByRole('heading',{name:'Authoritative balance'})).toBeVisible()
+ const balance=page.getByRole('heading',{name:'Authoritative balance'}).locator('..')
+ await expect(balance.getByText('On-hand',{exact:true}).locator('..')).toContainText('3')
+ page.on('dialog',dialog=>dialog.accept())
+ const operation=page.getByRole('heading',{name:'Controlled operation'}).locator('..')
+ const recordOperation=async(action:string,quantity:string)=>{
+  await operation.getByLabel('Action').selectOption({label:action})
+  await operation.getByLabel('Quantity').fill(quantity)
+  await operation.getByLabel('Reason and evidence').fill(`${action} controlled E2E evidence`)
+  await operation.getByRole('button',{name:new RegExp(`Confirm ${action.toLowerCase()}`)}).click()
+  await expect(operation.getByRole('button',{name:'Recording…'})).toBeVisible()
+  await expect(operation.getByRole('button',{name:'Recording…'})).toBeHidden()
+ }
+ await recordOperation('Internal transfer','1')
+ await recordOperation('Place hold','1')
+ await expect(balance.getByText('Held',{exact:true}).locator('..')).toContainText('1')
+ await recordOperation('Release hold','1')
+ await recordOperation('Block','1')
+ await recordOperation('Unblock','1')
+ await recordOperation('Record damage','1')
+ await recordOperation('Write off damage','1')
+ await recordOperation('Record loss','1')
+ await operation.getByLabel('Action').selectOption({label:'Positive correction'})
+ await operation.getByLabel('Prior negative movement').selectOption({index:1})
+ await operation.getByLabel('Quantity').fill('1')
+ await operation.getByLabel('Reason and evidence').fill('Correction backed by prior loss evidence')
+ await operation.getByRole('button',{name:'Confirm positive correction'}).click()
+ await expect(operation.getByRole('button',{name:'Recording…'})).toBeVisible()
+ await expect(operation.getByRole('button',{name:'Recording…'})).toBeHidden()
+ await recordOperation('Record destruction','1')
+ await recordOperation('Negative adjustment','0.5')
+ await expect(page.getByRole('heading',{name:'Immutable movement history'}).locator('..')).toContainText('destruction writeoff')
+ await expect(page.getByRole('heading',{name:'Locations and valuation'}).locator('..')).toContainText('final')
+ await expect(page.locator('body')).toHaveJSProperty('scrollWidth',await page.locator('body').evaluate(body=>body.clientWidth))
+ await page.reload()
+ await expect(page.getByRole('heading',{name:'Authoritative balance'})).toBeVisible()
+ await page.getByRole('link',{name:'Quality release'}).click()
  await decide('Reject','1')
  await decide('Hold','2')
  await expect(page.locator('.quality-quantity')).toContainText('Released')
@@ -299,8 +340,7 @@ test('Production controlled-material workspace completes a multi-lot controlled 
  await expect(page.getByText('REJECT 1 pcs')).toBeVisible()
  await expect(page.getByText('HOLD 2 pcs')).toBeVisible()
  await expect(page.locator('body')).toHaveJSProperty('scrollWidth',await page.locator('body').evaluate(body=>body.clientWidth))
- await page.goBack()
- await page.reload()
+ await page.goto(`/production/${fixture.runId}`)
  await expect(page.locator('.packaging-run-workspace .completion-readiness strong')).toHaveText('Ready for Finished Goods Lot Creation')
  await expect(page.locator('.packaging-run-card')).toContainText('completed')
  await expect(page.locator('.finished-goods-lot-list')).toContainText('KF-E2E-FG-02')
