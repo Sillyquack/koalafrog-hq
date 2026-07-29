@@ -16,6 +16,7 @@
     "test:supabase": "node scripts/test-supabase.mjs",
     "test:packaging-run": "node scripts/test-packaging-run.mjs",
     "test:finished-goods-lots": "node scripts/test-finished-goods-lots.mjs",
+    "test:finished-goods-quality": "node scripts/test-finished-goods-lots.mjs",
     "test:secrets": "node scripts/check-secrets.mjs",
     "test:cloudflare": "node scripts/test-cloudflare-readiness.mjs",
     "library:validate": "node scripts/ingredient-library.mjs",

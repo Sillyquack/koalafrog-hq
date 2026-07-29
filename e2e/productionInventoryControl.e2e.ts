@@ -8,6 +8,12 @@ test.afterEach(()=>{
  for(const prefix of createdPrefixes.splice(0)){
   if(!/^pic-[0-9a-f-]+$/i.test(prefix))throw new Error('Unsafe Production Inventory Control fixture prefix.')
   const cleanup=`begin;set local session_replication_role=replica;
+delete from public.finished_goods_quality_events where finished_goods_lot_id in(select id from public.finished_goods_lots where production_run_id like '${prefix}%');
+delete from public.finished_goods_inventory_movements where finished_goods_lot_id in(select id from public.finished_goods_lots where production_run_id like '${prefix}%');
+delete from public.released_finished_goods_inventory_lots where finished_goods_lot_id in(select id from public.finished_goods_lots where production_run_id like '${prefix}%');
+delete from public.finished_goods_disposition_reviews where finished_goods_lot_id in(select id from public.finished_goods_lots where production_run_id like '${prefix}%');
+delete from public.finished_goods_deviations where finished_goods_lot_id in(select id from public.finished_goods_lots where production_run_id like '${prefix}%');
+delete from public.finished_goods_inspections where finished_goods_lot_id in(select id from public.finished_goods_lots where production_run_id like '${prefix}%');
 delete from public.finished_goods_lot_events where production_run_id like '${prefix}%';
 delete from public.finished_goods_quarantines where packaging_run_id in(select id from public.packaging_runs where production_run_id like '${prefix}%');
 delete from public.finished_goods_lots where production_run_id like '${prefix}%';
@@ -231,6 +237,7 @@ test('Production controlled-material workspace completes a multi-lot controlled 
   if((await form.getAttribute('open'))===null)await form.locator('summary').click()
   await form.getByLabel('Lot quantity').fill(quantity)
   await form.getByLabel('Consumer batch code (optional)').fill(code)
+  await form.getByLabel('Shelf-life duration (optional)').fill('12')
   await form.getByLabel('This creates an immutable Finished Goods Lot in quarantine. It does not release inventory for sale.').check()
   await form.getByRole('button',{name:'Create quarantined Finished Goods Lot'}).click()
  }
@@ -243,9 +250,55 @@ test('Production controlled-material workspace completes a multi-lot controlled 
  const firstLotLink=page.locator('.finished-goods-lot-list').getByRole('link',{name:'Open genealogy'}).first()
  await firstLotLink.click()
  await expect(page.locator('.batch-source').getByText('Inspection required',{exact:true})).toBeVisible()
- await expect(page.getByText('No saleable inventory or quality release exists.')).toBeVisible()
  await expect(page.getByRole('heading',{name:'Backward genealogy'})).toBeVisible()
- await expect(page.getByRole('button',{name:/release/i})).toHaveCount(0)
+ await expect(page.getByRole('heading',{name:'Finished-product inspection & quality release'})).toBeVisible()
+ await expect(page.getByText(/Release blocked/).first()).toBeVisible()
+ const requiredInspections=page.locator('.inspection-card').filter({hasText:/required/i})
+ expect(await requiredInspections.count()).toBe(10)
+ for(let index=0;index<await requiredInspections.count();index++){
+  const inspection=requiredInspections.nth(index),evidence=inspection.getByLabel('Evidence reference')
+  if(await evidence.getAttribute('required')!==null)await evidence.fill(`quality-evidence-${index}`)
+  await inspection.getByLabel('Observation or note').fill(`Controlled E2E inspection ${index+1}`)
+  await inspection.getByRole('button',{name:'Record inspection'}).click()
+  await expect(inspection.getByRole('button',{name:'Record superseding inspection'})).toBeVisible()
+ }
+ await expect(page.getByText('Ready for controlled release')).toBeVisible()
+ const deviations=page.locator('.panel').filter({has:page.getByRole('heading',{name:'Deviations'})})
+ await deviations.getByLabel('Category').fill('packaging integrity')
+ await deviations.getByLabel('Affected quantity').fill('6')
+ await deviations.getByLabel('Description').fill('Controlled E2E blocking review')
+ await deviations.getByLabel('Evidence reference').fill('deviation:e2e')
+ await deviations.getByRole('button',{name:'Open deviation'}).click()
+ await expect(page.getByText('open_blocking_deviation')).toBeVisible()
+ await deviations.getByRole('button',{name:'Resolve with controlled evidence'}).click()
+ await expect(deviations.getByText('resolved',{exact:true})).toBeVisible()
+ const disposition=page.locator('.panel').filter({has:page.getByRole('heading',{name:'Controlled disposition'})})
+ const decide=async(decision:'Release'|'Reject'|'Hold',quantity:string)=>{
+  await disposition.getByRole('button',{name:`${decision} quantity`}).click()
+  await disposition.getByLabel('Requested quantity').fill(quantity)
+  await disposition.getByLabel('Reason').fill(`${decision} controlled E2E quantity`)
+  await disposition.getByLabel('Evidence reference').fill(`${decision.toLowerCase()}:e2e`)
+  const acknowledgement=disposition.getByLabel(new RegExp(`acknowledge this controlled ${decision.toLowerCase()}`))
+  if(await acknowledgement.count())await acknowledgement.check()
+  await disposition.getByRole('button',{name:`Confirm ${decision}`}).click()
+ }
+ await decide('Release','3')
+ await expect(page.getByRole('heading',{name:/KF-E2E-FG-01 · 3 pcs/})).toBeVisible()
+ await expect(page.getByText(/Opening movement/)).toBeVisible()
+ await decide('Reject','1')
+ await decide('Hold','2')
+ await expect(page.locator('.quality-quantity')).toContainText('Released')
+ await expect(page.locator('.quality-quantity')).toContainText('3')
+ await expect(page.locator('.quality-quantity')).toContainText('Rejected')
+ await expect(page.locator('.quality-quantity')).toContainText('1')
+ await expect(page.locator('.quality-quantity')).toContainText('Held')
+ await expect(page.locator('.quality-quantity')).toContainText('2')
+ await page.reload()
+ await expect(page.getByRole('heading',{name:/KF-E2E-FG-01 · 3 pcs/})).toBeVisible()
+ await expect(page.getByText('RELEASE 3 pcs')).toBeVisible()
+ await expect(page.getByText('REJECT 1 pcs')).toBeVisible()
+ await expect(page.getByText('HOLD 2 pcs')).toBeVisible()
+ await expect(page.locator('body')).toHaveJSProperty('scrollWidth',await page.locator('body').evaluate(body=>body.clientWidth))
  await page.goBack()
  await page.reload()
  await expect(page.locator('.packaging-run-workspace .completion-readiness strong')).toHaveText('Ready for Finished Goods Lot Creation')
