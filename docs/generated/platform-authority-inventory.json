@@ -7130,8 +7130,8 @@
       "domainOwner": "procurement",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated RPC or internal helper",
@@ -7152,8 +7152,8 @@
       "domainOwner": "suppliers",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated RPC or internal helper",
@@ -7196,8 +7196,8 @@
       "domainOwner": "packaging",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
         "authenticated=X/postgres",
+        "postgres=X/postgres",
         "service_role=X/postgres"
       ],
       "historicalOrCurrent": "historical",
@@ -7219,8 +7219,8 @@
       "domainOwner": "inventory",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
         "authenticated=X/postgres",
+        "postgres=X/postgres",
         "service_role=X/postgres"
       ],
       "historicalOrCurrent": "historical",
@@ -7242,8 +7242,8 @@
       "domainOwner": "packaging",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
         "authenticated=X/postgres",
+        "postgres=X/postgres",
         "service_role=X/postgres"
       ],
       "historicalOrCurrent": "historical",
@@ -7265,8 +7265,8 @@
       "domainOwner": "production",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated RPC or internal helper",
@@ -7287,8 +7287,8 @@
       "domainOwner": "recall-readiness",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "historical",
       "mutationPath": "authenticated RPC or internal helper",
@@ -7331,8 +7331,8 @@
       "domainOwner": "beard-studio",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
         "authenticated=X/postgres",
+        "postgres=X/postgres",
         "service_role=X/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -7418,8 +7418,8 @@
       "domainOwner": "procurement",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated RPC or internal helper",
@@ -7440,8 +7440,8 @@
       "domainOwner": "procurement",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated RPC or internal helper",
@@ -7462,8 +7462,8 @@
       "domainOwner": "production",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated RPC or internal helper",
@@ -7484,8 +7484,8 @@
       "domainOwner": "procurement",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated RPC or internal helper",
@@ -7528,8 +7528,8 @@
       "domainOwner": "production",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated RPC or internal helper",
@@ -7550,8 +7550,8 @@
       "domainOwner": "recall-readiness",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "historical",
       "mutationPath": "authenticated RPC or internal helper",
@@ -7572,8 +7572,8 @@
       "domainOwner": "lab",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
         "authenticated=X/postgres",
+        "postgres=X/postgres",
         "service_role=X/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -7617,8 +7617,8 @@
       "domainOwner": "production",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
         "authenticated=X/postgres",
+        "postgres=X/postgres",
         "service_role=X/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -7640,8 +7640,8 @@
       "domainOwner": "recall-readiness",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "historical",
       "mutationPath": "authenticated RPC or internal helper",
@@ -7662,8 +7662,8 @@
       "domainOwner": "inventory",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "historical",
       "mutationPath": "authenticated RPC or internal helper",
@@ -7684,8 +7684,8 @@
       "domainOwner": "packaging",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
         "authenticated=X/postgres",
+        "postgres=X/postgres",
         "service_role=X/postgres"
       ],
       "historicalOrCurrent": "historical",
@@ -7707,8 +7707,8 @@
       "domainOwner": "production",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "historical",
       "mutationPath": "authenticated RPC or internal helper",
@@ -7729,8 +7729,8 @@
       "domainOwner": "procurement",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated RPC or internal helper",
@@ -7751,8 +7751,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated RPC or internal helper",
@@ -7773,8 +7773,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
         "authenticated=X/postgres",
+        "postgres=X/postgres",
         "service_role=X/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -7796,8 +7796,8 @@
       "domainOwner": "suppliers",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated RPC or internal helper",
@@ -7818,8 +7818,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated RPC or internal helper",
@@ -7840,8 +7840,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated RPC or internal helper",
@@ -7862,8 +7862,8 @@
       "domainOwner": "procurement",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated RPC or internal helper",
@@ -7884,8 +7884,8 @@
       "domainOwner": "finished-goods",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
         "authenticated=X/postgres",
+        "postgres=X/postgres",
         "service_role=X/postgres"
       ],
       "historicalOrCurrent": "historical",
@@ -7907,8 +7907,8 @@
       "domainOwner": "formulas",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated RPC or internal helper",
@@ -7929,8 +7929,8 @@
       "domainOwner": "lab",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated RPC or internal helper",
@@ -7951,8 +7951,8 @@
       "domainOwner": "packaging",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
         "authenticated=X/postgres",
+        "postgres=X/postgres",
         "service_role=X/postgres"
       ],
       "historicalOrCurrent": "historical",
@@ -7974,8 +7974,8 @@
       "domainOwner": "formulas",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated RPC or internal helper",
@@ -7996,8 +7996,8 @@
       "domainOwner": "procurement",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated RPC or internal helper",
@@ -8018,8 +8018,8 @@
       "domainOwner": "production",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "historical",
       "mutationPath": "authenticated RPC or internal helper",
@@ -8040,8 +8040,8 @@
       "domainOwner": "production",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated RPC or internal helper",
@@ -8062,8 +8062,8 @@
       "domainOwner": "procurement",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated RPC or internal helper",
@@ -8084,8 +8084,8 @@
       "domainOwner": "procurement",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated RPC or internal helper",
@@ -8106,8 +8106,8 @@
       "domainOwner": "procurement",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated RPC or internal helper",
@@ -8128,8 +8128,8 @@
       "domainOwner": "recall-readiness",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "historical",
       "mutationPath": "authenticated RPC or internal helper",
@@ -8150,8 +8150,8 @@
       "domainOwner": "recall-readiness",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "historical",
       "mutationPath": "authenticated RPC or internal helper",
@@ -8172,8 +8172,8 @@
       "domainOwner": "procurement",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated RPC or internal helper",
@@ -8213,8 +8213,8 @@
       "domainOwner": "production",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated RPC or internal helper",
@@ -8235,8 +8235,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
         "authenticated=X/postgres",
+        "postgres=X/postgres",
         "service_role=X/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -8342,8 +8342,8 @@
       "domainOwner": "beard-studio",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated RPC or internal helper",
@@ -8364,8 +8364,8 @@
       "domainOwner": "production",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated RPC or internal helper",
@@ -8386,8 +8386,8 @@
       "domainOwner": "production",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated RPC or internal helper",
@@ -8408,8 +8408,8 @@
       "domainOwner": "recall-readiness",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "historical",
       "mutationPath": "authenticated RPC or internal helper",
@@ -8430,8 +8430,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
         "authenticated=X/postgres",
+        "postgres=X/postgres",
         "service_role=X/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -8453,8 +8453,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
         "authenticated=X/postgres",
+        "postgres=X/postgres",
         "service_role=X/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -8476,8 +8476,8 @@
       "domainOwner": "finished-goods",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
         "authenticated=X/postgres",
+        "postgres=X/postgres",
         "service_role=X/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -8499,8 +8499,8 @@
       "domainOwner": "finished-goods",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
         "authenticated=X/postgres",
+        "postgres=X/postgres",
         "service_role=X/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -8522,8 +8522,8 @@
       "domainOwner": "finished-goods",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
         "authenticated=X/postgres",
+        "postgres=X/postgres",
         "service_role=X/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -8545,8 +8545,8 @@
       "domainOwner": "finished-goods",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
         "authenticated=X/postgres",
+        "postgres=X/postgres",
         "service_role=X/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -8568,8 +8568,8 @@
       "domainOwner": "finished-goods",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
         "authenticated=X/postgres",
+        "postgres=X/postgres",
         "service_role=X/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -8591,8 +8591,8 @@
       "domainOwner": "finished-goods",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
         "authenticated=X/postgres",
+        "postgres=X/postgres",
         "service_role=X/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -8614,8 +8614,8 @@
       "domainOwner": "packaging",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
         "authenticated=X/postgres",
+        "postgres=X/postgres",
         "service_role=X/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -8637,8 +8637,8 @@
       "domainOwner": "packaging",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
         "authenticated=X/postgres",
+        "postgres=X/postgres",
         "service_role=X/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -8660,8 +8660,8 @@
       "domainOwner": "packaging",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
         "authenticated=X/postgres",
+        "postgres=X/postgres",
         "service_role=X/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -8683,8 +8683,8 @@
       "domainOwner": "packaging",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
         "authenticated=X/postgres",
+        "postgres=X/postgres",
         "service_role=X/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -8706,8 +8706,8 @@
       "domainOwner": "finished-goods",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
         "authenticated=X/postgres",
+        "postgres=X/postgres",
         "service_role=X/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -8729,8 +8729,8 @@
       "domainOwner": "packaging",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
         "authenticated=X/postgres",
+        "postgres=X/postgres",
         "service_role=X/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -8752,8 +8752,8 @@
       "domainOwner": "packaging",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
         "authenticated=X/postgres",
+        "postgres=X/postgres",
         "service_role=X/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -8775,8 +8775,8 @@
       "domainOwner": "production",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
         "authenticated=X/postgres",
+        "postgres=X/postgres",
         "service_role=X/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -8798,8 +8798,8 @@
       "domainOwner": "production",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "none",
@@ -8820,8 +8820,8 @@
       "domainOwner": "production",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "none",
@@ -8842,8 +8842,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
         "authenticated=X/postgres",
+        "postgres=X/postgres",
         "service_role=X/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -8865,8 +8865,8 @@
       "domainOwner": "recall-readiness",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "none",
@@ -8887,8 +8887,8 @@
       "domainOwner": "recall-readiness",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "none",
@@ -8909,8 +8909,8 @@
       "domainOwner": "finished-goods",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
         "authenticated=X/postgres",
+        "postgres=X/postgres",
         "service_role=X/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -8932,8 +8932,8 @@
       "domainOwner": "traceability",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
         "authenticated=X/postgres",
+        "postgres=X/postgres",
         "service_role=X/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -8955,8 +8955,8 @@
       "domainOwner": "traceability",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
         "authenticated=X/postgres",
+        "postgres=X/postgres",
         "service_role=X/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -9079,8 +9079,8 @@
       "domainOwner": "procurement",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated RPC or internal helper",
@@ -9101,8 +9101,8 @@
       "domainOwner": "procurement",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated RPC or internal helper",
@@ -9123,8 +9123,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated RPC or internal helper",
@@ -9145,8 +9145,8 @@
       "domainOwner": "ingredients",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "historical",
       "mutationPath": "authenticated RPC or internal helper",
@@ -9186,8 +9186,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "none",
@@ -9208,8 +9208,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
         "authenticated=X/postgres",
+        "postgres=X/postgres",
         "service_role=X/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -9272,8 +9272,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated RPC or internal helper",
@@ -9452,8 +9452,8 @@
       "domainOwner": "inventory",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
         "authenticated=X/postgres",
+        "postgres=X/postgres",
         "service_role=X/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -9475,8 +9475,8 @@
       "domainOwner": "inventory",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "none",
@@ -9538,8 +9538,8 @@
       "domainOwner": "packaging",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "none",
@@ -9684,8 +9684,8 @@
       "domainOwner": "beard-studio",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "none",
@@ -9706,8 +9706,8 @@
       "domainOwner": "finished-goods",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
         "authenticated=X/postgres",
+        "postgres=X/postgres",
         "service_role=X/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -9729,8 +9729,8 @@
       "domainOwner": "recall-readiness",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "none",
@@ -9751,8 +9751,8 @@
       "domainOwner": "beard-studio",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated RPC or internal helper",
@@ -9815,8 +9815,8 @@
       "domainOwner": "packaging",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated RPC or internal helper",
@@ -9837,8 +9837,8 @@
       "domainOwner": "packaging",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated RPC or internal helper",
@@ -9903,8 +9903,8 @@
       "domainOwner": "procurement",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated RPC or internal helper",
@@ -9925,8 +9925,8 @@
       "domainOwner": "suppliers",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated RPC or internal helper",
@@ -9947,8 +9947,8 @@
       "domainOwner": "suppliers",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated RPC or internal helper",
@@ -9988,8 +9988,8 @@
       "domainOwner": "finished-goods",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
         "authenticated=X/postgres",
+        "postgres=X/postgres",
         "service_role=X/postgres"
       ],
       "historicalOrCurrent": "historical",
@@ -10095,8 +10095,8 @@
       "domainOwner": "procurement",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated RPC or internal helper",
@@ -10326,8 +10326,8 @@
       "domainOwner": "procurement",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated RPC or internal helper",
@@ -10348,8 +10348,8 @@
       "domainOwner": "production",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated RPC or internal helper",
@@ -10370,8 +10370,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
         "authenticated=X/postgres",
+        "postgres=X/postgres",
         "service_role=X/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -10393,8 +10393,8 @@
       "domainOwner": "packaging",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
         "authenticated=X/postgres",
+        "postgres=X/postgres",
         "service_role=X/postgres"
       ],
       "historicalOrCurrent": "historical",
@@ -10416,8 +10416,8 @@
       "domainOwner": "production",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "historical",
       "mutationPath": "authenticated RPC or internal helper",
@@ -10438,8 +10438,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
         "authenticated=X/postgres",
+        "postgres=X/postgres",
         "service_role=X/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -10461,8 +10461,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
         "authenticated=X/postgres",
+        "postgres=X/postgres",
         "service_role=X/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -10484,8 +10484,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
         "authenticated=X/postgres",
+        "postgres=X/postgres",
         "service_role=X/postgres"
       ],
       "historicalOrCurrent": "historical",
@@ -10507,8 +10507,8 @@
       "domainOwner": "finished-goods",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
         "authenticated=X/postgres",
+        "postgres=X/postgres",
         "service_role=X/postgres"
       ],
       "historicalOrCurrent": "historical",
@@ -10530,8 +10530,8 @@
       "domainOwner": "finished-goods",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
         "authenticated=X/postgres",
+        "postgres=X/postgres",
         "service_role=X/postgres"
       ],
       "historicalOrCurrent": "historical",
@@ -10553,8 +10553,8 @@
       "domainOwner": "finished-goods",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
         "authenticated=X/postgres",
+        "postgres=X/postgres",
         "service_role=X/postgres"
       ],
       "historicalOrCurrent": "historical",
@@ -10576,8 +10576,8 @@
       "domainOwner": "inventory",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
         "authenticated=X/postgres",
+        "postgres=X/postgres",
         "service_role=X/postgres"
       ],
       "historicalOrCurrent": "historical",
@@ -10599,8 +10599,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
         "authenticated=X/postgres",
+        "postgres=X/postgres",
         "service_role=X/postgres"
       ],
       "historicalOrCurrent": "historical",
@@ -10622,8 +10622,8 @@
       "domainOwner": "packaging",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
         "authenticated=X/postgres",
+        "postgres=X/postgres",
         "service_role=X/postgres"
       ],
       "historicalOrCurrent": "historical",
@@ -10645,8 +10645,8 @@
       "domainOwner": "packaging",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
         "authenticated=X/postgres",
+        "postgres=X/postgres",
         "service_role=X/postgres"
       ],
       "historicalOrCurrent": "historical",
@@ -10668,8 +10668,8 @@
       "domainOwner": "packaging",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
         "authenticated=X/postgres",
+        "postgres=X/postgres",
         "service_role=X/postgres"
       ],
       "historicalOrCurrent": "historical",
@@ -10691,8 +10691,8 @@
       "domainOwner": "production",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "historical",
       "mutationPath": "authenticated RPC or internal helper",
@@ -10713,8 +10713,8 @@
       "domainOwner": "production",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "historical",
       "mutationPath": "authenticated RPC or internal helper",
@@ -10735,8 +10735,8 @@
       "domainOwner": "procurement",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated RPC or internal helper",
@@ -10757,8 +10757,8 @@
       "domainOwner": "procurement",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated RPC or internal helper",
@@ -10779,8 +10779,8 @@
       "domainOwner": "procurement",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated RPC or internal helper",
@@ -10801,8 +10801,8 @@
       "domainOwner": "procurement",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated RPC or internal helper",
@@ -10823,8 +10823,8 @@
       "domainOwner": "procurement",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated RPC or internal helper",
@@ -10845,8 +10845,8 @@
       "domainOwner": "procurement",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated RPC or internal helper",
@@ -10867,8 +10867,8 @@
       "domainOwner": "procurement",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated RPC or internal helper",
@@ -10889,8 +10889,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated RPC or internal helper",
@@ -10930,8 +10930,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated RPC or internal helper",
@@ -10952,8 +10952,8 @@
       "domainOwner": "procurement",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated RPC or internal helper",
@@ -10974,8 +10974,8 @@
       "domainOwner": "production",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated RPC or internal helper",
@@ -10996,8 +10996,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
         "authenticated=X/postgres",
+        "postgres=X/postgres",
         "service_role=X/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -11041,8 +11041,8 @@
       "domainOwner": "recall-readiness",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "historical",
       "mutationPath": "authenticated RPC or internal helper",
@@ -11063,8 +11063,8 @@
       "domainOwner": "production",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated RPC or internal helper",
@@ -11085,8 +11085,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
         "authenticated=X/postgres",
+        "postgres=X/postgres",
         "service_role=X/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -11108,8 +11108,8 @@
       "domainOwner": "packaging",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
         "authenticated=X/postgres",
+        "postgres=X/postgres",
         "service_role=X/postgres"
       ],
       "historicalOrCurrent": "historical",
@@ -11131,8 +11131,8 @@
       "domainOwner": "packaging",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
         "authenticated=X/postgres",
+        "postgres=X/postgres",
         "service_role=X/postgres"
       ],
       "historicalOrCurrent": "historical",
@@ -11154,8 +11154,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
         "authenticated=X/postgres",
+        "postgres=X/postgres",
         "service_role=X/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -11177,8 +11177,8 @@
       "domainOwner": "beard-studio",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated RPC or internal helper",
@@ -11221,8 +11221,8 @@
       "domainOwner": "inventory",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
         "authenticated=X/postgres",
+        "postgres=X/postgres",
         "service_role=X/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -11244,8 +11244,8 @@
       "domainOwner": "packaging",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
         "authenticated=X/postgres",
+        "postgres=X/postgres",
         "service_role=X/postgres"
       ],
       "historicalOrCurrent": "historical",
@@ -11267,8 +11267,8 @@
       "domainOwner": "packaging",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
         "authenticated=X/postgres",
+        "postgres=X/postgres",
         "service_role=X/postgres"
       ],
       "historicalOrCurrent": "historical",
@@ -11290,8 +11290,8 @@
       "domainOwner": "finished-goods",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
         "authenticated=X/postgres",
+        "postgres=X/postgres",
         "service_role=X/postgres"
       ],
       "historicalOrCurrent": "historical",
@@ -11313,8 +11313,8 @@
       "domainOwner": "inventory",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
         "authenticated=X/postgres",
+        "postgres=X/postgres",
         "service_role=X/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -11336,8 +11336,8 @@
       "domainOwner": "beard-studio",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated RPC or internal helper",
@@ -11358,8 +11358,8 @@
       "domainOwner": "ingredients",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated RPC or internal helper",
@@ -11380,8 +11380,8 @@
       "domainOwner": "finished-goods",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
         "authenticated=X/postgres",
+        "postgres=X/postgres",
         "service_role=X/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -11403,8 +11403,8 @@
       "domainOwner": "production",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated RPC or internal helper",
@@ -11488,8 +11488,8 @@
       "domainOwner": "recall-readiness",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "historical",
       "mutationPath": "authenticated RPC or internal helper",
@@ -11510,8 +11510,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated RPC or internal helper",
@@ -11532,8 +11532,8 @@
       "domainOwner": "production",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated RPC or internal helper",
@@ -11594,8 +11594,8 @@
       "domainOwner": "procurement",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
-        "postgres=X/postgres",
-        "authenticated=X/postgres"
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated RPC or internal helper",
@@ -15228,9 +15228,9 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "historicalOrCurrent": "historical",
       "mutationPath": "RPC/service/migration only",
@@ -15250,9 +15250,9 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "historicalOrCurrent": "historical",
       "mutationPath": "RPC/service/migration only",
@@ -15272,9 +15272,9 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -15294,9 +15294,9 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "historicalOrCurrent": "historical",
       "mutationPath": "RPC/service/migration only",
@@ -15316,9 +15316,9 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -15338,9 +15338,9 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -15360,9 +15360,9 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -15382,9 +15382,9 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "historicalOrCurrent": "historical",
       "mutationPath": "RPC/service/migration only",
@@ -15404,8 +15404,8 @@
       "domainOwner": "beard-studio",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -15426,8 +15426,8 @@
       "domainOwner": "beard-studio",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -15448,8 +15448,8 @@
       "domainOwner": "beard-studio",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -15470,8 +15470,8 @@
       "domainOwner": "beard-studio",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -15492,8 +15492,8 @@
       "domainOwner": "beard-studio",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -15514,8 +15514,8 @@
       "domainOwner": "beard-studio",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -15536,8 +15536,8 @@
       "domainOwner": "beard-studio",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -15558,8 +15558,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -15580,8 +15580,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -15602,8 +15602,8 @@
       "domainOwner": "compliance",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "historical",
@@ -15624,8 +15624,8 @@
       "domainOwner": "compliance",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -15646,8 +15646,8 @@
       "domainOwner": "compliance",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -15668,8 +15668,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -15690,8 +15690,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -15712,8 +15712,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -15734,8 +15734,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -15756,8 +15756,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -15778,8 +15778,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=rDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -15800,8 +15800,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -15822,8 +15822,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=rDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "historical",
@@ -15844,8 +15844,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -15866,8 +15866,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=rwDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -15888,8 +15888,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -15910,8 +15910,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -15932,8 +15932,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -15954,8 +15954,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -15976,8 +15976,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "historical",
@@ -15998,8 +15998,8 @@
       "domainOwner": "legacy-finished-goods",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=rm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "historical",
@@ -16020,9 +16020,9 @@
       "domainOwner": "finished-goods",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -16042,9 +16042,9 @@
       "domainOwner": "finished-goods",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "historicalOrCurrent": "historical",
       "mutationPath": "RPC/service/migration only",
@@ -16064,9 +16064,9 @@
       "domainOwner": "finished-goods",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "historicalOrCurrent": "historical",
       "mutationPath": "RPC/service/migration only",
@@ -16086,9 +16086,9 @@
       "domainOwner": "finished-goods",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "historicalOrCurrent": "historical",
       "mutationPath": "RPC/service/migration only",
@@ -16108,9 +16108,9 @@
       "domainOwner": "finished-goods",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "historicalOrCurrent": "historical",
       "mutationPath": "RPC/service/migration only",
@@ -16130,9 +16130,9 @@
       "domainOwner": "finished-goods",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -16152,9 +16152,9 @@
       "domainOwner": "finished-goods",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "historicalOrCurrent": "historical",
       "mutationPath": "RPC/service/migration only",
@@ -16174,9 +16174,9 @@
       "domainOwner": "finished-goods",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "historicalOrCurrent": "historical",
       "mutationPath": "RPC/service/migration only",
@@ -16196,9 +16196,9 @@
       "domainOwner": "finished-goods",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -16218,8 +16218,8 @@
       "domainOwner": "legacy-finished-goods",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=rm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "historical",
@@ -16240,9 +16240,9 @@
       "domainOwner": "finished-goods",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "historicalOrCurrent": "historical",
       "mutationPath": "RPC/service/migration only",
@@ -16262,9 +16262,9 @@
       "domainOwner": "finished-goods",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -16284,8 +16284,8 @@
       "domainOwner": "formulas",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -16306,8 +16306,8 @@
       "domainOwner": "formulas",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=arwdDxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -16328,8 +16328,8 @@
       "domainOwner": "formulas",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=arwdDxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -16350,8 +16350,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -16372,8 +16372,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -16394,8 +16394,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -16416,9 +16416,9 @@
       "domainOwner": "ingredients",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "anon=Dxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -16439,9 +16439,9 @@
       "domainOwner": "ingredients",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "anon=Dxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -16462,9 +16462,9 @@
       "domainOwner": "ingredients",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "anon=Dxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -16485,9 +16485,9 @@
       "domainOwner": "ingredients",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "anon=Dxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -16508,8 +16508,8 @@
       "domainOwner": "ingredients",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -16530,9 +16530,9 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -16552,9 +16552,9 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -16574,9 +16574,9 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -16596,9 +16596,9 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -16618,9 +16618,9 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -16640,8 +16640,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -16662,8 +16662,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -16684,8 +16684,8 @@
       "domainOwner": "inventory",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=arwdDxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -16706,8 +16706,8 @@
       "domainOwner": "inventory",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=rm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=arDxtm/postgres"
       ],
       "historicalOrCurrent": "historical",
@@ -16728,9 +16728,9 @@
       "domainOwner": "inventory",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "historicalOrCurrent": "historical",
       "mutationPath": "RPC/service/migration only",
@@ -16750,9 +16750,9 @@
       "domainOwner": "inventory",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -16772,9 +16772,9 @@
       "domainOwner": "inventory",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -16794,8 +16794,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -16816,8 +16816,8 @@
       "domainOwner": "lab",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -16838,8 +16838,8 @@
       "domainOwner": "lab",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -16860,8 +16860,8 @@
       "domainOwner": "lab",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -16882,8 +16882,8 @@
       "domainOwner": "lab",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -16904,8 +16904,8 @@
       "domainOwner": "lab",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -16926,8 +16926,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -16948,8 +16948,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -16970,8 +16970,8 @@
       "domainOwner": "launch",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -16992,8 +16992,8 @@
       "domainOwner": "launch",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -17014,8 +17014,8 @@
       "domainOwner": "launch",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -17036,8 +17036,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -17058,9 +17058,9 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "historicalOrCurrent": "historical",
       "mutationPath": "RPC/service/migration only",
@@ -17080,8 +17080,8 @@
       "domainOwner": "legacy-finished-goods",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=rm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "historical",
@@ -17102,8 +17102,8 @@
       "domainOwner": "packaging",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -17124,8 +17124,8 @@
       "domainOwner": "packaging",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -17146,8 +17146,8 @@
       "domainOwner": "packaging",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=rm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=arDxtm/postgres"
       ],
       "historicalOrCurrent": "historical",
@@ -17168,9 +17168,9 @@
       "domainOwner": "packaging",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=Dxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -17190,9 +17190,9 @@
       "domainOwner": "packaging",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=Dxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -17212,9 +17212,9 @@
       "domainOwner": "packaging",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=Dxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "historical",
       "mutationPath": "RPC/service/migration only",
@@ -17234,9 +17234,9 @@
       "domainOwner": "packaging",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=Dxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -17256,9 +17256,9 @@
       "domainOwner": "packaging",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=Dxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "historical",
       "mutationPath": "RPC/service/migration only",
@@ -17278,9 +17278,9 @@
       "domainOwner": "packaging",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=Dxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -17300,9 +17300,9 @@
       "domainOwner": "packaging",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=Dxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -17322,9 +17322,9 @@
       "domainOwner": "packaging",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -17344,8 +17344,8 @@
       "domainOwner": "packaging",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -17366,8 +17366,8 @@
       "domainOwner": "packaging",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=arwdDxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -17388,8 +17388,8 @@
       "domainOwner": "packaging",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=arwdDxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -17410,8 +17410,8 @@
       "domainOwner": "packaging",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -17432,8 +17432,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -17454,8 +17454,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -17476,8 +17476,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -17540,8 +17540,8 @@
       "domainOwner": "procurement",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -17562,8 +17562,8 @@
       "domainOwner": "procurement",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -17584,8 +17584,8 @@
       "domainOwner": "procurement",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -17606,9 +17606,9 @@
       "domainOwner": "procurement",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=Dxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -17628,8 +17628,8 @@
       "domainOwner": "procurement",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -17650,8 +17650,8 @@
       "domainOwner": "procurement",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -17672,8 +17672,8 @@
       "domainOwner": "procurement",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -17694,8 +17694,8 @@
       "domainOwner": "procurement",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -17716,8 +17716,8 @@
       "domainOwner": "procurement",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -17738,8 +17738,8 @@
       "domainOwner": "procurement",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -17760,8 +17760,8 @@
       "domainOwner": "procurement",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -17782,8 +17782,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -17804,8 +17804,8 @@
       "domainOwner": "production",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -17826,9 +17826,9 @@
       "domainOwner": "production",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=Dxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -17848,9 +17848,9 @@
       "domainOwner": "production",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=Dxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "historical",
       "mutationPath": "RPC/service/migration only",
@@ -17870,9 +17870,9 @@
       "domainOwner": "production",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=Dxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "historical",
       "mutationPath": "RPC/service/migration only",
@@ -17892,9 +17892,9 @@
       "domainOwner": "production",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=Dxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "historical",
       "mutationPath": "RPC/service/migration only",
@@ -17914,9 +17914,9 @@
       "domainOwner": "production",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -17936,8 +17936,8 @@
       "domainOwner": "production",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -17958,9 +17958,9 @@
       "domainOwner": "production",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=Dxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -17980,9 +17980,9 @@
       "domainOwner": "production",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=Dxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -18002,9 +18002,9 @@
       "domainOwner": "production",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=Dxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -18024,9 +18024,9 @@
       "domainOwner": "production",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=Dxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -18046,9 +18046,9 @@
       "domainOwner": "production",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=Dxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -18068,9 +18068,9 @@
       "domainOwner": "production",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=Dxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -18090,9 +18090,9 @@
       "domainOwner": "production",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=Dxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -18112,9 +18112,9 @@
       "domainOwner": "production",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=Dxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -18134,9 +18134,9 @@
       "domainOwner": "production",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=Dxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -18156,9 +18156,9 @@
       "domainOwner": "production",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=Dxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -18178,9 +18178,9 @@
       "domainOwner": "production",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=Dxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -18200,8 +18200,8 @@
       "domainOwner": "production",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -18222,8 +18222,8 @@
       "domainOwner": "production",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=arwdDxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -18244,8 +18244,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=arwdDxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -18266,9 +18266,9 @@
       "domainOwner": "procurement",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "historicalOrCurrent": "historical",
       "mutationPath": "RPC/service/migration only",
@@ -18288,9 +18288,9 @@
       "domainOwner": "procurement",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -18310,9 +18310,9 @@
       "domainOwner": "procurement",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -18332,9 +18332,9 @@
       "domainOwner": "procurement",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -18354,9 +18354,9 @@
       "domainOwner": "procurement",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -18376,9 +18376,9 @@
       "domainOwner": "procurement",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "historicalOrCurrent": "historical",
       "mutationPath": "RPC/service/migration only",
@@ -18398,9 +18398,9 @@
       "domainOwner": "procurement",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -18420,9 +18420,9 @@
       "domainOwner": "procurement",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -18442,9 +18442,9 @@
       "domainOwner": "procurement",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -18464,9 +18464,9 @@
       "domainOwner": "procurement",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "historicalOrCurrent": "historical",
       "mutationPath": "RPC/service/migration only",
@@ -18486,9 +18486,9 @@
       "domainOwner": "procurement",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -18508,9 +18508,9 @@
       "domainOwner": "procurement",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -18530,9 +18530,9 @@
       "domainOwner": "procurement",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -18552,9 +18552,9 @@
       "domainOwner": "procurement",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "historicalOrCurrent": "historical",
       "mutationPath": "RPC/service/migration only",
@@ -18574,9 +18574,9 @@
       "domainOwner": "procurement",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -18596,8 +18596,8 @@
       "domainOwner": "procurement",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=arwdDxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -18618,9 +18618,9 @@
       "domainOwner": "procurement",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -18640,8 +18640,8 @@
       "domainOwner": "procurement",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=arwdDxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -18662,8 +18662,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -18915,8 +18915,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -18937,8 +18937,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "historical",
@@ -18959,8 +18959,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -18981,9 +18981,9 @@
       "domainOwner": "finished-goods",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -19003,8 +19003,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -19025,8 +19025,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=rDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -19047,8 +19047,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -19069,8 +19069,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -19091,8 +19091,8 @@
       "domainOwner": "suppliers",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -19113,8 +19113,8 @@
       "domainOwner": "suppliers",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -19135,8 +19135,8 @@
       "domainOwner": "suppliers",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -19157,8 +19157,8 @@
       "domainOwner": "suppliers",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "historical",
@@ -19179,9 +19179,9 @@
       "domainOwner": "suppliers",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=Dxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -19201,8 +19201,8 @@
       "domainOwner": "suppliers",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -19223,8 +19223,8 @@
       "domainOwner": "suppliers",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -19245,8 +19245,8 @@
       "domainOwner": "suppliers",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -19267,8 +19267,8 @@
       "domainOwner": "suppliers",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -19289,8 +19289,8 @@
       "domainOwner": "suppliers",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -19311,8 +19311,8 @@
       "domainOwner": "testing",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -19333,8 +19333,8 @@
       "domainOwner": "testing",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -19355,8 +19355,8 @@
       "domainOwner": "testing",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -19377,8 +19377,8 @@
       "domainOwner": "testing",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -19399,8 +19399,8 @@
       "domainOwner": "testing",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -19421,8 +19421,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -19443,8 +19443,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -19465,8 +19465,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -19487,8 +19487,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -19509,8 +19509,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -19531,8 +19531,8 @@
       "domainOwner": "platform-migration",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=rm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -19553,8 +19553,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=rDxtm/postgres"
       ],
       "historicalOrCurrent": "current",
@@ -20633,6 +20633,6 @@
   ],
   "generatedAt": "2026-07-29T12:00:00+02:00",
   "sourceCommit": "content-addressed-by-sourceHash",
-  "sourceHash": "a1d9968282a63e4c361535a49be66079822a9455e6f0f7b902de8a32da82a3f6",
+  "sourceHash": "8cfdb5cd897c44ea80289d0e006e734e404c09b97e364748268be68c0362e820",
   "version": "1.0.0"
 }

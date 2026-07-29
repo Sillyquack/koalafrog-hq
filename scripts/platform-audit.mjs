@@ -23,7 +23,7 @@ with relation_objects as (
   select n.nspname schema_name,
     case c.relkind when 'r' then 'table' when 'p' then 'table' when 'v' then 'view' when 'm' then 'materialized_view' end object_type,
     c.relname object_name,c.oid,c.relrowsecurity rls_enabled,
-    coalesce(c.reltuples,0)::bigint estimated_rows,
+    0::bigint estimated_rows,
     coalesce(array_to_json(c.relacl),'[]'::json) grants
   from pg_class c join pg_namespace n on n.oid=c.relnamespace
   where n.nspname='public' and c.relkind in('r','p','v','m')
@@ -75,7 +75,10 @@ function queryCatalogue() {
     "exec", "supabase_db_koalafrog-hq", "psql", "-U", "postgres", "-d", "postgres",
     "-At", "-v", "ON_ERROR_STOP=1", "-c", sql,
   ], { encoding: "utf8", maxBuffer: 100 * 1024 * 1024 })
-  return JSON.parse(output)
+  const catalogue = JSON.parse(output)
+  for (const relation of catalogue.relations) relation.grants.sort()
+  for (const fn of catalogue.functions) fn.grants.sort()
+  return catalogue
 }
 
 function walk(directory) {

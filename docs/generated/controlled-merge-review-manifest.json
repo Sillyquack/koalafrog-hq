@@ -1,0 +1,135 @@
+{
+  "version": "1.0.0",
+  "generatedAt": "2026-07-29T16:00:00+02:00",
+  "localOnly": true,
+  "remoteActionsPerformed": false,
+  "featureBranch": "feature/finished-goods-batch-genealogy-v1",
+  "auditedFeatureHead": "61c82d1cf47c8c1a57eddab04261e63a55848bb3",
+  "evidenceCommitsExcludedFromAuditedRange": true,
+  "frozenRcTag": "finished-goods-traceability-recall-v1-rc1",
+  "frozenRcTarget": "bd5617c70dd8ca21611f63750f2293e40a83c8b4",
+  "targetBranch": "main",
+  "targetHead": "b54fff20d07658185b8ccd8d9d47559036e2c73f",
+  "mergeBase": "b54fff20d07658185b8ccd8d9d47559036e2c73f",
+  "featureOnlyCommitCount": 76,
+  "targetOnlyCommitCount": 0,
+  "migrationCounts": {
+    "target": 64,
+    "integrated": 86,
+    "featureOnly": 22
+  },
+  "conflictCount": 0,
+  "semanticConflictCount": 0,
+  "simulation": {
+    "branch": "review/finished-goods-rc1-merge-simulation",
+    "mergeCommit": "7fb924bca1887f496c154a2d2dc1f985a4044575",
+    "parents": [
+      "b54fff20d07658185b8ccd8d9d47559036e2c73f",
+      "61c82d1cf47c8c1a57eddab04261e63a55848bb3"
+    ],
+    "strategy": "git merge --no-ff",
+    "conflicts": 0,
+    "resolutions": [],
+    "cleanedUp": true
+  },
+  "simulatedValidation": {
+    "databaseReset": "PASS",
+    "pgTap": 1212,
+    "unit": 895,
+    "supabaseIntegration": 53,
+    "desktopE2e": 14,
+    "mobileE2e": 9,
+    "lint": "PASS",
+    "build": "PASS",
+    "accessibility": "PASS",
+    "restore": "PASS",
+    "cloudflare": "PASS",
+    "secretScan": "PASS"
+  },
+  "rebaseSimulation": {
+    "result": "already_up_to_date",
+    "conflicts": 0,
+    "rewrittenCommits": 0,
+    "resultingHead": "61c82d1cf47c8c1a57eddab04261e63a55848bb3"
+  },
+  "recommendedIntegrationStrategy": "normal non-squash merge with --no-ff",
+  "pushReadiness": "ready_requires_authorization",
+  "prReadiness": "ready_requires_authorization",
+  "mergeReadiness": "ready_after_human_review_and_approval",
+  "deploymentReadiness": "not_ready",
+  "blockers": {
+    "push": [],
+    "pr": [],
+    "merge": [
+      "required human review and approvals"
+    ],
+    "deployment": [
+      "authorized hosted rehearsal and production approval"
+    ]
+  },
+  "requiredAuthorizations": [
+    "push feature branch",
+    "create Pull Request",
+    "merge after review",
+    "hosted rehearsal",
+    "production deployment"
+  ],
+  "hotspots": [
+    {
+      "name": "Migration ordering and function replacement",
+      "files": "supabase/migrations",
+      "reviewer": "database and migration reviewer",
+      "risk": "high",
+      "invariant": "Canonical server authority, owner isolation, append-only history, and local-only deployment boundaries remain intact.",
+      "evidence": "pgTAP, authenticated integrations, platform authority audit, secret scan, and disposable merge validation."
+    },
+    {
+      "name": "Movement-ledger and opening-balance protections",
+      "files": "20260728140000, 20260728150000, 20260729054425",
+      "reviewer": "database and domain reviewer",
+      "risk": "high",
+      "invariant": "Canonical server authority, owner isolation, append-only history, and local-only deployment boundaries remain intact.",
+      "evidence": "pgTAP, authenticated integrations, platform authority audit, secret scan, and disposable merge validation."
+    },
+    {
+      "name": "Release, disposition, and operational-state authority",
+      "files": "20260728120000, 20260729043721, 20260729054425",
+      "reviewer": "security and quality reviewer",
+      "risk": "high",
+      "invariant": "Canonical server authority, owner isolation, append-only history, and local-only deployment boundaries remain intact.",
+      "evidence": "pgTAP, authenticated integrations, platform authority audit, secret scan, and disposable merge validation."
+    },
+    {
+      "name": "Traceability traversal and affected-goods deduplication",
+      "files": "20260729065048, 20260729094510",
+      "reviewer": "database and traceability reviewer",
+      "risk": "high",
+      "invariant": "Canonical server authority, owner isolation, append-only history, and local-only deployment boundaries remain intact.",
+      "evidence": "pgTAP, authenticated integrations, platform authority audit, secret scan, and disposable merge validation."
+    },
+    {
+      "name": "Recall fingerprint, non-execution, evidence privacy",
+      "files": "20260729094510 and recall-readiness modules",
+      "reviewer": "security and business owner",
+      "risk": "high",
+      "invariant": "Canonical server authority, owner isolation, append-only history, and local-only deployment boundaries remain intact.",
+      "evidence": "pgTAP, authenticated integrations, platform authority audit, secret scan, and disposable merge validation."
+    },
+    {
+      "name": "RLS, security-definer functions, grants, compatibility freezes",
+      "files": "20260729083226 and platform audit evidence",
+      "reviewer": "security and RLS reviewer",
+      "risk": "high",
+      "invariant": "Canonical server authority, owner isolation, append-only history, and local-only deployment boundaries remain intact.",
+      "evidence": "pgTAP, authenticated integrations, platform authority audit, secret scan, and disposable merge validation."
+    },
+    {
+      "name": "Environment, deployment, backup, and restore tooling",
+      "files": "deployment preparation scripts and runbooks",
+      "reviewer": "deployment reviewer",
+      "risk": "high",
+      "invariant": "Canonical server authority, owner isolation, append-only history, and local-only deployment boundaries remain intact.",
+      "evidence": "pgTAP, authenticated integrations, platform authority audit, secret scan, and disposable merge validation."
+    }
+  ]
+}

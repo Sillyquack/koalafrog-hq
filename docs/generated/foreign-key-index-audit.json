@@ -5,7 +5,7 @@
         "weighing_id"
       ],
       "constraint": "batch_material_consumptions_weighing_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (weighing_id) using query and growth evidence.",
       "references": "batch_material_weighings",
       "schema": "public",
@@ -18,7 +18,7 @@
         "allocation_id"
       ],
       "constraint": "batch_material_consumptions_workspace_id_allocation_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "batch_material_lot_allocations",
       "schema": "public",
@@ -30,7 +30,7 @@
         "workspace_id"
       ],
       "constraint": "batch_material_consumptions_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -43,7 +43,7 @@
         "inventory_lot_id"
       ],
       "constraint": "batch_material_consumptions_workspace_id_inventory_lot_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "inventory_lots",
       "schema": "public",
@@ -56,7 +56,7 @@
         "movement_id"
       ],
       "constraint": "batch_material_consumptions_workspace_id_movement_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "inventory_movements",
       "schema": "public",
@@ -69,7 +69,7 @@
         "reservation_id"
       ],
       "constraint": "batch_material_consumptions_workspace_id_reservation_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "inventory_reservations",
       "schema": "public",
@@ -81,7 +81,7 @@
         "workspace_id"
       ],
       "constraint": "batch_material_events_workspace_id_fkey",
-      "estimatedRows": 26,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -94,7 +94,7 @@
         "production_run_line_id"
       ],
       "constraint": "batch_material_lot_allocatio_workspace_id_production_run__fkey1",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "production_run_lines",
       "schema": "public",
@@ -107,7 +107,7 @@
         "inventory_lot_id"
       ],
       "constraint": "batch_material_lot_allocation_workspace_id_inventory_lot_i_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "inventory_lots",
       "schema": "public",
@@ -120,7 +120,7 @@
         "lab_batch_line_id"
       ],
       "constraint": "batch_material_lot_allocation_workspace_id_lab_batch_line__fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "lab_batch_lines",
       "schema": "public",
@@ -133,7 +133,7 @@
         "production_run_id"
       ],
       "constraint": "batch_material_lot_allocation_workspace_id_production_run__fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "production_runs",
       "schema": "public",
@@ -145,7 +145,7 @@
         "workspace_id"
       ],
       "constraint": "batch_material_lot_allocations_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -158,7 +158,7 @@
         "lab_batch_id"
       ],
       "constraint": "batch_material_lot_allocations_workspace_id_lab_batch_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "lab_batches",
       "schema": "public",
@@ -170,7 +170,7 @@
         "variance_id"
       ],
       "constraint": "batch_material_reconciliations_variance_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (variance_id) using query and growth evidence.",
       "references": "batch_material_variances",
       "schema": "public",
@@ -182,7 +182,7 @@
         "workspace_id"
       ],
       "constraint": "batch_material_reconciliations_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -194,7 +194,7 @@
         "original_consumption_id"
       ],
       "constraint": "batch_material_returns_original_consumption_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (original_consumption_id) using query and growth evidence.",
       "references": "batch_material_consumptions",
       "schema": "public",
@@ -206,7 +206,7 @@
         "weighing_id"
       ],
       "constraint": "batch_material_returns_weighing_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (weighing_id) using query and growth evidence.",
       "references": "batch_material_weighings",
       "schema": "public",
@@ -218,7 +218,7 @@
         "workspace_id"
       ],
       "constraint": "batch_material_returns_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -231,7 +231,7 @@
         "inventory_lot_id"
       ],
       "constraint": "batch_material_returns_workspace_id_inventory_lot_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "inventory_lots",
       "schema": "public",
@@ -244,7 +244,7 @@
         "movement_id"
       ],
       "constraint": "batch_material_returns_workspace_id_movement_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "inventory_movements",
       "schema": "public",
@@ -257,7 +257,7 @@
         "reservation_id"
       ],
       "constraint": "batch_material_returns_workspace_id_reservation_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "inventory_reservations",
       "schema": "public",
@@ -269,7 +269,7 @@
         "workspace_id"
       ],
       "constraint": "batch_material_variances_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -281,7 +281,7 @@
         "weighing_id"
       ],
       "constraint": "batch_material_waste_weighing_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (weighing_id) using query and growth evidence.",
       "references": "batch_material_weighings",
       "schema": "public",
@@ -293,7 +293,7 @@
         "workspace_id"
       ],
       "constraint": "batch_material_waste_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -306,7 +306,7 @@
         "inventory_lot_id"
       ],
       "constraint": "batch_material_waste_workspace_id_inventory_lot_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "inventory_lots",
       "schema": "public",
@@ -319,7 +319,7 @@
         "movement_id"
       ],
       "constraint": "batch_material_waste_workspace_id_movement_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "inventory_movements",
       "schema": "public",
@@ -332,7 +332,7 @@
         "reservation_id"
       ],
       "constraint": "batch_material_waste_workspace_id_reservation_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "inventory_reservations",
       "schema": "public",
@@ -344,7 +344,7 @@
         "supersedes_weighing_id"
       ],
       "constraint": "batch_material_weighings_supersedes_weighing_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "batch_material_weighings",
       "schema": "public",
@@ -357,7 +357,7 @@
         "allocation_id"
       ],
       "constraint": "batch_material_weighings_workspace_id_allocation_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "batch_material_lot_allocations",
       "schema": "public",
@@ -369,7 +369,7 @@
         "workspace_id"
       ],
       "constraint": "batch_material_weighings_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -382,7 +382,7 @@
         "inventory_lot_id"
       ],
       "constraint": "batch_material_weighings_workspace_id_inventory_lot_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "inventory_lots",
       "schema": "public",
@@ -395,7 +395,7 @@
         "reservation_id"
       ],
       "constraint": "batch_material_weighings_workspace_id_reservation_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "inventory_reservations",
       "schema": "public",
@@ -408,7 +408,7 @@
         "workspace_id"
       ],
       "constraint": "beard_length_map_zones_attachment_workspace_fkey",
-      "estimatedRows": 22,
+      "estimatedRows": 0,
       "recommendation": "Review index (attachment_id, workspace_id) using query and growth evidence.",
       "references": "grooming_tool_attachments",
       "schema": "public",
@@ -421,7 +421,7 @@
         "workspace_id"
       ],
       "constraint": "beard_length_map_zones_length_map_id_workspace_id_fkey",
-      "estimatedRows": 22,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "beard_length_maps",
       "schema": "public",
@@ -434,7 +434,7 @@
         "workspace_id"
       ],
       "constraint": "beard_length_map_zones_tool_id_workspace_id_fkey",
-      "estimatedRows": 22,
+      "estimatedRows": 0,
       "recommendation": "Review index (tool_id, workspace_id) using query and growth evidence.",
       "references": "grooming_tools",
       "schema": "public",
@@ -446,7 +446,7 @@
         "owner_id"
       ],
       "constraint": "beard_length_maps_owner_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (owner_id) using query and growth evidence.",
       "references": "auth.users",
       "schema": "public",
@@ -459,7 +459,7 @@
         "workspace_id"
       ],
       "constraint": "beard_length_maps_profile_id_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "beard_profiles",
       "schema": "public",
@@ -471,7 +471,7 @@
         "workspace_id"
       ],
       "constraint": "beard_length_maps_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (workspace_id) using query and growth evidence.",
       "references": "workspaces",
       "schema": "public",
@@ -483,7 +483,7 @@
         "owner_id"
       ],
       "constraint": "beard_log_entries_owner_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (owner_id) using query and growth evidence.",
       "references": "auth.users",
       "schema": "public",
@@ -496,7 +496,7 @@
         "workspace_id"
       ],
       "constraint": "beard_log_entries_profile_id_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (profile_id, workspace_id) using query and growth evidence.",
       "references": "beard_profiles",
       "schema": "public",
@@ -509,7 +509,7 @@
         "workspace_id"
       ],
       "constraint": "beard_log_entries_recipe_id_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (recipe_id, workspace_id) using query and growth evidence.",
       "references": "trim_recipes",
       "schema": "public",
@@ -522,7 +522,7 @@
         "workspace_id"
       ],
       "constraint": "beard_log_entries_session_workspace_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (session_id, workspace_id) using query and growth evidence.",
       "references": "beard_trim_sessions",
       "schema": "public",
@@ -534,7 +534,7 @@
         "workspace_id"
       ],
       "constraint": "beard_log_entries_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (workspace_id) using query and growth evidence.",
       "references": "workspaces",
       "schema": "public",
@@ -547,7 +547,7 @@
         "workspace_id"
       ],
       "constraint": "beard_log_product_links_log_workspace_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "beard_log_entries",
       "schema": "public",
@@ -559,7 +559,7 @@
         "owner_id"
       ],
       "constraint": "beard_log_product_links_owner_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (owner_id) using query and growth evidence.",
       "references": "auth.users",
       "schema": "public",
@@ -571,7 +571,7 @@
         "workspace_id"
       ],
       "constraint": "beard_log_product_links_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -584,7 +584,7 @@
         "product_id"
       ],
       "constraint": "beard_log_product_links_workspace_id_product_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "products",
       "schema": "public",
@@ -596,7 +596,7 @@
         "owner_id"
       ],
       "constraint": "beard_profiles_owner_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (owner_id) using query and growth evidence.",
       "references": "auth.users",
       "schema": "public",
@@ -608,7 +608,7 @@
         "workspace_id"
       ],
       "constraint": "beard_profiles_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -620,7 +620,7 @@
         "owner_id"
       ],
       "constraint": "beard_studio_revisions_owner_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (owner_id) using query and growth evidence.",
       "references": "auth.users",
       "schema": "public",
@@ -632,7 +632,7 @@
         "workspace_id"
       ],
       "constraint": "beard_studio_revisions_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -644,7 +644,7 @@
         "owner_id"
       ],
       "constraint": "beard_trim_sessions_owner_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (owner_id) using query and growth evidence.",
       "references": "auth.users",
       "schema": "public",
@@ -657,7 +657,7 @@
         "workspace_id"
       ],
       "constraint": "beard_trim_sessions_recipe_id_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (recipe_id, workspace_id) using query and growth evidence.",
       "references": "trim_recipes",
       "schema": "public",
@@ -669,7 +669,7 @@
         "workspace_id"
       ],
       "constraint": "beard_trim_sessions_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (workspace_id) using query and growth evidence.",
       "references": "workspaces",
       "schema": "public",
@@ -682,7 +682,7 @@
         "claim_id"
       ],
       "constraint": "claim_evidence_workspace_id_claim_id_fkey",
-      "estimatedRows": 6,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "claims",
       "schema": "public",
@@ -695,7 +695,7 @@
         "document_id"
       ],
       "constraint": "claim_evidence_workspace_id_document_id_fkey",
-      "estimatedRows": 6,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "compliance_documents",
       "schema": "public",
@@ -707,7 +707,7 @@
         "workspace_id"
       ],
       "constraint": "claim_evidence_workspace_id_fkey",
-      "estimatedRows": 6,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -720,7 +720,7 @@
         "compliance_dossier_id"
       ],
       "constraint": "claims_workspace_id_compliance_dossier_id_fkey",
-      "estimatedRows": 12,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "compliance_dossiers",
       "schema": "public",
@@ -732,7 +732,7 @@
         "workspace_id"
       ],
       "constraint": "claims_workspace_id_fkey",
-      "estimatedRows": 12,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -745,7 +745,7 @@
         "product_id"
       ],
       "constraint": "claims_workspace_id_product_id_fkey",
-      "estimatedRows": 12,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "products",
       "schema": "public",
@@ -758,7 +758,7 @@
         "compliance_dossier_id"
       ],
       "constraint": "compliance_composition_snapsh_workspace_id_compliance_doss_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "compliance_dossiers",
       "schema": "public",
@@ -771,7 +771,7 @@
         "formula_line_id"
       ],
       "constraint": "compliance_composition_snapsh_workspace_id_formula_line_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "formula_lines",
       "schema": "public",
@@ -784,7 +784,7 @@
         "ingredient_id"
       ],
       "constraint": "compliance_composition_snapshot_workspace_id_ingredient_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "ingredients",
       "schema": "public",
@@ -796,7 +796,7 @@
         "workspace_id"
       ],
       "constraint": "compliance_documents_workspace_id_fkey",
-      "estimatedRows": 6,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -809,7 +809,7 @@
         "derived_from_dossier_id"
       ],
       "constraint": "compliance_dossiers_workspace_id_derived_from_dossier_id_fkey",
-      "estimatedRows": 14,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "compliance_dossiers",
       "schema": "public",
@@ -821,7 +821,7 @@
         "workspace_id"
       ],
       "constraint": "compliance_dossiers_workspace_id_fkey",
-      "estimatedRows": 14,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -834,7 +834,7 @@
         "formula_version_id"
       ],
       "constraint": "compliance_dossiers_workspace_id_formula_version_id_fkey",
-      "estimatedRows": 14,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "formula_versions",
       "schema": "public",
@@ -847,7 +847,7 @@
         "label_artwork_version_id"
       ],
       "constraint": "compliance_dossiers_workspace_id_label_artwork_version_id_fkey",
-      "estimatedRows": 14,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "label_artwork_versions",
       "schema": "public",
@@ -860,7 +860,7 @@
         "packaging_specification_version_id"
       ],
       "constraint": "compliance_dossiers_workspace_id_packaging_specification_v_fkey",
-      "estimatedRows": 14,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "packaging_specification_versions",
       "schema": "public",
@@ -873,7 +873,7 @@
         "product_id"
       ],
       "constraint": "compliance_dossiers_workspace_id_product_id_fkey",
-      "estimatedRows": 14,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "products",
       "schema": "public",
@@ -886,7 +886,7 @@
         "responsible_person_id"
       ],
       "constraint": "compliance_dossiers_workspace_id_responsible_person_id_fkey",
-      "estimatedRows": 14,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "responsible_persons",
       "schema": "public",
@@ -898,7 +898,7 @@
         "workspace_id"
       ],
       "constraint": "cost_lines_workspace_id_fkey",
-      "estimatedRows": 6,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -911,7 +911,7 @@
         "compliance_dossier_id"
       ],
       "constraint": "cpnp_records_workspace_id_compliance_dossier_id_fkey",
-      "estimatedRows": 6,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "compliance_dossiers",
       "schema": "public",
@@ -924,7 +924,7 @@
         "confirmation_document_id"
       ],
       "constraint": "cpnp_records_workspace_id_confirmation_document_id_fkey",
-      "estimatedRows": 6,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "compliance_documents",
       "schema": "public",
@@ -936,7 +936,7 @@
         "workspace_id"
       ],
       "constraint": "cpnp_records_workspace_id_fkey",
-      "estimatedRows": 6,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -949,7 +949,7 @@
         "responsible_person_id"
       ],
       "constraint": "cpnp_records_workspace_id_responsible_person_id_fkey",
-      "estimatedRows": 6,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "responsible_persons",
       "schema": "public",
@@ -962,7 +962,7 @@
         "assessed_formula_version_id"
       ],
       "constraint": "cpsr_records_workspace_id_assessed_formula_version_id_fkey",
-      "estimatedRows": 6,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "formula_versions",
       "schema": "public",
@@ -975,7 +975,7 @@
         "assessed_packaging_specification_version_id"
       ],
       "constraint": "cpsr_records_workspace_id_assessed_packaging_specification_fkey",
-      "estimatedRows": 6,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "packaging_specification_versions",
       "schema": "public",
@@ -988,7 +988,7 @@
         "compliance_dossier_id"
       ],
       "constraint": "cpsr_records_workspace_id_compliance_dossier_id_fkey",
-      "estimatedRows": 6,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "compliance_dossiers",
       "schema": "public",
@@ -1001,7 +1001,7 @@
         "cpsr_document_id"
       ],
       "constraint": "cpsr_records_workspace_id_cpsr_document_id_fkey",
-      "estimatedRows": 6,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "compliance_documents",
       "schema": "public",
@@ -1014,7 +1014,7 @@
         "credential_document_id"
       ],
       "constraint": "cpsr_records_workspace_id_credential_document_id_fkey",
-      "estimatedRows": 6,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "compliance_documents",
       "schema": "public",
@@ -1026,7 +1026,7 @@
         "workspace_id"
       ],
       "constraint": "cpsr_records_workspace_id_fkey",
-      "estimatedRows": 6,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -1038,7 +1038,7 @@
         "workspace_id"
       ],
       "constraint": "currency_comparison_rates_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (workspace_id) using query and growth evidence.",
       "references": "workspaces",
       "schema": "public",
@@ -1051,7 +1051,7 @@
         "experiment_id"
       ],
       "constraint": "development_experiment_changes_workspace_id_experiment_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "development_experiments",
       "schema": "public",
@@ -1064,7 +1064,7 @@
         "ingredient_id"
       ],
       "constraint": "development_experiment_changes_workspace_id_ingredient_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "ingredients",
       "schema": "public",
@@ -1077,7 +1077,7 @@
         "owner_user_id"
       ],
       "constraint": "development_experiment_changes_workspace_id_owner_user_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -1090,7 +1090,7 @@
         "variant_id"
       ],
       "constraint": "development_experiment_changes_workspace_id_variant_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "development_experiment_variants",
       "schema": "public",
@@ -1103,7 +1103,7 @@
         "formula_version_id"
       ],
       "constraint": "development_experiment_handof_workspace_id_formula_version_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "formula_versions",
       "schema": "public",
@@ -1116,7 +1116,7 @@
         "experiment_id"
       ],
       "constraint": "development_experiment_handoffs_workspace_id_experiment_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "development_experiments",
       "schema": "public",
@@ -1129,7 +1129,7 @@
         "lab_batch_id"
       ],
       "constraint": "development_experiment_handoffs_workspace_id_lab_batch_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "lab_batches",
       "schema": "public",
@@ -1142,7 +1142,7 @@
         "owner_user_id"
       ],
       "constraint": "development_experiment_handoffs_workspace_id_owner_user_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -1155,7 +1155,7 @@
         "variant_id"
       ],
       "constraint": "development_experiment_handoffs_workspace_id_variant_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "development_experiment_variants",
       "schema": "public",
@@ -1168,7 +1168,7 @@
         "experiment_id"
       ],
       "constraint": "development_experiment_observat_workspace_id_experiment_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "development_experiments",
       "schema": "public",
@@ -1181,7 +1181,7 @@
         "owner_user_id"
       ],
       "constraint": "development_experiment_observat_workspace_id_owner_user_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -1194,7 +1194,7 @@
         "variant_id"
       ],
       "constraint": "development_experiment_observation_workspace_id_variant_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "development_experiment_variants",
       "schema": "public",
@@ -1207,7 +1207,7 @@
         "experiment_id"
       ],
       "constraint": "development_experiment_status_e_workspace_id_experiment_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "development_experiments",
       "schema": "public",
@@ -1220,7 +1220,7 @@
         "owner_user_id"
       ],
       "constraint": "development_experiment_status_e_workspace_id_owner_user_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -1233,7 +1233,7 @@
         "linked_formula_version_id"
       ],
       "constraint": "development_experiment_varian_workspace_id_linked_formula__fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "formula_versions",
       "schema": "public",
@@ -1246,7 +1246,7 @@
         "linked_lab_batch_id"
       ],
       "constraint": "development_experiment_varian_workspace_id_linked_lab_batc_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "lab_batches",
       "schema": "public",
@@ -1259,7 +1259,7 @@
         "experiment_id"
       ],
       "constraint": "development_experiment_variants_workspace_id_experiment_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "development_experiments",
       "schema": "public",
@@ -1272,7 +1272,7 @@
         "owner_user_id"
       ],
       "constraint": "development_experiment_variants_workspace_id_owner_user_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -1285,7 +1285,7 @@
         "preferred_variant_id"
       ],
       "constraint": "development_experiments_preferred_variant_fk",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "development_experiment_variants",
       "schema": "public",
@@ -1298,7 +1298,7 @@
         "base_formula_version_id"
       ],
       "constraint": "development_experiments_workspace_id_base_formula_version__fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "formula_versions",
       "schema": "public",
@@ -1311,7 +1311,7 @@
         "owner_user_id"
       ],
       "constraint": "development_experiments_workspace_id_owner_user_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -1324,7 +1324,7 @@
         "product_id"
       ],
       "constraint": "development_experiments_workspace_id_product_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "products",
       "schema": "public",
@@ -1337,7 +1337,7 @@
         "source_intelligence_run_id"
       ],
       "constraint": "development_experiments_workspace_id_source_intelligence_r_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "intelligence_runs",
       "schema": "public",
@@ -1350,7 +1350,7 @@
         "source_intelligence_thread_id"
       ],
       "constraint": "development_experiments_workspace_id_source_intelligence_t_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "intelligence_threads",
       "schema": "public",
@@ -1362,7 +1362,7 @@
         "owner_id"
       ],
       "constraint": "document_objects_owner_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (owner_id) using query and growth evidence.",
       "references": "auth.users",
       "schema": "public",
@@ -1374,7 +1374,7 @@
         "replaced_by"
       ],
       "constraint": "document_objects_replaced_by_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (replaced_by) using query and growth evidence.",
       "references": "document_objects",
       "schema": "public",
@@ -1386,7 +1386,7 @@
         "uploader_id"
       ],
       "constraint": "document_objects_uploader_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (uploader_id) using query and growth evidence.",
       "references": "auth.users",
       "schema": "public",
@@ -1398,7 +1398,7 @@
         "workspace_id"
       ],
       "constraint": "document_objects_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -1411,7 +1411,7 @@
         "equipment_item_id"
       ],
       "constraint": "equipment_capabilities_workspace_id_equipment_item_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (workspace_id, equipment_item_id) using query and growth evidence.",
       "references": "equipment_items",
       "schema": "public",
@@ -1423,7 +1423,7 @@
         "workspace_id"
       ],
       "constraint": "equipment_items_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -1436,7 +1436,7 @@
         "supplier_id"
       ],
       "constraint": "equipment_items_workspace_id_supplier_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "suppliers",
       "schema": "public",
@@ -1449,7 +1449,7 @@
         "equipment_item_id"
       ],
       "constraint": "equipment_policies_workspace_id_equipment_item_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (workspace_id, equipment_item_id) using query and growth evidence.",
       "references": "equipment_items",
       "schema": "public",
@@ -1461,7 +1461,7 @@
         "source_document_id"
       ],
       "constraint": "equipment_service_events_source_document_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (source_document_id) using query and growth evidence.",
       "references": "supplier_documents",
       "schema": "public",
@@ -1473,7 +1473,7 @@
         "supersedes_event_id"
       ],
       "constraint": "equipment_service_events_supersedes_event_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (supersedes_event_id) using query and growth evidence.",
       "references": "equipment_service_events",
       "schema": "public",
@@ -1486,7 +1486,7 @@
         "equipment_item_id"
       ],
       "constraint": "equipment_service_events_workspace_id_equipment_item_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "equipment_items",
       "schema": "public",
@@ -1498,7 +1498,7 @@
         "workspace_id"
       ],
       "constraint": "finished_goods_batches_workspace_id_fkey",
-      "estimatedRows": 6,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -1511,7 +1511,7 @@
         "formula_version_id"
       ],
       "constraint": "finished_goods_batches_workspace_id_formula_version_id_fkey",
-      "estimatedRows": 6,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "formula_versions",
       "schema": "public",
@@ -1524,7 +1524,7 @@
         "packaging_specification_version_id"
       ],
       "constraint": "finished_goods_batches_workspace_id_packaging_specificatio_fkey",
-      "estimatedRows": 6,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "packaging_specification_versions",
       "schema": "public",
@@ -1537,7 +1537,7 @@
         "product_id"
       ],
       "constraint": "finished_goods_batches_workspace_id_product_id_fkey",
-      "estimatedRows": 6,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "products",
       "schema": "public",
@@ -1550,7 +1550,7 @@
         "production_run_id"
       ],
       "constraint": "finished_goods_batches_workspace_id_production_run_id_fkey",
-      "estimatedRows": 6,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "production_runs",
       "schema": "public",
@@ -1562,7 +1562,7 @@
         "inspection_id"
       ],
       "constraint": "finished_goods_deviations_inspection_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (inspection_id) using query and growth evidence.",
       "references": "finished_goods_inspections",
       "schema": "public",
@@ -1574,7 +1574,7 @@
         "supersedes_deviation_id"
       ],
       "constraint": "finished_goods_deviations_supersedes_deviation_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (supersedes_deviation_id) using query and growth evidence.",
       "references": "finished_goods_deviations",
       "schema": "public",
@@ -1587,7 +1587,7 @@
         "finished_goods_lot_id"
       ],
       "constraint": "finished_goods_deviations_workspace_id_finished_goods_lot__fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "finished_goods_lots",
       "schema": "public",
@@ -1599,7 +1599,7 @@
         "workspace_id"
       ],
       "constraint": "finished_goods_deviations_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -1612,7 +1612,7 @@
         "quarantine_id"
       ],
       "constraint": "finished_goods_deviations_workspace_id_quarantine_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "finished_goods_quarantines",
       "schema": "public",
@@ -1625,7 +1625,7 @@
         "finished_goods_lot_id"
       ],
       "constraint": "finished_goods_disposition_re_workspace_id_finished_goods__fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "finished_goods_lots",
       "schema": "public",
@@ -1638,7 +1638,7 @@
         "opening_movement_id"
       ],
       "constraint": "finished_goods_disposition_re_workspace_id_opening_movemen_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "finished_goods_inventory_movements",
       "schema": "public",
@@ -1651,7 +1651,7 @@
         "released_inventory_lot_id"
       ],
       "constraint": "finished_goods_disposition_re_workspace_id_released_invent_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "released_finished_goods_inventory_lots",
       "schema": "public",
@@ -1664,7 +1664,7 @@
         "quarantine_id"
       ],
       "constraint": "finished_goods_disposition_revi_workspace_id_quarantine_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "finished_goods_quarantines",
       "schema": "public",
@@ -1676,7 +1676,7 @@
         "workspace_id"
       ],
       "constraint": "finished_goods_disposition_reviews_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -1688,7 +1688,7 @@
         "supersedes_inspection_id"
       ],
       "constraint": "finished_goods_inspections_supersedes_inspection_id_fkey",
-      "estimatedRows": 82,
+      "estimatedRows": 0,
       "recommendation": "Review index (supersedes_inspection_id) using query and growth evidence.",
       "references": "finished_goods_inspections",
       "schema": "public",
@@ -1701,7 +1701,7 @@
         "finished_goods_lot_id"
       ],
       "constraint": "finished_goods_inspections_workspace_id_finished_goods_lot_fkey",
-      "estimatedRows": 82,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "finished_goods_lots",
       "schema": "public",
@@ -1713,7 +1713,7 @@
         "workspace_id"
       ],
       "constraint": "finished_goods_inspections_workspace_id_fkey",
-      "estimatedRows": 82,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -1726,7 +1726,7 @@
         "quarantine_id"
       ],
       "constraint": "finished_goods_inspections_workspace_id_quarantine_id_fkey",
-      "estimatedRows": 82,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "finished_goods_quarantines",
       "schema": "public",
@@ -1739,7 +1739,7 @@
         "released_inventory_lot_id"
       ],
       "constraint": "finished_goods_inventory_even_workspace_id_released_invent_fkey",
-      "estimatedRows": 20,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "released_finished_goods_inventory_lots",
       "schema": "public",
@@ -1751,7 +1751,7 @@
         "movement_id"
       ],
       "constraint": "finished_goods_inventory_events_movement_id_fkey",
-      "estimatedRows": 20,
+      "estimatedRows": 0,
       "recommendation": "Review index (movement_id) using query and growth evidence.",
       "references": "finished_goods_inventory_movements",
       "schema": "public",
@@ -1763,7 +1763,7 @@
         "operation_id"
       ],
       "constraint": "finished_goods_inventory_events_operation_id_fkey",
-      "estimatedRows": 20,
+      "estimatedRows": 0,
       "recommendation": "Review index (operation_id) using query and growth evidence.",
       "references": "finished_goods_inventory_operations",
       "schema": "public",
@@ -1775,7 +1775,7 @@
         "state_record_id"
       ],
       "constraint": "finished_goods_inventory_events_state_record_id_fkey",
-      "estimatedRows": 20,
+      "estimatedRows": 0,
       "recommendation": "Review index (state_record_id) using query and growth evidence.",
       "references": "finished_goods_inventory_state_history",
       "schema": "public",
@@ -1787,7 +1787,7 @@
         "workspace_id"
       ],
       "constraint": "finished_goods_inventory_events_workspace_id_fkey",
-      "estimatedRows": 20,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -1800,7 +1800,7 @@
         "finished_goods_lot_id"
       ],
       "constraint": "finished_goods_inventory_move_workspace_id_finished_goods__fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "finished_goods_lots",
       "schema": "public",
@@ -1813,7 +1813,7 @@
         "release_review_id"
       ],
       "constraint": "finished_goods_inventory_move_workspace_id_release_review__fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "finished_goods_disposition_reviews",
       "schema": "public",
@@ -1826,7 +1826,7 @@
         "released_inventory_lot_id"
       ],
       "constraint": "finished_goods_inventory_move_workspace_id_released_invent_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "released_finished_goods_inventory_lots",
       "schema": "public",
@@ -1838,7 +1838,7 @@
         "operation_id"
       ],
       "constraint": "finished_goods_inventory_movements_operation_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (operation_id) using query and growth evidence.",
       "references": "finished_goods_inventory_operations",
       "schema": "public",
@@ -1850,7 +1850,7 @@
         "related_movement_id"
       ],
       "constraint": "finished_goods_inventory_movements_related_movement_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (related_movement_id) using query and growth evidence.",
       "references": "finished_goods_inventory_movements",
       "schema": "public",
@@ -1862,7 +1862,7 @@
         "workspace_id"
       ],
       "constraint": "finished_goods_inventory_movements_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -1875,7 +1875,7 @@
         "released_inventory_lot_id"
       ],
       "constraint": "finished_goods_inventory_oper_workspace_id_released_invent_fkey",
-      "estimatedRows": 20,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "released_finished_goods_inventory_lots",
       "schema": "public",
@@ -1887,7 +1887,7 @@
         "workspace_id"
       ],
       "constraint": "finished_goods_inventory_operations_workspace_id_fkey",
-      "estimatedRows": 20,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -1900,7 +1900,7 @@
         "released_inventory_lot_id"
       ],
       "constraint": "finished_goods_inventory_stat_workspace_id_released_invent_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "released_finished_goods_inventory_lots",
       "schema": "public",
@@ -1912,7 +1912,7 @@
         "operation_id"
       ],
       "constraint": "finished_goods_inventory_state_history_operation_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (operation_id) using query and growth evidence.",
       "references": "finished_goods_inventory_operations",
       "schema": "public",
@@ -1924,7 +1924,7 @@
         "related_state_id"
       ],
       "constraint": "finished_goods_inventory_state_history_related_state_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (related_state_id) using query and growth evidence.",
       "references": "finished_goods_inventory_state_history",
       "schema": "public",
@@ -1936,7 +1936,7 @@
         "workspace_id"
       ],
       "constraint": "finished_goods_inventory_state_history_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -1949,7 +1949,7 @@
         "finished_goods_lot_id"
       ],
       "constraint": "finished_goods_lot_events_workspace_id_finished_goods_lot__fkey",
-      "estimatedRows": 86,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "finished_goods_lots",
       "schema": "public",
@@ -1961,7 +1961,7 @@
         "workspace_id"
       ],
       "constraint": "finished_goods_lot_events_workspace_id_fkey",
-      "estimatedRows": 86,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -1974,7 +1974,7 @@
         "formula_version_id"
       ],
       "constraint": "finished_goods_lot_events_workspace_id_formula_version_id_fkey",
-      "estimatedRows": 86,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "formula_versions",
       "schema": "public",
@@ -1987,7 +1987,7 @@
         "packaging_run_id"
       ],
       "constraint": "finished_goods_lot_events_workspace_id_packaging_run_id_fkey",
-      "estimatedRows": 86,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "packaging_runs",
       "schema": "public",
@@ -2000,7 +2000,7 @@
         "product_id"
       ],
       "constraint": "finished_goods_lot_events_workspace_id_product_id_fkey",
-      "estimatedRows": 86,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "products",
       "schema": "public",
@@ -2013,7 +2013,7 @@
         "production_output_id"
       ],
       "constraint": "finished_goods_lot_events_workspace_id_production_output_i_fkey",
-      "estimatedRows": 86,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "production_outputs",
       "schema": "public",
@@ -2026,7 +2026,7 @@
         "production_run_id"
       ],
       "constraint": "finished_goods_lot_events_workspace_id_production_run_id_fkey",
-      "estimatedRows": 86,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "production_runs",
       "schema": "public",
@@ -2038,7 +2038,7 @@
         "workspace_id"
       ],
       "constraint": "finished_goods_lots_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -2051,7 +2051,7 @@
         "formula_id"
       ],
       "constraint": "finished_goods_lots_workspace_id_formula_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "formulas",
       "schema": "public",
@@ -2064,7 +2064,7 @@
         "formula_version_id"
       ],
       "constraint": "finished_goods_lots_workspace_id_formula_version_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "formula_versions",
       "schema": "public",
@@ -2077,7 +2077,7 @@
         "packaged_output_reconciliation_id"
       ],
       "constraint": "finished_goods_lots_workspace_id_packaged_output_reconcili_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "packaged_output_reconciliations",
       "schema": "public",
@@ -2090,7 +2090,7 @@
         "packaging_run_id"
       ],
       "constraint": "finished_goods_lots_workspace_id_packaging_run_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "packaging_runs",
       "schema": "public",
@@ -2103,7 +2103,7 @@
         "packaging_specification_version_id"
       ],
       "constraint": "finished_goods_lots_workspace_id_packaging_specification_v_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "packaging_specification_versions",
       "schema": "public",
@@ -2116,7 +2116,7 @@
         "product_id"
       ],
       "constraint": "finished_goods_lots_workspace_id_product_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "products",
       "schema": "public",
@@ -2129,7 +2129,7 @@
         "production_output_id"
       ],
       "constraint": "finished_goods_lots_workspace_id_production_output_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "production_outputs",
       "schema": "public",
@@ -2142,7 +2142,7 @@
         "production_run_id"
       ],
       "constraint": "finished_goods_lots_workspace_id_production_run_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "production_runs",
       "schema": "public",
@@ -2155,7 +2155,7 @@
         "finished_goods_batch_id"
       ],
       "constraint": "finished_goods_movements_workspace_id_finished_goods_batch_fkey",
-      "estimatedRows": 12,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "finished_goods_batches",
       "schema": "public",
@@ -2167,7 +2167,7 @@
         "workspace_id"
       ],
       "constraint": "finished_goods_movements_workspace_id_fkey",
-      "estimatedRows": 12,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -2180,7 +2180,7 @@
         "finished_goods_lot_id"
       ],
       "constraint": "finished_goods_quality_events_workspace_id_finished_goods__fkey",
-      "estimatedRows": 120,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "finished_goods_lots",
       "schema": "public",
@@ -2192,7 +2192,7 @@
         "workspace_id"
       ],
       "constraint": "finished_goods_quality_events_workspace_id_fkey",
-      "estimatedRows": 120,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -2205,7 +2205,7 @@
         "quarantine_id"
       ],
       "constraint": "finished_goods_quality_events_workspace_id_quarantine_id_fkey",
-      "estimatedRows": 120,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "finished_goods_quarantines",
       "schema": "public",
@@ -2218,7 +2218,7 @@
         "finished_goods_lot_id"
       ],
       "constraint": "finished_goods_quarantines_workspace_id_finished_goods_lot_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "finished_goods_lots",
       "schema": "public",
@@ -2230,7 +2230,7 @@
         "workspace_id"
       ],
       "constraint": "finished_goods_quarantines_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -2243,7 +2243,7 @@
         "packaging_run_id"
       ],
       "constraint": "finished_goods_quarantines_workspace_id_packaging_run_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "packaging_runs",
       "schema": "public",
@@ -2255,7 +2255,7 @@
         "workspace_id"
       ],
       "constraint": "formula_lines_workspace_id_fkey",
-      "estimatedRows": 136,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -2268,7 +2268,7 @@
         "formula_version_id"
       ],
       "constraint": "formula_lines_workspace_id_formula_version_id_fkey",
-      "estimatedRows": 136,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "formula_versions",
       "schema": "public",
@@ -2281,7 +2281,7 @@
         "ingredient_id"
       ],
       "constraint": "formula_lines_workspace_id_ingredient_id_fkey",
-      "estimatedRows": 136,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "ingredients",
       "schema": "public",
@@ -2294,7 +2294,7 @@
         "development_experiment_id"
       ],
       "constraint": "formula_versions_experiment_fk",
-      "estimatedRows": 74,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "development_experiments",
       "schema": "public",
@@ -2307,7 +2307,7 @@
         "development_experiment_variant_id"
       ],
       "constraint": "formula_versions_experiment_variant_fk",
-      "estimatedRows": 74,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "development_experiment_variants",
       "schema": "public",
@@ -2320,7 +2320,7 @@
         "derived_from_version_id"
       ],
       "constraint": "formula_versions_workspace_id_derived_from_version_id_fkey",
-      "estimatedRows": 74,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "formula_versions",
       "schema": "public",
@@ -2332,7 +2332,7 @@
         "workspace_id"
       ],
       "constraint": "formula_versions_workspace_id_fkey",
-      "estimatedRows": 74,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -2345,7 +2345,7 @@
         "formula_id"
       ],
       "constraint": "formula_versions_workspace_id_formula_id_fkey",
-      "estimatedRows": 74,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "formulas",
       "schema": "public",
@@ -2357,7 +2357,7 @@
         "workspace_id"
       ],
       "constraint": "formulas_workspace_id_fkey",
-      "estimatedRows": 68,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -2370,7 +2370,7 @@
         "product_id"
       ],
       "constraint": "formulas_workspace_id_product_id_fkey",
-      "estimatedRows": 68,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "products",
       "schema": "public",
@@ -2395,7 +2395,7 @@
         "owner_id"
       ],
       "constraint": "grooming_tools_owner_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (owner_id) using query and growth evidence.",
       "references": "auth.users",
       "schema": "public",
@@ -2407,7 +2407,7 @@
         "workspace_id"
       ],
       "constraint": "grooming_tools_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -2420,7 +2420,7 @@
         "compliance_dossier_id"
       ],
       "constraint": "inci_declarations_workspace_id_compliance_dossier_id_fkey",
-      "estimatedRows": 6,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "compliance_dossiers",
       "schema": "public",
@@ -2432,7 +2432,7 @@
         "workspace_id"
       ],
       "constraint": "inci_declarations_workspace_id_fkey",
-      "estimatedRows": 6,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -2445,7 +2445,7 @@
         "ingredient_knowledge_profile_id"
       ],
       "constraint": "ingredient_knowledge_compatib_workspace_id_ingredient_know_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "ingredient_knowledge_profiles",
       "schema": "public",
@@ -2457,7 +2457,7 @@
         "owner_id"
       ],
       "constraint": "ingredient_knowledge_compatibility_owner_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (owner_id) using query and growth evidence.",
       "references": "auth.users",
       "schema": "public",
@@ -2469,7 +2469,7 @@
         "workspace_id"
       ],
       "constraint": "ingredient_knowledge_compatibility_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -2481,7 +2481,7 @@
         "owner_id"
       ],
       "constraint": "ingredient_knowledge_evidence_owner_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (owner_id) using query and growth evidence.",
       "references": "auth.users",
       "schema": "public",
@@ -2493,7 +2493,7 @@
         "workspace_id"
       ],
       "constraint": "ingredient_knowledge_evidence_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -2506,7 +2506,7 @@
         "ingredient_knowledge_profile_id"
       ],
       "constraint": "ingredient_knowledge_evidence_workspace_id_ingredient_know_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "ingredient_knowledge_profiles",
       "schema": "public",
@@ -2518,7 +2518,7 @@
         "owner_id"
       ],
       "constraint": "ingredient_knowledge_profiles_owner_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "auth.users",
       "schema": "public",
@@ -2530,7 +2530,7 @@
         "workspace_id"
       ],
       "constraint": "ingredient_knowledge_profiles_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -2543,7 +2543,7 @@
         "ingredient_id"
       ],
       "constraint": "ingredient_knowledge_profiles_workspace_id_ingredient_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "ingredients",
       "schema": "public",
@@ -2555,7 +2555,7 @@
         "owner_id"
       ],
       "constraint": "ingredient_knowledge_roles_owner_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (owner_id) using query and growth evidence.",
       "references": "auth.users",
       "schema": "public",
@@ -2567,7 +2567,7 @@
         "workspace_id"
       ],
       "constraint": "ingredient_knowledge_roles_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -2580,7 +2580,7 @@
         "ingredient_knowledge_profile_id"
       ],
       "constraint": "ingredient_knowledge_roles_workspace_id_ingredient_knowled_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "ingredient_knowledge_profiles",
       "schema": "public",
@@ -2592,7 +2592,7 @@
         "workspace_id"
       ],
       "constraint": "ingredients_workspace_id_fkey",
-      "estimatedRows": 72,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -2631,7 +2631,7 @@
         "analysis_id"
       ],
       "constraint": "intelligence_analysis_inputs_workspace_id_analysis_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (workspace_id, analysis_id) using query and growth evidence.",
       "references": "intelligence_analyses",
       "schema": "public",
@@ -2644,7 +2644,7 @@
         "owner_user_id"
       ],
       "constraint": "intelligence_analysis_inputs_workspace_id_owner_user_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (workspace_id, owner_user_id) using query and growth evidence.",
       "references": "workspaces",
       "schema": "public",
@@ -2657,7 +2657,7 @@
         "analysis_id"
       ],
       "constraint": "intelligence_observations_workspace_id_analysis_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (workspace_id, analysis_id) using query and growth evidence.",
       "references": "intelligence_analyses",
       "schema": "public",
@@ -2670,7 +2670,7 @@
         "owner_user_id"
       ],
       "constraint": "intelligence_observations_workspace_id_owner_user_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (workspace_id, owner_user_id) using query and growth evidence.",
       "references": "workspaces",
       "schema": "public",
@@ -2683,7 +2683,7 @@
         "recommendation_id"
       ],
       "constraint": "intelligence_recommendation_o_analysis_id_recommendation_i_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (analysis_id, recommendation_id) using query and growth evidence.",
       "references": "intelligence_recommendations",
       "schema": "public",
@@ -2696,7 +2696,7 @@
         "observation_id"
       ],
       "constraint": "intelligence_recommendation_obs_analysis_id_observation_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (analysis_id, observation_id) using query and growth evidence.",
       "references": "intelligence_observations",
       "schema": "public",
@@ -2709,7 +2709,7 @@
         "owner_user_id"
       ],
       "constraint": "intelligence_recommendation_obs_workspace_id_owner_user_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (workspace_id, owner_user_id) using query and growth evidence.",
       "references": "workspaces",
       "schema": "public",
@@ -2722,7 +2722,7 @@
         "analysis_id"
       ],
       "constraint": "intelligence_recommendation_obser_workspace_id_analysis_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (workspace_id, analysis_id) using query and growth evidence.",
       "references": "intelligence_analyses",
       "schema": "public",
@@ -2735,7 +2735,7 @@
         "analysis_id"
       ],
       "constraint": "intelligence_recommendations_workspace_id_analysis_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (workspace_id, analysis_id) using query and growth evidence.",
       "references": "intelligence_analyses",
       "schema": "public",
@@ -2748,7 +2748,7 @@
         "owner_user_id"
       ],
       "constraint": "intelligence_recommendations_workspace_id_owner_user_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (workspace_id, owner_user_id) using query and growth evidence.",
       "references": "workspaces",
       "schema": "public",
@@ -2761,7 +2761,7 @@
         "owner_user_id"
       ],
       "constraint": "intelligence_runs_workspace_id_owner_user_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -2774,7 +2774,7 @@
         "thread_id"
       ],
       "constraint": "intelligence_runs_workspace_id_thread_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "intelligence_threads",
       "schema": "public",
@@ -2787,7 +2787,7 @@
         "owner_user_id"
       ],
       "constraint": "intelligence_threads_workspace_id_owner_user_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -2799,7 +2799,7 @@
         "quality_release_review_id"
       ],
       "constraint": "inventory_lots_quality_review_fk",
-      "estimatedRows": 43,
+      "estimatedRows": 0,
       "recommendation": "Review index (quality_release_review_id) using query and growth evidence.",
       "references": "inventory_quality_release_reviews",
       "schema": "public",
@@ -2812,7 +2812,7 @@
         "quarantine_intake_id"
       ],
       "constraint": "inventory_lots_quarantine_intake_fk",
-      "estimatedRows": 43,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "inventory_quarantine_intakes",
       "schema": "public",
@@ -2824,7 +2824,7 @@
         "workspace_id"
       ],
       "constraint": "inventory_lots_workspace_id_fkey",
-      "estimatedRows": 43,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -2837,7 +2837,7 @@
         "ingredient_id"
       ],
       "constraint": "inventory_lots_workspace_id_ingredient_id_fkey",
-      "estimatedRows": 43,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "ingredients",
       "schema": "public",
@@ -2850,7 +2850,7 @@
         "supplier_product_id"
       ],
       "constraint": "inventory_lots_workspace_id_supplier_product_id_fkey",
-      "estimatedRows": 43,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "supplier_products",
       "schema": "public",
@@ -2862,7 +2862,7 @@
         "workspace_id"
       ],
       "constraint": "inventory_movements_workspace_id_fkey",
-      "estimatedRows": 83,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -2875,7 +2875,7 @@
         "inventory_lot_id"
       ],
       "constraint": "inventory_movements_workspace_id_inventory_lot_id_fkey",
-      "estimatedRows": 83,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "inventory_lots",
       "schema": "public",
@@ -2888,7 +2888,7 @@
         "quarantine_intake_id"
       ],
       "constraint": "inventory_quality_release_rev_workspace_id_quarantine_inta_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "inventory_quarantine_intakes",
       "schema": "public",
@@ -2901,7 +2901,7 @@
         "purchase_order_line_id"
       ],
       "constraint": "inventory_quarantine_intakes_workspace_id_purchase_order_l_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "purchase_order_lines",
       "schema": "public",
@@ -2914,7 +2914,7 @@
         "receipt_id"
       ],
       "constraint": "inventory_quarantine_intakes_workspace_id_receipt_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "purchase_order_receipts",
       "schema": "public",
@@ -2927,7 +2927,7 @@
         "receipt_line_id"
       ],
       "constraint": "inventory_quarantine_intakes_workspace_id_receipt_line_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "purchase_order_receipt_lines",
       "schema": "public",
@@ -2940,7 +2940,7 @@
         "supplier_id"
       ],
       "constraint": "inventory_quarantine_intakes_workspace_id_supplier_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "suppliers",
       "schema": "public",
@@ -2953,7 +2953,7 @@
         "allocation_id"
       ],
       "constraint": "inventory_reservations_workspace_id_allocation_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "batch_material_lot_allocations",
       "schema": "public",
@@ -2965,7 +2965,7 @@
         "workspace_id"
       ],
       "constraint": "inventory_reservations_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -2978,7 +2978,7 @@
         "inventory_lot_id"
       ],
       "constraint": "inventory_reservations_workspace_id_inventory_lot_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "inventory_lots",
       "schema": "public",
@@ -2991,7 +2991,7 @@
         "owner_user_id"
       ],
       "constraint": "knowledge_references_workspace_id_owner_user_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -3004,7 +3004,7 @@
         "source_intelligence_thread_id"
       ],
       "constraint": "knowledge_references_workspace_id_source_intelligence_thre_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "intelligence_threads",
       "schema": "public",
@@ -3016,7 +3016,7 @@
         "workspace_id"
       ],
       "constraint": "lab_batch_lines_workspace_id_fkey",
-      "estimatedRows": 12,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -3029,7 +3029,7 @@
         "formula_line_id"
       ],
       "constraint": "lab_batch_lines_workspace_id_formula_line_id_fkey",
-      "estimatedRows": 12,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "formula_lines",
       "schema": "public",
@@ -3042,7 +3042,7 @@
         "ingredient_id"
       ],
       "constraint": "lab_batch_lines_workspace_id_ingredient_id_fkey",
-      "estimatedRows": 12,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "ingredients",
       "schema": "public",
@@ -3055,7 +3055,7 @@
         "lab_batch_id"
       ],
       "constraint": "lab_batch_lines_workspace_id_lab_batch_id_fkey",
-      "estimatedRows": 12,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "lab_batches",
       "schema": "public",
@@ -3068,7 +3068,7 @@
         "development_experiment_id"
       ],
       "constraint": "lab_batches_experiment_fk",
-      "estimatedRows": 12,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "development_experiments",
       "schema": "public",
@@ -3081,7 +3081,7 @@
         "development_experiment_variant_id"
       ],
       "constraint": "lab_batches_experiment_variant_fk",
-      "estimatedRows": 12,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "development_experiment_variants",
       "schema": "public",
@@ -3093,7 +3093,7 @@
         "workspace_id"
       ],
       "constraint": "lab_batches_workspace_id_fkey",
-      "estimatedRows": 12,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -3106,7 +3106,7 @@
         "formula_id"
       ],
       "constraint": "lab_batches_workspace_id_formula_id_fkey",
-      "estimatedRows": 12,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "formulas",
       "schema": "public",
@@ -3119,7 +3119,7 @@
         "formula_version_id"
       ],
       "constraint": "lab_batches_workspace_id_formula_version_id_fkey",
-      "estimatedRows": 12,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "formula_versions",
       "schema": "public",
@@ -3132,7 +3132,7 @@
         "product_id"
       ],
       "constraint": "lab_batches_workspace_id_product_id_fkey",
-      "estimatedRows": 12,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "products",
       "schema": "public",
@@ -3144,7 +3144,7 @@
         "workspace_id"
       ],
       "constraint": "lab_lot_allocations_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -3157,7 +3157,7 @@
         "inventory_lot_id"
       ],
       "constraint": "lab_lot_allocations_workspace_id_inventory_lot_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "inventory_lots",
       "schema": "public",
@@ -3170,7 +3170,7 @@
         "inventory_movement_id"
       ],
       "constraint": "lab_lot_allocations_workspace_id_inventory_movement_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "inventory_movements",
       "schema": "public",
@@ -3183,7 +3183,7 @@
         "lab_batch_line_id"
       ],
       "constraint": "lab_lot_allocations_workspace_id_lab_batch_line_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "lab_batch_lines",
       "schema": "public",
@@ -3195,7 +3195,7 @@
         "workspace_id"
       ],
       "constraint": "lab_observations_workspace_id_fkey",
-      "estimatedRows": 12,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -3208,7 +3208,7 @@
         "lab_batch_id"
       ],
       "constraint": "lab_observations_workspace_id_lab_batch_id_fkey",
-      "estimatedRows": 12,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "lab_batches",
       "schema": "public",
@@ -3220,7 +3220,7 @@
         "workspace_id"
       ],
       "constraint": "lab_process_steps_workspace_id_fkey",
-      "estimatedRows": 12,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -3233,7 +3233,7 @@
         "lab_batch_id"
       ],
       "constraint": "lab_process_steps_workspace_id_lab_batch_id_fkey",
-      "estimatedRows": 12,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "lab_batches",
       "schema": "public",
@@ -3246,7 +3246,7 @@
         "artwork_document_id"
       ],
       "constraint": "label_artwork_versions_workspace_id_artwork_document_id_fkey",
-      "estimatedRows": 6,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "compliance_documents",
       "schema": "public",
@@ -3258,7 +3258,7 @@
         "workspace_id"
       ],
       "constraint": "label_artwork_versions_workspace_id_fkey",
-      "estimatedRows": 6,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -3271,7 +3271,7 @@
         "formula_version_id"
       ],
       "constraint": "label_artwork_versions_workspace_id_formula_version_id_fkey",
-      "estimatedRows": 6,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "formula_versions",
       "schema": "public",
@@ -3284,7 +3284,7 @@
         "packaging_specification_version_id"
       ],
       "constraint": "label_artwork_versions_workspace_id_packaging_specificatio_fkey",
-      "estimatedRows": 6,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "packaging_specification_versions",
       "schema": "public",
@@ -3297,7 +3297,7 @@
         "product_id"
       ],
       "constraint": "label_artwork_versions_workspace_id_product_id_fkey",
-      "estimatedRows": 6,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "products",
       "schema": "public",
@@ -3310,7 +3310,7 @@
         "compliance_dossier_id"
       ],
       "constraint": "label_checklist_items_workspace_id_compliance_dossier_id_fkey",
-      "estimatedRows": 60,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "compliance_dossiers",
       "schema": "public",
@@ -3322,7 +3322,7 @@
         "workspace_id"
       ],
       "constraint": "label_checklist_items_workspace_id_fkey",
-      "estimatedRows": 60,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -3335,7 +3335,7 @@
         "compliance_dossier_id"
       ],
       "constraint": "launch_decisions_workspace_id_compliance_dossier_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "compliance_dossiers",
       "schema": "public",
@@ -3347,7 +3347,7 @@
         "workspace_id"
       ],
       "constraint": "launch_decisions_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -3360,7 +3360,7 @@
         "launch_plan_id"
       ],
       "constraint": "launch_decisions_workspace_id_launch_plan_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "launch_plans",
       "schema": "public",
@@ -3372,7 +3372,7 @@
         "workspace_id"
       ],
       "constraint": "launch_milestones_workspace_id_fkey",
-      "estimatedRows": 12,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -3385,7 +3385,7 @@
         "launch_plan_id"
       ],
       "constraint": "launch_milestones_workspace_id_launch_plan_id_fkey",
-      "estimatedRows": 12,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "launch_plans",
       "schema": "public",
@@ -3398,7 +3398,7 @@
         "compliance_dossier_id"
       ],
       "constraint": "launch_plans_workspace_id_compliance_dossier_id_fkey",
-      "estimatedRows": 6,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "compliance_dossiers",
       "schema": "public",
@@ -3410,7 +3410,7 @@
         "workspace_id"
       ],
       "constraint": "launch_plans_workspace_id_fkey",
-      "estimatedRows": 6,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -3423,7 +3423,7 @@
         "product_id"
       ],
       "constraint": "launch_plans_workspace_id_product_id_fkey",
-      "estimatedRows": 6,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "products",
       "schema": "public",
@@ -3435,7 +3435,7 @@
         "owner_id"
       ],
       "constraint": "migration_runs_owner_id_fkey",
-      "estimatedRows": 6,
+      "estimatedRows": 0,
       "recommendation": "Review index (owner_id) using query and growth evidence.",
       "references": "auth.users",
       "schema": "public",
@@ -3447,7 +3447,7 @@
         "workspace_id"
       ],
       "constraint": "migration_runs_workspace_id_fkey",
-      "estimatedRows": 6,
+      "estimatedRows": 0,
       "recommendation": "Review index (workspace_id) using query and growth evidence.",
       "references": "workspaces",
       "schema": "public",
@@ -3459,7 +3459,7 @@
         "supersedes_reconciliation_id"
       ],
       "constraint": "packaged_output_reconciliatio_supersedes_reconciliation_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (supersedes_reconciliation_id) using query and growth evidence.",
       "references": "packaged_output_reconciliations",
       "schema": "public",
@@ -3472,7 +3472,7 @@
         "packaging_run_id"
       ],
       "constraint": "packaged_output_reconciliatio_workspace_id_packaging_run_i_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "packaging_runs",
       "schema": "public",
@@ -3485,7 +3485,7 @@
         "production_output_id"
       ],
       "constraint": "packaged_output_reconciliatio_workspace_id_production_outp_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "production_outputs",
       "schema": "public",
@@ -3497,7 +3497,7 @@
         "workspace_id"
       ],
       "constraint": "packaged_output_reconciliations_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -3510,7 +3510,7 @@
         "finished_goods_batch_id"
       ],
       "constraint": "packaging_allocations_workspace_id_finished_goods_batch_id_fkey",
-      "estimatedRows": 12,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "finished_goods_batches",
       "schema": "public",
@@ -3522,7 +3522,7 @@
         "workspace_id"
       ],
       "constraint": "packaging_allocations_workspace_id_fkey",
-      "estimatedRows": 12,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -3535,7 +3535,7 @@
         "packaging_inventory_lot_id"
       ],
       "constraint": "packaging_allocations_workspace_id_packaging_inventory_lot_fkey",
-      "estimatedRows": 12,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "packaging_inventory_lots",
       "schema": "public",
@@ -3548,7 +3548,7 @@
         "packaging_inventory_movement_id"
       ],
       "constraint": "packaging_allocations_workspace_id_packaging_inventory_mov_fkey",
-      "estimatedRows": 12,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "packaging_inventory_movements",
       "schema": "public",
@@ -3561,7 +3561,7 @@
         "packaging_specification_line_id"
       ],
       "constraint": "packaging_allocations_workspace_id_packaging_specification_fkey",
-      "estimatedRows": 12,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "packaging_specification_lines",
       "schema": "public",
@@ -3573,7 +3573,7 @@
         "workspace_id"
       ],
       "constraint": "packaging_components_workspace_id_fkey",
-      "estimatedRows": 30,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -3585,7 +3585,7 @@
         "workspace_id"
       ],
       "constraint": "packaging_inventory_lots_workspace_id_fkey",
-      "estimatedRows": 24,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -3598,7 +3598,7 @@
         "packaging_component_id"
       ],
       "constraint": "packaging_inventory_lots_workspace_id_packaging_component__fkey",
-      "estimatedRows": 24,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "packaging_components",
       "schema": "public",
@@ -3611,7 +3611,7 @@
         "packaging_supplier_product_id"
       ],
       "constraint": "packaging_inventory_lots_workspace_id_packaging_supplier_p_fkey",
-      "estimatedRows": 24,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "packaging_supplier_products",
       "schema": "public",
@@ -3623,7 +3623,7 @@
         "quality_release_review_id"
       ],
       "constraint": "packaging_lots_quality_review_fk",
-      "estimatedRows": 24,
+      "estimatedRows": 0,
       "recommendation": "Review index (quality_release_review_id) using query and growth evidence.",
       "references": "inventory_quality_release_reviews",
       "schema": "public",
@@ -3636,7 +3636,7 @@
         "quarantine_intake_id"
       ],
       "constraint": "packaging_lots_quarantine_intake_fk",
-      "estimatedRows": 24,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "inventory_quarantine_intakes",
       "schema": "public",
@@ -3648,7 +3648,7 @@
         "workspace_id"
       ],
       "constraint": "packaging_inventory_movements_workspace_id_fkey",
-      "estimatedRows": 42,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -3661,7 +3661,7 @@
         "packaging_inventory_lot_id"
       ],
       "constraint": "packaging_inventory_movements_workspace_id_packaging_inven_fkey",
-      "estimatedRows": 42,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "packaging_inventory_lots",
       "schema": "public",
@@ -3674,7 +3674,7 @@
         "packaging_run_id"
       ],
       "constraint": "packaging_run_bulk_allocation_workspace_id_packaging_run_i_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "packaging_runs",
       "schema": "public",
@@ -3687,7 +3687,7 @@
         "production_output_id"
       ],
       "constraint": "packaging_run_bulk_allocation_workspace_id_production_outp_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "production_outputs",
       "schema": "public",
@@ -3699,7 +3699,7 @@
         "workspace_id"
       ],
       "constraint": "packaging_run_bulk_allocations_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -3712,7 +3712,7 @@
         "bulk_allocation_id"
       ],
       "constraint": "packaging_run_bulk_transfers_workspace_id_bulk_allocation__fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "packaging_run_bulk_allocations",
       "schema": "public",
@@ -3724,7 +3724,7 @@
         "workspace_id"
       ],
       "constraint": "packaging_run_bulk_transfers_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -3737,7 +3737,7 @@
         "packaging_run_id"
       ],
       "constraint": "packaging_run_bulk_transfers_workspace_id_packaging_run_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "packaging_runs",
       "schema": "public",
@@ -3750,7 +3750,7 @@
         "production_output_id"
       ],
       "constraint": "packaging_run_bulk_transfers_workspace_id_production_outpu_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "production_outputs",
       "schema": "public",
@@ -3762,7 +3762,7 @@
         "workspace_id"
       ],
       "constraint": "packaging_run_events_workspace_id_fkey",
-      "estimatedRows": 38,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -3775,7 +3775,7 @@
         "packaging_inventory_lot_id"
       ],
       "constraint": "packaging_run_events_workspace_id_packaging_inventory_lot__fkey",
-      "estimatedRows": 38,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "packaging_inventory_lots",
       "schema": "public",
@@ -3788,7 +3788,7 @@
         "packaging_requirement_id"
       ],
       "constraint": "packaging_run_events_workspace_id_packaging_requirement_id_fkey",
-      "estimatedRows": 38,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "packaging_run_requirements",
       "schema": "public",
@@ -3801,7 +3801,7 @@
         "packaging_run_id"
       ],
       "constraint": "packaging_run_events_workspace_id_packaging_run_id_fkey",
-      "estimatedRows": 38,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "packaging_runs",
       "schema": "public",
@@ -3814,7 +3814,7 @@
         "production_output_id"
       ],
       "constraint": "packaging_run_events_workspace_id_production_output_id_fkey",
-      "estimatedRows": 38,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "production_outputs",
       "schema": "public",
@@ -3827,7 +3827,7 @@
         "production_run_id"
       ],
       "constraint": "packaging_run_events_workspace_id_production_run_id_fkey",
-      "estimatedRows": 38,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "production_runs",
       "schema": "public",
@@ -3839,7 +3839,7 @@
         "workspace_id"
       ],
       "constraint": "packaging_run_inventory_uses_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -3852,7 +3852,7 @@
         "packaging_inventory_movement_id"
       ],
       "constraint": "packaging_run_inventory_uses_workspace_id_packaging_inven_fkey1",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "packaging_inventory_movements",
       "schema": "public",
@@ -3865,7 +3865,7 @@
         "packaging_inventory_lot_id"
       ],
       "constraint": "packaging_run_inventory_uses_workspace_id_packaging_invent_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "packaging_inventory_lots",
       "schema": "public",
@@ -3878,7 +3878,7 @@
         "packaging_requirement_id"
       ],
       "constraint": "packaging_run_inventory_uses_workspace_id_packaging_requir_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "packaging_run_requirements",
       "schema": "public",
@@ -3891,7 +3891,7 @@
         "packaging_reservation_id"
       ],
       "constraint": "packaging_run_inventory_uses_workspace_id_packaging_reserv_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "packaging_run_reservations",
       "schema": "public",
@@ -3904,7 +3904,7 @@
         "packaging_run_id"
       ],
       "constraint": "packaging_run_inventory_uses_workspace_id_packaging_run_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "packaging_runs",
       "schema": "public",
@@ -3916,7 +3916,7 @@
         "workspace_id"
       ],
       "constraint": "packaging_run_reconciliations_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -3929,7 +3929,7 @@
         "packaging_run_id"
       ],
       "constraint": "packaging_run_reconciliations_workspace_id_packaging_run_i_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "packaging_runs",
       "schema": "public",
@@ -3941,7 +3941,7 @@
         "workspace_id"
       ],
       "constraint": "packaging_run_requirements_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -3954,7 +3954,7 @@
         "packaging_component_id"
       ],
       "constraint": "packaging_run_requirements_workspace_id_packaging_componen_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "packaging_components",
       "schema": "public",
@@ -3967,7 +3967,7 @@
         "packaging_run_id"
       ],
       "constraint": "packaging_run_requirements_workspace_id_packaging_run_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "packaging_runs",
       "schema": "public",
@@ -3980,7 +3980,7 @@
         "packaging_specification_line_id"
       ],
       "constraint": "packaging_run_requirements_workspace_id_packaging_specifi_fkey1",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "packaging_specification_lines",
       "schema": "public",
@@ -3993,7 +3993,7 @@
         "packaging_specification_version_id"
       ],
       "constraint": "packaging_run_requirements_workspace_id_packaging_specific_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "packaging_specification_versions",
       "schema": "public",
@@ -4005,7 +4005,7 @@
         "workspace_id"
       ],
       "constraint": "packaging_run_reservations_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -4018,7 +4018,7 @@
         "packaging_inventory_lot_id"
       ],
       "constraint": "packaging_run_reservations_workspace_id_packaging_inventor_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "packaging_inventory_lots",
       "schema": "public",
@@ -4031,7 +4031,7 @@
         "packaging_requirement_id"
       ],
       "constraint": "packaging_run_reservations_workspace_id_packaging_requirem_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "packaging_run_requirements",
       "schema": "public",
@@ -4044,7 +4044,7 @@
         "packaging_run_id"
       ],
       "constraint": "packaging_run_reservations_workspace_id_packaging_run_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "packaging_runs",
       "schema": "public",
@@ -4056,7 +4056,7 @@
         "workspace_id"
       ],
       "constraint": "packaging_runs_workspace_id_fkey",
-      "estimatedRows": 22,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -4069,7 +4069,7 @@
         "formula_version_id"
       ],
       "constraint": "packaging_runs_workspace_id_formula_version_id_fkey",
-      "estimatedRows": 22,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "formula_versions",
       "schema": "public",
@@ -4082,7 +4082,7 @@
         "packaging_specification_version_id"
       ],
       "constraint": "packaging_runs_workspace_id_packaging_specification_versio_fkey",
-      "estimatedRows": 22,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "packaging_specification_versions",
       "schema": "public",
@@ -4095,7 +4095,7 @@
         "product_id"
       ],
       "constraint": "packaging_runs_workspace_id_product_id_fkey",
-      "estimatedRows": 22,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "products",
       "schema": "public",
@@ -4108,7 +4108,7 @@
         "production_output_id"
       ],
       "constraint": "packaging_runs_workspace_id_production_output_id_fkey",
-      "estimatedRows": 22,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "production_outputs",
       "schema": "public",
@@ -4121,7 +4121,7 @@
         "production_run_id"
       ],
       "constraint": "packaging_runs_workspace_id_production_run_id_fkey",
-      "estimatedRows": 22,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "production_runs",
       "schema": "public",
@@ -4133,7 +4133,7 @@
         "workspace_id"
       ],
       "constraint": "packaging_specification_lines_workspace_id_fkey",
-      "estimatedRows": 36,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -4146,7 +4146,7 @@
         "packaging_component_id"
       ],
       "constraint": "packaging_specification_lines_workspace_id_packaging_compo_fkey",
-      "estimatedRows": 36,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "packaging_components",
       "schema": "public",
@@ -4159,7 +4159,7 @@
         "packaging_specification_version_id"
       ],
       "constraint": "packaging_specification_lines_workspace_id_packaging_speci_fkey",
-      "estimatedRows": 36,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "packaging_specification_versions",
       "schema": "public",
@@ -4172,7 +4172,7 @@
         "derived_from_version_id"
       ],
       "constraint": "packaging_specification_versi_workspace_id_derived_from_ve_fkey",
-      "estimatedRows": 32,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "packaging_specification_versions",
       "schema": "public",
@@ -4185,7 +4185,7 @@
         "packaging_specification_id"
       ],
       "constraint": "packaging_specification_versi_workspace_id_packaging_speci_fkey",
-      "estimatedRows": 32,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "packaging_specifications",
       "schema": "public",
@@ -4197,7 +4197,7 @@
         "workspace_id"
       ],
       "constraint": "packaging_specification_versions_workspace_id_fkey",
-      "estimatedRows": 32,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -4209,7 +4209,7 @@
         "workspace_id"
       ],
       "constraint": "packaging_specifications_workspace_id_fkey",
-      "estimatedRows": 26,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -4222,7 +4222,7 @@
         "product_id"
       ],
       "constraint": "packaging_specifications_workspace_id_product_id_fkey",
-      "estimatedRows": 26,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "products",
       "schema": "public",
@@ -4235,7 +4235,7 @@
         "supplier_id"
       ],
       "constraint": "packaging_supplier_products_supplier_fk",
-      "estimatedRows": 6,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "suppliers",
       "schema": "public",
@@ -4247,7 +4247,7 @@
         "workspace_id"
       ],
       "constraint": "packaging_supplier_products_workspace_id_fkey",
-      "estimatedRows": 6,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -4260,7 +4260,7 @@
         "packaging_component_id"
       ],
       "constraint": "packaging_supplier_products_workspace_id_packaging_compone_fkey",
-      "estimatedRows": 6,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "packaging_components",
       "schema": "public",
@@ -4273,7 +4273,7 @@
         "compliance_dossier_id"
       ],
       "constraint": "pif_evidence_sections_workspace_id_compliance_dossier_id_fkey",
-      "estimatedRows": 30,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "compliance_dossiers",
       "schema": "public",
@@ -4285,7 +4285,7 @@
         "workspace_id"
       ],
       "constraint": "pif_evidence_sections_workspace_id_fkey",
-      "estimatedRows": 30,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -4298,7 +4298,7 @@
         "document_id"
       ],
       "constraint": "pif_section_documents_workspace_id_document_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "compliance_documents",
       "schema": "public",
@@ -4311,7 +4311,7 @@
         "pif_section_id"
       ],
       "constraint": "pif_section_documents_workspace_id_pif_section_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "pif_evidence_sections",
       "schema": "public",
@@ -4323,7 +4323,7 @@
         "workspace_id"
       ],
       "constraint": "process_equipment_requirements_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (workspace_id) using query and growth evidence.",
       "references": "workspaces",
       "schema": "public",
@@ -4336,7 +4336,7 @@
         "job_id"
       ],
       "constraint": "procurement_background_operations_workspace_id_job_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (workspace_id, job_id) using query and growth evidence.",
       "references": "procurement_research_jobs",
       "schema": "public",
@@ -4350,7 +4350,7 @@
         "requested_item_id"
       ],
       "constraint": "procurement_cart_scenario_ite_workspace_id_supplier_offer__fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "procurement_supplier_offers",
       "schema": "public",
@@ -4362,7 +4362,7 @@
         "workspace_id"
       ],
       "constraint": "procurement_cart_scenario_items_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -4375,7 +4375,7 @@
         "scenario_id"
       ],
       "constraint": "procurement_cart_scenario_items_workspace_id_scenario_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "procurement_cart_scenarios",
       "schema": "public",
@@ -4388,7 +4388,7 @@
         "discount_id"
       ],
       "constraint": "procurement_cart_scenarios_workspace_id_discount_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "procurement_supplier_discounts",
       "schema": "public",
@@ -4400,7 +4400,7 @@
         "workspace_id"
       ],
       "constraint": "procurement_cart_scenarios_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -4413,7 +4413,7 @@
         "shipping_rule_id"
       ],
       "constraint": "procurement_cart_scenarios_workspace_id_shipping_rule_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "procurement_supplier_shipping_rules",
       "schema": "public",
@@ -4426,7 +4426,7 @@
         "supplier_id"
       ],
       "constraint": "procurement_cart_scenarios_workspace_id_supplier_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "suppliers",
       "schema": "public",
@@ -4439,7 +4439,7 @@
         "duplicate_of_candidate_id"
       ],
       "constraint": "procurement_offer_candidates_duplicate_workspace_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "procurement_offer_candidates",
       "schema": "public",
@@ -4452,7 +4452,7 @@
         "accepted_offer_id"
       ],
       "constraint": "procurement_offer_candidates_workspace_id_accepted_offer_i_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "procurement_supplier_offers",
       "schema": "public",
@@ -4465,7 +4465,7 @@
         "matched_supplier_id"
       ],
       "constraint": "procurement_offer_candidates_workspace_id_matched_supplier_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "suppliers",
       "schema": "public",
@@ -4478,7 +4478,7 @@
         "merged_into_offer_id"
       ],
       "constraint": "procurement_offer_candidates_workspace_id_merged_into_offe_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "procurement_supplier_offers",
       "schema": "public",
@@ -4491,7 +4491,7 @@
         "procurement_request_id"
       ],
       "constraint": "procurement_offer_candidates_workspace_id_procurement_requ_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "procurement_requests",
       "schema": "public",
@@ -4505,7 +4505,7 @@
         "procurement_request_id"
       ],
       "constraint": "procurement_offer_candidates_workspace_id_requested_item_i_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "procurement_requested_items",
       "schema": "public",
@@ -4518,7 +4518,7 @@
         "research_job_id"
       ],
       "constraint": "procurement_offer_candidates_workspace_id_research_job_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "procurement_research_jobs",
       "schema": "public",
@@ -4531,7 +4531,7 @@
         "job_id"
       ],
       "constraint": "procurement_provider_diagnostics_workspace_id_job_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (workspace_id, job_id) using query and growth evidence.",
       "references": "procurement_research_jobs",
       "schema": "public",
@@ -4544,7 +4544,7 @@
         "procurement_request_id"
       ],
       "constraint": "procurement_recommendations_workspace_id_procurement_reque_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "procurement_requests",
       "schema": "public",
@@ -4558,7 +4558,7 @@
         "procurement_request_id"
       ],
       "constraint": "procurement_recommendations_workspace_id_requested_item_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "procurement_requested_items",
       "schema": "public",
@@ -4572,7 +4572,7 @@
         "requested_item_id"
       ],
       "constraint": "procurement_recommendations_workspace_id_supplier_offer_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "procurement_supplier_offers",
       "schema": "public",
@@ -4585,7 +4585,7 @@
         "procurement_request_id"
       ],
       "constraint": "procurement_requested_items_workspace_id_procurement_reque_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "procurement_requests",
       "schema": "public",
@@ -4597,7 +4597,7 @@
         "workspace_id"
       ],
       "constraint": "procurement_requests_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -4610,7 +4610,7 @@
         "retry_of_job_id"
       ],
       "constraint": "procurement_research_jobs_retry_workspace_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "procurement_research_jobs",
       "schema": "public",
@@ -4623,7 +4623,7 @@
         "procurement_request_id"
       ],
       "constraint": "procurement_research_jobs_workspace_id_procurement_request_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "procurement_requests",
       "schema": "public",
@@ -4635,7 +4635,7 @@
         "workspace_id"
       ],
       "constraint": "procurement_supplier_discounts_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -4648,7 +4648,7 @@
         "supplier_id"
       ],
       "constraint": "procurement_supplier_discounts_workspace_id_supplier_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "suppliers",
       "schema": "public",
@@ -4661,7 +4661,7 @@
         "requested_item_id"
       ],
       "constraint": "procurement_supplier_offers_workspace_id_requested_item_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "procurement_requested_items",
       "schema": "public",
@@ -4674,7 +4674,7 @@
         "supplier_id"
       ],
       "constraint": "procurement_supplier_offers_workspace_id_supplier_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "suppliers",
       "schema": "public",
@@ -4687,7 +4687,7 @@
         "supplier_id"
       ],
       "constraint": "procurement_supplier_shipping_rul_workspace_id_supplier_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "suppliers",
       "schema": "public",
@@ -4699,7 +4699,7 @@
         "workspace_id"
       ],
       "constraint": "procurement_supplier_shipping_rules_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -4712,7 +4712,7 @@
         "generated_formula_id"
       ],
       "constraint": "product_studio_concepts_workspace_id_generated_formula_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "formulas",
       "schema": "public",
@@ -4725,7 +4725,7 @@
         "generated_formula_version_id"
       ],
       "constraint": "product_studio_concepts_workspace_id_generated_formula_ver_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "formula_versions",
       "schema": "public",
@@ -4738,7 +4738,7 @@
         "generated_product_id"
       ],
       "constraint": "product_studio_concepts_workspace_id_generated_product_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "products",
       "schema": "public",
@@ -4751,7 +4751,7 @@
         "owner_id"
       ],
       "constraint": "product_studio_concepts_workspace_id_owner_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -4764,7 +4764,7 @@
         "procurement_plan_id"
       ],
       "constraint": "product_studio_concepts_workspace_id_procurement_plan_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "purchase_plans",
       "schema": "public",
@@ -4776,7 +4776,7 @@
         "workspace_id"
       ],
       "constraint": "production_lot_allocations_workspace_id_fkey",
-      "estimatedRows": 12,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -4789,7 +4789,7 @@
         "inventory_lot_id"
       ],
       "constraint": "production_lot_allocations_workspace_id_inventory_lot_id_fkey",
-      "estimatedRows": 12,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "inventory_lots",
       "schema": "public",
@@ -4802,7 +4802,7 @@
         "inventory_movement_id"
       ],
       "constraint": "production_lot_allocations_workspace_id_inventory_movement_fkey",
-      "estimatedRows": 12,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "inventory_movements",
       "schema": "public",
@@ -4815,7 +4815,7 @@
         "production_run_line_id"
       ],
       "constraint": "production_lot_allocations_workspace_id_production_run_lin_fkey",
-      "estimatedRows": 12,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "production_run_lines",
       "schema": "public",
@@ -4827,7 +4827,7 @@
         "workspace_id"
       ],
       "constraint": "production_output_components_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -4840,7 +4840,7 @@
         "production_output_id"
       ],
       "constraint": "production_output_components_workspace_id_production_outpu_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "production_outputs",
       "schema": "public",
@@ -4852,7 +4852,7 @@
         "workspace_id"
       ],
       "constraint": "production_output_events_workspace_id_fkey",
-      "estimatedRows": 44,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -4865,7 +4865,7 @@
         "formula_version_id"
       ],
       "constraint": "production_output_events_workspace_id_formula_version_id_fkey",
-      "estimatedRows": 44,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "formula_versions",
       "schema": "public",
@@ -4878,7 +4878,7 @@
         "production_output_id"
       ],
       "constraint": "production_output_events_workspace_id_production_output_id_fkey",
-      "estimatedRows": 44,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "production_outputs",
       "schema": "public",
@@ -4891,7 +4891,7 @@
         "production_run_id"
       ],
       "constraint": "production_output_events_workspace_id_production_run_id_fkey",
-      "estimatedRows": 44,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "production_runs",
       "schema": "public",
@@ -4904,7 +4904,7 @@
         "production_output_id"
       ],
       "constraint": "production_output_measurement_workspace_id_production_outp_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "production_outputs",
       "schema": "public",
@@ -4916,7 +4916,7 @@
         "supersedes_measurement_id"
       ],
       "constraint": "production_output_measurements_supersedes_measurement_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (supersedes_measurement_id) using query and growth evidence.",
       "references": "production_output_measurements",
       "schema": "public",
@@ -4928,7 +4928,7 @@
         "workspace_id"
       ],
       "constraint": "production_output_measurements_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -4941,7 +4941,7 @@
         "production_output_id"
       ],
       "constraint": "production_output_reconciliat_workspace_id_production_outp_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "production_outputs",
       "schema": "public",
@@ -4953,7 +4953,7 @@
         "workspace_id"
       ],
       "constraint": "production_output_reconciliations_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -4965,7 +4965,7 @@
         "workspace_id"
       ],
       "constraint": "production_outputs_workspace_id_fkey",
-      "estimatedRows": 22,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -4978,7 +4978,7 @@
         "formula_id"
       ],
       "constraint": "production_outputs_workspace_id_formula_id_fkey",
-      "estimatedRows": 22,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "formulas",
       "schema": "public",
@@ -4991,7 +4991,7 @@
         "formula_version_id"
       ],
       "constraint": "production_outputs_workspace_id_formula_version_id_fkey",
-      "estimatedRows": 22,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "formula_versions",
       "schema": "public",
@@ -5004,7 +5004,7 @@
         "product_id"
       ],
       "constraint": "production_outputs_workspace_id_product_id_fkey",
-      "estimatedRows": 22,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "products",
       "schema": "public",
@@ -5017,7 +5017,7 @@
         "production_run_id"
       ],
       "constraint": "production_outputs_workspace_id_production_run_id_fkey",
-      "estimatedRows": 22,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "production_runs",
       "schema": "public",
@@ -5029,7 +5029,7 @@
         "workspace_id"
       ],
       "constraint": "production_process_steps_workspace_id_fkey",
-      "estimatedRows": 6,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -5042,7 +5042,7 @@
         "production_run_id"
       ],
       "constraint": "production_process_steps_workspace_id_production_run_id_fkey",
-      "estimatedRows": 6,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "production_runs",
       "schema": "public",
@@ -5055,7 +5055,7 @@
         "requirement_id"
       ],
       "constraint": "production_procurement_invento_workspace_id_requirement_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "production_procurement_requirements",
       "schema": "public",
@@ -5068,7 +5068,7 @@
         "formula_line_id"
       ],
       "constraint": "production_procurement_requir_workspace_id_formula_line_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "formula_lines",
       "schema": "public",
@@ -5081,7 +5081,7 @@
         "formula_version_id"
       ],
       "constraint": "production_procurement_requir_workspace_id_formula_version_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "formula_versions",
       "schema": "public",
@@ -5094,7 +5094,7 @@
         "round_product_id"
       ],
       "constraint": "production_procurement_requir_workspace_id_round_product_i_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "production_procurement_round_products",
       "schema": "public",
@@ -5107,7 +5107,7 @@
         "requirement_id"
       ],
       "constraint": "production_procurement_require_workspace_id_requirement_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "production_procurement_requirements",
       "schema": "public",
@@ -5120,7 +5120,7 @@
         "formula_id"
       ],
       "constraint": "production_procurement_requirement_workspace_id_formula_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "formulas",
       "schema": "public",
@@ -5133,7 +5133,7 @@
         "product_id"
       ],
       "constraint": "production_procurement_requirement_workspace_id_product_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "products",
       "schema": "public",
@@ -5146,7 +5146,7 @@
         "ingredient_id"
       ],
       "constraint": "production_procurement_requirem_workspace_id_ingredient_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "ingredients",
       "schema": "public",
@@ -5159,7 +5159,7 @@
         "round_id"
       ],
       "constraint": "production_procurement_requirements_workspace_id_round_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "production_procurement_rounds",
       "schema": "public",
@@ -5172,7 +5172,7 @@
         "formula_version_id"
       ],
       "constraint": "production_procurement_round__workspace_id_formula_version_fkey",
-      "estimatedRows": 24,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "formula_versions",
       "schema": "public",
@@ -5185,7 +5185,7 @@
         "formula_id"
       ],
       "constraint": "production_procurement_round_produ_workspace_id_formula_id_fkey",
-      "estimatedRows": 24,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "formulas",
       "schema": "public",
@@ -5198,7 +5198,7 @@
         "product_id"
       ],
       "constraint": "production_procurement_round_produ_workspace_id_product_id_fkey",
-      "estimatedRows": 24,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "products",
       "schema": "public",
@@ -5211,7 +5211,7 @@
         "round_id"
       ],
       "constraint": "production_procurement_round_product_workspace_id_round_id_fkey",
-      "estimatedRows": 24,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "production_procurement_rounds",
       "schema": "public",
@@ -5223,7 +5223,7 @@
         "workspace_id"
       ],
       "constraint": "production_procurement_rounds_workspace_id_fkey",
-      "estimatedRows": 4,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -5236,7 +5236,7 @@
         "scenario_id"
       ],
       "constraint": "production_procurement_scenario_b_workspace_id_scenario_id_fkey",
-      "estimatedRows": 40,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "production_procurement_scenarios",
       "schema": "public",
@@ -5249,7 +5249,7 @@
         "supplier_id"
       ],
       "constraint": "production_procurement_scenario_b_workspace_id_supplier_id_fkey",
-      "estimatedRows": 40,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "suppliers",
       "schema": "public",
@@ -5262,7 +5262,7 @@
         "supplier_product_id"
       ],
       "constraint": "production_procurement_scenar_workspace_id_supplier_produc_fkey",
-      "estimatedRows": 40,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "supplier_products",
       "schema": "public",
@@ -5275,7 +5275,7 @@
         "requirement_id"
       ],
       "constraint": "production_procurement_scenari_workspace_id_requirement_id_fkey",
-      "estimatedRows": 40,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "production_procurement_requirements",
       "schema": "public",
@@ -5288,7 +5288,7 @@
         "scenario_id"
       ],
       "constraint": "production_procurement_scenario_l_workspace_id_scenario_id_fkey",
-      "estimatedRows": 40,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "production_procurement_scenarios",
       "schema": "public",
@@ -5301,7 +5301,7 @@
         "basket_id"
       ],
       "constraint": "production_procurement_scenario_lin_workspace_id_basket_id_fkey",
-      "estimatedRows": 40,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "production_procurement_scenario_baskets",
       "schema": "public",
@@ -5314,7 +5314,7 @@
         "ingredient_id"
       ],
       "constraint": "production_procurement_scenario_workspace_id_ingredient_id_fkey",
-      "estimatedRows": 40,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "ingredients",
       "schema": "public",
@@ -5327,7 +5327,7 @@
         "round_id"
       ],
       "constraint": "production_procurement_scenarios_workspace_id_round_id_fkey",
-      "estimatedRows": 27,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "production_procurement_rounds",
       "schema": "public",
@@ -5340,7 +5340,7 @@
         "requirement_id"
       ],
       "constraint": "production_purchasing_specific_workspace_id_requirement_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "production_procurement_requirements",
       "schema": "public",
@@ -5353,7 +5353,7 @@
         "ingredient_id"
       ],
       "constraint": "production_purchasing_specifica_workspace_id_ingredient_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "ingredients",
       "schema": "public",
@@ -5366,7 +5366,7 @@
         "supplier_product_id"
       ],
       "constraint": "production_requirement_suppli_workspace_id_supplier_produc_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "supplier_products",
       "schema": "public",
@@ -5379,7 +5379,7 @@
         "requirement_id"
       ],
       "constraint": "production_requirement_supplie_workspace_id_requirement_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "production_procurement_requirements",
       "schema": "public",
@@ -5392,7 +5392,7 @@
         "mapping_id"
       ],
       "constraint": "production_requirement_supplier_ca_workspace_id_mapping_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "supplier_product_ingredient_mappings",
       "schema": "public",
@@ -5405,7 +5405,7 @@
         "requirement_id"
       ],
       "constraint": "production_requirement_suppli_workspace_id_requirement_id_fkey1",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "production_procurement_requirements",
       "schema": "public",
@@ -5418,7 +5418,7 @@
         "selected_candidate_id"
       ],
       "constraint": "production_requirement_suppli_workspace_id_selected_candid_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "production_requirement_supplier_candidates",
       "schema": "public",
@@ -5431,7 +5431,7 @@
         "selected_supplier_product_id"
       ],
       "constraint": "production_requirement_suppli_workspace_id_selected_suppli_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "supplier_products",
       "schema": "public",
@@ -5443,7 +5443,7 @@
         "workspace_id"
       ],
       "constraint": "production_run_lines_workspace_id_fkey",
-      "estimatedRows": 16,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -5456,7 +5456,7 @@
         "formula_line_id"
       ],
       "constraint": "production_run_lines_workspace_id_formula_line_id_fkey",
-      "estimatedRows": 16,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "formula_lines",
       "schema": "public",
@@ -5469,7 +5469,7 @@
         "ingredient_id"
       ],
       "constraint": "production_run_lines_workspace_id_ingredient_id_fkey",
-      "estimatedRows": 16,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "ingredients",
       "schema": "public",
@@ -5482,7 +5482,7 @@
         "production_run_id"
       ],
       "constraint": "production_run_lines_workspace_id_production_run_id_fkey",
-      "estimatedRows": 16,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "production_runs",
       "schema": "public",
@@ -5494,7 +5494,7 @@
         "workspace_id"
       ],
       "constraint": "production_runs_workspace_id_fkey",
-      "estimatedRows": 42,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -5507,7 +5507,7 @@
         "formula_id"
       ],
       "constraint": "production_runs_workspace_id_formula_id_fkey",
-      "estimatedRows": 42,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "formulas",
       "schema": "public",
@@ -5520,7 +5520,7 @@
         "formula_version_id"
       ],
       "constraint": "production_runs_workspace_id_formula_version_id_fkey",
-      "estimatedRows": 42,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "formula_versions",
       "schema": "public",
@@ -5533,7 +5533,7 @@
         "product_id"
       ],
       "constraint": "production_runs_workspace_id_product_id_fkey",
-      "estimatedRows": 42,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "products",
       "schema": "public",
@@ -5546,7 +5546,7 @@
         "current_approved_formula_version_id"
       ],
       "constraint": "products_workspace_id_current_approved_formula_version_id_fkey",
-      "estimatedRows": 82,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "formula_versions",
       "schema": "public",
@@ -5559,7 +5559,7 @@
         "current_development_formula_version_id"
       ],
       "constraint": "products_workspace_id_current_development_formula_version__fkey",
-      "estimatedRows": 82,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "formula_versions",
       "schema": "public",
@@ -5571,7 +5571,7 @@
         "workspace_id"
       ],
       "constraint": "products_workspace_id_fkey",
-      "estimatedRows": 82,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -5584,7 +5584,7 @@
         "purchase_order_id"
       ],
       "constraint": "purchase_order_audit_events_workspace_id_purchase_order_id_fkey",
-      "estimatedRows": 31,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "purchase_orders",
       "schema": "public",
@@ -5597,7 +5597,7 @@
         "source_purchase_plan_basket_id"
       ],
       "constraint": "purchase_order_audit_events_workspace_id_source_purchase__fkey1",
-      "estimatedRows": 31,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "purchase_plan_baskets",
       "schema": "public",
@@ -5610,7 +5610,7 @@
         "source_purchase_plan_id"
       ],
       "constraint": "purchase_order_audit_events_workspace_id_source_purchase_p_fkey",
-      "estimatedRows": 31,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "purchase_plans",
       "schema": "public",
@@ -5623,7 +5623,7 @@
         "supplier_id"
       ],
       "constraint": "purchase_order_audit_events_workspace_id_supplier_id_fkey",
-      "estimatedRows": 31,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "suppliers",
       "schema": "public",
@@ -5636,7 +5636,7 @@
         "purchase_order_line_id"
       ],
       "constraint": "purchase_order_confirmation__workspace_id_purchase_order__fkey1",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "purchase_order_lines",
       "schema": "public",
@@ -5649,7 +5649,7 @@
         "confirmation_id"
       ],
       "constraint": "purchase_order_confirmation_l_workspace_id_confirmation_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "purchase_order_confirmations",
       "schema": "public",
@@ -5662,7 +5662,7 @@
         "purchase_order_id"
       ],
       "constraint": "purchase_order_confirmation_l_workspace_id_purchase_order__fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "purchase_orders",
       "schema": "public",
@@ -5674,7 +5674,7 @@
         "supersedes_confirmation_id"
       ],
       "constraint": "purchase_order_confirmations_supersedes_confirmation_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (supersedes_confirmation_id) using query and growth evidence.",
       "references": "purchase_order_confirmations",
       "schema": "public",
@@ -5687,7 +5687,7 @@
         "purchase_order_id"
       ],
       "constraint": "purchase_order_confirmations_workspace_id_purchase_order_i_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "purchase_orders",
       "schema": "public",
@@ -5700,7 +5700,7 @@
         "supplier_id"
       ],
       "constraint": "purchase_order_confirmations_workspace_id_supplier_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "suppliers",
       "schema": "public",
@@ -5713,7 +5713,7 @@
         "source_purchase_plan_basket_id"
       ],
       "constraint": "purchase_order_lines_plan_basket_fk",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "purchase_plan_baskets",
       "schema": "public",
@@ -5726,7 +5726,7 @@
         "source_requirement_id"
       ],
       "constraint": "purchase_order_lines_requirement_fk",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "production_procurement_requirements",
       "schema": "public",
@@ -5739,7 +5739,7 @@
         "source_scenario_line_id"
       ],
       "constraint": "purchase_order_lines_scenario_line_fk",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "production_procurement_scenario_lines",
       "schema": "public",
@@ -5752,7 +5752,7 @@
         "purchase_order_id"
       ],
       "constraint": "purchase_order_lines_workspace_id_purchase_order_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "purchase_orders",
       "schema": "public",
@@ -5765,7 +5765,7 @@
         "source_purchase_plan_line_id"
       ],
       "constraint": "purchase_order_lines_workspace_id_source_purchase_plan_lin_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "purchase_plan_lines",
       "schema": "public",
@@ -5778,7 +5778,7 @@
         "receipt_line_id"
       ],
       "constraint": "purchase_order_receipt_discre_workspace_id_receipt_line_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "purchase_order_receipt_lines",
       "schema": "public",
@@ -5791,7 +5791,7 @@
         "receipt_id"
       ],
       "constraint": "purchase_order_receipt_discrepanci_workspace_id_receipt_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "purchase_order_receipts",
       "schema": "public",
@@ -5804,7 +5804,7 @@
         "receipt_line_id"
       ],
       "constraint": "purchase_order_receipt_inspec_workspace_id_receipt_line_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "purchase_order_receipt_lines",
       "schema": "public",
@@ -5816,7 +5816,7 @@
         "supersedes_inspection_id"
       ],
       "constraint": "purchase_order_receipt_inspection_supersedes_inspection_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (supersedes_inspection_id) using query and growth evidence.",
       "references": "purchase_order_receipt_inspections",
       "schema": "public",
@@ -5829,7 +5829,7 @@
         "receipt_id"
       ],
       "constraint": "purchase_order_receipt_inspections_workspace_id_receipt_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "purchase_order_receipts",
       "schema": "public",
@@ -5842,7 +5842,7 @@
         "confirmation_line_id"
       ],
       "constraint": "purchase_order_receipt_lines_workspace_id_confirmation_lin_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "purchase_order_confirmation_lines",
       "schema": "public",
@@ -5855,7 +5855,7 @@
         "purchase_order_id"
       ],
       "constraint": "purchase_order_receipt_lines_workspace_id_purchase_order_i_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "purchase_orders",
       "schema": "public",
@@ -5868,7 +5868,7 @@
         "purchase_order_line_id"
       ],
       "constraint": "purchase_order_receipt_lines_workspace_id_purchase_order_l_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "purchase_order_lines",
       "schema": "public",
@@ -5881,7 +5881,7 @@
         "receipt_id"
       ],
       "constraint": "purchase_order_receipt_lines_workspace_id_receipt_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "purchase_order_receipts",
       "schema": "public",
@@ -5894,7 +5894,7 @@
         "shipment_line_id"
       ],
       "constraint": "purchase_order_receipt_lines_workspace_id_shipment_line_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "purchase_order_shipment_lines",
       "schema": "public",
@@ -5907,7 +5907,7 @@
         "purchase_order_id"
       ],
       "constraint": "purchase_order_receipt_shipme_workspace_id_purchase_order__fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "purchase_orders",
       "schema": "public",
@@ -5920,7 +5920,7 @@
         "receipt_id"
       ],
       "constraint": "purchase_order_receipt_shipments_workspace_id_receipt_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "purchase_order_receipts",
       "schema": "public",
@@ -5933,7 +5933,7 @@
         "shipment_id"
       ],
       "constraint": "purchase_order_receipt_shipments_workspace_id_shipment_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "purchase_order_shipments",
       "schema": "public",
@@ -5946,7 +5946,7 @@
         "purchase_order_id"
       ],
       "constraint": "purchase_order_receipts_workspace_id_purchase_order_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "purchase_orders",
       "schema": "public",
@@ -5959,7 +5959,7 @@
         "supplier_id"
       ],
       "constraint": "purchase_order_receipts_workspace_id_supplier_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "suppliers",
       "schema": "public",
@@ -5972,7 +5972,7 @@
         "purchase_order_id"
       ],
       "constraint": "purchase_order_shipment_event_workspace_id_purchase_order__fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "purchase_orders",
       "schema": "public",
@@ -5985,7 +5985,7 @@
         "shipment_id"
       ],
       "constraint": "purchase_order_shipment_events_workspace_id_shipment_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "purchase_order_shipments",
       "schema": "public",
@@ -5998,7 +5998,7 @@
         "purchase_order_line_id"
       ],
       "constraint": "purchase_order_shipment_line_workspace_id_purchase_order__fkey1",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "purchase_order_lines",
       "schema": "public",
@@ -6011,7 +6011,7 @@
         "confirmation_line_id"
       ],
       "constraint": "purchase_order_shipment_lines_workspace_id_confirmation_li_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "purchase_order_confirmation_lines",
       "schema": "public",
@@ -6024,7 +6024,7 @@
         "purchase_order_id"
       ],
       "constraint": "purchase_order_shipment_lines_workspace_id_purchase_order__fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "purchase_orders",
       "schema": "public",
@@ -6037,7 +6037,7 @@
         "shipment_id"
       ],
       "constraint": "purchase_order_shipment_lines_workspace_id_shipment_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "purchase_order_shipments",
       "schema": "public",
@@ -6050,7 +6050,7 @@
         "confirmation_id"
       ],
       "constraint": "purchase_order_shipments_workspace_id_confirmation_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "purchase_order_confirmations",
       "schema": "public",
@@ -6063,7 +6063,7 @@
         "purchase_order_id"
       ],
       "constraint": "purchase_order_shipments_workspace_id_purchase_order_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "purchase_orders",
       "schema": "public",
@@ -6076,7 +6076,7 @@
         "supplier_id"
       ],
       "constraint": "purchase_order_shipments_workspace_id_supplier_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "suppliers",
       "schema": "public",
@@ -6089,7 +6089,7 @@
         "source_purchase_plan_basket_id"
       ],
       "constraint": "purchase_orders_plan_basket_fk",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "purchase_plan_baskets",
       "schema": "public",
@@ -6102,7 +6102,7 @@
         "source_round_id"
       ],
       "constraint": "purchase_orders_source_round_fk",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "production_procurement_rounds",
       "schema": "public",
@@ -6115,7 +6115,7 @@
         "source_scenario_id"
       ],
       "constraint": "purchase_orders_source_scenario_fk",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "production_procurement_scenarios",
       "schema": "public",
@@ -6128,7 +6128,7 @@
         "source_purchase_plan_id"
       ],
       "constraint": "purchase_orders_workspace_id_source_purchase_plan_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "purchase_plans",
       "schema": "public",
@@ -6141,7 +6141,7 @@
         "supplier_id"
       ],
       "constraint": "purchase_orders_workspace_id_supplier_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "suppliers",
       "schema": "public",
@@ -6154,7 +6154,7 @@
         "purchase_plan_id"
       ],
       "constraint": "purchase_plan_audit_events_workspace_id_purchase_plan_id_fkey",
-      "estimatedRows": 69,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "purchase_plans",
       "schema": "public",
@@ -6167,7 +6167,7 @@
         "source_scenario_id"
       ],
       "constraint": "purchase_plan_audit_events_workspace_id_source_scenario_id_fkey",
-      "estimatedRows": 69,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "production_procurement_scenarios",
       "schema": "public",
@@ -6180,7 +6180,7 @@
         "purchase_plan_id"
       ],
       "constraint": "purchase_plan_baskets_workspace_id_purchase_plan_id_fkey",
-      "estimatedRows": 8,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "purchase_plans",
       "schema": "public",
@@ -6193,7 +6193,7 @@
         "source_scenario_basket_id"
       ],
       "constraint": "purchase_plan_baskets_workspace_id_source_scenario_basket__fkey",
-      "estimatedRows": 8,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "production_procurement_scenario_baskets",
       "schema": "public",
@@ -6206,7 +6206,7 @@
         "supplier_id"
       ],
       "constraint": "purchase_plan_baskets_workspace_id_supplier_id_fkey",
-      "estimatedRows": 8,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "suppliers",
       "schema": "public",
@@ -6219,7 +6219,7 @@
         "purchase_plan_basket_id"
       ],
       "constraint": "purchase_plan_lines_basket_fk",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "purchase_plan_baskets",
       "schema": "public",
@@ -6232,7 +6232,7 @@
         "source_requirement_id"
       ],
       "constraint": "purchase_plan_lines_requirement_fk",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "production_procurement_requirements",
       "schema": "public",
@@ -6245,7 +6245,7 @@
         "source_scenario_line_id"
       ],
       "constraint": "purchase_plan_lines_scenario_line_fk",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "production_procurement_scenario_lines",
       "schema": "public",
@@ -6257,7 +6257,7 @@
         "source_quote_line_id"
       ],
       "constraint": "purchase_plan_lines_source_quote_line_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (source_quote_line_id) using query and growth evidence.",
       "references": "supplier_quote_lines",
       "schema": "public",
@@ -6270,7 +6270,7 @@
         "purchase_plan_id"
       ],
       "constraint": "purchase_plan_lines_workspace_id_purchase_plan_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "purchase_plans",
       "schema": "public",
@@ -6283,7 +6283,7 @@
         "purchase_plan_basket_id"
       ],
       "constraint": "purchase_plan_verifications_workspace_id_purchase_plan_bas_fkey",
-      "estimatedRows": 60,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "purchase_plan_baskets",
       "schema": "public",
@@ -6296,7 +6296,7 @@
         "purchase_plan_id"
       ],
       "constraint": "purchase_plan_verifications_workspace_id_purchase_plan_id_fkey",
-      "estimatedRows": 60,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "purchase_plans",
       "schema": "public",
@@ -6309,7 +6309,7 @@
         "purchase_plan_line_id"
       ],
       "constraint": "purchase_plan_verifications_workspace_id_purchase_plan_lin_fkey",
-      "estimatedRows": 60,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "purchase_plan_lines",
       "schema": "public",
@@ -6322,7 +6322,7 @@
         "supplier_id"
       ],
       "constraint": "purchase_plan_verifications_workspace_id_supplier_id_fkey",
-      "estimatedRows": 60,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "suppliers",
       "schema": "public",
@@ -6335,7 +6335,7 @@
         "production_procurement_round_id"
       ],
       "constraint": "purchase_plans_round_fk",
-      "estimatedRows": 11,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "production_procurement_rounds",
       "schema": "public",
@@ -6348,7 +6348,7 @@
         "source_scenario_id"
       ],
       "constraint": "purchase_plans_scenario_fk",
-      "estimatedRows": 11,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "production_procurement_scenarios",
       "schema": "public",
@@ -6360,7 +6360,7 @@
         "workspace_id"
       ],
       "constraint": "purchase_plans_workspace_id_fkey",
-      "estimatedRows": 11,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -6373,7 +6373,7 @@
         "supplier_id"
       ],
       "constraint": "purchase_plans_workspace_id_supplier_id_fkey",
-      "estimatedRows": 11,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "suppliers",
       "schema": "public",
@@ -6386,7 +6386,7 @@
         "compliance_dossier_id"
       ],
       "constraint": "readiness_issues_workspace_id_compliance_dossier_id_fkey",
-      "estimatedRows": 12,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "compliance_dossiers",
       "schema": "public",
@@ -6398,7 +6398,7 @@
         "workspace_id"
       ],
       "constraint": "readiness_issues_workspace_id_fkey",
-      "estimatedRows": 12,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -6410,7 +6410,7 @@
         "finished_goods_lot_id"
       ],
       "constraint": "recall_readiness_affected_goods_finished_goods_lot_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (finished_goods_lot_id) using query and growth evidence.",
       "references": "finished_goods_lots",
       "schema": "public",
@@ -6422,7 +6422,7 @@
         "scope_snapshot_id"
       ],
       "constraint": "recall_readiness_affected_goods_scope_snapshot_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "recall_readiness_scope_snapshots",
       "schema": "public",
@@ -6434,7 +6434,7 @@
         "workspace_id"
       ],
       "constraint": "recall_readiness_affected_goods_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (workspace_id) using query and growth evidence.",
       "references": "workspaces",
       "schema": "public",
@@ -6446,7 +6446,7 @@
         "approved_by"
       ],
       "constraint": "recall_readiness_approvals_approved_by_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (approved_by) using query and growth evidence.",
       "references": "auth.users",
       "schema": "public",
@@ -6458,7 +6458,7 @@
         "case_id"
       ],
       "constraint": "recall_readiness_approvals_case_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (case_id) using query and growth evidence.",
       "references": "recall_readiness_cases",
       "schema": "public",
@@ -6470,7 +6470,7 @@
         "revision_id"
       ],
       "constraint": "recall_readiness_approvals_revision_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "recall_readiness_case_revisions",
       "schema": "public",
@@ -6482,7 +6482,7 @@
         "workspace_id"
       ],
       "constraint": "recall_readiness_approvals_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (workspace_id) using query and growth evidence.",
       "references": "workspaces",
       "schema": "public",
@@ -6494,7 +6494,7 @@
         "case_id"
       ],
       "constraint": "recall_readiness_case_revisions_case_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "recall_readiness_cases",
       "schema": "public",
@@ -6506,7 +6506,7 @@
         "created_by"
       ],
       "constraint": "recall_readiness_case_revisions_created_by_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (created_by) using query and growth evidence.",
       "references": "auth.users",
       "schema": "public",
@@ -6518,7 +6518,7 @@
         "owner_id"
       ],
       "constraint": "recall_readiness_case_revisions_owner_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (owner_id) using query and growth evidence.",
       "references": "auth.users",
       "schema": "public",
@@ -6530,7 +6530,7 @@
         "supersedes_revision_id"
       ],
       "constraint": "recall_readiness_case_revisions_supersedes_revision_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (supersedes_revision_id) using query and growth evidence.",
       "references": "recall_readiness_case_revisions",
       "schema": "public",
@@ -6542,7 +6542,7 @@
         "workspace_id"
       ],
       "constraint": "recall_readiness_case_revisions_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -6554,7 +6554,7 @@
         "workspace_id"
       ],
       "constraint": "recall_readiness_case_sequences_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -6566,7 +6566,7 @@
         "approved_revision_id"
       ],
       "constraint": "recall_readiness_cases_approved_revision_fk",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (approved_revision_id) using query and growth evidence.",
       "references": "recall_readiness_case_revisions",
       "schema": "public",
@@ -6578,7 +6578,7 @@
         "closed_by"
       ],
       "constraint": "recall_readiness_cases_closed_by_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (closed_by) using query and growth evidence.",
       "references": "auth.users",
       "schema": "public",
@@ -6590,7 +6590,7 @@
         "created_by"
       ],
       "constraint": "recall_readiness_cases_created_by_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (created_by) using query and growth evidence.",
       "references": "auth.users",
       "schema": "public",
@@ -6602,7 +6602,7 @@
         "discovered_by"
       ],
       "constraint": "recall_readiness_cases_discovered_by_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (discovered_by) using query and growth evidence.",
       "references": "auth.users",
       "schema": "public",
@@ -6614,7 +6614,7 @@
         "latest_revision_id"
       ],
       "constraint": "recall_readiness_cases_latest_revision_fk",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (latest_revision_id) using query and growth evidence.",
       "references": "recall_readiness_case_revisions",
       "schema": "public",
@@ -6626,7 +6626,7 @@
         "owner_id"
       ],
       "constraint": "recall_readiness_cases_owner_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (owner_id) using query and growth evidence.",
       "references": "auth.users",
       "schema": "public",
@@ -6638,7 +6638,7 @@
         "workspace_id"
       ],
       "constraint": "recall_readiness_cases_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -6650,7 +6650,7 @@
         "actor_id"
       ],
       "constraint": "recall_readiness_events_actor_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (actor_id) using query and growth evidence.",
       "references": "auth.users",
       "schema": "public",
@@ -6662,7 +6662,7 @@
         "case_id"
       ],
       "constraint": "recall_readiness_events_case_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (case_id) using query and growth evidence.",
       "references": "recall_readiness_cases",
       "schema": "public",
@@ -6674,7 +6674,7 @@
         "revision_id"
       ],
       "constraint": "recall_readiness_events_revision_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (revision_id) using query and growth evidence.",
       "references": "recall_readiness_case_revisions",
       "schema": "public",
@@ -6686,7 +6686,7 @@
         "workspace_id"
       ],
       "constraint": "recall_readiness_events_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -6698,7 +6698,7 @@
         "case_id"
       ],
       "constraint": "recall_readiness_evidence_case_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (case_id) using query and growth evidence.",
       "references": "recall_readiness_cases",
       "schema": "public",
@@ -6710,7 +6710,7 @@
         "owner_id"
       ],
       "constraint": "recall_readiness_evidence_owner_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (owner_id) using query and growth evidence.",
       "references": "auth.users",
       "schema": "public",
@@ -6722,7 +6722,7 @@
         "revision_id"
       ],
       "constraint": "recall_readiness_evidence_revision_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (revision_id) using query and growth evidence.",
       "references": "recall_readiness_case_revisions",
       "schema": "public",
@@ -6734,7 +6734,7 @@
         "supersedes_evidence_id"
       ],
       "constraint": "recall_readiness_evidence_supersedes_evidence_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (supersedes_evidence_id) using query and growth evidence.",
       "references": "recall_readiness_evidence",
       "schema": "public",
@@ -6746,7 +6746,7 @@
         "uploaded_by"
       ],
       "constraint": "recall_readiness_evidence_uploaded_by_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (uploaded_by) using query and growth evidence.",
       "references": "auth.users",
       "schema": "public",
@@ -6758,7 +6758,7 @@
         "workspace_id"
       ],
       "constraint": "recall_readiness_evidence_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -6770,7 +6770,7 @@
         "revision_id"
       ],
       "constraint": "recall_readiness_gaps_revision_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "recall_readiness_case_revisions",
       "schema": "public",
@@ -6782,7 +6782,7 @@
         "scope_snapshot_id"
       ],
       "constraint": "recall_readiness_gaps_scope_snapshot_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (scope_snapshot_id) using query and growth evidence.",
       "references": "recall_readiness_scope_snapshots",
       "schema": "public",
@@ -6794,7 +6794,7 @@
         "workspace_id"
       ],
       "constraint": "recall_readiness_gaps_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (workspace_id) using query and growth evidence.",
       "references": "workspaces",
       "schema": "public",
@@ -6806,7 +6806,7 @@
         "released_inventory_lot_id"
       ],
       "constraint": "recall_readiness_inventory_impac_released_inventory_lot_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (released_inventory_lot_id) using query and growth evidence.",
       "references": "released_finished_goods_inventory_lots",
       "schema": "public",
@@ -6818,7 +6818,7 @@
         "affected_good_id"
       ],
       "constraint": "recall_readiness_inventory_impacts_affected_good_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (affected_good_id) using query and growth evidence.",
       "references": "recall_readiness_affected_goods",
       "schema": "public",
@@ -6830,7 +6830,7 @@
         "scope_snapshot_id"
       ],
       "constraint": "recall_readiness_inventory_impacts_scope_snapshot_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "recall_readiness_scope_snapshots",
       "schema": "public",
@@ -6842,7 +6842,7 @@
         "workspace_id"
       ],
       "constraint": "recall_readiness_inventory_impacts_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (workspace_id) using query and growth evidence.",
       "references": "workspaces",
       "schema": "public",
@@ -6854,7 +6854,7 @@
         "case_id"
       ],
       "constraint": "recall_readiness_reviews_case_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (case_id) using query and growth evidence.",
       "references": "recall_readiness_cases",
       "schema": "public",
@@ -6866,7 +6866,7 @@
         "reviewer_id"
       ],
       "constraint": "recall_readiness_reviews_reviewer_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (reviewer_id) using query and growth evidence.",
       "references": "auth.users",
       "schema": "public",
@@ -6878,7 +6878,7 @@
         "revision_id"
       ],
       "constraint": "recall_readiness_reviews_revision_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "recall_readiness_case_revisions",
       "schema": "public",
@@ -6890,7 +6890,7 @@
         "workspace_id"
       ],
       "constraint": "recall_readiness_reviews_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (workspace_id) using query and growth evidence.",
       "references": "workspaces",
       "schema": "public",
@@ -6902,7 +6902,7 @@
         "case_id"
       ],
       "constraint": "recall_readiness_scope_snapshots_case_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (case_id) using query and growth evidence.",
       "references": "recall_readiness_cases",
       "schema": "public",
@@ -6914,7 +6914,7 @@
         "generated_by"
       ],
       "constraint": "recall_readiness_scope_snapshots_generated_by_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (generated_by) using query and growth evidence.",
       "references": "auth.users",
       "schema": "public",
@@ -6926,7 +6926,7 @@
         "owner_id"
       ],
       "constraint": "recall_readiness_scope_snapshots_owner_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (owner_id) using query and growth evidence.",
       "references": "auth.users",
       "schema": "public",
@@ -6938,7 +6938,7 @@
         "revision_id"
       ],
       "constraint": "recall_readiness_scope_snapshots_revision_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "recall_readiness_case_revisions",
       "schema": "public",
@@ -6950,7 +6950,7 @@
         "workspace_id"
       ],
       "constraint": "recall_readiness_scope_snapshots_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (workspace_id) using query and growth evidence.",
       "references": "workspaces",
       "schema": "public",
@@ -6963,7 +6963,7 @@
         "regulatory_review_id"
       ],
       "constraint": "regulatory_review_sources_workspace_id_regulatory_review_i_fkey",
-      "estimatedRows": 6,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "regulatory_reviews",
       "schema": "public",
@@ -6976,7 +6976,7 @@
         "regulatory_source_id"
       ],
       "constraint": "regulatory_review_sources_workspace_id_regulatory_source_i_fkey",
-      "estimatedRows": 6,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "regulatory_sources",
       "schema": "public",
@@ -6989,7 +6989,7 @@
         "compliance_dossier_id"
       ],
       "constraint": "regulatory_reviews_workspace_id_compliance_dossier_id_fkey",
-      "estimatedRows": 6,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "compliance_dossiers",
       "schema": "public",
@@ -7001,7 +7001,7 @@
         "workspace_id"
       ],
       "constraint": "regulatory_reviews_workspace_id_fkey",
-      "estimatedRows": 6,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -7013,7 +7013,7 @@
         "workspace_id"
       ],
       "constraint": "regulatory_sources_workspace_id_fkey",
-      "estimatedRows": 6,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -7026,7 +7026,7 @@
         "finished_goods_lot_id"
       ],
       "constraint": "released_finished_goods_inven_workspace_id_finished_goods__fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "finished_goods_lots",
       "schema": "public",
@@ -7039,7 +7039,7 @@
         "release_review_id"
       ],
       "constraint": "released_finished_goods_inven_workspace_id_release_review__fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "finished_goods_disposition_reviews",
       "schema": "public",
@@ -7052,7 +7052,7 @@
         "quarantine_id"
       ],
       "constraint": "released_finished_goods_invento_workspace_id_quarantine_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "finished_goods_quarantines",
       "schema": "public",
@@ -7064,7 +7064,7 @@
         "workspace_id"
       ],
       "constraint": "released_finished_goods_inventory_lots_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -7076,7 +7076,7 @@
         "workspace_id"
       ],
       "constraint": "responsible_persons_workspace_id_fkey",
-      "estimatedRows": 6,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -7089,7 +7089,7 @@
         "owner_user_id"
       ],
       "constraint": "scent_memory_checkpoints_workspace_id_owner_user_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -7102,7 +7102,7 @@
         "session_id"
       ],
       "constraint": "scent_memory_checkpoints_workspace_id_session_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "scent_memory_sessions",
       "schema": "public",
@@ -7115,7 +7115,7 @@
         "supersedes_id"
       ],
       "constraint": "scent_memory_checkpoints_workspace_id_supersedes_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "scent_memory_checkpoints",
       "schema": "public",
@@ -7128,7 +7128,7 @@
         "development_experiment_id"
       ],
       "constraint": "scent_memory_experiment_fk",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "development_experiments",
       "schema": "public",
@@ -7141,7 +7141,7 @@
         "development_experiment_variant_id"
       ],
       "constraint": "scent_memory_experiment_variant_fk",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "development_experiment_variants",
       "schema": "public",
@@ -7154,7 +7154,7 @@
         "formula_version_id"
       ],
       "constraint": "scent_memory_sessions_workspace_id_formula_version_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "formula_versions",
       "schema": "public",
@@ -7167,7 +7167,7 @@
         "ingredient_id"
       ],
       "constraint": "scent_memory_sessions_workspace_id_ingredient_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "ingredients",
       "schema": "public",
@@ -7180,7 +7180,7 @@
         "lab_batch_id"
       ],
       "constraint": "scent_memory_sessions_workspace_id_lab_batch_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "lab_batches",
       "schema": "public",
@@ -7193,7 +7193,7 @@
         "owner_user_id"
       ],
       "constraint": "scent_memory_sessions_workspace_id_owner_user_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -7206,7 +7206,7 @@
         "product_id"
       ],
       "constraint": "scent_memory_sessions_workspace_id_product_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "products",
       "schema": "public",
@@ -7219,7 +7219,7 @@
         "test_session_id"
       ],
       "constraint": "scent_memory_sessions_workspace_id_test_session_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "test_sessions",
       "schema": "public",
@@ -7231,7 +7231,7 @@
         "workspace_id"
       ],
       "constraint": "stock_policies_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (workspace_id) using query and growth evidence.",
       "references": "workspaces",
       "schema": "public",
@@ -7244,7 +7244,7 @@
         "supplier_id"
       ],
       "constraint": "supplier_contacts_workspace_id_supplier_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (workspace_id, supplier_id) using query and growth evidence.",
       "references": "suppliers",
       "schema": "public",
@@ -7256,7 +7256,7 @@
         "workspace_id"
       ],
       "constraint": "supplier_document_records_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -7269,7 +7269,7 @@
         "supplier_id"
       ],
       "constraint": "supplier_document_records_workspace_id_supplier_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "suppliers",
       "schema": "public",
@@ -7282,7 +7282,7 @@
         "equipment_item_id"
       ],
       "constraint": "supplier_documents_equipment_fk",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (workspace_id, equipment_item_id) using query and growth evidence.",
       "references": "equipment_items",
       "schema": "public",
@@ -7294,7 +7294,7 @@
         "workspace_id"
       ],
       "constraint": "supplier_documents_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (workspace_id) using query and growth evidence.",
       "references": "workspaces",
       "schema": "public",
@@ -7307,7 +7307,7 @@
         "supplier_id"
       ],
       "constraint": "supplier_documents_workspace_id_supplier_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (workspace_id, supplier_id) using query and growth evidence.",
       "references": "suppliers",
       "schema": "public",
@@ -7320,7 +7320,7 @@
         "purchase_order_id"
       ],
       "constraint": "supplier_events_purchase_order_fk",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "purchase_orders",
       "schema": "public",
@@ -7332,7 +7332,7 @@
         "workspace_id"
       ],
       "constraint": "supplier_events_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -7345,7 +7345,7 @@
         "procurement_request_id"
       ],
       "constraint": "supplier_events_workspace_id_procurement_request_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "procurement_requests",
       "schema": "public",
@@ -7358,7 +7358,7 @@
         "purchase_plan_id"
       ],
       "constraint": "supplier_events_workspace_id_purchase_plan_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "purchase_plans",
       "schema": "public",
@@ -7371,7 +7371,7 @@
         "supplier_document_record_id"
       ],
       "constraint": "supplier_events_workspace_id_supplier_document_record_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "supplier_document_records",
       "schema": "public",
@@ -7384,7 +7384,7 @@
         "supplier_id"
       ],
       "constraint": "supplier_events_workspace_id_supplier_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "suppliers",
       "schema": "public",
@@ -7397,7 +7397,7 @@
         "supplier_offer_id"
       ],
       "constraint": "supplier_events_workspace_id_supplier_offer_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "procurement_supplier_offers",
       "schema": "public",
@@ -7410,7 +7410,7 @@
         "supplier_quote_id"
       ],
       "constraint": "supplier_events_workspace_id_supplier_quote_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "supplier_quotes",
       "schema": "public",
@@ -7423,7 +7423,7 @@
         "supplier_product_id"
       ],
       "constraint": "supplier_product_ingredient_m_workspace_id_supplier_produc_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "supplier_products",
       "schema": "public",
@@ -7436,7 +7436,7 @@
         "ingredient_id"
       ],
       "constraint": "supplier_product_ingredient_map_workspace_id_ingredient_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "ingredients",
       "schema": "public",
@@ -7449,7 +7449,7 @@
         "supplier_id"
       ],
       "constraint": "supplier_products_supplier_fk",
-      "estimatedRows": 36,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "suppliers",
       "schema": "public",
@@ -7461,7 +7461,7 @@
         "workspace_id"
       ],
       "constraint": "supplier_products_workspace_id_fkey",
-      "estimatedRows": 36,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -7474,7 +7474,7 @@
         "ingredient_id"
       ],
       "constraint": "supplier_products_workspace_id_ingredient_id_fkey",
-      "estimatedRows": 36,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "ingredients",
       "schema": "public",
@@ -7487,7 +7487,7 @@
         "equipment_item_id"
       ],
       "constraint": "quote_lines_equipment_fk",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (workspace_id, equipment_item_id) using query and growth evidence.",
       "references": "equipment_items",
       "schema": "public",
@@ -7500,7 +7500,7 @@
         "quote_id"
       ],
       "constraint": "supplier_quote_lines_workspace_id_quote_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (workspace_id, quote_id) using query and growth evidence.",
       "references": "supplier_quotes",
       "schema": "public",
@@ -7512,7 +7512,7 @@
         "source_document_id"
       ],
       "constraint": "supplier_quotes_source_document_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (source_document_id) using query and growth evidence.",
       "references": "supplier_documents",
       "schema": "public",
@@ -7524,7 +7524,7 @@
         "workspace_id"
       ],
       "constraint": "supplier_quotes_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -7537,7 +7537,7 @@
         "supplier_id"
       ],
       "constraint": "supplier_quotes_workspace_id_supplier_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "suppliers",
       "schema": "public",
@@ -7550,7 +7550,7 @@
         "converted_supplier_id"
       ],
       "constraint": "supplier_research_candidates_workspace_id_converted_suppli_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "suppliers",
       "schema": "public",
@@ -7562,7 +7562,7 @@
         "workspace_id"
       ],
       "constraint": "supplier_research_candidates_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -7574,7 +7574,7 @@
         "workspace_id"
       ],
       "constraint": "suppliers_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -7587,7 +7587,7 @@
         "question_id"
       ],
       "constraint": "test_response_answers_workspace_id_question_id_fkey",
-      "estimatedRows": 24,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "test_template_questions",
       "schema": "public",
@@ -7600,7 +7600,7 @@
         "test_response_id"
       ],
       "constraint": "test_response_answers_workspace_id_test_response_id_fkey",
-      "estimatedRows": 24,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "test_responses",
       "schema": "public",
@@ -7612,7 +7612,7 @@
         "workspace_id"
       ],
       "constraint": "test_responses_workspace_id_fkey",
-      "estimatedRows": 6,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -7625,7 +7625,7 @@
         "test_session_id"
       ],
       "constraint": "test_responses_workspace_id_test_session_id_fkey",
-      "estimatedRows": 6,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "test_sessions",
       "schema": "public",
@@ -7638,7 +7638,7 @@
         "tester_id"
       ],
       "constraint": "test_responses_workspace_id_tester_id_fkey",
-      "estimatedRows": 6,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "testers",
       "schema": "public",
@@ -7650,7 +7650,7 @@
         "workspace_id"
       ],
       "constraint": "test_sessions_workspace_id_fkey",
-      "estimatedRows": 6,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -7663,7 +7663,7 @@
         "lab_batch_id"
       ],
       "constraint": "test_sessions_workspace_id_lab_batch_id_fkey",
-      "estimatedRows": 6,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "lab_batches",
       "schema": "public",
@@ -7676,7 +7676,7 @@
         "test_template_id"
       ],
       "constraint": "test_sessions_workspace_id_test_template_id_fkey",
-      "estimatedRows": 6,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "test_templates",
       "schema": "public",
@@ -7689,7 +7689,7 @@
         "test_template_id"
       ],
       "constraint": "test_template_questions_workspace_id_test_template_id_fkey",
-      "estimatedRows": 24,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "test_templates",
       "schema": "public",
@@ -7701,7 +7701,7 @@
         "workspace_id"
       ],
       "constraint": "test_templates_workspace_id_fkey",
-      "estimatedRows": 6,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -7713,7 +7713,7 @@
         "workspace_id"
       ],
       "constraint": "testers_workspace_id_fkey",
-      "estimatedRows": 6,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -7725,7 +7725,7 @@
         "owner_id"
       ],
       "constraint": "trim_recipe_product_links_owner_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (owner_id) using query and growth evidence.",
       "references": "auth.users",
       "schema": "public",
@@ -7738,7 +7738,7 @@
         "workspace_id"
       ],
       "constraint": "trim_recipe_product_links_recipe_id_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "trim_recipes",
       "schema": "public",
@@ -7750,7 +7750,7 @@
         "workspace_id"
       ],
       "constraint": "trim_recipe_product_links_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -7763,7 +7763,7 @@
         "product_id"
       ],
       "constraint": "trim_recipe_product_links_workspace_id_product_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "products",
       "schema": "public",
@@ -7776,7 +7776,7 @@
         "workspace_id"
       ],
       "constraint": "trim_recipe_steps_attachment_workspace_fkey",
-      "estimatedRows": 20,
+      "estimatedRows": 0,
       "recommendation": "Review index (attachment_id, workspace_id) using query and growth evidence.",
       "references": "grooming_tool_attachments",
       "schema": "public",
@@ -7789,7 +7789,7 @@
         "workspace_id"
       ],
       "constraint": "trim_recipe_steps_recipe_id_workspace_id_fkey",
-      "estimatedRows": 20,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "trim_recipes",
       "schema": "public",
@@ -7802,7 +7802,7 @@
         "workspace_id"
       ],
       "constraint": "trim_recipe_steps_tool_id_workspace_id_fkey",
-      "estimatedRows": 20,
+      "estimatedRows": 0,
       "recommendation": "Review index (tool_id, workspace_id) using query and growth evidence.",
       "references": "grooming_tools",
       "schema": "public",
@@ -7814,7 +7814,7 @@
         "owner_id"
       ],
       "constraint": "trim_recipes_owner_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (owner_id) using query and growth evidence.",
       "references": "auth.users",
       "schema": "public",
@@ -7827,7 +7827,7 @@
         "workspace_id"
       ],
       "constraint": "trim_recipes_profile_id_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "beard_profiles",
       "schema": "public",
@@ -7839,7 +7839,7 @@
         "workspace_id"
       ],
       "constraint": "trim_recipes_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": "Review index (workspace_id) using query and growth evidence.",
       "references": "workspaces",
       "schema": "public",
@@ -7852,7 +7852,7 @@
         "finished_goods_batch_id"
       ],
       "constraint": "undesirable_effect_records_workspace_id_finished_goods_bat_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "finished_goods_batches",
       "schema": "public",
@@ -7864,7 +7864,7 @@
         "workspace_id"
       ],
       "constraint": "undesirable_effect_records_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -7877,7 +7877,7 @@
         "product_id"
       ],
       "constraint": "undesirable_effect_records_workspace_id_product_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "products",
       "schema": "public",
@@ -7889,7 +7889,7 @@
         "owner_id"
       ],
       "constraint": "workspace_records_owner_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "auth.users",
       "schema": "public",
@@ -7901,7 +7901,7 @@
         "workspace_id"
       ],
       "constraint": "workspace_records_workspace_id_fkey",
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
@@ -7913,7 +7913,7 @@
         "owner_id"
       ],
       "constraint": "workspaces_owner_id_fkey",
-      "estimatedRows": 42,
+      "estimatedRows": 0,
       "recommendation": null,
       "references": "auth.users",
       "schema": "public",

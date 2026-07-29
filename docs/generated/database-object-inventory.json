@@ -49,7 +49,7 @@
           "name": "batch_material_consumptions_unit_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -100,9 +100,9 @@
       ],
       "generatedColumns": [],
       "grants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "indexes": [
         {
@@ -206,7 +206,7 @@
           "name": "batch_material_events_metadata_check"
         }
       ],
-      "estimatedRows": 26,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -218,9 +218,9 @@
       ],
       "generatedColumns": [],
       "grants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "indexes": [
         {
@@ -312,7 +312,7 @@
           "name": "batch_material_lot_allocations_unit_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -364,9 +364,9 @@
       ],
       "generatedColumns": [],
       "grants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "indexes": [
         {
@@ -452,7 +452,7 @@
           "name": "batch_material_reconciliations_state_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -471,9 +471,9 @@
       ],
       "generatedColumns": [],
       "grants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "indexes": [
         {
@@ -568,7 +568,7 @@
           "name": "batch_material_returns_unit_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -618,9 +618,9 @@
       ],
       "generatedColumns": [],
       "grants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "indexes": [
         {
@@ -713,7 +713,7 @@
           "name": "batch_material_variances_unit_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -725,9 +725,9 @@
       ],
       "generatedColumns": [],
       "grants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "indexes": [
         {
@@ -807,7 +807,7 @@
           "name": "batch_material_waste_waste_category_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -850,9 +850,9 @@
       ],
       "generatedColumns": [],
       "grants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "indexes": [
         {
@@ -957,7 +957,7 @@
           "name": "batch_material_weighings_unit_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -1000,9 +1000,9 @@
       ],
       "generatedColumns": [],
       "grants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "indexes": [
         {
@@ -1095,7 +1095,7 @@
           "name": "beard_length_map_zones_zone_name_check"
         }
       ],
-      "estimatedRows": 22,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -1124,8 +1124,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -1165,7 +1165,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -1192,8 +1192,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -1278,7 +1278,7 @@
           "name": "beard_log_entries_symmetry_rating_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -1321,8 +1321,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -1371,7 +1371,7 @@
           "name": "beard_log_product_links_usage_role_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -1406,8 +1406,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -1485,7 +1485,7 @@
           "name": "beard_profiles_texture_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -1504,8 +1504,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -1558,7 +1558,7 @@
           "name": "beard_studio_revisions_revision_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -1577,8 +1577,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -1618,7 +1618,7 @@
           "name": "beard_trim_sessions_status_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -1645,8 +1645,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -1686,7 +1686,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": 6,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -1714,8 +1714,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -1745,7 +1745,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": 12,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -1773,8 +1773,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -1804,7 +1804,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -1833,8 +1833,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -1865,7 +1865,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": 6,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -1877,8 +1877,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -1908,7 +1908,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": 14,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -1968,8 +1968,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -2004,7 +2004,7 @@
           "name": "cost_lines_quantity_check"
         }
       ],
-      "estimatedRows": 6,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -2016,8 +2016,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -2047,7 +2047,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": 6,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -2083,8 +2083,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -2114,7 +2114,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": 6,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -2166,8 +2166,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -2202,7 +2202,7 @@
           "name": "currency_comparison_rates_rate_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -2214,8 +2214,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -2271,7 +2271,7 @@
           "name": "development_experiment_changes_qualitative_guidance_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -2308,8 +2308,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -2374,7 +2374,7 @@
           "name": "development_experiment_handoffs_handoff_type_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -2419,8 +2419,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=rDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -2483,7 +2483,7 @@
           "name": "development_experiment_observation_prompts_prompt_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -2512,8 +2512,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -2573,7 +2573,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -2594,8 +2594,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=rDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -2649,7 +2649,7 @@
           "name": "development_experiment_variants_status_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -2686,8 +2686,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -2791,7 +2791,7 @@
           "name": "development_experiments_title_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -2844,8 +2844,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=rwDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -2917,7 +2917,7 @@
           "name": "document_objects_state_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -2950,8 +2950,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -3007,7 +3007,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -3020,8 +3020,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -3057,7 +3057,7 @@
           "name": "equipment_items_status_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -3077,8 +3077,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -3132,7 +3132,7 @@
           "name": "equipment_policies_status_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -3145,8 +3145,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -3182,7 +3182,7 @@
           "name": "equipment_service_events_event_type_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -3209,8 +3209,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -3255,7 +3255,7 @@
           "name": "finished_goods_batches_initial_quantity_check"
         }
       ],
-      "estimatedRows": 6,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -3299,8 +3299,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=rm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -3366,7 +3366,7 @@
           "name": "finished_goods_deviations_status_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -3408,9 +3408,9 @@
       ],
       "generatedColumns": [],
       "grants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "indexes": [
         {
@@ -3494,7 +3494,7 @@
           "name": "finished_goods_disposition_reviews_review_sequence_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -3538,9 +3538,9 @@
       ],
       "generatedColumns": [],
       "grants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "indexes": [
         {
@@ -3625,7 +3625,7 @@
           "name": "finished_goods_inspections_sample_quantity_check"
         }
       ],
-      "estimatedRows": 82,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -3660,9 +3660,9 @@
       ],
       "generatedColumns": [],
       "grants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "indexes": [
         {
@@ -3732,7 +3732,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": 20,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -3773,9 +3773,9 @@
       ],
       "generatedColumns": [],
       "grants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "indexes": [
         {
@@ -3851,7 +3851,7 @@
           "name": "finished_goods_inventory_movements_quantity_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -3901,9 +3901,9 @@
       ],
       "generatedColumns": [],
       "grants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "indexes": [
         {
@@ -4001,7 +4001,7 @@
           "name": "finished_goods_inventory_operations_reason_check"
         }
       ],
-      "estimatedRows": 20,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -4021,9 +4021,9 @@
       ],
       "generatedColumns": [],
       "grants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "indexes": [
         {
@@ -4091,7 +4091,7 @@
           "name": "finished_goods_inventory_state_history_state_type_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -4125,9 +4125,9 @@
       ],
       "generatedColumns": [],
       "grants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "indexes": [
         {
@@ -4192,7 +4192,7 @@
           "name": "finished_goods_lot_events_event_type_check"
         }
       ],
-      "estimatedRows": 86,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -4252,9 +4252,9 @@
       ],
       "generatedColumns": [],
       "grants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "indexes": [
         {
@@ -4425,7 +4425,7 @@
           "name": "finished_goods_lots_unit_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -4501,9 +4501,9 @@
       ],
       "generatedColumns": [],
       "grants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "indexes": [
         {
@@ -4668,7 +4668,7 @@
           "name": "finished_goods_movements_quantity_check"
         }
       ],
-      "estimatedRows": 12,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -4688,8 +4688,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=rm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -4726,7 +4726,7 @@
           "name": "finished_goods_quality_events_event_type_check"
         }
       ],
-      "estimatedRows": 120,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -4754,9 +4754,9 @@
       ],
       "generatedColumns": [],
       "grants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "indexes": [
         {
@@ -4852,7 +4852,7 @@
           "name": "finished_goods_quarantines_revision_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -4880,9 +4880,9 @@
       ],
       "generatedColumns": [],
       "grants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "indexes": [
         {
@@ -4947,7 +4947,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": 136,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -4975,8 +4975,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -5015,7 +5015,7 @@
           "name": "formula_versions_phase_definitions_check"
         }
       ],
-      "estimatedRows": 74,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -5059,8 +5059,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=arwdDxtm/postgres"
       ],
       "indexes": [
@@ -5090,7 +5090,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": 68,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -5110,8 +5110,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=arwdDxtm/postgres"
       ],
       "indexes": [
@@ -5163,8 +5163,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -5229,7 +5229,7 @@
           "name": "grooming_tools_tool_type_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -5248,8 +5248,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -5298,7 +5298,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": 6,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -5318,8 +5318,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -5374,7 +5374,7 @@
           "name": "ingredient_knowledge_compatibility_target_type_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -5401,9 +5401,9 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "anon=Dxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -5472,7 +5472,7 @@
           "name": "ingredient_knowledge_evidence_title_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -5499,9 +5499,9 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "anon=Dxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -5546,7 +5546,7 @@
           "name": "ingredient_knowledge_profiles_last_edited_source_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -5573,9 +5573,9 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "anon=Dxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -5646,7 +5646,7 @@
           "name": "ingredient_knowledge_roles_role_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -5673,9 +5673,9 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "anon=Dxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -5732,7 +5732,7 @@
           "name": "ingredients_cosing_verification_status_check"
         }
       ],
-      "estimatedRows": 72,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -5744,8 +5744,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -5975,9 +5975,9 @@
       ],
       "generatedColumns": [],
       "grants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "indexes": [
         {
@@ -6066,7 +6066,7 @@
           "name": "intelligence_analysis_inputs_view_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -6087,9 +6087,9 @@
       ],
       "generatedColumns": [],
       "grants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "indexes": [
         {
@@ -6149,7 +6149,7 @@
           "name": "intelligence_observations_provider_key_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -6170,9 +6170,9 @@
       ],
       "generatedColumns": [],
       "grants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "indexes": [
         {
@@ -6220,7 +6220,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -6257,9 +6257,9 @@
       ],
       "generatedColumns": [],
       "grants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "indexes": [
         {
@@ -6307,7 +6307,7 @@
           "name": "intelligence_recommendations_review_status_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -6328,9 +6328,9 @@
       ],
       "generatedColumns": [],
       "grants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "indexes": [
         {
@@ -6378,7 +6378,7 @@
           "name": "intelligence_runs_usage_nonnegative"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -6399,8 +6399,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -6455,7 +6455,7 @@
           "name": "intelligence_threads_mode_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -6468,8 +6468,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -6518,7 +6518,7 @@
           "name": "inventory_lots_restriction_snapshot_check"
         }
       ],
-      "estimatedRows": 43,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -6561,8 +6561,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=arwdDxtm/postgres"
       ],
       "indexes": [
@@ -6606,7 +6606,7 @@
           "name": "inventory_movements_quantity_check"
         }
       ],
-      "estimatedRows": 83,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -6626,8 +6626,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=rm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=arDxtm/postgres"
       ],
       "indexes": [
@@ -6708,7 +6708,7 @@
           "name": "inventory_quality_release_reviews_total_acquisition_cost_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -6721,9 +6721,9 @@
       ],
       "generatedColumns": [],
       "grants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "indexes": [
         {
@@ -6875,7 +6875,7 @@
           "name": "quarantine_disposition_within_intake"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -6912,9 +6912,9 @@
       ],
       "generatedColumns": [],
       "grants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "indexes": [
         {
@@ -7022,7 +7022,7 @@
           "name": "inventory_reservations_wasted_quantity_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -7050,9 +7050,9 @@
       ],
       "generatedColumns": [],
       "grants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "indexes": [
         {
@@ -7136,7 +7136,7 @@
           "name": "knowledge_references_source_type_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -7157,8 +7157,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -7225,7 +7225,7 @@
           "name": "lab_batch_lines_tolerance_quantity_check"
         }
       ],
-      "estimatedRows": 12,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -7261,8 +7261,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -7309,7 +7309,7 @@
           "name": "lab_batches_revision_check"
         }
       ],
-      "estimatedRows": 12,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -7361,8 +7361,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -7406,7 +7406,7 @@
           "name": "lab_lot_allocations_quantity_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -7442,8 +7442,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -7473,7 +7473,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": 12,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -7493,8 +7493,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -7537,7 +7537,7 @@
           "name": "lab_process_temperature_range"
         }
       ],
-      "estimatedRows": 12,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -7557,8 +7557,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -7588,7 +7588,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": 6,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -7632,8 +7632,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -7663,7 +7663,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": 60,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -7683,8 +7683,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -7714,7 +7714,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -7742,8 +7742,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -7773,7 +7773,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": 12,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -7793,8 +7793,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -7824,7 +7824,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": 6,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -7852,8 +7852,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -7883,7 +7883,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": 6,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -7902,8 +7902,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -7977,7 +7977,7 @@
           "name": "packaged_output_reconciliations_unresolved_variance_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -8012,9 +8012,9 @@
       ],
       "generatedColumns": [],
       "grants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "indexes": [
         {
@@ -8095,7 +8095,7 @@
           "name": "packaging_allocations_quantity_check"
         }
       ],
-      "estimatedRows": 12,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -8139,8 +8139,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=rm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -8172,7 +8172,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": 30,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -8184,8 +8184,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -8220,7 +8220,7 @@
           "name": "packaging_inventory_lots_opening_quantity_check"
         }
       ],
-      "estimatedRows": 24,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -8263,8 +8263,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -8308,7 +8308,7 @@
           "name": "packaging_inventory_movements_quantity_check"
         }
       ],
-      "estimatedRows": 42,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -8328,8 +8328,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=rm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=arDxtm/postgres"
       ],
       "indexes": [
@@ -8402,7 +8402,7 @@
           "name": "packaging_run_bulk_allocations_unit_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -8430,9 +8430,9 @@
       ],
       "generatedColumns": [],
       "grants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=Dxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=Dxtm/postgres"
       ],
       "indexes": [
         {
@@ -8537,7 +8537,7 @@
           "name": "packaging_run_bulk_transfers_unit_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -8573,9 +8573,9 @@
       ],
       "generatedColumns": [],
       "grants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=Dxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=Dxtm/postgres"
       ],
       "indexes": [
         {
@@ -8659,7 +8659,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": 38,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -8711,9 +8711,9 @@
       ],
       "generatedColumns": [],
       "grants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=Dxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=Dxtm/postgres"
       ],
       "indexes": [
         {
@@ -8837,7 +8837,7 @@
           "name": "packaging_run_inventory_uses_use_type_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -8889,9 +8889,9 @@
       ],
       "generatedColumns": [],
       "grants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=Dxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=Dxtm/postgres"
       ],
       "indexes": [
         {
@@ -9014,7 +9014,7 @@
           "name": "packaging_run_reconciliations_state_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -9034,9 +9034,9 @@
       ],
       "generatedColumns": [],
       "grants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=Dxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=Dxtm/postgres"
       ],
       "indexes": [
         {
@@ -9131,7 +9131,7 @@
           "name": "packaging_run_requirements_units_required_per_finished_un_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -9175,9 +9175,9 @@
       ],
       "generatedColumns": [],
       "grants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=Dxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=Dxtm/postgres"
       ],
       "indexes": [
         {
@@ -9300,7 +9300,7 @@
           "name": "packaging_run_reservations_waste_in_lot_unit_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -9336,9 +9336,9 @@
       ],
       "generatedColumns": [],
       "grants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=Dxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=Dxtm/postgres"
       ],
       "indexes": [
         {
@@ -9473,7 +9473,7 @@
           "name": "packaging_runs_status_check"
         }
       ],
-      "estimatedRows": 22,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -9525,9 +9525,9 @@
       ],
       "generatedColumns": [],
       "grants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "indexes": [
         {
@@ -9653,7 +9653,7 @@
           "name": "packaging_specification_lines_quantity_per_unit_check"
         }
       ],
-      "estimatedRows": 36,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -9681,8 +9681,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -9712,7 +9712,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": 32,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -9740,8 +9740,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=arwdDxtm/postgres"
       ],
       "indexes": [
@@ -9771,7 +9771,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": 26,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -9791,8 +9791,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=arwdDxtm/postgres"
       ],
       "indexes": [
@@ -9831,7 +9831,7 @@
           "name": "packaging_supplier_products_price_check"
         }
       ],
-      "estimatedRows": 6,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -9859,8 +9859,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -9899,7 +9899,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": 30,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -9919,8 +9919,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -9950,7 +9950,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -9971,8 +9971,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -10016,7 +10016,7 @@
           "name": "process_equipment_requirements_requirement_level_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -10028,8 +10028,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -10113,7 +10113,7 @@
           "name": "procurement_background_operations_transient_failure_count_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -10212,7 +10212,7 @@
           "name": "procurement_webhook_rejection_reason"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [],
       "generatedColumns": [],
       "grants": [
@@ -10275,7 +10275,7 @@
           "name": "procurement_cart_scenario_items_unit_price_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -10304,8 +10304,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -10396,7 +10396,7 @@
           "name": "procurement_cart_scenarios_status_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -10432,8 +10432,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -10547,7 +10547,7 @@
           "name": "procurement_offer_candidates_stock_status_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -10609,8 +10609,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -10734,7 +10734,7 @@
           "name": "procurement_provider_diagnostics_timeout_stage_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -10747,9 +10747,9 @@
       ],
       "generatedColumns": [],
       "grants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=Dxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=Dxtm/postgres"
       ],
       "indexes": [
         {
@@ -10788,7 +10788,7 @@
           "name": "procurement_recommendations_status_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -10819,8 +10819,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -10874,7 +10874,7 @@
           "name": "procurement_requested_items_requested_quantity_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -10887,8 +10887,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -10961,7 +10961,7 @@
           "name": "procurement_requests_title_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -10973,8 +10973,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -11050,7 +11050,7 @@
           "name": "procurement_research_jobs_status_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -11071,8 +11071,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -11189,7 +11189,7 @@
           "name": "procurement_supplier_discounts_threshold_basis_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -11209,8 +11209,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -11326,7 +11326,7 @@
           "name": "procurement_supplier_offers_technical_document_availabili_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -11347,8 +11347,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -11501,7 +11501,7 @@
           "name": "procurement_supplier_shipping_rules_weight_tiers_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -11521,8 +11521,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -11598,7 +11598,7 @@
           "name": "product_studio_concepts_selected_ingredients_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -11643,8 +11643,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -11698,7 +11698,7 @@
           "name": "production_lot_allocations_quantity_check"
         }
       ],
-      "estimatedRows": 12,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -11734,8 +11734,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -11790,7 +11790,7 @@
           "name": "production_output_components_unit_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -11810,9 +11810,9 @@
       ],
       "generatedColumns": [],
       "grants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=Dxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=Dxtm/postgres"
       ],
       "indexes": [
         {
@@ -11884,7 +11884,7 @@
           "name": "production_output_events_event_type_check"
         }
       ],
-      "estimatedRows": 44,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -11920,9 +11920,9 @@
       ],
       "generatedColumns": [],
       "grants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=Dxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=Dxtm/postgres"
       ],
       "indexes": [
         {
@@ -12005,7 +12005,7 @@
           "name": "production_output_measurements_unit_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -12032,9 +12032,9 @@
       ],
       "generatedColumns": [],
       "grants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=Dxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=Dxtm/postgres"
       ],
       "indexes": [
         {
@@ -12114,7 +12114,7 @@
           "name": "production_output_reconciliations_tolerance_quantity_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -12134,9 +12134,9 @@
       ],
       "generatedColumns": [],
       "grants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=Dxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=Dxtm/postgres"
       ],
       "indexes": [
         {
@@ -12244,7 +12244,7 @@
           "name": "production_outputs_unresolved_cost_count_check"
         }
       ],
-      "estimatedRows": 22,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -12288,9 +12288,9 @@
       ],
       "generatedColumns": [],
       "grants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "indexes": [
         {
@@ -12375,7 +12375,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": 6,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -12395,8 +12395,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -12431,7 +12431,7 @@
           "name": "production_procurement_inventory_gaps_unit_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -12444,9 +12444,9 @@
       ],
       "generatedColumns": [],
       "grants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=Dxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=Dxtm/postgres"
       ],
       "indexes": [
         {
@@ -12524,7 +12524,7 @@
           "name": "production_procurement_requirement_sources_percentage_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -12577,9 +12577,9 @@
       ],
       "generatedColumns": [],
       "grants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=Dxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=Dxtm/postgres"
       ],
       "indexes": [
         {
@@ -12668,7 +12668,7 @@
           "name": "production_procurement_requirements_state_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -12689,9 +12689,9 @@
       ],
       "generatedColumns": [],
       "grants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=Dxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=Dxtm/postgres"
       ],
       "indexes": [
         {
@@ -12788,7 +12788,7 @@
           "name": "production_procurement_round_products_planned_batch_count_check"
         }
       ],
-      "estimatedRows": 24,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -12825,9 +12825,9 @@
       ],
       "generatedColumns": [],
       "grants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=Dxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=Dxtm/postgres"
       ],
       "indexes": [
         {
@@ -12916,7 +12916,7 @@
           "name": "production_procurement_rounds_title_check"
         }
       ],
-      "estimatedRows": 4,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -12928,9 +12928,9 @@
       ],
       "generatedColumns": [],
       "grants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=Dxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=Dxtm/postgres"
       ],
       "indexes": [
         {
@@ -13041,7 +13041,7 @@
           "name": "production_procurement_scenario_baskets_vat_state_check"
         }
       ],
-      "estimatedRows": 40,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -13062,9 +13062,9 @@
       ],
       "generatedColumns": [],
       "grants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=Dxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=Dxtm/postgres"
       ],
       "indexes": [
         {
@@ -13159,7 +13159,7 @@
           "name": "production_procurement_scenario_lines_unit_price_check"
         }
       ],
-      "estimatedRows": 40,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -13204,9 +13204,9 @@
       ],
       "generatedColumns": [],
       "grants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=Dxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=Dxtm/postgres"
       ],
       "indexes": [
         {
@@ -13317,7 +13317,7 @@
           "name": "production_procurement_scenarios_warning_count_check"
         }
       ],
-      "estimatedRows": 27,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -13330,9 +13330,9 @@
       ],
       "generatedColumns": [],
       "grants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=Dxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=Dxtm/postgres"
       ],
       "indexes": [
         {
@@ -13404,7 +13404,7 @@
           "name": "production_purchasing_specifications_specification_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -13425,9 +13425,9 @@
       ],
       "generatedColumns": [],
       "grants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=Dxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=Dxtm/postgres"
       ],
       "indexes": [
         {
@@ -13508,7 +13508,7 @@
           "name": "production_requirement_supplier_candidates_status_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -13537,9 +13537,9 @@
       ],
       "generatedColumns": [],
       "grants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=Dxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=Dxtm/postgres"
       ],
       "indexes": [
         {
@@ -13629,7 +13629,7 @@
           "name": "production_requirement_supplier_matches_status_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -13658,9 +13658,9 @@
       ],
       "generatedColumns": [],
       "grants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=Dxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=Dxtm/postgres"
       ],
       "indexes": [
         {
@@ -13725,7 +13725,7 @@
           "name": "production_run_lines_tolerance_quantity_check"
         }
       ],
-      "estimatedRows": 16,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -13761,8 +13761,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -13805,7 +13805,7 @@
           "name": "production_runs_revision_check"
         }
       ],
-      "estimatedRows": 42,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -13841,8 +13841,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=arwdDxtm/postgres"
       ],
       "indexes": [
@@ -13881,7 +13881,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": 82,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -13909,8 +13909,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=arwdDxtm/postgres"
       ],
       "indexes": [
@@ -13949,7 +13949,7 @@
           "name": "purchase_order_audit_events_metadata_check"
         }
       ],
-      "estimatedRows": 31,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -13986,9 +13986,9 @@
       ],
       "generatedColumns": [],
       "grants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "indexes": [
         {
@@ -14102,7 +14102,7 @@
           "name": "purchase_order_confirmation_lines_placement_unit_price_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -14131,9 +14131,9 @@
       ],
       "generatedColumns": [],
       "grants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "indexes": [
         {
@@ -14259,7 +14259,7 @@
           "name": "purchase_order_confirmations_supplier_confirmation_refere_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -14287,9 +14287,9 @@
       ],
       "generatedColumns": [],
       "grants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "indexes": [
         {
@@ -14498,7 +14498,7 @@
           "name": "purchase_order_lines_verified_unit_price_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -14543,9 +14543,9 @@
       ],
       "generatedColumns": [],
       "grants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "indexes": [
         {
@@ -14636,7 +14636,7 @@
           "name": "purchase_order_receipt_discrepancies_severity_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -14657,9 +14657,9 @@
       ],
       "generatedColumns": [],
       "grants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "indexes": [
         {
@@ -14744,7 +14744,7 @@
           "name": "purchase_order_receipt_inspections_result_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -14772,9 +14772,9 @@
       ],
       "generatedColumns": [],
       "grants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "indexes": [
         {
@@ -14963,7 +14963,7 @@
           "name": "purchase_order_receipt_lines_unopened_package_count_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -15008,9 +15008,9 @@
       ],
       "generatedColumns": [],
       "grants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "indexes": [
         {
@@ -15080,7 +15080,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -15109,9 +15109,9 @@
       ],
       "generatedColumns": [],
       "grants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "indexes": [
         {
@@ -15222,7 +15222,7 @@
           "name": "purchase_order_receipts_water_damage_state_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -15243,9 +15243,9 @@
       ],
       "generatedColumns": [],
       "grants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "indexes": [
         {
@@ -15337,7 +15337,7 @@
           "name": "purchase_order_shipment_events_metadata_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -15358,9 +15358,9 @@
       ],
       "generatedColumns": [],
       "grants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "indexes": [
         {
@@ -15431,7 +15431,7 @@
           "name": "purchase_order_shipment_lines_shipped_quantity_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -15468,9 +15468,9 @@
       ],
       "generatedColumns": [],
       "grants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "indexes": [
         {
@@ -15574,7 +15574,7 @@
           "name": "purchase_order_shipments_status_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -15603,9 +15603,9 @@
       ],
       "generatedColumns": [],
       "grants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "indexes": [
         {
@@ -15827,7 +15827,7 @@
           "name": "purchase_orders_verification_snapshot_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -15872,9 +15872,9 @@
       ],
       "generatedColumns": [],
       "grants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "indexes": [
         {
@@ -16008,7 +16008,7 @@
           "name": "purchase_plan_audit_events_metadata_check"
         }
       ],
-      "estimatedRows": 69,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -16029,9 +16029,9 @@
       ],
       "generatedColumns": [],
       "grants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "indexes": [
         {
@@ -16133,7 +16133,7 @@
           "name": "purchase_plan_baskets_verification_required_count_check"
         }
       ],
-      "estimatedRows": 8,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -16162,9 +16162,9 @@
       ],
       "generatedColumns": [],
       "grants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "indexes": [
         {
@@ -16244,7 +16244,7 @@
           "name": "purchase_plan_lines_source_snapshot_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -16288,8 +16288,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=arwdDxtm/postgres"
       ],
       "indexes": [
@@ -16371,7 +16371,7 @@
           "name": "purchase_plan_verifications_verification_state_check"
         }
       ],
-      "estimatedRows": 60,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -16408,9 +16408,9 @@
       ],
       "generatedColumns": [],
       "grants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "indexes": [
         {
@@ -16509,7 +16509,7 @@
           "name": "purchase_plans_version_check"
         }
       ],
-      "estimatedRows": 11,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -16545,8 +16545,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=arwdDxtm/postgres"
       ],
       "indexes": [
@@ -16662,7 +16662,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": 12,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -16682,8 +16682,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -16713,7 +16713,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -16778,7 +16778,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -16869,7 +16869,7 @@
           "name": "recall_readiness_case_revisions_urgency_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -16963,7 +16963,7 @@
           "name": "recall_readiness_case_sequences_last_value_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -17018,7 +17018,7 @@
           "name": "recall_readiness_cases_title_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -17117,7 +17117,7 @@
           "name": "recall_readiness_events_event_type_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -17196,7 +17196,7 @@
           "name": "recall_readiness_evidence_evidence_type_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -17280,7 +17280,7 @@
           "name": "recall_readiness_gaps_severity_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -17347,7 +17347,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -17429,7 +17429,7 @@
           "name": "recall_readiness_reviews_reviewer_role_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -17508,7 +17508,7 @@
           "name": "recall_readiness_scope_snapshots_scope_confidence_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -17577,7 +17577,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": 6,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -17598,8 +17598,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -17630,7 +17630,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": 6,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -17650,8 +17650,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -17681,7 +17681,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": 6,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -17693,8 +17693,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -17745,7 +17745,7 @@
           "name": "released_finished_goods_inventory_lots_status_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -17781,9 +17781,9 @@
       ],
       "generatedColumns": [],
       "grants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=arwdDxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=arwdDxtm/postgres"
       ],
       "indexes": [
         {
@@ -17863,7 +17863,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": 6,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -17875,8 +17875,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -17967,7 +17967,7 @@
           "name": "scent_memory_checkpoints_woodiness_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -17996,8 +17996,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=rDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -18083,7 +18083,7 @@
           "name": "scent_memory_sessions_title_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -18152,8 +18152,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -18229,7 +18229,7 @@
           "name": "stock_policies_policy_status_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -18241,8 +18241,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -18273,7 +18273,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -18286,8 +18286,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -18347,7 +18347,7 @@
           "name": "supplier_document_records_verification_state_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -18367,8 +18367,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -18437,7 +18437,7 @@
           "name": "supplier_documents_supplier_product_domain_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -18465,8 +18465,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -18514,7 +18514,7 @@
           "name": "supplier_events_title_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -18582,8 +18582,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -18669,7 +18669,7 @@
           "name": "supplier_product_ingredient_mappings_status_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -18690,9 +18690,9 @@
       ],
       "generatedColumns": [],
       "grants": [
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
-        "service_role=Dxtm/postgres",
-        "authenticated=r/postgres"
+        "service_role=Dxtm/postgres"
       ],
       "indexes": [
         {
@@ -18771,7 +18771,7 @@
           "name": "supplier_products_verification_object"
         }
       ],
-      "estimatedRows": 36,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -18799,8 +18799,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -18856,7 +18856,7 @@
           "name": "supplier_quote_lines_unit_price_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -18879,8 +18879,8 @@
         "line_total"
       ],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -18916,7 +18916,7 @@
           "name": "supplier_quotes_status_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -18943,8 +18943,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -19008,7 +19008,7 @@
           "name": "supplier_research_candidates_status_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -19028,8 +19028,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -19094,7 +19094,7 @@
           "name": "suppliers_verification_state_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -19106,8 +19106,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -19157,7 +19157,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": 24,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -19178,8 +19178,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -19210,7 +19210,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": 6,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -19238,8 +19238,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -19269,7 +19269,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": 6,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -19297,8 +19297,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -19328,7 +19328,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": 24,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -19341,8 +19341,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -19372,7 +19372,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": 6,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -19384,8 +19384,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -19415,7 +19415,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": 6,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -19427,8 +19427,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -19467,7 +19467,7 @@
           "name": "trim_recipe_product_links_usage_role_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -19502,8 +19502,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -19573,7 +19573,7 @@
           "name": "trim_recipe_steps_trim_direction_check"
         }
       ],
-      "estimatedRows": 20,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -19602,8 +19602,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -19660,7 +19660,7 @@
           "name": "trim_recipes_version_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -19687,8 +19687,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -19736,7 +19736,7 @@
     },
     {
       "checks": [],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -19764,8 +19764,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwdDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -19804,7 +19804,7 @@
           "name": "workspace_records_id_check"
         }
       ],
-      "estimatedRows": -1,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -19823,8 +19823,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=rm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=Dxtm/postgres"
       ],
       "indexes": [
@@ -19869,7 +19869,7 @@
           "name": "workspaces_lifecycle_state_check"
         }
       ],
-      "estimatedRows": 42,
+      "estimatedRows": 0,
       "foreignKeys": [
         {
           "columns": [
@@ -19881,8 +19881,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxtm/postgres",
         "authenticated=arwDxtm/postgres",
+        "postgres=arwdDxtm/postgres",
         "service_role=rDxtm/postgres"
       ],
       "indexes": [
