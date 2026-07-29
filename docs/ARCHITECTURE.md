@@ -170,3 +170,9 @@ The current scaling boundary is architectural classification rather than a new l
 # Recall Readiness authority
 
 Recall Readiness reuses the canonical Batch Genealogy trace and movement-derived Finished Goods inventory snapshot. Its cases, immutable revisions, frozen scopes, evidence metadata, reviews, and fingerprint-specific approvals are RPC-only authorities. Approval performs no recall, inventory, shipment, notification, return, destruction, accounting, or legal action. See [Recall Readiness V1](RECALL_READINESS_V1.md).
+
+## Controlled integration boundary
+
+The finished-goods feature RC remains a historical pre-merge identity. Local integration review uses disposable worktrees and an explicit non-squash merge simulation; neither the real feature branch nor `main` is rewritten. Because the reviewed `main` is the feature merge base, the future integration should create an explicit merge commit instead of silently fast-forwarding.
+
+Push, Pull Request creation, merge, hosted rehearsal, and production deployment are independent authorization gates. A merge must not trigger database migration, Auth/Storage mutation, environment mutation, or deployment. The actual merge commit becomes integration evidence; it does not replace or move the frozen feature RC tag.
