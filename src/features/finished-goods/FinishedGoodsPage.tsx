@@ -1,55 +1,13 @@
-import { PackageCheck, Plus, Search } from "lucide-react";
+import { PackageCheck, Search } from "lucide-react";
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { StatusPill } from "../../components/ui/StatusPill";
 import { useFormulaData } from "../formulas/state/FormulaDataContext";
-import {
-  finishedGoodsBalance,
-  remainingProductionOutput,
-} from "./domain/finishedGoodsLogic";
+import { finishedGoodsBalance } from "./domain/finishedGoodsLogic";
 export function FinishedGoodsPage() {
   const d = useFormulaData(),
-    navigate = useNavigate(),
     [search, setSearch] = useState("");
-  const create = async () => {
-    const run = d.productionRuns.find(
-      (r) =>
-        (r.actualUnitsProduced ?? 0) > 0 &&
-        remainingProductionOutput(r, d.finishedGoodsBatches) > 0,
-    );
-    if (!run)
-      return window.alert(
-        "No Production output remains available for registration.",
-      );
-    const quantity = Number(
-      window.prompt(
-        `Quantity to register (maximum ${remainingProductionOutput(run, d.finishedGoodsBatches)})`,
-      ),
-    );
-    if (!quantity) return;
-    const approved = d.packagingSpecificationVersions.find(
-      (v) =>
-        v.status === "Approved" &&
-        d.packagingSpecifications.find(
-          (s) => s.id === v.packagingSpecificationId,
-        )?.productId === run.productId,
-    );
-    try {
-      const batch = await d.createFinishedGoodsBatch({
-        productionRunId: run.id,
-        quantity,
-        packagingSpecificationVersionId: approved?.id,
-        productionDate: new Date().toISOString().slice(0, 10),
-        notes: "Explicit Finished Goods registration.",
-      });
-      navigate(`/finished-goods/${batch.id}`);
-    } catch (e) {
-      window.alert(
-        e instanceof Error ? e.message : "Could not register output.",
-      );
-    }
-  };
   const rows = d.finishedGoodsBatches.filter(
     (b) =>
       b.finishedGoodsBatchNumber.toLowerCase().includes(search.toLowerCase()) ||
@@ -61,15 +19,9 @@ export function FinishedGoodsPage() {
   return (
     <>
       <PageHeader
-        eyebrow="Ledger-based packaged output"
-        title="Finished Goods"
-        description="Explicit Production output registrations with immutable movement history and end-to-end traceability."
-        action={
-          <button className="button primary" disabled={d.pendingActions.includes("createFinishedGoodsBatch")} onClick={create}>
-            <Plus size={14} />
-            Create Finished Goods Batch
-          </button>
-        }
+        eyebrow="Legacy compatibility history"
+        title="Legacy Finished Goods"
+        description="Read-only records retained for historical reconciliation. New output is registered through the controlled Production and Finished Goods Lot workflows."
       />
       <div className="inventory-filters">
         <label className="search-field">
@@ -77,7 +29,8 @@ export function FinishedGoodsPage() {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search batch or product"
+            placeholder="Search legacy batch or product"
+            aria-label="Search legacy Finished Goods history"
           />
         </label>
       </div>

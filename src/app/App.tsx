@@ -1,63 +1,65 @@
+import { lazy } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { AppShell } from '../components/layout/AppShell'
 import { DashboardPage } from '../features/dashboard/DashboardPage'
-import { ProductsPage } from '../features/products/ProductsPage'
-import { IngredientsPage } from '../features/ingredients/IngredientsPage'
-import { LabPage } from '../features/lab/LabPage'
-import { ScentHousePage } from '../features/scent-house/ScentHousePage'
-import { ScentStudioPage } from '../features/scent-house/ScentStudioPage'
 import { PlaceholderPage } from '../features/placeholders/PlaceholderPage'
 import { placeholderModules } from '../data/mockData'
-import { ProductDetailPage } from '../features/products/ProductDetailPage'
-import { FormulaLibraryPage } from '../features/formulas/FormulaLibraryPage'
-import { FormulaDetailPage } from '../features/formulas/FormulaDetailPage'
-import { IngredientDetailPage } from '../features/ingredients/IngredientDetailPage'
-import { ReferenceLibraryPage } from '../features/ingredients/reference/ReferenceLibraryPage'
-import { ReferenceEntryPage } from '../features/ingredients/reference/ReferenceEntryPage'
-import { SmartStartPage } from '../features/ingredients/smart-start/SmartStartPage'
-import { InventoryPage } from '../features/inventory/InventoryPage'
-import { LotDetailPage } from '../features/inventory/LotDetailPage'
-import { LabBatchDetailPage } from '../features/lab/LabBatchDetailPage'
 import { StartBatchHandoffPage, StudioLabHandoff } from '../features/lab/components/StartBatchForm'
-import { TestingPage } from '../features/testing/TestingPage'
-import { ProductionPage } from '../features/production/ProductionPage'
-import { ProductionRunDetailPage } from '../features/production/ProductionRunDetailPage'
-import { CostingPage } from '../features/costing/CostingPage'
-import { PackagingPage } from '../features/packaging/PackagingPage'
-import { PackagingComponentDetailPage } from '../features/packaging/PackagingComponentDetailPage'
-import { PackagingSpecificationPage } from '../features/packaging/PackagingSpecificationPage'
-import { FinishedGoodsPage } from '../features/finished-goods/FinishedGoodsPage'
-import { FinishedGoodsDetailPage } from '../features/finished-goods/FinishedGoodsDetailPage'
-import { FinishedGoodsLotPage } from '../features/finished-goods-control/FinishedGoodsLotPage'
-import { FinishedGoodsInventoryPage } from '../features/finished-goods-control/FinishedGoodsInventoryPage'
-import { TraceabilityPage } from '../features/traceability/TraceabilityPage'
-import { CompliancePage } from '../features/compliance/CompliancePage'
-import { ComplianceDossierPage } from '../features/compliance/ComplianceDossierPage'
-import { LaunchPage } from '../features/launch/LaunchPage'
-import { LaunchPlanPage } from '../features/launch/LaunchPlanPage'
-import { PlatformPage } from '../platform/PlatformPage'
-import { KnowledgePage } from '../features/knowledge/KnowledgePage'
-import { IntelligenceThreadPage } from '../features/knowledge/IntelligenceThreadPage'
-import { ScentMemoryDetailPage } from '../features/knowledge/ScentMemoryDetailPage'
-import { DevelopmentPage } from '../features/development/DevelopmentPage'
-import { ExperimentReviewPage } from '../features/development/ExperimentReviewPage'
-import { DevelopmentExperimentPage } from '../features/development/DevelopmentExperimentPage'
-import { BiblePage } from '../features/knowledge/BiblePage'
 import { procurementRoutes } from '../features/procurement/procurementRoutes'
-import { ProductStudioPage } from '../features/product-studio/ProductStudioPage'
-import { BeardOilStudioPage } from '../features/product-studio/BeardOilStudioPage'
-import { BeardButterStudioPage } from '../features/product-studio/BeardButterStudioPage'
-import { NaturalDeodorantStudioPage } from '../features/product-studio/NaturalDeodorantStudioPage'
-import { BenchmarkLabPage } from '../features/product-studio/BenchmarkLabPage'
-import { IngredientKnowledgePage } from '../features/ingredients/IngredientKnowledgePage'
-import { BeardStudioShell } from '../features/beard-studio/components/BeardStudioShell'
-import { BeardLogPage } from '../features/beard-studio/pages/BeardLogPage'
-import { BeardOverviewPage } from '../features/beard-studio/pages/BeardOverviewPage'
-import { BeardProfilePage } from '../features/beard-studio/pages/BeardProfilePage'
-import { GroomingToolsPage } from '../features/beard-studio/pages/GroomingToolsPage'
-import { LengthMapPage } from '../features/beard-studio/pages/LengthMapPage'
-import { TrimModePage } from '../features/beard-studio/pages/TrimModePage'
-import { TrimRecipesPage } from '../features/beard-studio/pages/TrimRecipesPage'
+
+const ProductsPage=lazy(()=>import('../features/products/ProductsPage').then(m=>({default:m.ProductsPage})))
+const ProductDetailPage=lazy(()=>import('../features/products/ProductDetailPage').then(m=>({default:m.ProductDetailPage})))
+const IngredientsPage=lazy(()=>import('../features/ingredients/IngredientsPage').then(m=>({default:m.IngredientsPage})))
+const IngredientDetailPage=lazy(()=>import('../features/ingredients/IngredientDetailPage').then(m=>({default:m.IngredientDetailPage})))
+const IngredientKnowledgePage=lazy(()=>import('../features/ingredients/IngredientKnowledgePage').then(m=>({default:m.IngredientKnowledgePage})))
+const ReferenceLibraryPage=lazy(()=>import('../features/ingredients/reference/ReferenceLibraryPage').then(m=>({default:m.ReferenceLibraryPage})))
+const ReferenceEntryPage=lazy(()=>import('../features/ingredients/reference/ReferenceEntryPage').then(m=>({default:m.ReferenceEntryPage})))
+const SmartStartPage=lazy(()=>import('../features/ingredients/smart-start/SmartStartPage').then(m=>({default:m.SmartStartPage})))
+const FormulaLibraryPage=lazy(()=>import('../features/formulas/FormulaLibraryPage').then(m=>({default:m.FormulaLibraryPage})))
+const FormulaDetailPage=lazy(()=>import('../features/formulas/FormulaDetailPage').then(m=>({default:m.FormulaDetailPage})))
+const LabPage=lazy(()=>import('../features/lab/LabPage').then(m=>({default:m.LabPage})))
+const LabBatchDetailPage=lazy(()=>import('../features/lab/LabBatchDetailPage').then(m=>({default:m.LabBatchDetailPage})))
+const InventoryPage=lazy(()=>import('../features/inventory/InventoryPage').then(m=>({default:m.InventoryPage})))
+const LotDetailPage=lazy(()=>import('../features/inventory/LotDetailPage').then(m=>({default:m.LotDetailPage})))
+const TestingPage=lazy(()=>import('../features/testing/TestingPage').then(m=>({default:m.TestingPage})))
+const ProductionPage=lazy(()=>import('../features/production/ProductionPage').then(m=>({default:m.ProductionPage})))
+const ProductionRunDetailPage=lazy(()=>import('../features/production/ProductionRunDetailPage').then(m=>({default:m.ProductionRunDetailPage})))
+const CostingPage=lazy(()=>import('../features/costing/CostingPage').then(m=>({default:m.CostingPage})))
+const PackagingPage=lazy(()=>import('../features/packaging/PackagingPage').then(m=>({default:m.PackagingPage})))
+const PackagingComponentDetailPage=lazy(()=>import('../features/packaging/PackagingComponentDetailPage').then(m=>({default:m.PackagingComponentDetailPage})))
+const PackagingSpecificationPage=lazy(()=>import('../features/packaging/PackagingSpecificationPage').then(m=>({default:m.PackagingSpecificationPage})))
+const FinishedGoodsPage=lazy(()=>import('../features/finished-goods/FinishedGoodsPage').then(m=>({default:m.FinishedGoodsPage})))
+const FinishedGoodsDetailPage=lazy(()=>import('../features/finished-goods/FinishedGoodsDetailPage').then(m=>({default:m.FinishedGoodsDetailPage})))
+const FinishedGoodsLotPage=lazy(()=>import('../features/finished-goods-control/FinishedGoodsLotPage').then(m=>({default:m.FinishedGoodsLotPage})))
+const FinishedGoodsInventoryPage=lazy(()=>import('../features/finished-goods-control/FinishedGoodsInventoryPage').then(m=>({default:m.FinishedGoodsInventoryPage})))
+const TraceabilityPage=lazy(()=>import('../features/traceability/TraceabilityPage').then(m=>({default:m.TraceabilityPage})))
+const CompliancePage=lazy(()=>import('../features/compliance/CompliancePage').then(m=>({default:m.CompliancePage})))
+const ComplianceDossierPage=lazy(()=>import('../features/compliance/ComplianceDossierPage').then(m=>({default:m.ComplianceDossierPage})))
+const LaunchPage=lazy(()=>import('../features/launch/LaunchPage').then(m=>({default:m.LaunchPage})))
+const LaunchPlanPage=lazy(()=>import('../features/launch/LaunchPlanPage').then(m=>({default:m.LaunchPlanPage})))
+const PlatformPage=lazy(()=>import('../platform/PlatformPage').then(m=>({default:m.PlatformPage})))
+const ScentHousePage=lazy(()=>import('../features/scent-house/ScentHousePage').then(m=>({default:m.ScentHousePage})))
+const ScentStudioPage=lazy(()=>import('../features/scent-house/ScentStudioPage').then(m=>({default:m.ScentStudioPage})))
+const KnowledgePage=lazy(()=>import('../features/knowledge/KnowledgePage').then(m=>({default:m.KnowledgePage})))
+const IntelligenceThreadPage=lazy(()=>import('../features/knowledge/IntelligenceThreadPage').then(m=>({default:m.IntelligenceThreadPage})))
+const ScentMemoryDetailPage=lazy(()=>import('../features/knowledge/ScentMemoryDetailPage').then(m=>({default:m.ScentMemoryDetailPage})))
+const BiblePage=lazy(()=>import('../features/knowledge/BiblePage').then(m=>({default:m.BiblePage})))
+const DevelopmentPage=lazy(()=>import('../features/development/DevelopmentPage').then(m=>({default:m.DevelopmentPage})))
+const ExperimentReviewPage=lazy(()=>import('../features/development/ExperimentReviewPage').then(m=>({default:m.ExperimentReviewPage})))
+const DevelopmentExperimentPage=lazy(()=>import('../features/development/DevelopmentExperimentPage').then(m=>({default:m.DevelopmentExperimentPage})))
+const ProductStudioPage=lazy(()=>import('../features/product-studio/ProductStudioPage').then(m=>({default:m.ProductStudioPage})))
+const BeardOilStudioPage=lazy(()=>import('../features/product-studio/BeardOilStudioPage').then(m=>({default:m.BeardOilStudioPage})))
+const BeardButterStudioPage=lazy(()=>import('../features/product-studio/BeardButterStudioPage').then(m=>({default:m.BeardButterStudioPage})))
+const NaturalDeodorantStudioPage=lazy(()=>import('../features/product-studio/NaturalDeodorantStudioPage').then(m=>({default:m.NaturalDeodorantStudioPage})))
+const BenchmarkLabPage=lazy(()=>import('../features/product-studio/BenchmarkLabPage').then(m=>({default:m.BenchmarkLabPage})))
+const BeardStudioShell=lazy(()=>import('../features/beard-studio/components/BeardStudioShell').then(m=>({default:m.BeardStudioShell})))
+const BeardLogPage=lazy(()=>import('../features/beard-studio/pages/BeardLogPage').then(m=>({default:m.BeardLogPage})))
+const BeardOverviewPage=lazy(()=>import('../features/beard-studio/pages/BeardOverviewPage').then(m=>({default:m.BeardOverviewPage})))
+const BeardProfilePage=lazy(()=>import('../features/beard-studio/pages/BeardProfilePage').then(m=>({default:m.BeardProfilePage})))
+const GroomingToolsPage=lazy(()=>import('../features/beard-studio/pages/GroomingToolsPage').then(m=>({default:m.GroomingToolsPage})))
+const LengthMapPage=lazy(()=>import('../features/beard-studio/pages/LengthMapPage').then(m=>({default:m.LengthMapPage})))
+const TrimModePage=lazy(()=>import('../features/beard-studio/pages/TrimModePage').then(m=>({default:m.TrimModePage})))
+const TrimRecipesPage=lazy(()=>import('../features/beard-studio/pages/TrimRecipesPage').then(m=>({default:m.TrimRecipesPage})))
 
 export function App() {
   return (

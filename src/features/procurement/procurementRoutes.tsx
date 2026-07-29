@@ -1,11 +1,5 @@
 import type{ReactElement}from'react'
-import{EquipmentDetailPage}from'./EquipmentDetailPage'
-import{EquipmentPage}from'./EquipmentPage'
-import{LegacySupplierDetailRedirect}from'./LegacySupplierDetailRedirect'
-import{ProcurementPage}from'./ProcurementPage'
-import{ProcurementRequestPage}from'./ProcurementRequestPage'
-import{SuppliersPage}from'./SuppliersPage'
-import{ProductionReadinessPage}from'./production-readiness/ProductionReadinessPage'
+import{EquipmentDetailPage,EquipmentPage,LegacySupplierDetailRedirect,ProcurementPage,ProcurementRequestPage,ProductionReadinessPage,SuppliersPage}from'./ProcurementLazyPages'
 
 export const procurementRoutes:Array<{path:string;element:ReactElement}>=[
  {path:'suppliers',element:<SuppliersPage/>},

@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { Suspense, useState } from 'react'
 import { Outlet } from 'react-router-dom'
 import { Menu, Search } from 'lucide-react'
 import { Sidebar } from './Sidebar'
 import { RouteScrollRestoration } from './RouteScrollRestoration'
 import { configuredWorkspaceRuntime, workspaceRuntimeLabel } from '../../platform/startup/runtimeMode'
 import { SecureLogoutButton } from '../../platform/auth/AuthGate'
+import { RouteLoadingFallback } from '../ui/RouteLoadingFallback'
 
 export function AppShell() {
   const [menuOpen, setMenuOpen] = useState(false)
@@ -26,7 +27,7 @@ export function AppShell() {
             <div className="account-menu"><span>{workspaceIdentity.title}</span><SecureLogoutButton /></div>
           </details>
         </header>
-        <main className="page"><Outlet /></main>
+        <main className="page"><Suspense fallback={<RouteLoadingFallback />}><Outlet /></Suspense></main>
       </div>
     </div>
   )
