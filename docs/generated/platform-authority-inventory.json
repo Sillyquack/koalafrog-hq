@@ -7000,8 +7000,8 @@
       ],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 657559,
-        "lines": 19316
+        "bytes": 657558,
+        "lines": 19315
       }
     },
     {
@@ -20633,6 +20633,6 @@
   ],
   "generatedAt": "2026-07-29T12:00:00+02:00",
   "sourceCommit": "content-addressed-by-sourceHash",
-  "sourceHash": "65a1b3555d8ebe94dedb66da7976c16625c99fe09e1bad89d4b088c64a458a63",
+  "sourceHash": "8155cab29184ba360d0578059fb1fb947d9231b9e66793989baea06eae046ef8",
   "version": "1.0.0"
 }
