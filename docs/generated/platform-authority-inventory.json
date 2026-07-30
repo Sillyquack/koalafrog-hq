@@ -1812,6 +1812,7 @@
         "../../compliance/domain/complianceLogic",
         "../../finished-goods/domain/finishedGoodsLogic",
         "../../ingredients/domain/ingredientKnowledge",
+        "../../ingredients/domain/supplierProductIdentity",
         "../../inventory/domain/inventoryLogic",
         "../../lab/domain/labLogic",
         "../../packaging/domain/packagingLogic",
@@ -1836,8 +1837,8 @@
         "../data/formulaRepository"
       ],
       "sizeMetrics": {
-        "bytes": 75524,
-        "lines": 1979
+        "bytes": 76269,
+        "lines": 1996
       }
     },
     {
@@ -1872,8 +1873,40 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 17594,
-        "lines": 64
+        "bytes": 17869,
+        "lines": 65
+      }
+    },
+    {
+      "canonicalRepository": null,
+      "classification": "canonical_read_model",
+      "crossDomainDependencies": [],
+      "domainOwner": "ingredients",
+      "legacyDependency": [],
+      "modulePath": "src/features/ingredients/components/supplierProductSubmission.test.ts",
+      "objectType": "module",
+      "responsibility": "module",
+      "riskNotes": [],
+      "serverAuthoritativePoliciesConsumed": [],
+      "sizeMetrics": {
+        "bytes": 1300,
+        "lines": 45
+      }
+    },
+    {
+      "canonicalRepository": null,
+      "classification": "canonical_read_model",
+      "crossDomainDependencies": [],
+      "domainOwner": "ingredients",
+      "legacyDependency": [],
+      "modulePath": "src/features/ingredients/components/supplierProductSubmission.ts",
+      "objectType": "module",
+      "responsibility": "module",
+      "riskNotes": [],
+      "serverAuthoritativePoliciesConsumed": [],
+      "sizeMetrics": {
+        "bytes": 479,
+        "lines": 21
       }
     },
     {
@@ -1970,6 +2003,40 @@
       "sizeMetrics": {
         "bytes": 408,
         "lines": 4
+      }
+    },
+    {
+      "canonicalRepository": null,
+      "classification": "canonical_read_model",
+      "crossDomainDependencies": [],
+      "domainOwner": "ingredients",
+      "legacyDependency": [],
+      "modulePath": "src/features/ingredients/domain/supplierProductIdentity.test.ts",
+      "objectType": "domain_module",
+      "responsibility": "domain module",
+      "riskNotes": [],
+      "serverAuthoritativePoliciesConsumed": [],
+      "sizeMetrics": {
+        "bytes": 1050,
+        "lines": 37
+      }
+    },
+    {
+      "canonicalRepository": null,
+      "classification": "canonical_read_model",
+      "crossDomainDependencies": [
+        "../../../types/domain"
+      ],
+      "domainOwner": "ingredients",
+      "legacyDependency": [],
+      "modulePath": "src/features/ingredients/domain/supplierProductIdentity.ts",
+      "objectType": "domain_module",
+      "responsibility": "domain module",
+      "riskNotes": [],
+      "serverAuthoritativePoliciesConsumed": [],
+      "sizeMetrics": {
+        "bytes": 768,
+        "lines": 26
       }
     },
     {
@@ -4965,8 +5032,8 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 7826,
-        "lines": 28
+        "bytes": 8468,
+        "lines": 29
       }
     },
     {
@@ -6715,15 +6782,17 @@
       "modulePath": "src/platform/repository/relationalMigration.integration.test.ts",
       "objectType": "module",
       "responsibility": "module",
-      "riskNotes": [],
+      "riskNotes": [
+        "oversized_module"
+      ],
       "serverAuthoritativePoliciesConsumed": [
         "./localWorkspaceRepository",
         "./supabaseWorkspaceRepository",
         "./workspaceRepository"
       ],
       "sizeMetrics": {
-        "bytes": 68645,
-        "lines": 493
+        "bytes": 72563,
+        "lines": 553
       }
     },
     {
@@ -14955,11 +15024,13 @@
       "deprecationState": "operational_support",
       "domainOwner": "suppliers",
       "evidenceSource": "local PostgreSQL catalogue",
-      "expectedGrants": null,
+      "expectedGrants": [
+        "authenticated"
+      ],
       "historicalOrCurrent": "current",
       "mutationPath": "RLS",
       "name": "supplier_products.owner_all",
-      "notes": "*: (owner_id = auth.uid()) (owner_id = auth.uid())",
+      "notes": "*: ((owner_id = ( SELECT auth.uid() AS uid)) AND (EXISTS ( SELECT 1\n   FROM workspaces workspace\n  WHERE ((workspace.id = supplier_products.workspace_id) AND (workspace.owner_id = ( SELECT auth.uid() AS uid)))))) ((owner_id = ( SELECT auth.uid() AS uid)) AND (EXISTS ( SELECT 1\n   FROM workspaces workspace\n  WHERE ((workspace.id = supplier_products.workspace_id) AND (workspace.owner_id = ( SELECT auth.uid() AS uid)) AND (workspace.lifecycle_state = 'active'::text)))))",
       "objectType": "rls_policy",
       "readAuthority": "database policy",
       "replacement": null,
@@ -20939,6 +21010,6 @@
   ],
   "generatedAt": "2026-07-29T12:00:00+02:00",
   "sourceCommit": "content-addressed-by-sourceHash",
-  "sourceHash": "7412ee64d785d3195a40c1df87234539e78c03c7421e8c104379c370340fd762",
+  "sourceHash": "176c88afc81d17f8093b08f342a3e633275d89876778fb23b122ecd953ff992f",
   "version": "1.0.0"
 }

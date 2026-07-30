@@ -7523,6 +7523,19 @@
     {
       "columns": [
         "workspace_id",
+        "owner_id"
+      ],
+      "constraint": "supplier_products_workspace_owner_fk",
+      "estimatedRows": 0,
+      "recommendation": null,
+      "references": "workspaces",
+      "schema": "public",
+      "status": "partially_covered",
+      "table": "supplier_products"
+    },
+    {
+      "columns": [
+        "workspace_id",
         "equipment_item_id"
       ],
       "constraint": "quote_lines_equipment_fk",
@@ -7977,7 +7990,7 @@
     "covered": 266,
     "intentionally_unindexed": 0,
     "missing": 114,
-    "partially_covered": 249
+    "partially_covered": 250
   },
   "version": "1.0.0"
 }

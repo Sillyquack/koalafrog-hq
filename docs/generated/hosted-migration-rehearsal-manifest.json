@@ -3,9 +3,9 @@
   "generatedAt": "2026-07-29T14:00:00+02:00",
   "rcTag": "finished-goods-traceability-recall-v1-rc1",
   "rcCommit": "bd5617c70dd8ca21611f63750f2293e40a83c8b4",
-  "localMigrationHead": "20260730123820",
+  "localMigrationHead": "20260730154408",
   "hostedStateVerified": false,
-  "count": 88,
+  "count": 89,
   "provenance": {
     "invariant": "Committed evidence never stores the hash of the commit containing that evidence.",
     "stableIdentityFields": [
@@ -14,8 +14,8 @@
       "filename",
       "sourceHash"
     ],
-    "introducingCommitResolution": "Derived at audit runtime with Git history; never persisted in this manifest.",
-    "headVerification": "Each migration SHA-256 is compared with the same path at current HEAD during audit check.",
+    "introducingCommitResolution": "Derived at audit runtime with Git history; a new pre-commit migration is verified from the staged index; neither reference is persisted in this manifest.",
+    "headVerification": "Each migration SHA-256 is compared with the same path at current HEAD, or its exact staged snapshot before the introducing commit, during audit check.",
     "cleanTreeGate": "deploy:preflight requires a clean working tree before running this audit."
   },
   "migrations": [
@@ -3392,6 +3392,39 @@
       "hostedApplicationStatus": "pending_rehearsal",
       "authorizationRequired": true,
       "sourceHash": "9adea904a895360182cc92af554a47985aaf41d4363aa7f7d406a5227d894ed6"
+    },
+    {
+      "orderedIndex": 89,
+      "filename": "20260730154408_supplier_product_owner_workspace_integrity.sql",
+      "timestamp": "20260730154408",
+      "milestone": "supplier product owner workspace integrity",
+      "purpose": "supplier product owner workspace integrity",
+      "dependencies": [
+        "20260730123820_workspace_foundation_authoring_v1.sql"
+      ],
+      "requiredExtensions": [],
+      "expectedObjectChanges": {
+        "tables": [],
+        "functions": [],
+        "policies": [
+          "owner_all"
+        ],
+        "indexes": 0
+      },
+      "expectedDataChanges": 0,
+      "lockRisk": "low",
+      "tableRewriteRisk": "not_detected",
+      "destructiveBehavior": "none detected",
+      "longTransactionRisk": "low_or_unknown",
+      "durationClass": "short_expected",
+      "classification": "authority_change",
+      "rollbackClassification": "code_rollback_or_forward_fix",
+      "forwardFixStrategy": "append a reviewed migration; never rewrite immutable business history",
+      "verificationQuery": "compare migration head, authority inventory, object counts, grants, RLS, and focused domain contracts",
+      "stopCondition": "migration error, drift, timeout, or object mismatch",
+      "hostedApplicationStatus": "pending_rehearsal",
+      "authorizationRequired": true,
+      "sourceHash": "50032fc97722afa64bbb810d971c29325f31f6e507bdedd290042c0f51dfc6b1"
     }
   ]
 }
