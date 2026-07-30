@@ -131,6 +131,7 @@ export function calculateInventoryGap(input: { requirement: ConsolidatedRequirem
 }
 
 export function selectPackages(gap: number, unit: InventoryUnit, product: Pick<SupplierProduct, 'packageQuantity' | 'packageUnit'>, moq = 1) {
+  if(product.packageQuantity==null||product.packageUnit==null)return{valid:false as const,reason:'Package quantity and unit are not recorded.'}
   if (!areUnitsCompatible(unit, product.packageUnit)) return { valid: false as const, reason: 'Unsupported unit conversion between requirement and package.' }
   const packageSize = convertUnit(product.packageQuantity, product.packageUnit, unit)
   const packageCount = Math.max(Math.ceil(gap / packageSize), Math.ceil(moq))

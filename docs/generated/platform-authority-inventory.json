@@ -344,7 +344,7 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 6563,
+        "bytes": 6707,
         "lines": 27
       }
     },
@@ -1047,7 +1047,7 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 4587,
+        "bytes": 4652,
         "lines": 24
       }
     },
@@ -1872,8 +1872,8 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 15843,
-        "lines": 61
+        "bytes": 17594,
+        "lines": 64
       }
     },
     {
@@ -2024,7 +2024,7 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 11350,
+        "bytes": 11581,
         "lines": 25
       }
     },
@@ -3072,7 +3072,7 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 4009,
+        "bytes": 4055,
         "lines": 9
       }
     },
@@ -3091,7 +3091,7 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 5776,
+        "bytes": 5915,
         "lines": 18
       }
     },
@@ -3113,8 +3113,8 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 4680,
-        "lines": 11
+        "bytes": 7471,
+        "lines": 29
       }
     },
     {
@@ -3134,8 +3134,8 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 4053,
-        "lines": 10
+        "bytes": 7065,
+        "lines": 28
       }
     },
     {
@@ -3336,7 +3336,7 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 4559,
+        "bytes": 4741,
         "lines": 22
       }
     },
@@ -3491,8 +3491,8 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 25514,
-        "lines": 101
+        "bytes": 27211,
+        "lines": 112
       }
     },
     {
@@ -3507,7 +3507,7 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 2185,
+        "bytes": 2193,
         "lines": 13
       }
     },
@@ -3603,8 +3603,8 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 3756,
-        "lines": 3
+        "bytes": 8798,
+        "lines": 26
       }
     },
     {
@@ -3619,8 +3619,8 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 3247,
-        "lines": 3
+        "bytes": 7464,
+        "lines": 27
       }
     },
     {
@@ -3685,7 +3685,7 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 11181,
+        "bytes": 11289,
         "lines": 63
       }
     },
@@ -3701,7 +3701,7 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 16867,
+        "bytes": 18473,
         "lines": 50
       }
     },
@@ -3903,8 +3903,8 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 12767,
-        "lines": 179
+        "bytes": 12911,
+        "lines": 180
       }
     },
     {
@@ -4004,7 +4004,7 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 4970,
+        "bytes": 5028,
         "lines": 62
       }
     },
@@ -4300,7 +4300,7 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 7748,
+        "bytes": 7959,
         "lines": 13
       }
     },
@@ -4965,7 +4965,7 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 7737,
+        "bytes": 7826,
         "lines": 28
       }
     },
@@ -4981,7 +4981,7 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 19904,
+        "bytes": 20642,
         "lines": 122
       }
     },
@@ -7000,8 +7000,8 @@
       ],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 657558,
-        "lines": 19315
+        "bytes": 663803,
+        "lines": 19460
       }
     },
     {
@@ -7069,8 +7069,8 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 27707,
-        "lines": 289
+        "bytes": 28553,
+        "lines": 304
       }
     },
     {
@@ -7498,6 +7498,27 @@
       "schema": "public",
       "signature": "target_receipt_id uuid, expected_receipt_revision bigint, candidate_reason text",
       "writeAuthority": "public.cancel_purchase_order_receipt"
+    },
+    {
+      "browserWritable": false,
+      "classification": "compatibility_read_only",
+      "deprecationState": "compatibility_read_only",
+      "domainOwner": "platform",
+      "evidenceSource": "local PostgreSQL catalogue and migration source",
+      "expectedGrants": [
+        "postgres=X/postgres"
+      ],
+      "historicalOrCurrent": "historical",
+      "mutationPath": "authenticated RPC or internal helper",
+      "name": "capture_workspace_foundation_status_event_v1",
+      "notes": "",
+      "objectType": "function",
+      "readAuthority": "result only",
+      "replacement": null,
+      "rlsEnabled": null,
+      "schema": "public",
+      "signature": "",
+      "writeAuthority": "public.capture_workspace_foundation_status_event_v1"
     },
     {
       "browserWritable": false,
@@ -9986,6 +10007,27 @@
       "schema": "public",
       "signature": "",
       "writeAuthority": "public.normalize_production_inventory_legacy_write"
+    },
+    {
+      "browserWritable": false,
+      "classification": "compatibility_read_only",
+      "deprecationState": "compatibility_read_only",
+      "domainOwner": "platform",
+      "evidenceSource": "local PostgreSQL catalogue and migration source",
+      "expectedGrants": [
+        "postgres=X/postgres"
+      ],
+      "historicalOrCurrent": "historical",
+      "mutationPath": "authenticated RPC or internal helper",
+      "name": "normalize_workspace_foundation_v1",
+      "notes": "",
+      "objectType": "function",
+      "readAuthority": "result only",
+      "replacement": null,
+      "rlsEnabled": null,
+      "schema": "public",
+      "signature": "",
+      "writeAuthority": "public.normalize_workspace_foundation_v1"
     },
     {
       "browserWritable": true,
@@ -15197,6 +15239,26 @@
       "deprecationState": "operational_support",
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
+      "expectedGrants": [
+        "authenticated"
+      ],
+      "historicalOrCurrent": "current",
+      "mutationPath": "RLS",
+      "name": "workspace_foundation_status_events.workspace_foundation_status_events_owner_read",
+      "notes": "r: ((owner_id = ( SELECT auth.uid() AS uid)) AND (EXISTS ( SELECT 1\n   FROM workspaces\n  WHERE ((workspaces.id = workspace_foundation_status_events.workspace_id) AND (workspaces.owner_id = ( SELECT auth.uid() AS uid))))))",
+      "objectType": "rls_policy",
+      "readAuthority": "database policy",
+      "replacement": null,
+      "rlsEnabled": true,
+      "schema": "public",
+      "writeAuthority": "database policy"
+    },
+    {
+      "browserWritable": false,
+      "classification": "operational_support",
+      "deprecationState": "operational_support",
+      "domainOwner": "platform",
+      "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": null,
       "historicalOrCurrent": "current",
       "mutationPath": "RLS",
@@ -19532,6 +19594,28 @@
     },
     {
       "browserWritable": false,
+      "classification": "audit_only",
+      "deprecationState": "audit_only",
+      "domainOwner": "platform",
+      "evidenceSource": "local PostgreSQL catalogue",
+      "expectedGrants": [
+        "authenticated=r/postgres",
+        "postgres=arwdDxtm/postgres",
+        "service_role=Dxtm/postgres"
+      ],
+      "historicalOrCurrent": "historical",
+      "mutationPath": "RPC/service/migration only",
+      "name": "workspace_foundation_status_events",
+      "notes": "",
+      "objectType": "table",
+      "readAuthority": "owner/workspace scoped relation",
+      "replacement": null,
+      "rlsEnabled": true,
+      "schema": "public",
+      "writeAuthority": "none"
+    },
+    {
+      "browserWritable": false,
       "classification": "compatibility_read_only",
       "deprecationState": "compatibility_read_only",
       "domainOwner": "platform-migration",
@@ -19717,6 +19801,42 @@
       "rlsEnabled": null,
       "schema": "public",
       "writeAuthority": "guard_development_experiment_status()"
+    },
+    {
+      "browserWritable": false,
+      "classification": "operational_support",
+      "deprecationState": "operational_support",
+      "domainOwner": "platform",
+      "evidenceSource": "local PostgreSQL catalogue",
+      "expectedGrants": [],
+      "historicalOrCurrent": "current",
+      "mutationPath": "database trigger",
+      "name": "equipment_items.equipment_items_foundation_normalize",
+      "notes": "CREATE TRIGGER equipment_items_foundation_normalize BEFORE INSERT OR UPDATE ON public.equipment_items FOR EACH ROW EXECUTE FUNCTION normalize_workspace_foundation_v1()",
+      "objectType": "trigger",
+      "readAuthority": "none",
+      "replacement": null,
+      "rlsEnabled": null,
+      "schema": "public",
+      "writeAuthority": "normalize_workspace_foundation_v1()"
+    },
+    {
+      "browserWritable": false,
+      "classification": "operational_support",
+      "deprecationState": "operational_support",
+      "domainOwner": "platform",
+      "evidenceSource": "local PostgreSQL catalogue",
+      "expectedGrants": [],
+      "historicalOrCurrent": "current",
+      "mutationPath": "database trigger",
+      "name": "equipment_items.equipment_items_foundation_status_event",
+      "notes": "CREATE TRIGGER equipment_items_foundation_status_event AFTER INSERT OR UPDATE OF status ON public.equipment_items FOR EACH ROW EXECUTE FUNCTION capture_workspace_foundation_status_event_v1('equipment_item', 'status')",
+      "objectType": "trigger",
+      "readAuthority": "none",
+      "replacement": null,
+      "rlsEnabled": null,
+      "schema": "public",
+      "writeAuthority": "capture_workspace_foundation_status_event_v1()"
     },
     {
       "browserWritable": false,
@@ -20213,6 +20333,42 @@
       "expectedGrants": [],
       "historicalOrCurrent": "current",
       "mutationPath": "database trigger",
+      "name": "packaging_components.packaging_components_foundation_normalize",
+      "notes": "CREATE TRIGGER packaging_components_foundation_normalize BEFORE INSERT OR UPDATE ON public.packaging_components FOR EACH ROW EXECUTE FUNCTION normalize_workspace_foundation_v1()",
+      "objectType": "trigger",
+      "readAuthority": "none",
+      "replacement": null,
+      "rlsEnabled": null,
+      "schema": "public",
+      "writeAuthority": "normalize_workspace_foundation_v1()"
+    },
+    {
+      "browserWritable": false,
+      "classification": "operational_support",
+      "deprecationState": "operational_support",
+      "domainOwner": "packaging",
+      "evidenceSource": "local PostgreSQL catalogue",
+      "expectedGrants": [],
+      "historicalOrCurrent": "current",
+      "mutationPath": "database trigger",
+      "name": "packaging_components.packaging_components_foundation_status_event",
+      "notes": "CREATE TRIGGER packaging_components_foundation_status_event AFTER INSERT OR UPDATE OF status ON public.packaging_components FOR EACH ROW EXECUTE FUNCTION capture_workspace_foundation_status_event_v1('packaging_component', 'status')",
+      "objectType": "trigger",
+      "readAuthority": "none",
+      "replacement": null,
+      "rlsEnabled": null,
+      "schema": "public",
+      "writeAuthority": "capture_workspace_foundation_status_event_v1()"
+    },
+    {
+      "browserWritable": false,
+      "classification": "operational_support",
+      "deprecationState": "operational_support",
+      "domainOwner": "packaging",
+      "evidenceSource": "local PostgreSQL catalogue",
+      "expectedGrants": [],
+      "historicalOrCurrent": "current",
+      "mutationPath": "database trigger",
       "name": "packaging_inventory_lots.protect_quality_released_packaging_lot",
       "notes": "CREATE TRIGGER protect_quality_released_packaging_lot BEFORE UPDATE ON public.packaging_inventory_lots FOR EACH ROW EXECUTE FUNCTION protect_quality_released_lot_provenance()",
       "objectType": "trigger",
@@ -20339,6 +20495,42 @@
       "expectedGrants": [],
       "historicalOrCurrent": "current",
       "mutationPath": "database trigger",
+      "name": "packaging_supplier_products.packaging_supplier_products_foundation_normalize",
+      "notes": "CREATE TRIGGER packaging_supplier_products_foundation_normalize BEFORE INSERT OR UPDATE ON public.packaging_supplier_products FOR EACH ROW EXECUTE FUNCTION normalize_workspace_foundation_v1()",
+      "objectType": "trigger",
+      "readAuthority": "none",
+      "replacement": null,
+      "rlsEnabled": null,
+      "schema": "public",
+      "writeAuthority": "normalize_workspace_foundation_v1()"
+    },
+    {
+      "browserWritable": false,
+      "classification": "operational_support",
+      "deprecationState": "operational_support",
+      "domainOwner": "packaging",
+      "evidenceSource": "local PostgreSQL catalogue",
+      "expectedGrants": [],
+      "historicalOrCurrent": "current",
+      "mutationPath": "database trigger",
+      "name": "packaging_supplier_products.packaging_supplier_products_foundation_status_event",
+      "notes": "CREATE TRIGGER packaging_supplier_products_foundation_status_event AFTER INSERT OR UPDATE OF lifecycle_status ON public.packaging_supplier_products FOR EACH ROW EXECUTE FUNCTION capture_workspace_foundation_status_event_v1('packaging_supplier_product', 'lifecycle_status')",
+      "objectType": "trigger",
+      "readAuthority": "none",
+      "replacement": null,
+      "rlsEnabled": null,
+      "schema": "public",
+      "writeAuthority": "capture_workspace_foundation_status_event_v1()"
+    },
+    {
+      "browserWritable": false,
+      "classification": "operational_support",
+      "deprecationState": "operational_support",
+      "domainOwner": "packaging",
+      "evidenceSource": "local PostgreSQL catalogue",
+      "expectedGrants": [],
+      "historicalOrCurrent": "current",
+      "mutationPath": "database trigger",
       "name": "packaging_supplier_products.packaging_supplier_products_phase10_defaults",
       "notes": "CREATE TRIGGER packaging_supplier_products_phase10_defaults BEFORE INSERT OR UPDATE ON public.packaging_supplier_products FOR EACH ROW EXECUTE FUNCTION phase10_supplier_product_defaults()",
       "objectType": "trigger",
@@ -20365,6 +20557,78 @@
       "rlsEnabled": null,
       "schema": "public",
       "writeAuthority": "guard_procurement_webhook_terminal_state()"
+    },
+    {
+      "browserWritable": false,
+      "classification": "operational_support",
+      "deprecationState": "operational_support",
+      "domainOwner": "procurement",
+      "evidenceSource": "local PostgreSQL catalogue",
+      "expectedGrants": [],
+      "historicalOrCurrent": "current",
+      "mutationPath": "database trigger",
+      "name": "procurement_requested_items.procurement_requested_items_foundation_normalize",
+      "notes": "CREATE TRIGGER procurement_requested_items_foundation_normalize BEFORE INSERT OR UPDATE ON public.procurement_requested_items FOR EACH ROW EXECUTE FUNCTION normalize_workspace_foundation_v1()",
+      "objectType": "trigger",
+      "readAuthority": "none",
+      "replacement": null,
+      "rlsEnabled": null,
+      "schema": "public",
+      "writeAuthority": "normalize_workspace_foundation_v1()"
+    },
+    {
+      "browserWritable": false,
+      "classification": "operational_support",
+      "deprecationState": "operational_support",
+      "domainOwner": "procurement",
+      "evidenceSource": "local PostgreSQL catalogue",
+      "expectedGrants": [],
+      "historicalOrCurrent": "current",
+      "mutationPath": "database trigger",
+      "name": "procurement_requested_items.procurement_requested_items_foundation_status_event",
+      "notes": "CREATE TRIGGER procurement_requested_items_foundation_status_event AFTER INSERT OR UPDATE OF status ON public.procurement_requested_items FOR EACH ROW EXECUTE FUNCTION capture_workspace_foundation_status_event_v1('procurement_requested_item', 'status')",
+      "objectType": "trigger",
+      "readAuthority": "none",
+      "replacement": null,
+      "rlsEnabled": null,
+      "schema": "public",
+      "writeAuthority": "capture_workspace_foundation_status_event_v1()"
+    },
+    {
+      "browserWritable": false,
+      "classification": "operational_support",
+      "deprecationState": "operational_support",
+      "domainOwner": "procurement",
+      "evidenceSource": "local PostgreSQL catalogue",
+      "expectedGrants": [],
+      "historicalOrCurrent": "current",
+      "mutationPath": "database trigger",
+      "name": "procurement_requests.procurement_requests_foundation_normalize",
+      "notes": "CREATE TRIGGER procurement_requests_foundation_normalize BEFORE INSERT OR UPDATE ON public.procurement_requests FOR EACH ROW EXECUTE FUNCTION normalize_workspace_foundation_v1()",
+      "objectType": "trigger",
+      "readAuthority": "none",
+      "replacement": null,
+      "rlsEnabled": null,
+      "schema": "public",
+      "writeAuthority": "normalize_workspace_foundation_v1()"
+    },
+    {
+      "browserWritable": false,
+      "classification": "operational_support",
+      "deprecationState": "operational_support",
+      "domainOwner": "procurement",
+      "evidenceSource": "local PostgreSQL catalogue",
+      "expectedGrants": [],
+      "historicalOrCurrent": "current",
+      "mutationPath": "database trigger",
+      "name": "procurement_requests.procurement_requests_foundation_status_event",
+      "notes": "CREATE TRIGGER procurement_requests_foundation_status_event AFTER INSERT OR UPDATE OF status ON public.procurement_requests FOR EACH ROW EXECUTE FUNCTION capture_workspace_foundation_status_event_v1('procurement_request', 'status')",
+      "objectType": "trigger",
+      "readAuthority": "none",
+      "replacement": null,
+      "rlsEnabled": null,
+      "schema": "public",
+      "writeAuthority": "capture_workspace_foundation_status_event_v1()"
     },
     {
       "browserWritable": false,
@@ -20609,6 +20873,42 @@
       "expectedGrants": [],
       "historicalOrCurrent": "current",
       "mutationPath": "database trigger",
+      "name": "supplier_products.supplier_products_foundation_normalize",
+      "notes": "CREATE TRIGGER supplier_products_foundation_normalize BEFORE INSERT OR UPDATE ON public.supplier_products FOR EACH ROW EXECUTE FUNCTION normalize_workspace_foundation_v1()",
+      "objectType": "trigger",
+      "readAuthority": "none",
+      "replacement": null,
+      "rlsEnabled": null,
+      "schema": "public",
+      "writeAuthority": "normalize_workspace_foundation_v1()"
+    },
+    {
+      "browserWritable": false,
+      "classification": "operational_support",
+      "deprecationState": "operational_support",
+      "domainOwner": "suppliers",
+      "evidenceSource": "local PostgreSQL catalogue",
+      "expectedGrants": [],
+      "historicalOrCurrent": "current",
+      "mutationPath": "database trigger",
+      "name": "supplier_products.supplier_products_foundation_status_event",
+      "notes": "CREATE TRIGGER supplier_products_foundation_status_event AFTER INSERT OR UPDATE OF lifecycle_status ON public.supplier_products FOR EACH ROW EXECUTE FUNCTION capture_workspace_foundation_status_event_v1('supplier_product', 'lifecycle_status')",
+      "objectType": "trigger",
+      "readAuthority": "none",
+      "replacement": null,
+      "rlsEnabled": null,
+      "schema": "public",
+      "writeAuthority": "capture_workspace_foundation_status_event_v1()"
+    },
+    {
+      "browserWritable": false,
+      "classification": "operational_support",
+      "deprecationState": "operational_support",
+      "domainOwner": "suppliers",
+      "evidenceSource": "local PostgreSQL catalogue",
+      "expectedGrants": [],
+      "historicalOrCurrent": "current",
+      "mutationPath": "database trigger",
       "name": "supplier_products.supplier_products_phase10_defaults",
       "notes": "CREATE TRIGGER supplier_products_phase10_defaults BEFORE INSERT OR UPDATE ON public.supplier_products FOR EACH ROW EXECUTE FUNCTION phase10_supplier_product_defaults()",
       "objectType": "trigger",
@@ -20639,6 +20939,6 @@
   ],
   "generatedAt": "2026-07-29T12:00:00+02:00",
   "sourceCommit": "content-addressed-by-sourceHash",
-  "sourceHash": "51f948770e8ef312ab8496ef0056d0ad390d415ca03db2f02ef535e2f1ab539c",
+  "sourceHash": "7412ee64d785d3195a40c1df87234539e78c03c7421e8c104379c370340fd762",
   "version": "1.0.0"
 }

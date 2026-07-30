@@ -1,15 +1,15 @@
 {
   "counts": {
-    "foreignKeys": 625,
-    "functions": 206,
-    "indexes": 637,
+    "foreignKeys": 629,
+    "functions": 208,
+    "indexes": 638,
     "materializedViews": 0,
-    "policies": 186,
+    "policies": 187,
     "providers": 5,
     "repositories": 16,
     "routes": 63,
-    "tables": 198,
-    "triggers": 59,
+    "tables": 199,
+    "triggers": 71,
     "views": 0
   },
   "generatedAt": "2026-07-29T12:00:00+02:00",
@@ -3052,6 +3052,30 @@
     },
     {
       "checks": [
+        {
+          "definition": "CHECK ((availability_state = ANY (ARRAY['unknown'::text, 'available'::text, 'in_use'::text, 'unavailable'::text, 'out_of_service'::text])))",
+          "name": "equipment_items_availability_state"
+        },
+        {
+          "definition": "CHECK ((calibration_status = ANY (ARRAY['not_applicable'::text, 'not_recorded'::text, 'to_verify'::text, 'verified'::text, 'calibrated'::text, 'calibration_due'::text, 'out_of_service'::text])))",
+          "name": "equipment_items_calibration_status"
+        },
+        {
+          "definition": "CHECK (((minimum_value IS NULL) OR (maximum_value IS NULL) OR (minimum_value <= maximum_value)))",
+          "name": "equipment_items_measurement_range"
+        },
+        {
+          "definition": "CHECK ((ownership_state = ANY (ARRAY['candidate'::text, 'planned'::text, 'ordered'::text, 'owned'::text, 'not_owned'::text])))",
+          "name": "equipment_items_ownership_state"
+        },
+        {
+          "definition": "CHECK (((quantity IS NULL) OR (quantity > 0)))",
+          "name": "equipment_items_quantity_positive"
+        },
+        {
+          "definition": "CHECK (((precision_value IS NULL) OR (precision_value > (0)::numeric)))",
+          "name": "equipment_items_resolution_positive"
+        },
         {
           "definition": "CHECK ((status = ANY (ARRAY['research'::text, 'planned_purchase'::text, 'ordered'::text, 'available'::text, 'in_use'::text, 'cleaning_required'::text, 'maintenance_required'::text, 'calibration_required'::text, 'out_of_service'::text, 'retired'::text, 'archived'::text])))",
           "name": "equipment_items_status_check"
@@ -8171,9 +8195,42 @@
       "schema": "public"
     },
     {
-      "checks": [],
+      "checks": [
+        {
+          "definition": "CHECK ((((capacity IS NULL) AND (capacity_unit IS NULL)) OR ((capacity > (0)::numeric) AND (capacity_unit IS NOT NULL))))",
+          "name": "packaging_components_capacity_pair"
+        },
+        {
+          "definition": "CHECK ((ownership_state = ANY (ARRAY['not_owned'::text, 'ordered'::text, 'owned'::text])))",
+          "name": "packaging_components_ownership_state"
+        },
+        {
+          "definition": "CHECK ((status = ANY (ARRAY['planned'::text, 'to_source'::text, 'candidate'::text, 'specification_required'::text, 'selected'::text, 'ordered'::text, 'received'::text, 'active'::text, 'rejected'::text, 'discontinued'::text])))",
+          "name": "packaging_components_status_v1"
+        },
+        {
+          "definition": "CHECK ((stock_state = ANY (ARRAY['not_recorded'::text, 'none'::text, 'available'::text, 'unavailable'::text])))",
+          "name": "packaging_components_stock_state"
+        }
+      ],
       "estimatedRows": 0,
       "foreignKeys": [
+        {
+          "columns": [
+            "workspace_id",
+            "supplier_id"
+          ],
+          "name": "packaging_components_supplier_fk",
+          "references": "suppliers"
+        },
+        {
+          "columns": [
+            "workspace_id",
+            "supplier_product_id"
+          ],
+          "name": "packaging_components_supplier_product_fk",
+          "references": "packaging_supplier_products"
+        },
         {
           "columns": [
             "workspace_id"
@@ -9823,12 +9880,32 @@
     {
       "checks": [
         {
+          "definition": "CHECK ((lifecycle_status = ANY (ARRAY['candidate'::text, 'evaluated'::text, 'shortlisted'::text, 'planned'::text, 'quote_requested'::text, 'available'::text, 'unavailable'::text, 'discontinued'::text, 'rejected'::text])))",
+          "name": "packaging_supplier_products_lifecycle_status"
+        },
+        {
+          "definition": "CHECK ((((package_quantity IS NULL) AND (package_unit IS NULL)) OR ((package_quantity > (0)::numeric) AND (NULLIF(TRIM(BOTH FROM package_unit), ''::text) IS NOT NULL))))",
+          "name": "packaging_supplier_products_package_pair"
+        },
+        {
           "definition": "CHECK ((package_quantity > (0)::numeric))",
           "name": "packaging_supplier_products_package_quantity_check"
         },
         {
           "definition": "CHECK ((price > (0)::numeric))",
           "name": "packaging_supplier_products_price_check"
+        },
+        {
+          "definition": "CHECK ((((price IS NULL) AND (currency IS NULL)) OR ((price > (0)::numeric) AND (currency ~ '^[A-Z]{3}$'::text))))",
+          "name": "packaging_supplier_products_price_pair"
+        },
+        {
+          "definition": "CHECK ((price_state = ANY (ARRAY['unknown'::text, 'quote_required'::text, 'recorded'::text])))",
+          "name": "packaging_supplier_products_price_state"
+        },
+        {
+          "definition": "CHECK ((((price_state = 'recorded'::text) AND (price IS NOT NULL)) OR ((price_state <> 'recorded'::text) AND (price IS NULL))))",
+          "name": "packaging_supplier_products_price_state_consistency"
         }
       ],
       "estimatedRows": 0,
@@ -10866,16 +10943,40 @@
           "name": "procurement_requested_items_name_check"
         },
         {
+          "definition": "CHECK (((status <> ALL (ARRAY['ready_to_order'::text, 'ordered'::text, 'partially_received'::text, 'received'::text])) OR ((requested_quantity > (0)::numeric) AND (NULLIF(TRIM(BOTH FROM unit), ''::text) IS NOT NULL))))",
+          "name": "procurement_requested_items_order_ready"
+        },
+        {
           "definition": "CHECK ((priority = ANY (ARRAY['low'::text, 'normal'::text, 'high'::text, 'urgent'::text])))",
           "name": "procurement_requested_items_priority_check"
         },
         {
+          "definition": "CHECK (((target_supplier_product_domain IS NULL) OR (target_supplier_product_domain = ANY (ARRAY['raw_material'::text, 'packaging'::text, 'equipment'::text]))))",
+          "name": "procurement_requested_items_product_domain"
+        },
+        {
+          "definition": "CHECK ((((requested_quantity IS NULL) AND (unit IS NULL)) OR ((requested_quantity > (0)::numeric) AND (NULLIF(TRIM(BOTH FROM unit), ''::text) IS NOT NULL))))",
+          "name": "procurement_requested_items_quantity_pair"
+        },
+        {
           "definition": "CHECK ((requested_quantity > (0)::numeric))",
           "name": "procurement_requested_items_requested_quantity_check"
+        },
+        {
+          "definition": "CHECK ((status = ANY (ARRAY['identified'::text, 'researching'::text, 'specification_required'::text, 'quote_requested'::text, 'planned'::text, 'ready_to_order'::text, 'ordered'::text, 'partially_received'::text, 'received'::text, 'cancelled'::text, 'rejected'::text])))",
+          "name": "procurement_requested_items_status"
         }
       ],
       "estimatedRows": 0,
       "foreignKeys": [
+        {
+          "columns": [
+            "workspace_id",
+            "target_supplier_id"
+          ],
+          "name": "procurement_requested_items_supplier_fk",
+          "references": "suppliers"
+        },
         {
           "columns": [
             "workspace_id",
@@ -10953,8 +11054,8 @@
           "name": "procurement_requests_priority_check"
         },
         {
-          "definition": "CHECK ((status = ANY (ARRAY['needed'::text, 'researching'::text, 'recommended'::text, 'ordered'::text, 'received'::text])))",
-          "name": "procurement_requests_status_check"
+          "definition": "CHECK ((status = ANY (ARRAY['identified'::text, 'researching'::text, 'specification_required'::text, 'quote_requested'::text, 'planned'::text, 'ready_to_order'::text, 'ordered'::text, 'partially_received'::text, 'received'::text, 'cancelled'::text, 'rejected'::text])))",
+          "name": "procurement_requests_status_v1"
         },
         {
           "definition": "CHECK ((length(TRIM(BOTH FROM title)) > 0))",
@@ -18751,12 +18852,32 @@
     {
       "checks": [
         {
+          "definition": "CHECK ((lifecycle_status = ANY (ARRAY['candidate'::text, 'evaluated'::text, 'shortlisted'::text, 'planned'::text, 'quote_requested'::text, 'available'::text, 'unavailable'::text, 'discontinued'::text, 'rejected'::text])))",
+          "name": "supplier_products_lifecycle_status"
+        },
+        {
+          "definition": "CHECK ((((package_quantity IS NULL) AND (package_unit IS NULL)) OR ((package_quantity > (0)::numeric) AND (NULLIF(TRIM(BOTH FROM package_unit), ''::text) IS NOT NULL))))",
+          "name": "supplier_products_package_pair"
+        },
+        {
           "definition": "CHECK ((package_quantity > (0)::numeric))",
           "name": "supplier_products_package_quantity_check"
         },
         {
           "definition": "CHECK ((price > (0)::numeric))",
           "name": "supplier_products_price_check"
+        },
+        {
+          "definition": "CHECK ((((price IS NULL) AND (currency IS NULL)) OR ((price > (0)::numeric) AND (currency ~ '^[A-Z]{3}$'::text))))",
+          "name": "supplier_products_price_pair"
+        },
+        {
+          "definition": "CHECK ((price_state = ANY (ARRAY['unknown'::text, 'quote_required'::text, 'recorded'::text])))",
+          "name": "supplier_products_price_state"
+        },
+        {
+          "definition": "CHECK ((((price_state = 'recorded'::text) AND (price IS NOT NULL)) OR ((price_state <> 'recorded'::text) AND (price IS NULL))))",
+          "name": "supplier_products_price_state_consistency"
         },
         {
           "definition": "CHECK ((product_status = ANY (ARRAY['research'::text, 'reviewing'::text, 'verified_operational'::text, 'inactive'::text, 'discontinued'::text])))",
@@ -19796,6 +19917,55 @@
     {
       "checks": [
         {
+          "definition": "CHECK ((entity_type = ANY (ARRAY['supplier_product'::text, 'packaging_supplier_product'::text, 'packaging_component'::text, 'equipment_item'::text, 'procurement_request'::text, 'procurement_requested_item'::text])))",
+          "name": "workspace_foundation_status_events_entity_type_check"
+        }
+      ],
+      "estimatedRows": 0,
+      "foreignKeys": [
+        {
+          "columns": [
+            "workspace_id"
+          ],
+          "name": "workspace_foundation_status_events_workspace_id_fkey",
+          "references": "workspaces"
+        }
+      ],
+      "generatedColumns": [],
+      "grants": [
+        "authenticated=r/postgres",
+        "postgres=arwdDxtm/postgres",
+        "service_role=Dxtm/postgres"
+      ],
+      "indexes": [
+        {
+          "columns": [
+            "id"
+          ],
+          "name": "workspace_foundation_status_events_pkey",
+          "unique": true,
+          "valid": true
+        }
+      ],
+      "name": "workspace_foundation_status_events",
+      "objectType": "table",
+      "policies": [
+        {
+          "command": "r",
+          "name": "workspace_foundation_status_events_owner_read",
+          "roles": [
+            "authenticated"
+          ],
+          "using": "((owner_id = ( SELECT auth.uid() AS uid)) AND (EXISTS ( SELECT 1\n   FROM workspaces\n  WHERE ((workspaces.id = workspace_foundation_status_events.workspace_id) AND (workspaces.owner_id = ( SELECT auth.uid() AS uid))))))",
+          "withCheck": null
+        }
+      ],
+      "rlsEnabled": true,
+      "schema": "public"
+    },
+    {
+      "checks": [
+        {
           "definition": "CHECK ((jsonb_typeof(data) = 'object'::text))",
           "name": "workspace_records_data_check"
         },
@@ -19983,6 +20153,20 @@
       "name": "guard_development_experiment_status",
       "schema": "public",
       "table": "development_experiments"
+    },
+    {
+      "definition": "CREATE TRIGGER equipment_items_foundation_normalize BEFORE INSERT OR UPDATE ON public.equipment_items FOR EACH ROW EXECUTE FUNCTION normalize_workspace_foundation_v1()",
+      "function": "normalize_workspace_foundation_v1()",
+      "name": "equipment_items_foundation_normalize",
+      "schema": "public",
+      "table": "equipment_items"
+    },
+    {
+      "definition": "CREATE TRIGGER equipment_items_foundation_status_event AFTER INSERT OR UPDATE OF status ON public.equipment_items FOR EACH ROW EXECUTE FUNCTION capture_workspace_foundation_status_event_v1('equipment_item', 'status')",
+      "function": "capture_workspace_foundation_status_event_v1()",
+      "name": "equipment_items_foundation_status_event",
+      "schema": "public",
+      "table": "equipment_items"
     },
     {
       "definition": "CREATE TRIGGER finished_goods_deviations_append_only BEFORE DELETE OR UPDATE ON public.finished_goods_deviations FOR EACH ROW EXECUTE FUNCTION kf_finished_goods_append_only()",
@@ -20174,6 +20358,20 @@
       "table": "packaged_output_reconciliations"
     },
     {
+      "definition": "CREATE TRIGGER packaging_components_foundation_normalize BEFORE INSERT OR UPDATE ON public.packaging_components FOR EACH ROW EXECUTE FUNCTION normalize_workspace_foundation_v1()",
+      "function": "normalize_workspace_foundation_v1()",
+      "name": "packaging_components_foundation_normalize",
+      "schema": "public",
+      "table": "packaging_components"
+    },
+    {
+      "definition": "CREATE TRIGGER packaging_components_foundation_status_event AFTER INSERT OR UPDATE OF status ON public.packaging_components FOR EACH ROW EXECUTE FUNCTION capture_workspace_foundation_status_event_v1('packaging_component', 'status')",
+      "function": "capture_workspace_foundation_status_event_v1()",
+      "name": "packaging_components_foundation_status_event",
+      "schema": "public",
+      "table": "packaging_components"
+    },
+    {
       "definition": "CREATE TRIGGER protect_quality_released_packaging_lot BEFORE UPDATE ON public.packaging_inventory_lots FOR EACH ROW EXECUTE FUNCTION protect_quality_released_lot_provenance()",
       "function": "protect_quality_released_lot_provenance()",
       "name": "protect_quality_released_packaging_lot",
@@ -20223,6 +20421,20 @@
       "table": "packaging_runs"
     },
     {
+      "definition": "CREATE TRIGGER packaging_supplier_products_foundation_normalize BEFORE INSERT OR UPDATE ON public.packaging_supplier_products FOR EACH ROW EXECUTE FUNCTION normalize_workspace_foundation_v1()",
+      "function": "normalize_workspace_foundation_v1()",
+      "name": "packaging_supplier_products_foundation_normalize",
+      "schema": "public",
+      "table": "packaging_supplier_products"
+    },
+    {
+      "definition": "CREATE TRIGGER packaging_supplier_products_foundation_status_event AFTER INSERT OR UPDATE OF lifecycle_status ON public.packaging_supplier_products FOR EACH ROW EXECUTE FUNCTION capture_workspace_foundation_status_event_v1('packaging_supplier_product', 'lifecycle_status')",
+      "function": "capture_workspace_foundation_status_event_v1()",
+      "name": "packaging_supplier_products_foundation_status_event",
+      "schema": "public",
+      "table": "packaging_supplier_products"
+    },
+    {
       "definition": "CREATE TRIGGER packaging_supplier_products_phase10_defaults BEFORE INSERT OR UPDATE ON public.packaging_supplier_products FOR EACH ROW EXECUTE FUNCTION phase10_supplier_product_defaults()",
       "function": "phase10_supplier_product_defaults()",
       "name": "packaging_supplier_products_phase10_defaults",
@@ -20235,6 +20447,34 @@
       "name": "guard_procurement_webhook_terminal_state",
       "schema": "public",
       "table": "procurement_background_webhook_inbox"
+    },
+    {
+      "definition": "CREATE TRIGGER procurement_requested_items_foundation_normalize BEFORE INSERT OR UPDATE ON public.procurement_requested_items FOR EACH ROW EXECUTE FUNCTION normalize_workspace_foundation_v1()",
+      "function": "normalize_workspace_foundation_v1()",
+      "name": "procurement_requested_items_foundation_normalize",
+      "schema": "public",
+      "table": "procurement_requested_items"
+    },
+    {
+      "definition": "CREATE TRIGGER procurement_requested_items_foundation_status_event AFTER INSERT OR UPDATE OF status ON public.procurement_requested_items FOR EACH ROW EXECUTE FUNCTION capture_workspace_foundation_status_event_v1('procurement_requested_item', 'status')",
+      "function": "capture_workspace_foundation_status_event_v1()",
+      "name": "procurement_requested_items_foundation_status_event",
+      "schema": "public",
+      "table": "procurement_requested_items"
+    },
+    {
+      "definition": "CREATE TRIGGER procurement_requests_foundation_normalize BEFORE INSERT OR UPDATE ON public.procurement_requests FOR EACH ROW EXECUTE FUNCTION normalize_workspace_foundation_v1()",
+      "function": "normalize_workspace_foundation_v1()",
+      "name": "procurement_requests_foundation_normalize",
+      "schema": "public",
+      "table": "procurement_requests"
+    },
+    {
+      "definition": "CREATE TRIGGER procurement_requests_foundation_status_event AFTER INSERT OR UPDATE OF status ON public.procurement_requests FOR EACH ROW EXECUTE FUNCTION capture_workspace_foundation_status_event_v1('procurement_request', 'status')",
+      "function": "capture_workspace_foundation_status_event_v1()",
+      "name": "procurement_requests_foundation_status_event",
+      "schema": "public",
+      "table": "procurement_requests"
     },
     {
       "definition": "CREATE TRIGGER guard_procurement_background_job_state BEFORE UPDATE ON public.procurement_research_jobs FOR EACH ROW EXECUTE FUNCTION guard_procurement_background_job_state()",
@@ -20326,6 +20566,20 @@
       "name": "supplier_event_execution_link_guard",
       "schema": "public",
       "table": "supplier_events"
+    },
+    {
+      "definition": "CREATE TRIGGER supplier_products_foundation_normalize BEFORE INSERT OR UPDATE ON public.supplier_products FOR EACH ROW EXECUTE FUNCTION normalize_workspace_foundation_v1()",
+      "function": "normalize_workspace_foundation_v1()",
+      "name": "supplier_products_foundation_normalize",
+      "schema": "public",
+      "table": "supplier_products"
+    },
+    {
+      "definition": "CREATE TRIGGER supplier_products_foundation_status_event AFTER INSERT OR UPDATE OF lifecycle_status ON public.supplier_products FOR EACH ROW EXECUTE FUNCTION capture_workspace_foundation_status_event_v1('supplier_product', 'lifecycle_status')",
+      "function": "capture_workspace_foundation_status_event_v1()",
+      "name": "supplier_products_foundation_status_event",
+      "schema": "public",
+      "table": "supplier_products"
     },
     {
       "definition": "CREATE TRIGGER supplier_products_phase10_defaults BEFORE INSERT OR UPDATE ON public.supplier_products FOR EACH ROW EXECUTE FUNCTION phase10_supplier_product_defaults()",

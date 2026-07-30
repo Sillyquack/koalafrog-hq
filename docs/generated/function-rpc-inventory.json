@@ -292,6 +292,22 @@
       "volatility": "v"
     },
     {
+      "approximateComplexity": 5,
+      "grants": [
+        "postgres=X/postgres"
+      ],
+      "name": "capture_workspace_foundation_status_event_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "trigger",
+      "schema": "public",
+      "searchPath": "\"\"",
+      "securityDefiner": true,
+      "signature": "",
+      "sourceLength": 26,
+      "volatility": "v"
+    },
+    {
       "approximateComplexity": 3,
       "grants": [
         "postgres=X/postgres",
@@ -2207,6 +2223,22 @@
       "securityDefiner": false,
       "signature": "",
       "sourceLength": 69,
+      "volatility": "v"
+    },
+    {
+      "approximateComplexity": 2,
+      "grants": [
+        "postgres=X/postgres"
+      ],
+      "name": "normalize_workspace_foundation_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "trigger",
+      "schema": "public",
+      "searchPath": "\"\"",
+      "securityDefiner": false,
+      "signature": "",
+      "sourceLength": 44,
       "volatility": "v"
     },
     {

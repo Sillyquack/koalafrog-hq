@@ -9,7 +9,7 @@ import type {ProcurementData,ProcurementPriority,ProcurementRequestStatus} from 
 import {useProcurement} from './useProcurement'
 import {PurchasingIntelligencePanel} from './PurchasingIntelligencePanel'
 
-const statuses:ProcurementRequestStatus[]=['needed','researching','recommended','ordered','received']
+const statuses:ProcurementRequestStatus[]=['identified','researching','specification_required','quote_requested','planned','ready_to_order','ordered','partially_received','received','cancelled','rejected']
 const priorities:ProcurementPriority[]=['low','normal','high','urgent']
 function download(name:string,content:string,type:string){const url=URL.createObjectURL(new Blob([content],{type})),anchor=document.createElement('a');anchor.href=url;anchor.download=name;anchor.click();URL.revokeObjectURL(url)}
 function PurchaseExecutionPanel({data,refresh}:{data:ProcurementData;refresh:()=>Promise<void>}){
@@ -28,7 +28,7 @@ export function ProcurementPage(){
  })??[],[data,search,status,category,priority,supplier])
  if(error)return <section className="panel procurement-state" role="alert"><h1>Procurement unavailable</h1><p>{error}</p><button className="button ghost" onClick={refresh}>Retry</button></section>
  if(!data)return <section className="panel procurement-state"><p>Loading hosted procurement…</p></section>
- const create=async(form:HTMLFormElement)=>{if(!workspace)return;const values=Object.fromEntries(new FormData(form));try{await procurementActions.createRequest(workspace.workspaceId,{title:values.title,status:'needed',category:values.category,priority:values.priority,needed_by:values.needed_by||null,notes:values.notes||''});setCreating(false);setMessage('Request created.');await refresh()}catch(cause){setMessage(cause instanceof Error?cause.message:'Could not create request.')}}
+ const create=async(form:HTMLFormElement)=>{if(!workspace)return;const values=Object.fromEntries(new FormData(form));try{await procurementActions.createRequest(workspace.workspaceId,{title:values.title,status:'identified',category:values.category,priority:values.priority,needed_by:values.needed_by||null,notes:values.notes||''});setCreating(false);setMessage('Request created.');await refresh()}catch(cause){setMessage(cause instanceof Error?cause.message:'Could not create request.')}}
  const createDemo=async()=>{if(!workspace)return;try{await procurementActions.importSnapshot(workspace.workspaceId,procurementDemo);setMessage('Demo request added.');await refresh()}catch(cause){setMessage(cause instanceof Error?cause.message:'Could not add demo request.')}}
  const importJson=async(file:File)=>{if(!workspace)return;try{const bundle=parseProcurementJson(await file.text());await procurementActions.importSnapshot(workspace.workspaceId,bundle);setMessage('Procurement JSON imported.');await refresh()}catch(cause){setMessage(cause instanceof Error?cause.message:'Could not import JSON.')}finally{if(importRef.current)importRef.current.value=''}}
  return <div className="procurement-workspace">

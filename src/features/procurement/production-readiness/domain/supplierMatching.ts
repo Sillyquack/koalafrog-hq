@@ -29,7 +29,7 @@ export function classifySupplierProduct(input:{spec:PurchasingSpecification;prod
   if(mappingExact){reasons.push('Accepted canonical Ingredient mapping');score+=55}
   else if(product.ingredientId===spec.ingredientId){reasons.push('Legacy Ingredient association requires explicit acceptance');score+=35}
   else mismatches.push('Missing canonical mapping')
-  const unitCompatible=areUnitsCompatible(spec.requiredUnit,product.packageUnit)
+  const unitCompatible=product.packageUnit!=null&&product.packageQuantity!=null&&areUnitsCompatible(spec.requiredUnit,product.packageUnit)
   if(unitCompatible){reasons.push('Package unit is compatible');score+=20}else mismatches.push('Mass, volume, and count cannot be converted without an approved basis')
   const packageResult=unitCompatible?selectPackages(spec.minimumGap,spec.requiredUnit,product,input.moq??1):null
   const verification=product.verification

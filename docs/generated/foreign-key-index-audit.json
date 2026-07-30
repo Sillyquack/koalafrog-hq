@@ -3570,6 +3570,32 @@
     },
     {
       "columns": [
+        "workspace_id",
+        "supplier_id"
+      ],
+      "constraint": "packaging_components_supplier_fk",
+      "estimatedRows": 0,
+      "recommendation": null,
+      "references": "suppliers",
+      "schema": "public",
+      "status": "partially_covered",
+      "table": "packaging_components"
+    },
+    {
+      "columns": [
+        "workspace_id",
+        "supplier_product_id"
+      ],
+      "constraint": "packaging_components_supplier_product_fk",
+      "estimatedRows": 0,
+      "recommendation": null,
+      "references": "packaging_supplier_products",
+      "schema": "public",
+      "status": "partially_covered",
+      "table": "packaging_components"
+    },
+    {
+      "columns": [
         "workspace_id"
       ],
       "constraint": "packaging_components_workspace_id_fkey",
@@ -4578,6 +4604,19 @@
       "schema": "public",
       "status": "partially_covered",
       "table": "procurement_recommendations"
+    },
+    {
+      "columns": [
+        "workspace_id",
+        "target_supplier_id"
+      ],
+      "constraint": "procurement_requested_items_supplier_fk",
+      "estimatedRows": 0,
+      "recommendation": null,
+      "references": "suppliers",
+      "schema": "public",
+      "status": "partially_covered",
+      "table": "procurement_requested_items"
     },
     {
       "columns": [
@@ -7886,6 +7925,18 @@
     },
     {
       "columns": [
+        "workspace_id"
+      ],
+      "constraint": "workspace_foundation_status_events_workspace_id_fkey",
+      "estimatedRows": 0,
+      "recommendation": "Review index (workspace_id) using query and growth evidence.",
+      "references": "workspaces",
+      "schema": "public",
+      "status": "missing",
+      "table": "workspace_foundation_status_events"
+    },
+    {
+      "columns": [
         "owner_id"
       ],
       "constraint": "workspace_records_owner_id_fkey",
@@ -7925,8 +7976,8 @@
   "summary": {
     "covered": 266,
     "intentionally_unindexed": 0,
-    "missing": 113,
-    "partially_covered": 246
+    "missing": 114,
+    "partially_covered": 249
   },
   "version": "1.0.0"
 }
