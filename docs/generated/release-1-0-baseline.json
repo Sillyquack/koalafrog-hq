@@ -1,0 +1,162 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-07-30T12:30:00+02:00",
+  "release": {
+    "name": "Koalafrog HQ Release 1.0 Foundation",
+    "date": "2026-07-30",
+    "applicationVersion": "0.13.0",
+    "status": "ACCEPTED_FOR_VERIFIED_SCOPE"
+  },
+  "repository": {
+    "name": "Sillyquack/koalafrog-hq",
+    "productionBranch": "main",
+    "authoritativeCommit": "638c0ea3ff67bc086776085d5605a59bd74cde5f",
+    "evidenceBranch": "docs/release-1-0-baseline"
+  },
+  "database": {
+    "migrationCount": 87,
+    "immutableProductionPrefix": 62,
+    "strictReleaseSuffix": 25,
+    "status": "PASS",
+    "schemaCounts": {
+      "tables": 198,
+      "columns": 3834,
+      "constraints": 1966,
+      "functions": 206,
+      "policies": 186,
+      "triggers": 59,
+      "indexes": 637,
+      "trackedComments": 27,
+      "rlsTables": 198,
+      "tableGrants": 3594,
+      "routineGrants": 632
+    }
+  },
+  "environments": {
+    "production": {
+      "projectRef": "fetmeynkvylznapdikht",
+      "status": "ACTIVE_HEALTHY",
+      "region": "eu-west-1"
+    },
+    "rc2Rehearsal": {
+      "projectRef": "sudsujokeccipbigfcgq",
+      "status": "ACTIVE_HEALTHY",
+      "retainedAtBaseline": true
+    },
+    "cloudflareProduction": {
+      "project": "koalafrog-hq",
+      "branch": "main",
+      "url": "https://koalafrog-hq.pages.dev"
+    },
+    "cloudflarePreview": {
+      "binding": "isolated preview variables; last validated against RC2"
+    },
+    "localSupabase": {
+      "status": "PASS"
+    },
+    "githubMain": {
+      "commit": "638c0ea3ff67bc086776085d5605a59bd74cde5f"
+    }
+  },
+  "recovery": {
+    "backupType": "physical",
+    "sourceBackupTimestamp": "2026-07-30T04:17:57.342Z",
+    "restoreToNewProject": "PASS",
+    "authDatabaseRecordsPreserved": true,
+    "policy": "forward-fix for applied production migrations; restore only by explicit recovery decision"
+  },
+  "tests": {
+    "pgTap": {
+      "status": "PASS",
+      "count": 1212
+    },
+    "supabaseIntegration": {
+      "status": "PASS",
+      "count": 53
+    },
+    "unitComponent": {
+      "status": "PASS",
+      "passed": 895,
+      "skipped": 53
+    },
+    "desktopE2e": {
+      "status": "PASS",
+      "count": 14
+    },
+    "mobileE2e": {
+      "status": "PASS",
+      "count": 9
+    },
+    "lint": "PASS",
+    "build": "PASS",
+    "accessibility": "PASS_WITH_RECORDED_LIMITATIONS",
+    "documentation": "PASS",
+    "secrets": "PASS",
+    "authority": "PASS",
+    "privileges": "PASS",
+    "migrations": "PASS",
+    "deploymentPreparation": "PASS",
+    "mergeReview": "PASS",
+    "restoreVerification": "PASS",
+    "productionSmoke": {
+      "status": "PASS",
+      "routes": 16,
+      "writePerformed": false
+    }
+  },
+  "security": {
+    "authOwnership": "private workspace owner",
+    "rlsParity": "PASS",
+    "twoOwnerIsolation": "PASS",
+    "rpcIsolation": "PASS",
+    "securityDefinerHardening": "PASS",
+    "grantsAndRevokes": "PASS",
+    "productionAuthPreserved": "PASS",
+    "secretScan": "PASS",
+    "acceptedAdvisorWarnings": true
+  },
+  "knownIssues": [
+    {
+      "issue": 25,
+      "status": "OPEN",
+      "advisory": "GHSA-qwww-vcr4-c8h2",
+      "severity": "high",
+      "acceptance": "documented constrained risk; automated release monitoring active"
+    },
+    {
+      "id": "large-main-chunk",
+      "status": "ACCEPTED",
+      "impact": "performance optimization opportunity"
+    },
+    {
+      "id": "platform-page-dynamic-import",
+      "status": "ACCEPTED",
+      "impact": "code-splitting optimization opportunity"
+    }
+  ],
+  "evidenceFiles": [
+    "docs/MIGRATION_PROVENANCE_RECONCILIATION.md",
+    "docs/generated/migration-provenance-reconciliation.json",
+    "docs/generated/production-migration-62-to-87-report.md",
+    "docs/generated/production-migration-62-to-87-evidence.json",
+    "docs/generated/rc2-rehearsal-report.md",
+    "docs/generated/rc2-rehearsal-evidence.json",
+    "docs/generated/rc2-parity-evidence.json",
+    "docs/generated/rc2-deployment-evidence.json",
+    "docs/generated/controlled-merge-review-manifest.json",
+    "docs/generated/finished-goods-traceability-recall-rc.json",
+    "docs/generated/platform-authority-inventory.json",
+    "docs/generated/privilege-audit.json",
+    "docs/generated/local-restore-readiness.json",
+    "docs/generated/documentation-audit.json"
+  ],
+  "openIssues": [
+    25
+  ],
+  "acceptance": {
+    "status": "ACCEPTED_FOR_VERIFIED_SCOPE",
+    "technicalFoundationOnly": true,
+    "legalOrRegulatoryApproval": false,
+    "allFutureWorkflowsComplete": false
+  }
+}
