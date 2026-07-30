@@ -14,6 +14,7 @@
     "test:e2e:stale": "playwright test --project=desktop --grep @stale",
     "test:bible": "vitest run src/features/knowledge/bible/bibleContent.test.ts",
     "test:supabase": "node scripts/test-supabase.mjs",
+    "test:supplier-price-state-upgrade": "node scripts/test-supplier-product-price-state-upgrade.mjs",
     "test:packaging-run": "node scripts/test-packaging-run.mjs",
     "test:finished-goods-lots": "node scripts/test-finished-goods-lots.mjs",
     "test:finished-goods-quality": "node scripts/test-finished-goods-lots.mjs",

@@ -2,13 +2,84 @@
 -- from inventory lots and movements; unknown facts are represented by NULL.
 
 alter table public.supplier_products
+  add column package_description text,
+  add column lifecycle_status text,
+  add column price_state text;
+
+do $$
+declare
+  contradiction_count bigint;
+begin
+  select count(*)
+  into contradiction_count
+  from public.supplier_products
+  where (price is null) <> (currency is null);
+
+  if contradiction_count > 0 then
+    raise exception
+      using
+        errcode = '23514',
+        message = format(
+          'Workspace Foundation Authoring cannot normalize Supplier Product prices: %s row(s) contain price without currency or currency without price',
+          contradiction_count
+        );
+  end if;
+
+  select count(*)
+  into contradiction_count
+  from public.supplier_products
+  where price is not null and price <= 0;
+
+  if contradiction_count > 0 then
+    raise exception
+      using
+        errcode = '23514',
+        message = format(
+          'Workspace Foundation Authoring cannot normalize Supplier Product prices: %s row(s) contain a zero or negative price',
+          contradiction_count
+        );
+  end if;
+
+  select count(*)
+  into contradiction_count
+  from public.supplier_products
+  where (package_quantity is null) <> (package_unit is null)
+     or (package_quantity is not null and package_quantity <= 0)
+     or (package_unit is not null and nullif(trim(package_unit), '') is null);
+
+  if contradiction_count > 0 then
+    raise exception
+      using
+        errcode = '23514',
+        message = format(
+          'Workspace Foundation Authoring cannot normalize Supplier Product packages: %s row(s) contain incomplete or invalid package facts',
+          contradiction_count
+        );
+  end if;
+end
+$$;
+
+update public.supplier_products
+set lifecycle_status = case
+      when discontinued then 'discontinued'
+      when availability_status = 'in_stock' then 'available'
+      when availability_status = 'out_of_stock' then 'unavailable'
+      else 'evaluated'
+    end,
+    price_state = case
+      when price is not null then 'recorded'
+      else 'unknown'
+    end;
+
+alter table public.supplier_products
   alter column package_quantity drop not null,
   alter column package_unit drop not null,
   alter column price drop not null,
   alter column currency drop not null,
-  add column package_description text,
-  add column lifecycle_status text not null default 'candidate',
-  add column price_state text not null default 'unknown',
+  alter column lifecycle_status set default 'candidate',
+  alter column lifecycle_status set not null,
+  alter column price_state set default 'unknown',
+  alter column price_state set not null,
   add constraint supplier_products_package_pair check (
     (package_quantity is null and package_unit is null)
     or (package_quantity > 0 and nullif(trim(package_unit), '') is not null)
@@ -31,23 +102,85 @@ alter table public.supplier_products
     or (price_state <> 'recorded' and price is null)
   );
 
-update public.supplier_products
+alter table public.packaging_supplier_products
+  add column package_description text,
+  add column lifecycle_status text,
+  add column price_state text;
+
+do $$
+declare
+  contradiction_count bigint;
+begin
+  select count(*)
+  into contradiction_count
+  from public.packaging_supplier_products
+  where (price is null) <> (currency is null);
+
+  if contradiction_count > 0 then
+    raise exception
+      using
+        errcode = '23514',
+        message = format(
+          'Workspace Foundation Authoring cannot normalize Packaging Supplier Product prices: %s row(s) contain price without currency or currency without price',
+          contradiction_count
+        );
+  end if;
+
+  select count(*)
+  into contradiction_count
+  from public.packaging_supplier_products
+  where price is not null and price <= 0;
+
+  if contradiction_count > 0 then
+    raise exception
+      using
+        errcode = '23514',
+        message = format(
+          'Workspace Foundation Authoring cannot normalize Packaging Supplier Product prices: %s row(s) contain a zero or negative price',
+          contradiction_count
+        );
+  end if;
+
+  select count(*)
+  into contradiction_count
+  from public.packaging_supplier_products
+  where (package_quantity is null) <> (package_unit is null)
+     or (package_quantity is not null and package_quantity <= 0)
+     or (package_unit is not null and nullif(trim(package_unit), '') is null);
+
+  if contradiction_count > 0 then
+    raise exception
+      using
+        errcode = '23514',
+        message = format(
+          'Workspace Foundation Authoring cannot normalize Packaging Supplier Product packages: %s row(s) contain incomplete or invalid package facts',
+          contradiction_count
+        );
+  end if;
+end
+$$;
+
+update public.packaging_supplier_products
 set lifecycle_status = case
       when discontinued then 'discontinued'
       when availability_status = 'in_stock' then 'available'
       when availability_status = 'out_of_stock' then 'unavailable'
       else 'evaluated'
     end,
-    price_state = 'recorded';
+    price_state = case
+      when price is not null then 'recorded'
+      else 'unknown'
+    end;
 
 alter table public.packaging_supplier_products
   alter column package_quantity drop not null,
   alter column package_unit drop not null,
   alter column price drop not null,
   alter column currency drop not null,
-  add column package_description text,
-  add column lifecycle_status text not null default 'candidate',
-  add column price_state text not null default 'unknown',
+  alter column lifecycle_status set default 'candidate',
+  alter column lifecycle_status set not null,
+  alter column price_state set default 'unknown',
+  alter column price_state set not null,
   add constraint packaging_supplier_products_package_pair check (
     (package_quantity is null and package_unit is null)
     or (package_quantity > 0 and nullif(trim(package_unit), '') is not null)
@@ -69,15 +202,6 @@ alter table public.packaging_supplier_products
     (price_state = 'recorded' and price is not null)
     or (price_state <> 'recorded' and price is null)
   );
-
-update public.packaging_supplier_products
-set lifecycle_status = case
-      when discontinued then 'discontinued'
-      when availability_status = 'in_stock' then 'available'
-      when availability_status = 'out_of_stock' then 'unavailable'
-      else 'evaluated'
-    end,
-    price_state = 'recorded';
 
 alter table public.packaging_components
   alter column description drop not null,
