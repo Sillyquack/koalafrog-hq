@@ -5,7 +5,7 @@
     "event envelope remains domain-specific"
   ],
   "authorityInventoryVersion": "1.0.0",
-  "branch": "fix/supplier-product-price-state-migration",
+  "branch": "ops/apply-workspace-authoring-migrations-v2",
   "deploymentApprovalGranted": false,
   "deploymentPrerequisites": [
     "hosted migration approval",
