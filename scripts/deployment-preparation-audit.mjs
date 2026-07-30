@@ -102,15 +102,24 @@ const timestamps = migrationFiles.map(name => name.slice(0, 14))
 if (new Set(timestamps).size !== timestamps.length) throw new Error("Duplicate migration timestamps detected.")
 if (migrationFiles.join("\n") !== [...migrationFiles].sort().join("\n")) throw new Error("Migration ordering is unstable.")
 
-function gitCommitFor(path) {
+function introducingCommitFor(path) {
   try {
-    return execFileSync("git", ["log", "-1", "--format=%H", "--", path], { encoding: "utf8" }).trim() || null
+    return execFileSync("git", ["log", "--full-history", "--all", "--format=%H", "--", path], { encoding: "utf8" }).trim().split("\n").filter(Boolean).at(-1) ?? null
   } catch { return null }
 }
 
 const migrations = migrationFiles.map((filename, index) => {
   const path = `supabase/migrations/${filename}`
   const sql = readFileSync(join(root, path), "utf8")
+  const sourceHash = createHash("sha256").update(sql).digest("hex")
+  const introducingCommit = introducingCommitFor(path)
+  if (check) {
+    if (!introducingCommit) throw new Error(`Migration provenance unavailable from Git history: ${filename}`)
+    const committedSql = execFileSync("git", ["show", `HEAD:${path}`], { encoding: "utf8" })
+    const committedHash = createHash("sha256").update(committedSql).digest("hex")
+    if (committedHash !== sourceHash) throw new Error(`Migration differs from the current HEAD snapshot: ${filename}`)
+    execFileSync("git", ["cat-file", "-e", `${introducingCommit}:${path}`])
+  }
   const drops = [...sql.matchAll(/\bdrop\s+(?:table|column|schema|type|function)\b/gi)].length
   const typeChanges = [...sql.matchAll(/\balter\s+column\b[\s\S]{0,120}\btype\b/gi)].length
   const dataChanges = [...sql.matchAll(/\b(?:update|delete\s+from|insert\s+into)\s+public\./gi)].length
@@ -124,9 +133,9 @@ const migrations = migrationFiles.map((filename, index) => {
     : nonConcurrentIndexes ? "potentially_locking"
     : "additive_safe"
   return {
+    orderedIndex: index + 1,
     filename,
     timestamp: filename.slice(0, 14),
-    commit: gitCommitFor(path),
     milestone: filename.replace(/^\d{14}_/, "").replace(/\.sql$/, "").replaceAll("_", " "),
     purpose: filename.replace(/^\d{14}_/, "").replace(/\.sql$/, "").replaceAll("_", " "),
     dependencies: index ? [migrationFiles[index - 1]] : [],
@@ -150,7 +159,7 @@ const migrations = migrationFiles.map((filename, index) => {
     stopCondition: drops || typeChanges ? "unapproved destructive behavior or unexpected rewrite/lock" : "migration error, drift, timeout, or object mismatch",
     hostedApplicationStatus: "pending_rehearsal",
     authorizationRequired: true,
-    sourceHash: createHash("sha256").update(sql).digest("hex"),
+    sourceHash,
   }
 })
 
@@ -185,9 +194,17 @@ const artifacts = {
     summary: { total: environment.length, secrets: environment.filter(item => item.secret).length, unknown: 0, unsafeClientSecrets: 0 },
   },
   "hosted-migration-rehearsal-manifest.json": {
-    version: "1.0.0", generatedAt: fixedTimestamp, rcTag, rcCommit,
+    version: "1.1.0", generatedAt: fixedTimestamp, rcTag, rcCommit,
     localMigrationHead: migrations.at(-1)?.timestamp, hostedStateVerified: false,
-    count: migrations.length, migrations,
+    count: migrations.length,
+    provenance: {
+      invariant: "Committed evidence never stores the hash of the commit containing that evidence.",
+      stableIdentityFields: ["orderedIndex", "timestamp", "filename", "sourceHash"],
+      introducingCommitResolution: "Derived at audit runtime with Git history; never persisted in this manifest.",
+      headVerification: "Each migration SHA-256 is compared with the same path at current HEAD during audit check.",
+      cleanTreeGate: "deploy:preflight requires a clean working tree before running this audit.",
+    },
+    migrations,
   },
   "deployment-command-inventory.json": {
     version: "1.0.0", generatedAt: fixedTimestamp, rcTag, rcCommit,

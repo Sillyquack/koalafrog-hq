@@ -1,16 +1,28 @@
 {
-  "version": "1.0.0",
+  "version": "1.1.0",
   "generatedAt": "2026-07-29T14:00:00+02:00",
   "rcTag": "finished-goods-traceability-recall-v1-rc1",
   "rcCommit": "bd5617c70dd8ca21611f63750f2293e40a83c8b4",
   "localMigrationHead": "20260730123820",
   "hostedStateVerified": false,
   "count": 88,
+  "provenance": {
+    "invariant": "Committed evidence never stores the hash of the commit containing that evidence.",
+    "stableIdentityFields": [
+      "orderedIndex",
+      "timestamp",
+      "filename",
+      "sourceHash"
+    ],
+    "introducingCommitResolution": "Derived at audit runtime with Git history; never persisted in this manifest.",
+    "headVerification": "Each migration SHA-256 is compared with the same path at current HEAD during audit check.",
+    "cleanTreeGate": "deploy:preflight requires a clean working tree before running this audit."
+  },
   "migrations": [
     {
+      "orderedIndex": 1,
       "filename": "20260714210000_platform_foundation.sql",
       "timestamp": "20260714210000",
-      "commit": "3146824a47694a7a64e491cf0857bc6279939e4b",
       "milestone": "platform foundation",
       "purpose": "platform foundation",
       "dependencies": [],
@@ -54,9 +66,9 @@
       "sourceHash": "f3664ead074aaff703fd38ea3e771b68ef1b6c73fcdad1a15da277455f3b5287"
     },
     {
+      "orderedIndex": 2,
       "filename": "20260715090000_relational_domain.sql",
       "timestamp": "20260715090000",
-      "commit": "f087869f28204f08027af2272791ffc08200b4d6",
       "milestone": "relational domain",
       "purpose": "relational domain",
       "dependencies": [
@@ -147,9 +159,9 @@
       "sourceHash": "9682396eeeeca5393cf57f791e22d60be411915f6c164fa4271affb4c355830c"
     },
     {
+      "orderedIndex": 3,
       "filename": "20260715120000_application_action_rpcs.sql",
       "timestamp": "20260715120000",
-      "commit": "58d58a1c1128c7ff1d8fc2bc6d83f69ca51209e8",
       "milestone": "application action rpcs",
       "purpose": "application action rpcs",
       "dependencies": [
@@ -186,9 +198,9 @@
       "sourceHash": "89a8b38b9a7aa07081a1f9815b4919bdff43d5d33b3b6c6f12b0ed344f1a3dd3"
     },
     {
+      "orderedIndex": 4,
       "filename": "20260715121000_rpc_helper_permissions.sql",
       "timestamp": "20260715121000",
-      "commit": "58d58a1c1128c7ff1d8fc2bc6d83f69ca51209e8",
       "milestone": "rpc helper permissions",
       "purpose": "rpc helper permissions",
       "dependencies": [
@@ -217,9 +229,9 @@
       "sourceHash": "2b872bc27900f6e45d794e308473cf42074946db07122cb51dddeb948721fea2"
     },
     {
+      "orderedIndex": 5,
       "filename": "20260715130000_document_storage_lifecycle.sql",
       "timestamp": "20260715130000",
-      "commit": "47606aa56b176d97c71e251acd35ad89aadcda0e",
       "milestone": "document storage lifecycle",
       "purpose": "document storage lifecycle",
       "dependencies": [
@@ -252,9 +264,9 @@
       "sourceHash": "d3f7eb957ef85404b742553ba21cf032f62b427e92666796cb63496f50ef2e37"
     },
     {
+      "orderedIndex": 6,
       "filename": "20260715140000_clean_workspace_bootstrap.sql",
       "timestamp": "20260715140000",
-      "commit": "b2be46b8b4631eb56e64396b8fbb38564d2e27fb",
       "milestone": "clean workspace bootstrap",
       "purpose": "clean workspace bootstrap",
       "dependencies": [
@@ -285,9 +297,9 @@
       "sourceHash": "f97a508dbc961ae12aefffb8cc1fafc5603fe16eba144a7551a2b69e87db4f99"
     },
     {
+      "orderedIndex": 7,
       "filename": "20260715193000_nullable_product_target_launch_date.sql",
       "timestamp": "20260715193000",
-      "commit": "d29e779e7dca6780728210e045660f684c82c618",
       "milestone": "nullable product target launch date",
       "purpose": "nullable product target launch date",
       "dependencies": [
@@ -316,9 +328,9 @@
       "sourceHash": "13fbfb830354d7dac6b2d8f7195d82ea4ebd8e5b15e7077fd10d71ce35cf54de"
     },
     {
+      "orderedIndex": 8,
       "filename": "20260715200000_intelligence_foundation.sql",
       "timestamp": "20260715200000",
-      "commit": "93bee8decbbfbdd31d1ac0cae4e88837a7e58412",
       "milestone": "intelligence foundation",
       "purpose": "intelligence foundation",
       "dependencies": [
@@ -353,9 +365,9 @@
       "sourceHash": "0919dc808c13068d0bc8c868a490858b1ca244a13ff7c9d147c7e3fd4df388d4"
     },
     {
+      "orderedIndex": 9,
       "filename": "20260716090000_intelligence_memory.sql",
       "timestamp": "20260716090000",
-      "commit": "28c33f4848ad50154eea0ae989f16830ac425b65",
       "milestone": "intelligence memory",
       "purpose": "intelligence memory",
       "dependencies": [
@@ -395,9 +407,9 @@
       "sourceHash": "28f685f050951d22a67a79b3e2fb22c3ff9f651f1f965a6bd0c195af72689f49"
     },
     {
+      "orderedIndex": 10,
       "filename": "20260716130000_development_experiments.sql",
       "timestamp": "20260716130000",
-      "commit": "8f510661ff812345d41f8e52ccd411114fc2e771",
       "milestone": "development experiments",
       "purpose": "development experiments",
       "dependencies": [
@@ -440,9 +452,9 @@
       "sourceHash": "95a63c2e1dcf09f6485351afec2c0556e5553f6b677452a93fa35aefa9cf37fe"
     },
     {
+      "orderedIndex": 11,
       "filename": "20260716180000_procurement_equipment_foundation.sql",
       "timestamp": "20260716180000",
-      "commit": "ee72df6ede0350fca35218fb0bf8d0b444a24057",
       "milestone": "procurement equipment foundation",
       "purpose": "procurement equipment foundation",
       "dependencies": [
@@ -493,9 +505,9 @@
       "sourceHash": "994825923719fe7d7dccfba96e4faf527cba2e7b88713f2a623d72ae89449194"
     },
     {
+      "orderedIndex": 12,
       "filename": "20260716200000_procurement_quote_line_created_at.sql",
       "timestamp": "20260716200000",
-      "commit": "423a78c3e3e5fbd2810a9e3a3414bfaef2c7b366",
       "milestone": "procurement quote line created at",
       "purpose": "procurement quote line created at",
       "dependencies": [
@@ -524,9 +536,9 @@
       "sourceHash": "04745303d17036f023d04cd1617c011f43ca7127f00d5c07c50fb7c8f6efb019"
     },
     {
+      "orderedIndex": 13,
       "filename": "20260716210000_atomic_supplier_product_preference.sql",
       "timestamp": "20260716210000",
-      "commit": "6d82aab3cc0b44e4030372aa60e2605103ba6133",
       "milestone": "atomic supplier product preference",
       "purpose": "atomic supplier product preference",
       "dependencies": [
@@ -558,9 +570,9 @@
       "sourceHash": "f5a92b1c35bf5ac64a3cce831f249e7e9ac42e29cbba18c0bd164a86f07f72b1"
     },
     {
+      "orderedIndex": 14,
       "filename": "20260716220000_ingredient_metadata_clarity.sql",
       "timestamp": "20260716220000",
-      "commit": "6d82aab3cc0b44e4030372aa60e2605103ba6133",
       "milestone": "ingredient metadata clarity",
       "purpose": "ingredient metadata clarity",
       "dependencies": [
@@ -589,9 +601,9 @@
       "sourceHash": "f5981e0260cdbe5760b20076d7056902b32797068474342ed8986bbb1bc52f63"
     },
     {
+      "orderedIndex": 15,
       "filename": "20260716230000_ingredient_reference_adoption.sql",
       "timestamp": "20260716230000",
-      "commit": "dbb7e7b81fd49b11990a1b39950037667cd60e81",
       "milestone": "ingredient reference adoption",
       "purpose": "ingredient reference adoption",
       "dependencies": [
@@ -620,9 +632,9 @@
       "sourceHash": "92e1b771b8afe2f891cd842c64f2593b0215e464cd96693e91dfef1ef4af9d5e"
     },
     {
+      "orderedIndex": 16,
       "filename": "20260717090000_milligram_unit_support.sql",
       "timestamp": "20260717090000",
-      "commit": "fa789317982aed121a2756c02ffa69be1c76546f",
       "milestone": "milligram unit support",
       "purpose": "milligram unit support",
       "dependencies": [
@@ -654,9 +666,9 @@
       "sourceHash": "07356fc0acdab4c4a792d03f13df8d5bc1286009406efa8612f9ab33d5471712"
     },
     {
+      "orderedIndex": 17,
       "filename": "20260717110000_ingredient_supplier_workflow.sql",
       "timestamp": "20260717110000",
-      "commit": "fa789317982aed121a2756c02ffa69be1c76546f",
       "milestone": "ingredient supplier workflow",
       "purpose": "ingredient supplier workflow",
       "dependencies": [
@@ -685,9 +697,9 @@
       "sourceHash": "555c13dded2b921e5c9d6a6782126dcd84123eb7f91c802304b2d77290e8c3ac"
     },
     {
+      "orderedIndex": 18,
       "filename": "20260717120000_atomic_preference_timestamp_alignment.sql",
       "timestamp": "20260717120000",
-      "commit": "fa789317982aed121a2756c02ffa69be1c76546f",
       "milestone": "atomic preference timestamp alignment",
       "purpose": "atomic preference timestamp alignment",
       "dependencies": [
@@ -719,9 +731,9 @@
       "sourceHash": "3b36565095d5e335de0d470a4367b5b26c6fded806433584db543113bc60655a"
     },
     {
+      "orderedIndex": 19,
       "filename": "20260718090000_product_studio_concepts.sql",
       "timestamp": "20260718090000",
-      "commit": "e0ca52d735413554ce9953e138623015b06acdae",
       "milestone": "product studio concepts",
       "purpose": "product studio concepts",
       "dependencies": [
@@ -756,9 +768,9 @@
       "sourceHash": "cdf64ff1189e79708c86d3ea4c771a5d35e7e98c8ad9b1cca527ade35cf6e1d0"
     },
     {
+      "orderedIndex": 20,
       "filename": "20260718120000_beard_butter_multiphase.sql",
       "timestamp": "20260718120000",
-      "commit": "083c2692dee06de26c0b34ac26c899fc7deefbb0",
       "milestone": "beard butter multiphase",
       "purpose": "beard butter multiphase",
       "dependencies": [
@@ -790,9 +802,9 @@
       "sourceHash": "c20d744e764e32a1b5b5051d2bbbe844fbdc314b7544fab6a0dc701bc7c5f814"
     },
     {
+      "orderedIndex": 21,
       "filename": "20260719090000_atomic_product_studio_formula_handoff.sql",
       "timestamp": "20260719090000",
-      "commit": "ede0a5a71ad292638f9bfd47330c713f7e26ad77",
       "milestone": "atomic product studio formula handoff",
       "purpose": "atomic product studio formula handoff",
       "dependencies": [
@@ -823,9 +835,9 @@
       "sourceHash": "2fa4d1d3b99213b1efec05310c9fc3d392d4ca97e2d788b12fa8cc5cd60d66d9"
     },
     {
+      "orderedIndex": 22,
       "filename": "20260720090000_natural_deodorant_product_studio.sql",
       "timestamp": "20260720090000",
-      "commit": "39dce42e659c5429b488427ab236a6ea8d5f6cf7",
       "milestone": "natural deodorant product studio",
       "purpose": "natural deodorant product studio",
       "dependencies": [
@@ -854,9 +866,9 @@
       "sourceHash": "418478643d14e2c92802e93bfd3901ade069d2f0a2c55192cec5eabaf622ae99"
     },
     {
+      "orderedIndex": 23,
       "filename": "20260720120000_ingredient_knowledge_foundation.sql",
       "timestamp": "20260720120000",
-      "commit": "61c953703c214cb6fa3853e821509fd682d8aa03",
       "milestone": "ingredient knowledge foundation",
       "purpose": "ingredient knowledge foundation",
       "dependencies": [
@@ -895,9 +907,9 @@
       "sourceHash": "315ef424c6c9a929fe79055ef350fd698fbe438eb8beec9e3bca657f684422ac"
     },
     {
+      "orderedIndex": 24,
       "filename": "20260720160000_beard_studio_foundation.sql",
       "timestamp": "20260720160000",
-      "commit": "73ad0681b26f47162dff671bb428f9a44e45bf6f",
       "milestone": "beard studio foundation",
       "purpose": "beard studio foundation",
       "dependencies": [
@@ -942,9 +954,9 @@
       "sourceHash": "033751d3b86b7c43fceeeb1d080aaa62ee9293b599738e8fa8732a67f4cf491e"
     },
     {
+      "orderedIndex": 25,
       "filename": "20260720170000_beard_studio_hosted_runtime.sql",
       "timestamp": "20260720170000",
-      "commit": "73ad0681b26f47162dff671bb428f9a44e45bf6f",
       "milestone": "beard studio hosted runtime",
       "purpose": "beard studio hosted runtime",
       "dependencies": [
@@ -981,9 +993,9 @@
       "sourceHash": "8cf085e9ec417c056ce0d949d905b95b64a764817814bfda6ed9dbf3190aa215"
     },
     {
+      "orderedIndex": 26,
       "filename": "20260720180000_beard_studio_child_replacement.sql",
       "timestamp": "20260720180000",
-      "commit": "73ad0681b26f47162dff671bb428f9a44e45bf6f",
       "milestone": "beard studio child replacement",
       "purpose": "beard studio child replacement",
       "dependencies": [
@@ -1012,9 +1024,9 @@
       "sourceHash": "74265639d1743366c41fd3276e599ef5aceb01e88dabc92bbccf943bca937470"
     },
     {
+      "orderedIndex": 27,
       "filename": "20260720190000_beard_studio_merge_cleanup.sql",
       "timestamp": "20260720190000",
-      "commit": "73ad0681b26f47162dff671bb428f9a44e45bf6f",
       "milestone": "beard studio merge cleanup",
       "purpose": "beard studio merge cleanup",
       "dependencies": [
@@ -1043,9 +1055,9 @@
       "sourceHash": "530022c63e9c5d783d27fa13cac629c032e2337f027b4cc95f2936e6d27d2c35"
     },
     {
+      "orderedIndex": 28,
       "filename": "20260720200000_beard_studio_workspace_integrity.sql",
       "timestamp": "20260720200000",
-      "commit": "d2f3feb63fbbf2f9411126af999349d4bf087872",
       "milestone": "beard studio workspace integrity",
       "purpose": "beard studio workspace integrity",
       "dependencies": [
@@ -1074,9 +1086,9 @@
       "sourceHash": "f7ba1a1a9183b8a0b9ddfd8edc3c6b9fae5c64a3424eee23f96e2d87c5b640eb"
     },
     {
+      "orderedIndex": 29,
       "filename": "20260720210000_beard_studio_stale_write_guard.sql",
       "timestamp": "20260720210000",
-      "commit": "d2f3feb63fbbf2f9411126af999349d4bf087872",
       "milestone": "beard studio stale write guard",
       "purpose": "beard studio stale write guard",
       "dependencies": [
@@ -1109,9 +1121,9 @@
       "sourceHash": "2a1b871afef52880b968b498f4b7f9461b682def8e0b94bd7b05dcddd88a17e2"
     },
     {
+      "orderedIndex": 30,
       "filename": "20260720220000_beard_log_cascade_cleanup.sql",
       "timestamp": "20260720220000",
-      "commit": "d2f3feb63fbbf2f9411126af999349d4bf087872",
       "milestone": "beard log cascade cleanup",
       "purpose": "beard log cascade cleanup",
       "dependencies": [
@@ -1142,9 +1154,9 @@
       "sourceHash": "6190fb01cfbb4622b511d78eb46be6118629dc37e39f98287d9f9914ff22459e"
     },
     {
+      "orderedIndex": 31,
       "filename": "20260721140000_beard_photo_analysis.sql",
       "timestamp": "20260721140000",
-      "commit": "f291c7946dc55e44433a9b131c91a752b920485d",
       "milestone": "beard photo analysis",
       "purpose": "beard photo analysis",
       "dependencies": [
@@ -1185,9 +1197,9 @@
       "sourceHash": "6f6dcd26e2bd90cba8f4708c74367827fd39b828226bed171d43b1317a89ced3"
     },
     {
+      "orderedIndex": 32,
       "filename": "20260721150000_beard_photo_privilege_hardening.sql",
       "timestamp": "20260721150000",
-      "commit": "d4cea099c6c09c6d2a898cc85f9818076c5c749c",
       "milestone": "beard photo privilege hardening",
       "purpose": "beard photo privilege hardening",
       "dependencies": [
@@ -1216,9 +1228,9 @@
       "sourceHash": "8c0e16d252e80bcd614946d24ff7cd70dab580894383264007117024384de4ef"
     },
     {
+      "orderedIndex": 33,
       "filename": "20260721210000_beard_photo_attempt_provenance.sql",
       "timestamp": "20260721210000",
-      "commit": "c1bc3a71acd74dd1f0a7fc74e1e905fdb886100c",
       "milestone": "beard photo attempt provenance",
       "purpose": "beard photo attempt provenance",
       "dependencies": [
@@ -1249,9 +1261,9 @@
       "sourceHash": "17268e7c121af307b30a799545b8afb2b5f31b72d182d6f0ecd12df98de02b57"
     },
     {
+      "orderedIndex": 34,
       "filename": "20260722090000_beard_semantic_diagnostics.sql",
       "timestamp": "20260722090000",
-      "commit": "1bc965b8b8c86aa0750727fb025bb11fb910ee43",
       "milestone": "beard semantic diagnostics",
       "purpose": "beard semantic diagnostics",
       "dependencies": [
@@ -1282,9 +1294,9 @@
       "sourceHash": "241b16aaa83ef0a4e8b4d54d5ba17f864e6dff28ebbff455590f14a53bcf8f71"
     },
     {
+      "orderedIndex": 35,
       "filename": "20260722100000_beard_guard_strategy_semantics.sql",
       "timestamp": "20260722100000",
-      "commit": "a28835b76f1cd904b078638ed33bba3fe293abd7",
       "milestone": "beard guard strategy semantics",
       "purpose": "beard guard strategy semantics",
       "dependencies": [
@@ -1315,9 +1327,9 @@
       "sourceHash": "ffc79406f078c8f13ad55be3c0e99e64f9db7a273e073ea12d4bd9393b8cee7b"
     },
     {
+      "orderedIndex": 36,
       "filename": "20260722101000_beard_semantic_v3_constraints.sql",
       "timestamp": "20260722101000",
-      "commit": "a28835b76f1cd904b078638ed33bba3fe293abd7",
       "milestone": "beard semantic v3 constraints",
       "purpose": "beard semantic v3 constraints",
       "dependencies": [
@@ -1346,9 +1358,9 @@
       "sourceHash": "57b401e604e87b8cde1911f1f1e6a342e9fd62e9c68edf8c33f2dc3e596fdb16"
     },
     {
+      "orderedIndex": 37,
       "filename": "20260722110000_beard_persistence_diagnostics.sql",
       "timestamp": "20260722110000",
-      "commit": "9f25dcb79a717a1699cec6b4f824a13f552dbc7d",
       "milestone": "beard persistence diagnostics",
       "purpose": "beard persistence diagnostics",
       "dependencies": [
@@ -1379,9 +1391,9 @@
       "sourceHash": "0c27e6ca601f7c336a30441bef741e2073c965319345d500e17c84989b20616f"
     },
     {
+      "orderedIndex": 38,
       "filename": "20260722130000_beard_observation_keys.sql",
       "timestamp": "20260722130000",
-      "commit": "f3dc7a44ebcc28dfa1f60d34366940ac7609030d",
       "milestone": "beard observation keys",
       "purpose": "beard observation keys",
       "dependencies": [
@@ -1417,9 +1429,9 @@
       "sourceHash": "ca3c77be1865a7fbf1d2197eeef7df9320671132a86fe2d7a70c29803400f693"
     },
     {
+      "orderedIndex": 39,
       "filename": "20260722190000_beard_support_diagnostic_lookup.sql",
       "timestamp": "20260722190000",
-      "commit": "ab7b09bc5cbf8f418681e04c3e89a62650fd10aa",
       "milestone": "beard support diagnostic lookup",
       "purpose": "beard support diagnostic lookup",
       "dependencies": [
@@ -1450,9 +1462,9 @@
       "sourceHash": "3a2423b1818dc746fdd537975ae67b43f9c66ed2b10b163e03c18e50fef3491f"
     },
     {
+      "orderedIndex": 40,
       "filename": "20260723044918_fix_beard_support_diagnostic_rpc.sql",
       "timestamp": "20260723044918",
-      "commit": "42138fc78c444f4db4fefbc6b3f300bed513f332",
       "milestone": "fix beard support diagnostic rpc",
       "purpose": "fix beard support diagnostic rpc",
       "dependencies": [
@@ -1481,9 +1493,9 @@
       "sourceHash": "27537bd5cdfdfc1876a32d96ad85e91196bd2b96ea2e9838d9cd9e104be535de"
     },
     {
+      "orderedIndex": 41,
       "filename": "20260723060732_beard_semantic_safety_v4.sql",
       "timestamp": "20260723060732",
-      "commit": "2e993fecbce3adacf4686211ef92c44ca1083d64",
       "milestone": "beard semantic safety v4",
       "purpose": "beard semantic safety v4",
       "dependencies": [
@@ -1516,9 +1528,9 @@
       "sourceHash": "479104c02670d98e370f959898a6aded19a2ecb27cdd911de1cddb8bd7fecf07"
     },
     {
+      "orderedIndex": 42,
       "filename": "20260723071830_procurement_workspace_v1.sql",
       "timestamp": "20260723071830",
-      "commit": "3d2ea06643faeb0893ac9c02c10a94fe077673ca",
       "milestone": "procurement workspace v1",
       "purpose": "procurement workspace v1",
       "dependencies": [
@@ -1556,9 +1568,9 @@
       "sourceHash": "45be8c43757822b8c6fb23eef4a28cdea990b1a0cce597c1a4e4e3e91db009df"
     },
     {
+      "orderedIndex": 43,
       "filename": "20260723073840_assisted_procurement_research.sql",
       "timestamp": "20260723073840",
-      "commit": "3d2ea06643faeb0893ac9c02c10a94fe077673ca",
       "milestone": "assisted procurement research",
       "purpose": "assisted procurement research",
       "dependencies": [
@@ -1592,9 +1604,9 @@
       "sourceHash": "d60df8eea27f61eaf265bc5728fe5db9521e0da8ac07d845727a969c85131849"
     },
     {
+      "orderedIndex": 44,
       "filename": "20260723080007_live_procurement_provider.sql",
       "timestamp": "20260723080007",
-      "commit": "3d2ea06643faeb0893ac9c02c10a94fe077673ca",
       "milestone": "live procurement provider",
       "purpose": "live procurement provider",
       "dependencies": [
@@ -1623,9 +1635,9 @@
       "sourceHash": "961c217000ff834e6547f210713cdf470d847e5c039b8c4b485d6722b2e66d5f"
     },
     {
+      "orderedIndex": 45,
       "filename": "20260723095108_procurement_stabilization.sql",
       "timestamp": "20260723095108",
-      "commit": "3d2ea06643faeb0893ac9c02c10a94fe077673ca",
       "milestone": "procurement stabilization",
       "purpose": "procurement stabilization",
       "dependencies": [
@@ -1657,9 +1669,9 @@
       "sourceHash": "47e0c73ad7af1db0e972a5d5b1ad4504262936b728d8013b7cb44f5a4aba38ce"
     },
     {
+      "orderedIndex": 46,
       "filename": "20260723105527_secure_live_procurement_invocation.sql",
       "timestamp": "20260723105527",
-      "commit": "3d2ea06643faeb0893ac9c02c10a94fe077673ca",
       "milestone": "secure live procurement invocation",
       "purpose": "secure live procurement invocation",
       "dependencies": [
@@ -1691,9 +1703,9 @@
       "sourceHash": "1b7d534fc247d7020bff88a7898fc924e221c6c016c462d760d6f11d3e9081d2"
     },
     {
+      "orderedIndex": 47,
       "filename": "20260723125652_beard_provider_timeout_observability.sql",
       "timestamp": "20260723125652",
-      "commit": "70023c5188c74fc9d2a7a0b0a8d3d756ef2d9d27",
       "milestone": "beard provider timeout observability",
       "purpose": "beard provider timeout observability",
       "dependencies": [
@@ -1724,9 +1736,9 @@
       "sourceHash": "e410f5c10cb11e181f63c4c87661e5083d55e94f825e602e1c56ee1e99172159"
     },
     {
+      "orderedIndex": 48,
       "filename": "20260723191905_procurement_provider_diagnostics.sql",
       "timestamp": "20260723191905",
-      "commit": "39904018b856d310c530298dfafc87ce883ef0bd",
       "milestone": "procurement provider diagnostics",
       "purpose": "procurement provider diagnostics",
       "dependencies": [
@@ -1761,9 +1773,9 @@
       "sourceHash": "3defe83074376ee12431909dd7a77f0e4ef98f24903f162d5cae4d1ad0dc4d45"
     },
     {
+      "orderedIndex": 49,
       "filename": "20260723213000_procurement_background_research.sql",
       "timestamp": "20260723213000",
-      "commit": "e87f73a1748137a2b5d68b62b1f1a554fb546259",
       "milestone": "procurement background research",
       "purpose": "procurement background research",
       "dependencies": [
@@ -1807,9 +1819,9 @@
       "sourceHash": "b382111e75859f0500cc1bb9e6ac3f23a1f22a5914a0c17a2acc0c2cf347a6a6"
     },
     {
+      "orderedIndex": 50,
       "filename": "20260724054059_procurement_background_rpc_boundary.sql",
       "timestamp": "20260724054059",
-      "commit": "6c733dabdb516ff71dcec64ef98cba6a912ca330",
       "milestone": "procurement background rpc boundary",
       "purpose": "procurement background rpc boundary",
       "dependencies": [
@@ -1838,9 +1850,9 @@
       "sourceHash": "9c8be558e8f36a3c8e1915c01f95b43a0ed21dd4df1655d9d8f51b1001a1901c"
     },
     {
+      "orderedIndex": 51,
       "filename": "20260724064750_procurement_background_retention_window.sql",
       "timestamp": "20260724064750",
-      "commit": "b8dcf16b84d63de7384b277201fb5a3806df2afd",
       "milestone": "procurement background retention window",
       "purpose": "procurement background retention window",
       "dependencies": [
@@ -1871,9 +1883,9 @@
       "sourceHash": "bc8ab10d2fef50422d826664ceec328757121cab36b8f8bcb73627e33207613d"
     },
     {
+      "orderedIndex": 52,
       "filename": "20260724124819_procurement_unmatched_webhook_lifecycle.sql",
       "timestamp": "20260724124819",
-      "commit": "1eaae3885bff9065a2157cbb257adb6fb22bca60",
       "milestone": "procurement unmatched webhook lifecycle",
       "purpose": "procurement unmatched webhook lifecycle",
       "dependencies": [
@@ -1907,9 +1919,9 @@
       "sourceHash": "11868808a335123dd75b7c499b09d33e2a49839f88cf167c82a9d36751291d4d"
     },
     {
+      "orderedIndex": 53,
       "filename": "20260725093000_procurement_purchasing_intelligence.sql",
       "timestamp": "20260725093000",
-      "commit": "3ed0cdcd608b305649814260adf435dc052f09cc",
       "milestone": "procurement purchasing intelligence",
       "purpose": "procurement purchasing intelligence",
       "dependencies": [
@@ -1945,9 +1957,9 @@
       "sourceHash": "893b4895ee39a372b8441e31b928b2601bc5142b646edd3f9cc6b33fd2b871b1"
     },
     {
+      "orderedIndex": 54,
       "filename": "20260725133000_procurement_purchasing_intelligence_hardening.sql",
       "timestamp": "20260725133000",
-      "commit": "3ed0cdcd608b305649814260adf435dc052f09cc",
       "milestone": "procurement purchasing intelligence hardening",
       "purpose": "procurement purchasing intelligence hardening",
       "dependencies": [
@@ -1980,9 +1992,9 @@
       "sourceHash": "442f16252b65c20b8d40c9d9046e3c7863744675fc4b1530d85ce37656a86c9b"
     },
     {
+      "orderedIndex": 55,
       "filename": "20260726122046_beard_semantic_failure_invariant.sql",
       "timestamp": "20260726122046",
-      "commit": "5e6939b83f11c7f8635a72cc3d90ba09179087ab",
       "milestone": "beard semantic failure invariant",
       "purpose": "beard semantic failure invariant",
       "dependencies": [
@@ -2015,9 +2027,9 @@
       "sourceHash": "a18247b202247ec54f87cb26bc74c34808661e68fb935964c6ca2674a45b008d"
     },
     {
+      "orderedIndex": 56,
       "filename": "20260726124135_beard_support_lookup_backward_compatibility.sql",
       "timestamp": "20260726124135",
-      "commit": "5e6939b83f11c7f8635a72cc3d90ba09179087ab",
       "milestone": "beard support lookup backward compatibility",
       "purpose": "beard support lookup backward compatibility",
       "dependencies": [
@@ -2048,9 +2060,9 @@
       "sourceHash": "8a02655134b21ccce97a003e0b76fb27090ee5151d02b7aacc1e15a12396b181"
     },
     {
+      "orderedIndex": 57,
       "filename": "20260726185922_beard_guard_strategy_v6.sql",
       "timestamp": "20260726185922",
-      "commit": "5e6939b83f11c7f8635a72cc3d90ba09179087ab",
       "milestone": "beard guard strategy v6",
       "purpose": "beard guard strategy v6",
       "dependencies": [
@@ -2083,9 +2095,9 @@
       "sourceHash": "3b22ad162e7b57d402708f2ecd44b231d629cc839e7f5e5abf7585b8df383a30"
     },
     {
+      "orderedIndex": 58,
       "filename": "20260727043935_beard_provider_429_classification.sql",
       "timestamp": "20260727043935",
-      "commit": "5e6939b83f11c7f8635a72cc3d90ba09179087ab",
       "milestone": "beard provider 429 classification",
       "purpose": "beard provider 429 classification",
       "dependencies": [
@@ -2116,9 +2128,9 @@
       "sourceHash": "8411f2306274704201b9f386800f61150c480988c7b659c91f57abbf737d2753"
     },
     {
+      "orderedIndex": 59,
       "filename": "20260727055227_beard_responses_parser_v1.sql",
       "timestamp": "20260727055227",
-      "commit": "5e6939b83f11c7f8635a72cc3d90ba09179087ab",
       "milestone": "beard responses parser v1",
       "purpose": "beard responses parser v1",
       "dependencies": [
@@ -2149,9 +2161,9 @@
       "sourceHash": "91929f759c2d69e90fd3e6cc01ce02bd9846bae6c32ae187856ed16cc50fd35c"
     },
     {
+      "orderedIndex": 60,
       "filename": "20260727095115_beard_intelligence_v2.sql",
       "timestamp": "20260727095115",
-      "commit": "5e6939b83f11c7f8635a72cc3d90ba09179087ab",
       "milestone": "beard intelligence v2",
       "purpose": "beard intelligence v2",
       "dependencies": [
@@ -2184,9 +2196,9 @@
       "sourceHash": "f06e569361f919fb66bc6bfb578d27359c2da32a71f8ef35ab2c81e3618f7e16"
     },
     {
+      "orderedIndex": 61,
       "filename": "20260727095850_beard_support_lookup_v6_composition.sql",
       "timestamp": "20260727095850",
-      "commit": "5e6939b83f11c7f8635a72cc3d90ba09179087ab",
       "milestone": "beard support lookup v6 composition",
       "purpose": "beard support lookup v6 composition",
       "dependencies": [
@@ -2217,9 +2229,9 @@
       "sourceHash": "bc33e065ff1fd82e9763a2b900a1934813b2faa2f283d2613a0a6d15b6d97932"
     },
     {
+      "orderedIndex": 62,
       "filename": "20260727114702_beard_legacy_null_target_review.sql",
       "timestamp": "20260727114702",
-      "commit": "5e6939b83f11c7f8635a72cc3d90ba09179087ab",
       "milestone": "beard legacy null target review",
       "purpose": "beard legacy null target review",
       "dependencies": [
@@ -2250,9 +2262,9 @@
       "sourceHash": "a210080eff1c88a31935a927f85e97ebb9dfed6ab2ea4b837140f8c8f7f3b1b0"
     },
     {
+      "orderedIndex": 63,
       "filename": "20260727120000_supplier_documentation.sql",
       "timestamp": "20260727120000",
-      "commit": "5e6939b83f11c7f8635a72cc3d90ba09179087ab",
       "milestone": "supplier documentation",
       "purpose": "supplier documentation",
       "dependencies": [
@@ -2285,9 +2297,9 @@
       "sourceHash": "d23adebc1d24cf5cd1bcb4f51ee167d3887b6666497706c7bf04212ae1b3fb83"
     },
     {
+      "orderedIndex": 64,
       "filename": "20260727121000_supplier_history_reliability.sql",
       "timestamp": "20260727121000",
-      "commit": "5e6939b83f11c7f8635a72cc3d90ba09179087ab",
       "milestone": "supplier history reliability",
       "purpose": "supplier history reliability",
       "dependencies": [
@@ -2323,9 +2335,9 @@
       "sourceHash": "9956472bd7943c08ccad9be510c48bb535faf8065fb88b96735c50a42c39ad2c"
     },
     {
+      "orderedIndex": 65,
       "filename": "20260727131021_production_procurement_durable_workflow.sql",
       "timestamp": "20260727131021",
-      "commit": "be29ea9a905547d712988353b442c0536247a42a",
       "milestone": "production procurement durable workflow",
       "purpose": "production procurement durable workflow",
       "dependencies": [
@@ -2367,9 +2379,9 @@
       "sourceHash": "4ca750f02e0abadb594df208241276e21f2650925b24eed2771209bb045c224a"
     },
     {
+      "orderedIndex": 66,
       "filename": "20260727135143_production_procurement_supplier_matching.sql",
       "timestamp": "20260727135143",
-      "commit": "daae8ccee017fd17d7b474c9d712e9b4b97c573c",
       "milestone": "production procurement supplier matching",
       "purpose": "production procurement supplier matching",
       "dependencies": [
@@ -2413,9 +2425,9 @@
       "sourceHash": "d0589a569fc6f7e859926d4cfc9cd84db928f5b6291dbe19089dc1720ea9b425"
     },
     {
+      "orderedIndex": 67,
       "filename": "20260727141437_production_procurement_basket_scenarios.sql",
       "timestamp": "20260727141437",
-      "commit": "718c708dc93f5b5cc384b8af71d9d578c0f71328",
       "milestone": "production procurement basket scenarios",
       "purpose": "production procurement basket scenarios",
       "dependencies": [
@@ -2454,9 +2466,9 @@
       "sourceHash": "d71699eced18c81c8b876c6f8feff31494f979f7342d450da81994d659896a04"
     },
     {
+      "orderedIndex": 68,
       "filename": "20260727155213_procurement_semantic_separation_v1.sql",
       "timestamp": "20260727155213",
-      "commit": "0fa353e018bf8a0489fa163d975cc6a9d92a9373",
       "milestone": "procurement semantic separation v1",
       "purpose": "procurement semantic separation v1",
       "dependencies": [
@@ -2498,9 +2510,9 @@
       "sourceHash": "6a06bd6bc60b849377863ce011f6f642b328088fc652a697cee0653377b95eaf"
     },
     {
+      "orderedIndex": 69,
       "filename": "20260727165818_production_purchase_plan_approval_gate.sql",
       "timestamp": "20260727165818",
-      "commit": "b50b8a35ac63a18406631315134b486c48a6b911",
       "milestone": "production purchase plan approval gate",
       "purpose": "production purchase plan approval gate",
       "dependencies": [
@@ -2541,9 +2553,9 @@
       "sourceHash": "9a0f33c296dc1e2887a3efd71a9505a7011ff26968d75d6e6103f16349b7175f"
     },
     {
+      "orderedIndex": 70,
       "filename": "20260728080000_draft_purchase_order_handoff.sql",
       "timestamp": "20260728080000",
-      "commit": "7b5c6a7c56f00eb86f635a6c5b73cef517351671",
       "milestone": "draft purchase order handoff",
       "purpose": "draft purchase order handoff",
       "dependencies": [
@@ -2579,9 +2591,9 @@
       "sourceHash": "38be68ada05795b7463805d9750dedfcf8a4dfdc108533ea9070585b7f7e4522"
     },
     {
+      "orderedIndex": 71,
       "filename": "20260728090000_external_purchase_order_placement.sql",
       "timestamp": "20260728090000",
-      "commit": "e5609f8baa7b93b483de55aa1e8b9a6a974a6a5b",
       "milestone": "external purchase order placement",
       "purpose": "external purchase order placement",
       "dependencies": [
@@ -2613,9 +2625,9 @@
       "sourceHash": "c29fa48400abc16f89eda9a7698b7f6003a713e14a419d6edea5e35e2f9ce539"
     },
     {
+      "orderedIndex": 72,
       "filename": "20260728100000_supplier_confirmation_and_shipments.sql",
       "timestamp": "20260728100000",
-      "commit": "a26095e5f88120b7359dffe459217e1560d8da59",
       "milestone": "supplier confirmation and shipments",
       "purpose": "supplier confirmation and shipments",
       "dependencies": [
@@ -2661,9 +2673,9 @@
       "sourceHash": "73890599e9beda167bede32e0f8c96abef82b0e50e43933dede2a62ebb40fa2e"
     },
     {
+      "orderedIndex": 73,
       "filename": "20260728110000_physical_receiving_inspection_quarantine.sql",
       "timestamp": "20260728110000",
-      "commit": "e483f84a207a488e6f47a4af9a15417344e9f8ea",
       "milestone": "physical receiving inspection quarantine",
       "purpose": "physical receiving inspection quarantine",
       "dependencies": [
@@ -2714,9 +2726,9 @@
       "sourceHash": "7276bf176065375affe28420bd76687e1a09aea2e7c97c6666f30e44b8171f60"
     },
     {
+      "orderedIndex": 74,
       "filename": "20260728120000_controlled_quality_release_inventory_commitment.sql",
       "timestamp": "20260728120000",
-      "commit": "008de9bca1a394fb0ca5f82b06be8ba7dffb675c",
       "milestone": "controlled quality release inventory commitment",
       "purpose": "controlled quality release inventory commitment",
       "dependencies": [
@@ -2756,9 +2768,9 @@
       "sourceHash": "808cd3173b7ca1bb367f093eb0b3e12e72a0508c9b937455527164a4b4deb8cf"
     },
     {
+      "orderedIndex": 75,
       "filename": "20260728130000_procurement_release_candidate_hardening.sql",
       "timestamp": "20260728130000",
-      "commit": "e57f4f08d9da09a8ab8d0b83e91939cd94794ff1",
       "milestone": "procurement release candidate hardening",
       "purpose": "procurement release candidate hardening",
       "dependencies": [
@@ -2787,9 +2799,9 @@
       "sourceHash": "6f63ecb2ef33ea144ec2e719cdb457bfb1d58a237d744f425da72c9df6c3bbc7"
     },
     {
+      "orderedIndex": 76,
       "filename": "20260728140000_production_inventory_reservations.sql",
       "timestamp": "20260728140000",
-      "commit": "8c6cc51c1084e208008a2bf40b2c5e9fd4238f47",
       "milestone": "production inventory reservations",
       "purpose": "production inventory reservations",
       "dependencies": [
@@ -2833,9 +2845,9 @@
       "sourceHash": "c5b4aa9920e49737f7cbb02a0887beda257233348902320ff340b8c83dd3bfd7"
     },
     {
+      "orderedIndex": 77,
       "filename": "20260728150000_production_inventory_consumption_reconciliation.sql",
       "timestamp": "20260728150000",
-      "commit": "8c6cc51c1084e208008a2bf40b2c5e9fd4238f47",
       "milestone": "production inventory consumption reconciliation",
       "purpose": "production inventory consumption reconciliation",
       "dependencies": [
@@ -2880,9 +2892,9 @@
       "sourceHash": "86972d877f661b3b6204b5ebf1dcec5810f964b243485ebf50fcb49c356f74ae"
     },
     {
+      "orderedIndex": 78,
       "filename": "20260728154754_production_output_yield_reconciliation_v1.sql",
       "timestamp": "20260728154754",
-      "commit": "e80fabfefd8b63c47aa042175d133bf60c2f56de",
       "milestone": "production output yield reconciliation v1",
       "purpose": "production output yield reconciliation v1",
       "dependencies": [
@@ -2935,9 +2947,9 @@
       "sourceHash": "d5ffea2973142b35770a84c444441be732ad989237afecdda5ce82ac0efcc744"
     },
     {
+      "orderedIndex": 79,
       "filename": "20260728160000_production_inventory_control_contracts_v1.sql",
       "timestamp": "20260728160000",
-      "commit": "8c6cc51c1084e208008a2bf40b2c5e9fd4238f47",
       "milestone": "production inventory control contracts v1",
       "purpose": "production inventory control contracts v1",
       "dependencies": [
@@ -2972,9 +2984,9 @@
       "sourceHash": "4c01a9aa414b7f015773094ef757a6af87d477a31dad5244f019e1493c569019"
     },
     {
+      "orderedIndex": 80,
       "filename": "20260728170000_packaging_run_planning_consumption_v1.sql",
       "timestamp": "20260728170000",
-      "commit": "a7d8bd972a74d4673296fcbc10a9c1b111e79daa",
       "milestone": "packaging run planning consumption v1",
       "purpose": "packaging run planning consumption v1",
       "dependencies": [
@@ -3031,9 +3043,9 @@
       "sourceHash": "66808ed349bfd37c35dd60e1aa81ee972f061e28bee7d3d64e75a53ede63bfe6"
     },
     {
+      "orderedIndex": 81,
       "filename": "20260728203257_finished_goods_lot_creation_quarantine_v1.sql",
       "timestamp": "20260728203257",
-      "commit": "21b3c3dc32d43480b473aa28c41f5ec5cd589813",
       "milestone": "finished goods lot creation quarantine v1",
       "purpose": "finished goods lot creation quarantine v1",
       "dependencies": [
@@ -3076,9 +3088,9 @@
       "sourceHash": "8926351cb9a54b625a2779352e7103d31bc53d07b876476d39080b66a501b058"
     },
     {
+      "orderedIndex": 82,
       "filename": "20260729043721_finished_product_quality_release_v1.sql",
       "timestamp": "20260729043721",
-      "commit": "f802fbbafb7710ec4fb161323803819eedad0659",
       "milestone": "finished product quality release v1",
       "purpose": "finished product quality release v1",
       "dependencies": [
@@ -3128,9 +3140,9 @@
       "sourceHash": "b5213b2fb74fc2bf6dc8fddfc5eea7e7fa26862ac0bfc18829f3c29b7fd34977"
     },
     {
+      "orderedIndex": 83,
       "filename": "20260729054425_active_finished_goods_inventory_controls_v1.sql",
       "timestamp": "20260729054425",
-      "commit": "941d768d5cbdc62f9843155fede4454b25c243c6",
       "milestone": "active finished goods inventory controls v1",
       "purpose": "active finished goods inventory controls v1",
       "dependencies": [
@@ -3170,9 +3182,9 @@
       "sourceHash": "708161f877400baac0671b04fb8657ae2c0249223ba55ad209437fd458da6f36"
     },
     {
+      "orderedIndex": 84,
       "filename": "20260729065048_batch_genealogy_traceability_v1.sql",
       "timestamp": "20260729065048",
-      "commit": "0460e4f0d4fbac5d7a55144834f027ab433d1b19",
       "milestone": "batch genealogy traceability v1",
       "purpose": "batch genealogy traceability v1",
       "dependencies": [
@@ -3213,9 +3225,9 @@
       "sourceHash": "4c0561ea935c5418ba7c3a37f9333cba0fb6cf91452c720a049437bfb2de874c"
     },
     {
+      "orderedIndex": 85,
       "filename": "20260729083226_platform_authority_hardening_v1.sql",
       "timestamp": "20260729083226",
-      "commit": "984b19ad71343c8c22e2f2fab0d2319862df09a9",
       "milestone": "platform authority hardening v1",
       "purpose": "platform authority hardening v1",
       "dependencies": [
@@ -3255,9 +3267,9 @@
       "sourceHash": "01bfa65ffb5ecfe41f90fd3ccaa76785fdc146de5aa69e3ba9529a44e4cf0e09"
     },
     {
+      "orderedIndex": 86,
       "filename": "20260729094510_recall_readiness_v1.sql",
       "timestamp": "20260729094510",
-      "commit": "8c3dbd8fa60a0756b11a1ce293714ea7f6ab4814",
       "milestone": "recall readiness v1",
       "purpose": "recall readiness v1",
       "dependencies": [
@@ -3313,9 +3325,9 @@
       "sourceHash": "f331d821e78607b122930dce7185355faf749ddcb12a6bc216e5b6809132eb94"
     },
     {
+      "orderedIndex": 87,
       "filename": "20260729160000_rehearsal_definer_execute_hardening.sql",
       "timestamp": "20260729160000",
-      "commit": "bbf0a5ba8f4d509013b0742ebeee5f5f25b3071d",
       "milestone": "rehearsal definer execute hardening",
       "purpose": "rehearsal definer execute hardening",
       "dependencies": [
@@ -3344,9 +3356,9 @@
       "sourceHash": "6ed9dc04a9b1c5d081d834b26171a0e7e28ab85e50194975c323a999e59fa3e5"
     },
     {
+      "orderedIndex": 88,
       "filename": "20260730123820_workspace_foundation_authoring_v1.sql",
       "timestamp": "20260730123820",
-      "commit": null,
       "milestone": "workspace foundation authoring v1",
       "purpose": "workspace foundation authoring v1",
       "dependencies": [

@@ -3701,7 +3701,7 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 18370,
+        "bytes": 18473,
         "lines": 50
       }
     },
@@ -20939,6 +20939,6 @@
   ],
   "generatedAt": "2026-07-29T12:00:00+02:00",
   "sourceCommit": "content-addressed-by-sourceHash",
-  "sourceHash": "764fecadb6cb45cbcc4a3542bff30d8bee6f525e3b0d8528190c3a79d80e7e7c",
+  "sourceHash": "7412ee64d785d3195a40c1df87234539e78c03c7421e8c104379c370340fd762",
   "version": "1.0.0"
 }

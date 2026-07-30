@@ -54,9 +54,17 @@ The only browser variables are Supabase URL, publishable/legacy anon key, and re
 
 `npm run audit:environment` detects used-but-unclassified variables, secret-like Vite exposure, duplicate migrations, and generated drift without printing values. `npm run test:secrets` scans repository content; future operator must additionally scan authorized evidence/logs and Git history without committing output.
 
+Migration provenance deliberately avoids a self-referential commit hash. The
+committed manifest identifies every migration by ordered index, version,
+filename, and SHA-256 checksum. During `--check`, the audit derives the
+introducing commit from Git history and compares each current migration with
+the same path at `HEAD`. `deploy:preflight` first requires a clean tree, binding
+that dynamic verification to the exact checkout without storing a stale,
+placeholder, or impossible same-commit hash.
+
 ## 5. Migration manifest and risks
 
-[Hosted migration manifest](generated/hosted-migration-rehearsal-manifest.json) records all 87 migrations through `20260729160000`, their commit, dependencies, extensions, object/data changes, locks/rewrite/destructive classification, rollback decision, verification, stop condition, source hash, and rehearsal status.
+[Hosted migration manifest](generated/hosted-migration-rehearsal-manifest.json) records the ordered migration tree, stable identity and checksums, dependencies, extensions, object/data changes, locks/rewrite/destructive classification, rollback decision, verification, stop condition, and rehearsal status. Introducing commits are verified dynamically from Git history rather than persisted in self-referential evidence.
 
 Classifications are additive-safe, controlled/authority change, compatibility freeze, data backfill, potentially locking, or destructive-requires-review. Destructive syntax never becomes an automatic failure or approval: the exact statement and historical intent must be reviewed against restored data in rehearsal.
 
