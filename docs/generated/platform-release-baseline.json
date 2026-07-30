@@ -5,7 +5,7 @@
     "event envelope remains domain-specific"
   ],
   "authorityInventoryVersion": "1.0.0",
-  "branch": "main",
+  "branch": "chore/migration-provenance-reconciliation",
   "deploymentApprovalGranted": false,
   "deploymentPrerequisites": [
     "hosted migration approval",

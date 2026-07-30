@@ -5,7 +5,7 @@
   "repository": {
     "head": "35527eccaf4b85ab290f7d83d1cfde1ee1c6152f",
     "originMain": "35527eccaf4b85ab290f7d83d1cfde1ee1c6152f",
-    "branch": "main",
+    "branch": "chore/migration-provenance-reconciliation",
     "migrationCount": 87,
     "migrations": [
       {
@@ -1934,40 +1934,9 @@
       },
       {
         "order": 55,
-        "version": "20260726120000",
-        "name": "supplier_documentation",
-        "filename": "20260726120000_supplier_documentation.sql",
-        "bytes": 2769,
-        "sha256": "d23adebc1d24cf5cd1bcb4f51ee167d3887b6666497706c7bf04212ae1b3fb83",
-        "exactMd5": "dba4daae26e77c20ed4f85a0f4c80d86",
-        "withoutFinalNewlineMd5": "de1d67639a38cc2be7afa0634ca22d7d",
-        "effects": {
-          "tables": [
-            "supplier_document_records"
-          ],
-          "functions": [],
-          "policies": [
-            "owner_all"
-          ],
-          "indexes": [
-            "supplier_document_records_active_identity",
-            "supplier_document_records_supplier"
-          ],
-          "triggers": [],
-          "constraints": [],
-          "grants": 1,
-          "revokes": 1,
-          "inserts": 0,
-          "updates": 0,
-          "deletes": 0,
-          "drops": 0
-        }
-      },
-      {
-        "order": 56,
-        "version": "20260726121237",
+        "version": "20260726122046",
         "name": "beard_semantic_failure_invariant",
-        "filename": "20260726121237_beard_semantic_failure_invariant.sql",
+        "filename": "20260726122046_beard_semantic_failure_invariant.sql",
         "bytes": 15601,
         "sha256": "a18247b202247ec54f87cb26bc74c34808661e68fb935964c6ca2674a45b008d",
         "exactMd5": "140c216a9751e559cc409dbcf60d6837",
@@ -1997,10 +1966,10 @@
         }
       },
       {
-        "order": 57,
-        "version": "20260726124000",
+        "order": 56,
+        "version": "20260726124135",
         "name": "beard_support_lookup_backward_compatibility",
-        "filename": "20260726124000_beard_support_lookup_backward_compatibility.sql",
+        "filename": "20260726124135_beard_support_lookup_backward_compatibility.sql",
         "bytes": 1128,
         "sha256": "8a02655134b21ccce97a003e0b76fb27090ee5151d02b7aacc1e15a12396b181",
         "exactMd5": "b0ddf68b53a543717c6788796078c678",
@@ -2023,46 +1992,10 @@
         }
       },
       {
-        "order": 58,
-        "version": "20260726130000",
-        "name": "supplier_history_reliability",
-        "filename": "20260726130000_supplier_history_reliability.sql",
-        "bytes": 5403,
-        "sha256": "9956472bd7943c08ccad9be510c48bb535faf8065fb88b96735c50a42c39ad2c",
-        "exactMd5": "be4df7fc9c41348bd43e1c955e6ed0e4",
-        "withoutFinalNewlineMd5": "d7703d13591381e2df5e123da27bc906",
-        "effects": {
-          "tables": [
-            "supplier_events"
-          ],
-          "functions": [
-            "record_supplier_purchase_event",
-            "record_supplier_quote_event"
-          ],
-          "policies": [
-            "owner_all"
-          ],
-          "indexes": [
-            "supplier_events_timeline"
-          ],
-          "triggers": [
-            "supplier_purchase_history",
-            "supplier_quote_history"
-          ],
-          "constraints": [],
-          "grants": 1,
-          "revokes": 2,
-          "inserts": 2,
-          "updates": 3,
-          "deletes": 0,
-          "drops": 0
-        }
-      },
-      {
-        "order": 59,
-        "version": "20260726185624",
+        "order": 57,
+        "version": "20260726185922",
         "name": "beard_guard_strategy_v6",
-        "filename": "20260726185624_beard_guard_strategy_v6.sql",
+        "filename": "20260726185922_beard_guard_strategy_v6.sql",
         "bytes": 5130,
         "sha256": "3b22ad162e7b57d402708f2ecd44b231d629cc839e7f5e5abf7585b8df383a30",
         "exactMd5": "e3f36515b152b40b43c9ab8f51ab06bc",
@@ -2087,10 +2020,36 @@
         }
       },
       {
-        "order": 60,
-        "version": "20260727054718",
+        "order": 58,
+        "version": "20260727043935",
+        "name": "beard_provider_429_classification",
+        "filename": "20260727043935_beard_provider_429_classification.sql",
+        "bytes": 1860,
+        "sha256": "8411f2306274704201b9f386800f61150c480988c7b659c91f57abbf737d2753",
+        "exactMd5": "2401abfa312b8177bc691cdedbc29202",
+        "withoutFinalNewlineMd5": "ed7be7e21f04d10df8a58f114e11a577",
+        "effects": {
+          "tables": [],
+          "functions": [
+            "lookup_beard_analysis_support_diagnostic"
+          ],
+          "policies": [],
+          "indexes": [],
+          "triggers": [],
+          "constraints": [],
+          "grants": 1,
+          "revokes": 1,
+          "inserts": 0,
+          "updates": 0,
+          "deletes": 0,
+          "drops": 0
+        }
+      },
+      {
+        "order": 59,
+        "version": "20260727055227",
         "name": "beard_responses_parser_v1",
-        "filename": "20260727054718_beard_responses_parser_v1.sql",
+        "filename": "20260727055227_beard_responses_parser_v1.sql",
         "bytes": 4247,
         "sha256": "91929f759c2d69e90fd3e6cc01ce02bd9846bae6c32ae187856ed16cc50fd35c",
         "exactMd5": "bb05961d688a2f5ff020fb861599d3d5",
@@ -2117,36 +2076,10 @@
         }
       },
       {
-        "order": 61,
-        "version": "20260727065000",
-        "name": "beard_provider_429_classification",
-        "filename": "20260727065000_beard_provider_429_classification.sql",
-        "bytes": 1860,
-        "sha256": "8411f2306274704201b9f386800f61150c480988c7b659c91f57abbf737d2753",
-        "exactMd5": "2401abfa312b8177bc691cdedbc29202",
-        "withoutFinalNewlineMd5": "ed7be7e21f04d10df8a58f114e11a577",
-        "effects": {
-          "tables": [],
-          "functions": [
-            "lookup_beard_analysis_support_diagnostic"
-          ],
-          "policies": [],
-          "indexes": [],
-          "triggers": [],
-          "constraints": [],
-          "grants": 1,
-          "revokes": 1,
-          "inserts": 0,
-          "updates": 0,
-          "deletes": 0,
-          "drops": 0
-        }
-      },
-      {
-        "order": 62,
-        "version": "20260727120000",
+        "order": 60,
+        "version": "20260727095115",
         "name": "beard_intelligence_v2",
-        "filename": "20260727120000_beard_intelligence_v2.sql",
+        "filename": "20260727095115_beard_intelligence_v2.sql",
         "bytes": 10136,
         "sha256": "f06e569361f919fb66bc6bfb578d27359c2da32a71f8ef35ab2c81e3618f7e16",
         "exactMd5": "dba159120252f5f31410d58ddf042dca",
@@ -2175,10 +2108,10 @@
         }
       },
       {
-        "order": 63,
-        "version": "20260727121000",
+        "order": 61,
+        "version": "20260727095850",
         "name": "beard_support_lookup_v6_composition",
-        "filename": "20260727121000_beard_support_lookup_v6_composition.sql",
+        "filename": "20260727095850_beard_support_lookup_v6_composition.sql",
         "bytes": 2556,
         "sha256": "bc33e065ff1fd82e9763a2b900a1934813b2faa2f283d2613a0a6d15b6d97932",
         "exactMd5": "eed0090d33768cb61e9cf63febbf8f34",
@@ -2201,10 +2134,10 @@
         }
       },
       {
-        "order": 64,
-        "version": "20260727130000",
+        "order": 62,
+        "version": "20260727114702",
         "name": "beard_legacy_null_target_review",
-        "filename": "20260727130000_beard_legacy_null_target_review.sql",
+        "filename": "20260727114702_beard_legacy_null_target_review.sql",
         "bytes": 5252,
         "sha256": "a210080eff1c88a31935a927f85e97ebb9dfed6ab2ea4b837140f8c8f7f3b1b0",
         "exactMd5": "01c429b94594eef43838d513e87b57bf",
@@ -2222,6 +2155,73 @@
           "revokes": 1,
           "inserts": 0,
           "updates": 2,
+          "deletes": 0,
+          "drops": 0
+        }
+      },
+      {
+        "order": 63,
+        "version": "20260727120000",
+        "name": "supplier_documentation",
+        "filename": "20260727120000_supplier_documentation.sql",
+        "bytes": 2769,
+        "sha256": "d23adebc1d24cf5cd1bcb4f51ee167d3887b6666497706c7bf04212ae1b3fb83",
+        "exactMd5": "dba4daae26e77c20ed4f85a0f4c80d86",
+        "withoutFinalNewlineMd5": "de1d67639a38cc2be7afa0634ca22d7d",
+        "effects": {
+          "tables": [
+            "supplier_document_records"
+          ],
+          "functions": [],
+          "policies": [
+            "owner_all"
+          ],
+          "indexes": [
+            "supplier_document_records_active_identity",
+            "supplier_document_records_supplier"
+          ],
+          "triggers": [],
+          "constraints": [],
+          "grants": 1,
+          "revokes": 1,
+          "inserts": 0,
+          "updates": 0,
+          "deletes": 0,
+          "drops": 0
+        }
+      },
+      {
+        "order": 64,
+        "version": "20260727121000",
+        "name": "supplier_history_reliability",
+        "filename": "20260727121000_supplier_history_reliability.sql",
+        "bytes": 5403,
+        "sha256": "9956472bd7943c08ccad9be510c48bb535faf8065fb88b96735c50a42c39ad2c",
+        "exactMd5": "be4df7fc9c41348bd43e1c955e6ed0e4",
+        "withoutFinalNewlineMd5": "d7703d13591381e2df5e123da27bc906",
+        "effects": {
+          "tables": [
+            "supplier_events"
+          ],
+          "functions": [
+            "record_supplier_purchase_event",
+            "record_supplier_quote_event"
+          ],
+          "policies": [
+            "owner_all"
+          ],
+          "indexes": [
+            "supplier_events_timeline"
+          ],
+          "triggers": [
+            "supplier_purchase_history",
+            "supplier_quote_history"
+          ],
+          "constraints": [],
+          "grants": 1,
+          "revokes": 2,
+          "inserts": 2,
+          "updates": 3,
           "deletes": 0,
           "drops": 0
         }
@@ -3450,7 +3450,8 @@
       "20260727095850",
       "20260727114702"
     ],
-    "sharedPrefixCount": 54,
+    "sharedPrefixCount": 62,
+    "canonicalPrefixImplemented": true,
     "authUsers": 1,
     "authIdentities": 1,
     "workspaces": 1,
@@ -3482,18 +3483,19 @@
         "productionOrder": 55,
         "productionVersion": "20260726122046",
         "name": "beard_semantic_failure_invariant",
-        "repositoryFile": "20260726121237_beard_semantic_failure_invariant.sql",
-        "repositoryVersion": "20260726121237",
+        "previousRepositoryFile": "20260726121237_beard_semantic_failure_invariant.sql",
+        "repositoryFile": "20260726122046_beard_semantic_failure_invariant.sql",
+        "repositoryVersion": "20260726122046",
         "hostedMd5": "140c216a9751e559cc409dbcf60d6837",
         "hostedBytes": 15601,
         "repositoryExactMd5": "140c216a9751e559cc409dbcf60d6837",
         "repositoryWithoutFinalNewlineMd5": "2692eee8620a81a8dff4bdbdf2961690",
         "normalizedSqlProof": true,
-        "classification": "EXACT_EQUIVALENT_DIFFERENT_VERSION",
+        "classification": "EXACT_EQUIVALENT_CANONICAL_VERSION",
         "provenanceCommit": "91138b75c6c11f2a73b0d7b955d92a7d79acfd43",
         "gitSearchResult": "The production version never existed as a Git filename in reachable commits, branches, tags, or reflogs.",
         "executionProvenance": "Supabase hosted migration application: one stored statement, created_by populated, and an execution-time version. This is not the db-push signature of migrations 1–54.",
-        "replacementHistory": "No Git rename or consolidation. The same SQL is present under a repository-authored timestamp.",
+        "replacementHistory": "Strategy B implemented as a Git rename from the repository-authored timestamp; SQL bytes are unchanged.",
         "effects": {
           "tables": [
             "intelligence_analyses"
@@ -3522,18 +3524,19 @@
         "productionOrder": 56,
         "productionVersion": "20260726124135",
         "name": "beard_support_lookup_backward_compatibility",
-        "repositoryFile": "20260726124000_beard_support_lookup_backward_compatibility.sql",
-        "repositoryVersion": "20260726124000",
+        "previousRepositoryFile": "20260726124000_beard_support_lookup_backward_compatibility.sql",
+        "repositoryFile": "20260726124135_beard_support_lookup_backward_compatibility.sql",
+        "repositoryVersion": "20260726124135",
         "hostedMd5": "cfd1f07c5869ba7ac10d31dd0ff22424",
         "hostedBytes": 1127,
         "repositoryExactMd5": "b0ddf68b53a543717c6788796078c678",
         "repositoryWithoutFinalNewlineMd5": "cfd1f07c5869ba7ac10d31dd0ff22424",
         "normalizedSqlProof": true,
-        "classification": "EXACT_EQUIVALENT_DIFFERENT_VERSION",
+        "classification": "EXACT_EQUIVALENT_CANONICAL_VERSION",
         "provenanceCommit": "91138b75c6c11f2a73b0d7b955d92a7d79acfd43",
         "gitSearchResult": "The production version never existed as a Git filename in reachable commits, branches, tags, or reflogs.",
         "executionProvenance": "Supabase hosted migration application: one stored statement, created_by populated, and an execution-time version. This is not the db-push signature of migrations 1–54.",
-        "replacementHistory": "No Git rename or consolidation. The same SQL is present under a repository-authored timestamp.",
+        "replacementHistory": "Strategy B implemented as a Git rename from the repository-authored timestamp; SQL bytes are unchanged.",
         "effects": {
           "tables": [],
           "functions": [
@@ -3555,18 +3558,19 @@
         "productionOrder": 57,
         "productionVersion": "20260726185922",
         "name": "beard_guard_strategy_v6",
-        "repositoryFile": "20260726185624_beard_guard_strategy_v6.sql",
-        "repositoryVersion": "20260726185624",
+        "previousRepositoryFile": "20260726185624_beard_guard_strategy_v6.sql",
+        "repositoryFile": "20260726185922_beard_guard_strategy_v6.sql",
+        "repositoryVersion": "20260726185922",
         "hostedMd5": "e3f36515b152b40b43c9ab8f51ab06bc",
         "hostedBytes": 5130,
         "repositoryExactMd5": "e3f36515b152b40b43c9ab8f51ab06bc",
         "repositoryWithoutFinalNewlineMd5": "c7db05ac2ebdad0fe0f531db3522abb6",
         "normalizedSqlProof": true,
-        "classification": "EXACT_EQUIVALENT_DIFFERENT_VERSION",
+        "classification": "EXACT_EQUIVALENT_CANONICAL_VERSION",
         "provenanceCommit": "91138b75c6c11f2a73b0d7b955d92a7d79acfd43",
         "gitSearchResult": "The production version never existed as a Git filename in reachable commits, branches, tags, or reflogs.",
         "executionProvenance": "Supabase hosted migration application: one stored statement, created_by populated, and an execution-time version. This is not the db-push signature of migrations 1–54.",
-        "replacementHistory": "No Git rename or consolidation. The same SQL is present under a repository-authored timestamp.",
+        "replacementHistory": "Strategy B implemented as a Git rename from the repository-authored timestamp; SQL bytes are unchanged.",
         "effects": {
           "tables": [],
           "functions": [
@@ -3590,18 +3594,19 @@
         "productionOrder": 58,
         "productionVersion": "20260727043935",
         "name": "beard_provider_429_classification",
-        "repositoryFile": "20260727065000_beard_provider_429_classification.sql",
-        "repositoryVersion": "20260727065000",
+        "previousRepositoryFile": "20260727065000_beard_provider_429_classification.sql",
+        "repositoryFile": "20260727043935_beard_provider_429_classification.sql",
+        "repositoryVersion": "20260727043935",
         "hostedMd5": "ed7be7e21f04d10df8a58f114e11a577",
         "hostedBytes": 1859,
         "repositoryExactMd5": "2401abfa312b8177bc691cdedbc29202",
         "repositoryWithoutFinalNewlineMd5": "ed7be7e21f04d10df8a58f114e11a577",
         "normalizedSqlProof": true,
-        "classification": "EXACT_EQUIVALENT_DIFFERENT_VERSION",
+        "classification": "EXACT_EQUIVALENT_CANONICAL_VERSION",
         "provenanceCommit": "91138b75c6c11f2a73b0d7b955d92a7d79acfd43",
         "gitSearchResult": "The production version never existed as a Git filename in reachable commits, branches, tags, or reflogs.",
         "executionProvenance": "Supabase hosted migration application: one stored statement, created_by populated, and an execution-time version. This is not the db-push signature of migrations 1–54.",
-        "replacementHistory": "No Git rename or consolidation. The same SQL is present under a repository-authored timestamp.",
+        "replacementHistory": "Strategy B implemented as a Git rename from the repository-authored timestamp; SQL bytes are unchanged.",
         "effects": {
           "tables": [],
           "functions": [
@@ -3623,18 +3628,19 @@
         "productionOrder": 59,
         "productionVersion": "20260727055227",
         "name": "beard_responses_parser_v1",
-        "repositoryFile": "20260727054718_beard_responses_parser_v1.sql",
-        "repositoryVersion": "20260727054718",
+        "previousRepositoryFile": "20260727054718_beard_responses_parser_v1.sql",
+        "repositoryFile": "20260727055227_beard_responses_parser_v1.sql",
+        "repositoryVersion": "20260727055227",
         "hostedMd5": "0c21637267f1732b1b245792f5ff7695",
         "hostedBytes": 4246,
         "repositoryExactMd5": "bb05961d688a2f5ff020fb861599d3d5",
         "repositoryWithoutFinalNewlineMd5": "0c21637267f1732b1b245792f5ff7695",
         "normalizedSqlProof": true,
-        "classification": "EXACT_EQUIVALENT_DIFFERENT_VERSION",
+        "classification": "EXACT_EQUIVALENT_CANONICAL_VERSION",
         "provenanceCommit": "91138b75c6c11f2a73b0d7b955d92a7d79acfd43",
         "gitSearchResult": "The production version never existed as a Git filename in reachable commits, branches, tags, or reflogs.",
         "executionProvenance": "Supabase hosted migration application: one stored statement, created_by populated, and an execution-time version. This is not the db-push signature of migrations 1–54.",
-        "replacementHistory": "No Git rename or consolidation. The same SQL is present under a repository-authored timestamp.",
+        "replacementHistory": "Strategy B implemented as a Git rename from the repository-authored timestamp; SQL bytes are unchanged.",
         "effects": {
           "tables": [
             "intelligence_analyses"
@@ -3660,18 +3666,19 @@
         "productionOrder": 60,
         "productionVersion": "20260727095115",
         "name": "beard_intelligence_v2",
-        "repositoryFile": "20260727120000_beard_intelligence_v2.sql",
-        "repositoryVersion": "20260727120000",
+        "previousRepositoryFile": "20260727120000_beard_intelligence_v2.sql",
+        "repositoryFile": "20260727095115_beard_intelligence_v2.sql",
+        "repositoryVersion": "20260727095115",
         "hostedMd5": "77fabf5a50cdb6cac28b6268ed57e9c6",
         "hostedBytes": 10135,
         "repositoryExactMd5": "dba159120252f5f31410d58ddf042dca",
         "repositoryWithoutFinalNewlineMd5": "77fabf5a50cdb6cac28b6268ed57e9c6",
         "normalizedSqlProof": true,
-        "classification": "EXACT_EQUIVALENT_DIFFERENT_VERSION",
+        "classification": "EXACT_EQUIVALENT_CANONICAL_VERSION",
         "provenanceCommit": "594452ebd04df37c7bdc90da2bb0752b8239f538",
         "gitSearchResult": "The production version never existed as a Git filename in reachable commits, branches, tags, or reflogs.",
         "executionProvenance": "Supabase hosted migration application: one stored statement, created_by populated, and an execution-time version. This is not the db-push signature of migrations 1–54.",
-        "replacementHistory": "No Git rename or consolidation. The same SQL is present under a repository-authored timestamp.",
+        "replacementHistory": "Strategy B implemented as a Git rename from the repository-authored timestamp; SQL bytes are unchanged.",
         "effects": {
           "tables": [
             "intelligence_analyses"
@@ -3699,18 +3706,19 @@
         "productionOrder": 61,
         "productionVersion": "20260727095850",
         "name": "beard_support_lookup_v6_composition",
-        "repositoryFile": "20260727121000_beard_support_lookup_v6_composition.sql",
-        "repositoryVersion": "20260727121000",
+        "previousRepositoryFile": "20260727121000_beard_support_lookup_v6_composition.sql",
+        "repositoryFile": "20260727095850_beard_support_lookup_v6_composition.sql",
+        "repositoryVersion": "20260727095850",
         "hostedMd5": "c098ac92dbb797dfbb56a345a73899ea",
         "hostedBytes": 2555,
         "repositoryExactMd5": "eed0090d33768cb61e9cf63febbf8f34",
         "repositoryWithoutFinalNewlineMd5": "c098ac92dbb797dfbb56a345a73899ea",
         "normalizedSqlProof": true,
-        "classification": "EXACT_EQUIVALENT_DIFFERENT_VERSION",
+        "classification": "EXACT_EQUIVALENT_CANONICAL_VERSION",
         "provenanceCommit": "594452ebd04df37c7bdc90da2bb0752b8239f538",
         "gitSearchResult": "The production version never existed as a Git filename in reachable commits, branches, tags, or reflogs.",
         "executionProvenance": "Supabase hosted migration application: one stored statement, created_by populated, and an execution-time version. This is not the db-push signature of migrations 1–54.",
-        "replacementHistory": "No Git rename or consolidation. The same SQL is present under a repository-authored timestamp.",
+        "replacementHistory": "Strategy B implemented as a Git rename from the repository-authored timestamp; SQL bytes are unchanged.",
         "effects": {
           "tables": [],
           "functions": [
@@ -3732,18 +3740,19 @@
         "productionOrder": 62,
         "productionVersion": "20260727114702",
         "name": "beard_legacy_null_target_review",
-        "repositoryFile": "20260727130000_beard_legacy_null_target_review.sql",
-        "repositoryVersion": "20260727130000",
+        "previousRepositoryFile": "20260727130000_beard_legacy_null_target_review.sql",
+        "repositoryFile": "20260727114702_beard_legacy_null_target_review.sql",
+        "repositoryVersion": "20260727114702",
         "hostedMd5": "634c25add2f25581bbe1f12e080aeadc",
         "hostedBytes": 5251,
         "repositoryExactMd5": "01c429b94594eef43838d513e87b57bf",
         "repositoryWithoutFinalNewlineMd5": "634c25add2f25581bbe1f12e080aeadc",
         "normalizedSqlProof": true,
-        "classification": "EXACT_EQUIVALENT_DIFFERENT_VERSION",
+        "classification": "EXACT_EQUIVALENT_CANONICAL_VERSION",
         "provenanceCommit": "b54fff20d07658185b8ccd8d9d47559036e2c73f",
         "gitSearchResult": "The production version never existed as a Git filename in reachable commits, branches, tags, or reflogs.",
         "executionProvenance": "Supabase hosted migration application: one stored statement, created_by populated, and an execution-time version. This is not the db-push signature of migrations 1–54.",
-        "replacementHistory": "No Git rename or consolidation. The same SQL is present under a repository-authored timestamp.",
+        "replacementHistory": "Strategy B implemented as a Git rename from the repository-authored timestamp; SQL bytes are unchanged.",
         "effects": {
           "tables": [],
           "functions": [
@@ -3786,8 +3795,8 @@
         "order": 63,
         "version": "20260729170313",
         "name": "supplier_documentation",
-        "repositoryVersion": "20260726120000",
-        "repositoryFile": "20260726120000_supplier_documentation.sql",
+        "repositoryVersion": "20260727120000",
+        "repositoryFile": "20260727120000_supplier_documentation.sql",
         "hostedMd5": "dba4daae26e77c20ed4f85a0f4c80d86",
         "repositoryExactMd5": "dba4daae26e77c20ed4f85a0f4c80d86",
         "repositoryWithoutFinalNewlineMd5": "de1d67639a38cc2be7afa0634ca22d7d",
@@ -3798,8 +3807,8 @@
         "order": 64,
         "version": "20260729170321",
         "name": "supplier_history_reliability",
-        "repositoryVersion": "20260726130000",
-        "repositoryFile": "20260726130000_supplier_history_reliability.sql",
+        "repositoryVersion": "20260727121000",
+        "repositoryFile": "20260727121000_supplier_history_reliability.sql",
         "hostedMd5": "be4df7fc9c41348bd43e1c955e6ed0e4",
         "repositoryExactMd5": "be4df7fc9c41348bd43e1c955e6ed0e4",
         "repositoryWithoutFinalNewlineMd5": "d7703d13591381e2df5e123da27bc906",
@@ -4123,11 +4132,11 @@
   "schemaComparison": {
     "productionOnlyObjects": [],
     "harmlessDifferences": [
-      "Hosted migration versions and repository filenames differ; normalized SQL content does not."
+      "The rehearsal uses hosted execution-time versions for its 25-file suffix; normalized SQL content matches the canonical repository suffix."
     ],
     "expectedMissingReleaseObjects": [
       {
-        "migration": "20260726120000_supplier_documentation.sql",
+        "migration": "20260727120000_supplier_documentation.sql",
         "effects": {
           "tables": [
             "supplier_document_records"
@@ -4151,7 +4160,7 @@
         }
       },
       {
-        "migration": "20260726130000_supplier_history_reliability.sql",
+        "migration": "20260727121000_supplier_history_reliability.sql",
         "effects": {
           "tables": [
             "supplier_events"
@@ -5182,7 +5191,7 @@
       "Hosted grant fingerprints differ materially between production and rehearsal because release migrations add/revoke privileges and hosted default privilege materialization applies to new objects. A fresh hosted clone must reproduce the rehearsal fingerprints."
     ],
     "dataDependentAssumptions": [
-      "20260726130000_supplier_history_reliability.sql",
+      "20260727121000_supplier_history_reliability.sql",
       "20260727131021_production_procurement_durable_workflow.sql",
       "20260727135143_production_procurement_supplier_matching.sql",
       "20260727141437_production_procurement_basket_scenarios.sql",
@@ -5274,13 +5283,202 @@
   },
   "canonicalStrategy": {
     "selected": "Strategy B",
+    "implementationStatus": "IMPLEMENTED",
     "rationale": "Canonicalize filenames without changing SQL: restore the eight proven production versions as the first 62 entries, rename the two supplier migrations to new versions immediately after production's head, and retain the remaining 23 release migrations. This creates the truthful production prefix plus a strict 25-migration suffix without history repair, no-op markers, duplicate DDL, or missing DDL.",
+    "implementedChanges": [
+      "Restored the eight mapped beard migration filenames to the exact immutable production versions.",
+      "Retimestamped supplier_documentation to 20260727120000 and supplier_history_reliability to 20260727121000.",
+      "Preserved every SQL byte; no final-newline normalization was required.",
+      "Established the exact production 62-version prefix and strict 25-version suffix."
+    ],
+    "implementationValidation": {
+      "beforeMigrationCount": 87,
+      "afterMigrationCount": 87,
+      "sqlChecksumChanges": 0,
+      "filesRenamed": 10,
+      "filesAdded": 0,
+      "filesDeleted": 0,
+      "productionPrefixVersions": [
+        "20260714210000",
+        "20260715090000",
+        "20260715120000",
+        "20260715121000",
+        "20260715130000",
+        "20260715140000",
+        "20260715193000",
+        "20260715200000",
+        "20260716090000",
+        "20260716130000",
+        "20260716180000",
+        "20260716200000",
+        "20260716210000",
+        "20260716220000",
+        "20260716230000",
+        "20260717090000",
+        "20260717110000",
+        "20260717120000",
+        "20260718090000",
+        "20260718120000",
+        "20260719090000",
+        "20260720090000",
+        "20260720120000",
+        "20260720160000",
+        "20260720170000",
+        "20260720180000",
+        "20260720190000",
+        "20260720200000",
+        "20260720210000",
+        "20260720220000",
+        "20260721140000",
+        "20260721150000",
+        "20260721210000",
+        "20260722090000",
+        "20260722100000",
+        "20260722101000",
+        "20260722110000",
+        "20260722130000",
+        "20260722190000",
+        "20260723044918",
+        "20260723060732",
+        "20260723071830",
+        "20260723073840",
+        "20260723080007",
+        "20260723095108",
+        "20260723105527",
+        "20260723125652",
+        "20260723191905",
+        "20260723213000",
+        "20260724054059",
+        "20260724064750",
+        "20260724124819",
+        "20260725093000",
+        "20260725133000",
+        "20260726122046",
+        "20260726124135",
+        "20260726185922",
+        "20260727043935",
+        "20260727055227",
+        "20260727095115",
+        "20260727095850",
+        "20260727114702"
+      ],
+      "suffixVersions": [
+        "20260727120000",
+        "20260727121000",
+        "20260727131021",
+        "20260727135143",
+        "20260727141437",
+        "20260727155213",
+        "20260727165818",
+        "20260728080000",
+        "20260728090000",
+        "20260728100000",
+        "20260728110000",
+        "20260728120000",
+        "20260728130000",
+        "20260728140000",
+        "20260728150000",
+        "20260728154754",
+        "20260728160000",
+        "20260728170000",
+        "20260728203257",
+        "20260729043721",
+        "20260729054425",
+        "20260729065048",
+        "20260729083226",
+        "20260729094510",
+        "20260729160000"
+      ],
+      "renameProofs": [
+        {
+          "before": "20260726121237_beard_semantic_failure_invariant.sql",
+          "after": "20260726122046_beard_semantic_failure_invariant.sql",
+          "beforeSha256": "a18247b202247ec54f87cb26bc74c34808661e68fb935964c6ca2674a45b008d",
+          "afterSha256": "a18247b202247ec54f87cb26bc74c34808661e68fb935964c6ca2674a45b008d",
+          "byteIdentical": true
+        },
+        {
+          "before": "20260726124000_beard_support_lookup_backward_compatibility.sql",
+          "after": "20260726124135_beard_support_lookup_backward_compatibility.sql",
+          "beforeSha256": "8a02655134b21ccce97a003e0b76fb27090ee5151d02b7aacc1e15a12396b181",
+          "afterSha256": "8a02655134b21ccce97a003e0b76fb27090ee5151d02b7aacc1e15a12396b181",
+          "byteIdentical": true
+        },
+        {
+          "before": "20260726185624_beard_guard_strategy_v6.sql",
+          "after": "20260726185922_beard_guard_strategy_v6.sql",
+          "beforeSha256": "3b22ad162e7b57d402708f2ecd44b231d629cc839e7f5e5abf7585b8df383a30",
+          "afterSha256": "3b22ad162e7b57d402708f2ecd44b231d629cc839e7f5e5abf7585b8df383a30",
+          "byteIdentical": true
+        },
+        {
+          "before": "20260727065000_beard_provider_429_classification.sql",
+          "after": "20260727043935_beard_provider_429_classification.sql",
+          "beforeSha256": "8411f2306274704201b9f386800f61150c480988c7b659c91f57abbf737d2753",
+          "afterSha256": "8411f2306274704201b9f386800f61150c480988c7b659c91f57abbf737d2753",
+          "byteIdentical": true
+        },
+        {
+          "before": "20260727054718_beard_responses_parser_v1.sql",
+          "after": "20260727055227_beard_responses_parser_v1.sql",
+          "beforeSha256": "91929f759c2d69e90fd3e6cc01ce02bd9846bae6c32ae187856ed16cc50fd35c",
+          "afterSha256": "91929f759c2d69e90fd3e6cc01ce02bd9846bae6c32ae187856ed16cc50fd35c",
+          "byteIdentical": true
+        },
+        {
+          "before": "20260727120000_beard_intelligence_v2.sql",
+          "after": "20260727095115_beard_intelligence_v2.sql",
+          "beforeSha256": "f06e569361f919fb66bc6bfb578d27359c2da32a71f8ef35ab2c81e3618f7e16",
+          "afterSha256": "f06e569361f919fb66bc6bfb578d27359c2da32a71f8ef35ab2c81e3618f7e16",
+          "byteIdentical": true
+        },
+        {
+          "before": "20260727121000_beard_support_lookup_v6_composition.sql",
+          "after": "20260727095850_beard_support_lookup_v6_composition.sql",
+          "beforeSha256": "bc33e065ff1fd82e9763a2b900a1934813b2faa2f283d2613a0a6d15b6d97932",
+          "afterSha256": "bc33e065ff1fd82e9763a2b900a1934813b2faa2f283d2613a0a6d15b6d97932",
+          "byteIdentical": true
+        },
+        {
+          "before": "20260727130000_beard_legacy_null_target_review.sql",
+          "after": "20260727114702_beard_legacy_null_target_review.sql",
+          "beforeSha256": "a210080eff1c88a31935a927f85e97ebb9dfed6ab2ea4b837140f8c8f7f3b1b0",
+          "afterSha256": "a210080eff1c88a31935a927f85e97ebb9dfed6ab2ea4b837140f8c8f7f3b1b0",
+          "byteIdentical": true
+        },
+        {
+          "before": "20260726120000_supplier_documentation.sql",
+          "after": "20260727120000_supplier_documentation.sql",
+          "beforeSha256": "d23adebc1d24cf5cd1bcb4f51ee167d3887b6666497706c7bf04212ae1b3fb83",
+          "afterSha256": "d23adebc1d24cf5cd1bcb4f51ee167d3887b6666497706c7bf04212ae1b3fb83",
+          "byteIdentical": true
+        },
+        {
+          "before": "20260726130000_supplier_history_reliability.sql",
+          "after": "20260727121000_supplier_history_reliability.sql",
+          "beforeSha256": "9956472bd7943c08ccad9be510c48bb535faf8065fb88b96735c50a42c39ad2c",
+          "afterSha256": "9956472bd7943c08ccad9be510c48bb535faf8065fb88b96735c50a42c39ad2c",
+          "byteIdentical": true
+        }
+      ],
+      "localReset": "PASS",
+      "schemaParity": {
+        "status": "PASS",
+        "exactFingerprintCategories": [
+          "tables",
+          "columns",
+          "constraints",
+          "functions",
+          "indexes",
+          "policies",
+          "triggers",
+          "RLS"
+        ],
+        "grants": "PASS: regenerated authority inventory is object-for-object unchanged; only its source hash changed because migration paths changed.",
+        "comments": "PASS: all migration SQL SHA-256 values are unchanged by semantic migration name, so tracked COMMENT statements are byte-identical."
+      }
+    },
     "nextSteps": [
-      "Create a focused reconciliation branch; do not edit SQL bodies.",
-      "Rename the eight mapped beard migration files to their exact production versions.",
-      "Rename supplier_documentation and supplier_history_reliability to ordered versions greater than 20260727114702 and before 20260727131021.",
-      "Regenerate checksums and assert that all 10 renamed files retain byte-identical SQL.",
-      "Reset locally and require the complete schema and authority fingerprints to remain unchanged.",
       "Create a current physical production backup and record its recovery identifier.",
       "Create a fresh auth-preserving production clone; the existing rehearsal remains the semantic target but is not the canonical history rehearsal.",
       "Run migration list and dry-run; require an exact 62-version shared prefix and strict 25-version suffix.",

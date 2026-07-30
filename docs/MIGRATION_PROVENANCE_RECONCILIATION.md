@@ -1,6 +1,6 @@
 # Migration Provenance Reconciliation V1
 
-Disposition: **PASS**
+Disposition: **PASS — Strategy B implemented**
 
 This evidence reconciles repository commit `35527eccaf4b85ab290f7d83d1cfde1ee1c6152f`,
 production project `fetmeynkvylznapdikht`, and auth-preserving rehearsal project
@@ -53,27 +53,40 @@ authority target for the next hosted clone.
 
 ## Canonical strategy
 
-Use Strategy B as a filename-only canonicalization on a separate, reviewed
-branch. Restore the eight proven production versions as the repository's first
-62 entries, rename the two supplier migrations to versions immediately after
-production's head, and retain the other 23 release migrations. SQL bodies must
-remain byte-identical.
+Strategy B is implemented as a filename-only canonicalization on the focused
+reconciliation branch. The eight proven production versions are now the
+repository's migrations 55–62. `supplier_documentation` is retimestamped to
+`20260727120000` and `supplier_history_reliability` to `20260727121000`; the
+other 23 release migrations retain their relative order. All SQL bodies remain
+byte-identical, including their original final-newline state.
 
 This produces a truthful 62-version production prefix and strict 25-migration
 suffix. It avoids duplicate DDL, no-op markers, migration repair, and permanent
 dependence on an out-of-band application path.
 
-Before production execution:
+The canonical tree now has the truthful 62-version production prefix and a
+strict 25-migration suffix. Before production execution:
 
-1. Create a focused branch and perform only the ten proven filename changes.
-2. Prove every SQL body remains byte-identical and reset locally.
-3. Capture a current physical production backup.
-4. Create a fresh auth-preserving clone from production.
-5. Require migration dry-run to show exactly the canonical 25-file suffix.
-6. Rehearse that exact suffix on the fresh clone.
-7. Require final schema and authority fingerprints to match the existing
+1. Capture a current physical production backup.
+2. Create a fresh auth-preserving clone from production.
+3. Require migration dry-run to show exactly the canonical 25-file suffix.
+4. Rehearse that exact suffix on the fresh clone.
+5. Require final schema and authority fingerprints to match the existing
    87-migration rehearsal.
-8. Apply only that reviewed suffix to production.
+6. Apply only that reviewed suffix to production.
+
+## Implementation validation
+
+- Before and after migration counts: 87 → 87.
+- Files renamed: 10; files added or deleted: 0.
+- SQL checksum changes by semantic migration name: 0.
+- Fresh local reset: PASS.
+- Tables, columns, constraints, functions, indexes, policies, triggers, and RLS
+  fingerprints: identical to the canonical rehearsal evidence.
+- Grants: PASS; the regenerated authority inventory is object-for-object
+  unchanged apart from its migration-path-derived source hash.
+- Tracked comments: PASS; unchanged SQL checksums prove all `COMMENT`
+  statements remain byte-identical.
 
 The existing rehearsal remains valid as the semantic target, but a fresh clone
 is required to prove the canonical execution path from production's truthful

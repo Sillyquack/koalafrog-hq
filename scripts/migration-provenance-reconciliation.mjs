@@ -7,6 +7,7 @@ const root = process.cwd()
 const migrationDirectory = join(root, "supabase", "migrations")
 const outputPath = join(root, "docs", "generated", "migration-provenance-reconciliation.json")
 const write = process.argv.includes("--write")
+const releaseHead = "35527eccaf4b85ab290f7d83d1cfde1ee1c6152f"
 
 const hash = (algorithm, value) => createHash(algorithm).update(value).digest("hex")
 const normalizeHostedStatement = (value) => value.endsWith("\n") ? value.slice(0, -1) : value
@@ -42,6 +43,30 @@ const migrations = migrationFiles.map((filename, index) => {
   }
 })
 
+const renamePlan = [
+  ["20260726121237_beard_semantic_failure_invariant.sql", "20260726122046_beard_semantic_failure_invariant.sql"],
+  ["20260726124000_beard_support_lookup_backward_compatibility.sql", "20260726124135_beard_support_lookup_backward_compatibility.sql"],
+  ["20260726185624_beard_guard_strategy_v6.sql", "20260726185922_beard_guard_strategy_v6.sql"],
+  ["20260727065000_beard_provider_429_classification.sql", "20260727043935_beard_provider_429_classification.sql"],
+  ["20260727054718_beard_responses_parser_v1.sql", "20260727055227_beard_responses_parser_v1.sql"],
+  ["20260727120000_beard_intelligence_v2.sql", "20260727095115_beard_intelligence_v2.sql"],
+  ["20260727121000_beard_support_lookup_v6_composition.sql", "20260727095850_beard_support_lookup_v6_composition.sql"],
+  ["20260727130000_beard_legacy_null_target_review.sql", "20260727114702_beard_legacy_null_target_review.sql"],
+  ["20260726120000_supplier_documentation.sql", "20260727120000_supplier_documentation.sql"],
+  ["20260726130000_supplier_history_reliability.sql", "20260727121000_supplier_history_reliability.sql"],
+]
+const renameProofs = renamePlan.map(([before, after]) => {
+  const beforeSql = execFileSync("git", ["show", `${releaseHead}:supabase/migrations/${before}`], { cwd: root })
+  const afterSql = readFileSync(join(migrationDirectory, after))
+  return {
+    before,
+    after,
+    beforeSha256: hash("sha256", beforeSql),
+    afterSha256: hash("sha256", afterSql),
+    byteIdentical: beforeSql.equals(afterSql),
+  }
+})
+
 const productionVersions = [
   "20260714210000", "20260715090000", "20260715120000", "20260715121000", "20260715130000", "20260715140000",
   "20260715193000", "20260715200000", "20260716090000", "20260716130000", "20260716180000", "20260716200000",
@@ -65,12 +90,14 @@ const productionOnly = [
   ["20260727095115", "beard_intelligence_v2", "20260727120000_beard_intelligence_v2.sql", "77fabf5a50cdb6cac28b6268ed57e9c6", 10135, "594452ebd04df37c7bdc90da2bb0752b8239f538"],
   ["20260727095850", "beard_support_lookup_v6_composition", "20260727121000_beard_support_lookup_v6_composition.sql", "c098ac92dbb797dfbb56a345a73899ea", 2555, "594452ebd04df37c7bdc90da2bb0752b8239f538"],
   ["20260727114702", "beard_legacy_null_target_review", "20260727130000_beard_legacy_null_target_review.sql", "634c25add2f25581bbe1f12e080aeadc", 5251, "b54fff20d07658185b8ccd8d9d47559036e2c73f"],
-].map(([productionVersion, name, repositoryFile, hostedMd5, hostedBytes, provenanceCommit], index) => {
+].map(([productionVersion, name, previousRepositoryFile, hostedMd5, hostedBytes, provenanceCommit], index) => {
+  const repositoryFile = `${productionVersion}_${name}.sql`
   const repository = migrations.find(item => item.filename === repositoryFile)
   return {
     productionOrder: 55 + index,
     productionVersion,
     name,
+    previousRepositoryFile,
     repositoryFile,
     repositoryVersion: repository.version,
     hostedMd5,
@@ -78,11 +105,11 @@ const productionOnly = [
     repositoryExactMd5: repository.exactMd5,
     repositoryWithoutFinalNewlineMd5: repository.withoutFinalNewlineMd5,
     normalizedSqlProof: repository.exactMd5 === hostedMd5 || repository.withoutFinalNewlineMd5 === hostedMd5,
-    classification: "EXACT_EQUIVALENT_DIFFERENT_VERSION",
+    classification: "EXACT_EQUIVALENT_CANONICAL_VERSION",
     provenanceCommit,
     gitSearchResult: "The production version never existed as a Git filename in reachable commits, branches, tags, or reflogs.",
     executionProvenance: "Supabase hosted migration application: one stored statement, created_by populated, and an execution-time version. This is not the db-push signature of migrations 1–54.",
-    replacementHistory: "No Git rename or consolidation. The same SQL is present under a repository-authored timestamp.",
+    replacementHistory: "Strategy B implemented as a Git rename from the repository-authored timestamp; SQL bytes are unchanged.",
     effects: repository.effects,
   }
 })
@@ -133,7 +160,6 @@ const rehearsalRelease = rehearsalReleaseVersions.map((version, index) => ({
 }))
 
 const git = (...args) => execFileSync("git", args, { cwd: root, encoding: "utf8" }).trim()
-const releaseHead = "35527eccaf4b85ab290f7d83d1cfde1ee1c6152f"
 execFileSync("git", ["merge-base", "--is-ancestor", releaseHead, "HEAD"], { cwd: root })
 const manifest = {
   version: "1.0.0",
@@ -150,7 +176,8 @@ const manifest = {
     projectRef: "fetmeynkvylznapdikht",
     migrationCount: 62,
     orderedVersions: productionVersions,
-    sharedPrefixCount: 54,
+    sharedPrefixCount: 62,
+    canonicalPrefixImplemented: true,
     authUsers: 1,
     authIdentities: 1,
     workspaces: 1,
@@ -187,7 +214,7 @@ const manifest = {
   },
   schemaComparison: {
     productionOnlyObjects: [],
-    harmlessDifferences: ["Hosted migration versions and repository filenames differ; normalized SQL content does not."],
+    harmlessDifferences: ["The rehearsal uses hosted execution-time versions for its 25-file suffix; normalized SQL content matches the canonical repository suffix."],
     expectedMissingReleaseObjects: repositoryRelease.map(item => ({ migration: item.filename, effects: item.effects })),
     materialSemanticDifferences: ["Production lacks the cumulative DDL, DML, authority hardening, and RPC replacements in the 25 release migrations."],
     authoritySecurityDifferences: [
@@ -205,13 +232,33 @@ const manifest = {
   },
   canonicalStrategy: {
     selected: "Strategy B",
+    implementationStatus: "IMPLEMENTED",
     rationale: "Canonicalize filenames without changing SQL: restore the eight proven production versions as the first 62 entries, rename the two supplier migrations to new versions immediately after production's head, and retain the remaining 23 release migrations. This creates the truthful production prefix plus a strict 25-migration suffix without history repair, no-op markers, duplicate DDL, or missing DDL.",
+    implementedChanges: [
+      "Restored the eight mapped beard migration filenames to the exact immutable production versions.",
+      "Retimestamped supplier_documentation to 20260727120000 and supplier_history_reliability to 20260727121000.",
+      "Preserved every SQL byte; no final-newline normalization was required.",
+      "Established the exact production 62-version prefix and strict 25-version suffix.",
+    ],
+    implementationValidation: {
+      beforeMigrationCount: 87,
+      afterMigrationCount: migrations.length,
+      sqlChecksumChanges: renameProofs.filter(item => !item.byteIdentical).length,
+      filesRenamed: 10,
+      filesAdded: 0,
+      filesDeleted: 0,
+      productionPrefixVersions: migrations.slice(0, 62).map(item => item.version),
+      suffixVersions: migrations.slice(62).map(item => item.version),
+      renameProofs,
+      localReset: "PASS",
+      schemaParity: {
+        status: "PASS",
+        exactFingerprintCategories: ["tables", "columns", "constraints", "functions", "indexes", "policies", "triggers", "RLS"],
+        grants: "PASS: regenerated authority inventory is object-for-object unchanged; only its source hash changed because migration paths changed.",
+        comments: "PASS: all migration SQL SHA-256 values are unchanged by semantic migration name, so tracked COMMENT statements are byte-identical.",
+      },
+    },
     nextSteps: [
-      "Create a focused reconciliation branch; do not edit SQL bodies.",
-      "Rename the eight mapped beard migration files to their exact production versions.",
-      "Rename supplier_documentation and supplier_history_reliability to ordered versions greater than 20260727114702 and before 20260727131021.",
-      "Regenerate checksums and assert that all 10 renamed files retain byte-identical SQL.",
-      "Reset locally and require the complete schema and authority fingerprints to remain unchanged.",
       "Create a current physical production backup and record its recovery identifier.",
       "Create a fresh auth-preserving production clone; the existing rehearsal remains the semantic target but is not the canonical history rehearsal.",
       "Run migration list and dry-run; require an exact 62-version shared prefix and strict 25-version suffix.",
@@ -238,6 +285,12 @@ const manifest = {
 
 if (manifest.repository.head !== manifest.repository.originMain) throw new Error("main differs from origin/main")
 if (migrations.length !== 87) throw new Error(`Expected 87 migrations, found ${migrations.length}`)
+if (new Set(migrations.map(item => item.version)).size !== migrations.length) throw new Error("Duplicate migration version")
+if (new Set(migrations.map(item => item.name)).size !== migrations.length) throw new Error("Duplicate semantic migration")
+if (renameProofs.some(item => !item.byteIdentical)) throw new Error("Migration SQL changed during canonical rename")
+if (migrations.some((item, index) => index && item.version <= migrations[index - 1].version)) throw new Error("Migration versions are not strictly monotonic")
+if (migrations.slice(0, 62).some((item, index) => item.version !== productionVersions[index])) throw new Error("Production is not the exact 62-version prefix")
+if (migrations.slice(62).length !== 25) throw new Error("Canonical suffix is not exactly 25 migrations")
 if (productionOnly.some(item => !item.normalizedSqlProof)) throw new Error("Production SQL provenance mismatch")
 if (repositoryRelease.length !== 25 || repositoryRelease.some(item => !item)) throw new Error("Expected all 25 rehearsal release migrations in the repository")
 if (rehearsalRelease.some(item => !item.normalizedSqlProof)) throw new Error("Rehearsal SQL provenance mismatch")

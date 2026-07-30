@@ -1980,48 +1980,13 @@
       "sourceHash": "442f16252b65c20b8d40c9d9046e3c7863744675fc4b1530d85ce37656a86c9b"
     },
     {
-      "filename": "20260726120000_supplier_documentation.sql",
-      "timestamp": "20260726120000",
-      "commit": "7b9e37f89f21c17289fc17ae04b64cb097bb4606",
-      "milestone": "supplier documentation",
-      "purpose": "supplier documentation",
-      "dependencies": [
-        "20260725133000_procurement_purchasing_intelligence_hardening.sql"
-      ],
-      "requiredExtensions": [],
-      "expectedObjectChanges": {
-        "tables": [
-          "supplier_document_records"
-        ],
-        "functions": [],
-        "policies": [
-          "owner_all"
-        ],
-        "indexes": 2
-      },
-      "expectedDataChanges": 0,
-      "lockRisk": "requires_rehearsal_measurement",
-      "tableRewriteRisk": "not_detected",
-      "destructiveBehavior": "none detected",
-      "longTransactionRisk": "low_or_unknown",
-      "durationClass": "measure_in_rehearsal",
-      "classification": "authority_change",
-      "rollbackClassification": "code_rollback_or_forward_fix",
-      "forwardFixStrategy": "append a reviewed migration; never rewrite immutable business history",
-      "verificationQuery": "compare migration head, authority inventory, object counts, grants, RLS, and focused domain contracts",
-      "stopCondition": "migration error, drift, timeout, or object mismatch",
-      "hostedApplicationStatus": "pending_rehearsal",
-      "authorizationRequired": true,
-      "sourceHash": "d23adebc1d24cf5cd1bcb4f51ee167d3887b6666497706c7bf04212ae1b3fb83"
-    },
-    {
-      "filename": "20260726121237_beard_semantic_failure_invariant.sql",
-      "timestamp": "20260726121237",
-      "commit": "91138b75c6c11f2a73b0d7b955d92a7d79acfd43",
+      "filename": "20260726122046_beard_semantic_failure_invariant.sql",
+      "timestamp": "20260726122046",
+      "commit": null,
       "milestone": "beard semantic failure invariant",
       "purpose": "beard semantic failure invariant",
       "dependencies": [
-        "20260726120000_supplier_documentation.sql"
+        "20260725133000_procurement_purchasing_intelligence_hardening.sql"
       ],
       "requiredExtensions": [],
       "expectedObjectChanges": {
@@ -2050,13 +2015,13 @@
       "sourceHash": "a18247b202247ec54f87cb26bc74c34808661e68fb935964c6ca2674a45b008d"
     },
     {
-      "filename": "20260726124000_beard_support_lookup_backward_compatibility.sql",
-      "timestamp": "20260726124000",
-      "commit": "91138b75c6c11f2a73b0d7b955d92a7d79acfd43",
+      "filename": "20260726124135_beard_support_lookup_backward_compatibility.sql",
+      "timestamp": "20260726124135",
+      "commit": null,
       "milestone": "beard support lookup backward compatibility",
       "purpose": "beard support lookup backward compatibility",
       "dependencies": [
-        "20260726121237_beard_semantic_failure_invariant.sql"
+        "20260726122046_beard_semantic_failure_invariant.sql"
       ],
       "requiredExtensions": [],
       "expectedObjectChanges": {
@@ -2083,13 +2048,250 @@
       "sourceHash": "8a02655134b21ccce97a003e0b76fb27090ee5151d02b7aacc1e15a12396b181"
     },
     {
-      "filename": "20260726130000_supplier_history_reliability.sql",
-      "timestamp": "20260726130000",
-      "commit": "7b9e37f89f21c17289fc17ae04b64cb097bb4606",
+      "filename": "20260726185922_beard_guard_strategy_v6.sql",
+      "timestamp": "20260726185922",
+      "commit": null,
+      "milestone": "beard guard strategy v6",
+      "purpose": "beard guard strategy v6",
+      "dependencies": [
+        "20260726124135_beard_support_lookup_backward_compatibility.sql"
+      ],
+      "requiredExtensions": [],
+      "expectedObjectChanges": {
+        "tables": [],
+        "functions": [
+          "begin_beard_provider_attempt",
+          "lookup_beard_analysis_support_diagnostic",
+          "persist_beard_analysis_result"
+        ],
+        "policies": [],
+        "indexes": 0
+      },
+      "expectedDataChanges": 3,
+      "lockRisk": "low",
+      "tableRewriteRisk": "not_detected",
+      "destructiveBehavior": "none detected",
+      "longTransactionRisk": "low_or_unknown",
+      "durationClass": "measure_in_rehearsal",
+      "classification": "authority_change",
+      "rollbackClassification": "backup_and_forward_fix_decision_required",
+      "forwardFixStrategy": "append a reviewed migration; never rewrite immutable business history",
+      "verificationQuery": "compare migration head, authority inventory, object counts, grants, RLS, and focused domain contracts",
+      "stopCondition": "migration error, drift, timeout, or object mismatch",
+      "hostedApplicationStatus": "pending_rehearsal",
+      "authorizationRequired": true,
+      "sourceHash": "3b22ad162e7b57d402708f2ecd44b231d629cc839e7f5e5abf7585b8df383a30"
+    },
+    {
+      "filename": "20260727043935_beard_provider_429_classification.sql",
+      "timestamp": "20260727043935",
+      "commit": null,
+      "milestone": "beard provider 429 classification",
+      "purpose": "beard provider 429 classification",
+      "dependencies": [
+        "20260726185922_beard_guard_strategy_v6.sql"
+      ],
+      "requiredExtensions": [],
+      "expectedObjectChanges": {
+        "tables": [],
+        "functions": [
+          "lookup_beard_analysis_support_diagnostic"
+        ],
+        "policies": [],
+        "indexes": 0
+      },
+      "expectedDataChanges": 0,
+      "lockRisk": "low",
+      "tableRewriteRisk": "not_detected",
+      "destructiveBehavior": "none detected",
+      "longTransactionRisk": "low_or_unknown",
+      "durationClass": "short_expected",
+      "classification": "authority_change",
+      "rollbackClassification": "code_rollback_or_forward_fix",
+      "forwardFixStrategy": "append a reviewed migration; never rewrite immutable business history",
+      "verificationQuery": "compare migration head, authority inventory, object counts, grants, RLS, and focused domain contracts",
+      "stopCondition": "migration error, drift, timeout, or object mismatch",
+      "hostedApplicationStatus": "pending_rehearsal",
+      "authorizationRequired": true,
+      "sourceHash": "8411f2306274704201b9f386800f61150c480988c7b659c91f57abbf737d2753"
+    },
+    {
+      "filename": "20260727055227_beard_responses_parser_v1.sql",
+      "timestamp": "20260727055227",
+      "commit": null,
+      "milestone": "beard responses parser v1",
+      "purpose": "beard responses parser v1",
+      "dependencies": [
+        "20260727043935_beard_provider_429_classification.sql"
+      ],
+      "requiredExtensions": [],
+      "expectedObjectChanges": {
+        "tables": [],
+        "functions": [
+          "lookup_beard_analysis_support_diagnostic"
+        ],
+        "policies": [],
+        "indexes": 0
+      },
+      "expectedDataChanges": 0,
+      "lockRisk": "low",
+      "tableRewriteRisk": "not_detected",
+      "destructiveBehavior": "none detected",
+      "longTransactionRisk": "low_or_unknown",
+      "durationClass": "short_expected",
+      "classification": "authority_change",
+      "rollbackClassification": "code_rollback_or_forward_fix",
+      "forwardFixStrategy": "append a reviewed migration; never rewrite immutable business history",
+      "verificationQuery": "compare migration head, authority inventory, object counts, grants, RLS, and focused domain contracts",
+      "stopCondition": "migration error, drift, timeout, or object mismatch",
+      "hostedApplicationStatus": "pending_rehearsal",
+      "authorizationRequired": true,
+      "sourceHash": "91929f759c2d69e90fd3e6cc01ce02bd9846bae6c32ae187856ed16cc50fd35c"
+    },
+    {
+      "filename": "20260727095115_beard_intelligence_v2.sql",
+      "timestamp": "20260727095115",
+      "commit": null,
+      "milestone": "beard intelligence v2",
+      "purpose": "beard intelligence v2",
+      "dependencies": [
+        "20260727055227_beard_responses_parser_v1.sql"
+      ],
+      "requiredExtensions": [],
+      "expectedObjectChanges": {
+        "tables": [],
+        "functions": [
+          "finish_beard_analysis_review",
+          "list_beard_analysis_history",
+          "reopen_beard_analysis"
+        ],
+        "policies": [],
+        "indexes": 0
+      },
+      "expectedDataChanges": 2,
+      "lockRisk": "low",
+      "tableRewriteRisk": "not_detected",
+      "destructiveBehavior": "none detected",
+      "longTransactionRisk": "low_or_unknown",
+      "durationClass": "measure_in_rehearsal",
+      "classification": "authority_change",
+      "rollbackClassification": "backup_and_forward_fix_decision_required",
+      "forwardFixStrategy": "append a reviewed migration; never rewrite immutable business history",
+      "verificationQuery": "compare migration head, authority inventory, object counts, grants, RLS, and focused domain contracts",
+      "stopCondition": "migration error, drift, timeout, or object mismatch",
+      "hostedApplicationStatus": "pending_rehearsal",
+      "authorizationRequired": true,
+      "sourceHash": "f06e569361f919fb66bc6bfb578d27359c2da32a71f8ef35ab2c81e3618f7e16"
+    },
+    {
+      "filename": "20260727095850_beard_support_lookup_v6_composition.sql",
+      "timestamp": "20260727095850",
+      "commit": null,
+      "milestone": "beard support lookup v6 composition",
+      "purpose": "beard support lookup v6 composition",
+      "dependencies": [
+        "20260727095115_beard_intelligence_v2.sql"
+      ],
+      "requiredExtensions": [],
+      "expectedObjectChanges": {
+        "tables": [],
+        "functions": [
+          "lookup_beard_analysis_support_diagnostic"
+        ],
+        "policies": [],
+        "indexes": 0
+      },
+      "expectedDataChanges": 0,
+      "lockRisk": "low",
+      "tableRewriteRisk": "not_detected",
+      "destructiveBehavior": "none detected",
+      "longTransactionRisk": "low_or_unknown",
+      "durationClass": "short_expected",
+      "classification": "authority_change",
+      "rollbackClassification": "code_rollback_or_forward_fix",
+      "forwardFixStrategy": "append a reviewed migration; never rewrite immutable business history",
+      "verificationQuery": "compare migration head, authority inventory, object counts, grants, RLS, and focused domain contracts",
+      "stopCondition": "migration error, drift, timeout, or object mismatch",
+      "hostedApplicationStatus": "pending_rehearsal",
+      "authorizationRequired": true,
+      "sourceHash": "bc33e065ff1fd82e9763a2b900a1934813b2faa2f283d2613a0a6d15b6d97932"
+    },
+    {
+      "filename": "20260727114702_beard_legacy_null_target_review.sql",
+      "timestamp": "20260727114702",
+      "commit": null,
+      "milestone": "beard legacy null target review",
+      "purpose": "beard legacy null target review",
+      "dependencies": [
+        "20260727095850_beard_support_lookup_v6_composition.sql"
+      ],
+      "requiredExtensions": [],
+      "expectedObjectChanges": {
+        "tables": [],
+        "functions": [
+          "finish_beard_analysis_review"
+        ],
+        "policies": [],
+        "indexes": 0
+      },
+      "expectedDataChanges": 2,
+      "lockRisk": "low",
+      "tableRewriteRisk": "not_detected",
+      "destructiveBehavior": "none detected",
+      "longTransactionRisk": "low_or_unknown",
+      "durationClass": "measure_in_rehearsal",
+      "classification": "authority_change",
+      "rollbackClassification": "backup_and_forward_fix_decision_required",
+      "forwardFixStrategy": "append a reviewed migration; never rewrite immutable business history",
+      "verificationQuery": "compare migration head, authority inventory, object counts, grants, RLS, and focused domain contracts",
+      "stopCondition": "migration error, drift, timeout, or object mismatch",
+      "hostedApplicationStatus": "pending_rehearsal",
+      "authorizationRequired": true,
+      "sourceHash": "a210080eff1c88a31935a927f85e97ebb9dfed6ab2ea4b837140f8c8f7f3b1b0"
+    },
+    {
+      "filename": "20260727120000_supplier_documentation.sql",
+      "timestamp": "20260727120000",
+      "commit": null,
+      "milestone": "supplier documentation",
+      "purpose": "supplier documentation",
+      "dependencies": [
+        "20260727114702_beard_legacy_null_target_review.sql"
+      ],
+      "requiredExtensions": [],
+      "expectedObjectChanges": {
+        "tables": [
+          "supplier_document_records"
+        ],
+        "functions": [],
+        "policies": [
+          "owner_all"
+        ],
+        "indexes": 2
+      },
+      "expectedDataChanges": 0,
+      "lockRisk": "requires_rehearsal_measurement",
+      "tableRewriteRisk": "not_detected",
+      "destructiveBehavior": "none detected",
+      "longTransactionRisk": "low_or_unknown",
+      "durationClass": "measure_in_rehearsal",
+      "classification": "authority_change",
+      "rollbackClassification": "code_rollback_or_forward_fix",
+      "forwardFixStrategy": "append a reviewed migration; never rewrite immutable business history",
+      "verificationQuery": "compare migration head, authority inventory, object counts, grants, RLS, and focused domain contracts",
+      "stopCondition": "migration error, drift, timeout, or object mismatch",
+      "hostedApplicationStatus": "pending_rehearsal",
+      "authorizationRequired": true,
+      "sourceHash": "d23adebc1d24cf5cd1bcb4f51ee167d3887b6666497706c7bf04212ae1b3fb83"
+    },
+    {
+      "filename": "20260727121000_supplier_history_reliability.sql",
+      "timestamp": "20260727121000",
+      "commit": null,
       "milestone": "supplier history reliability",
       "purpose": "supplier history reliability",
       "dependencies": [
-        "20260726124000_beard_support_lookup_backward_compatibility.sql"
+        "20260727120000_supplier_documentation.sql"
       ],
       "requiredExtensions": [],
       "expectedObjectChanges": {
@@ -2121,215 +2323,13 @@
       "sourceHash": "9956472bd7943c08ccad9be510c48bb535faf8065fb88b96735c50a42c39ad2c"
     },
     {
-      "filename": "20260726185624_beard_guard_strategy_v6.sql",
-      "timestamp": "20260726185624",
-      "commit": "91138b75c6c11f2a73b0d7b955d92a7d79acfd43",
-      "milestone": "beard guard strategy v6",
-      "purpose": "beard guard strategy v6",
-      "dependencies": [
-        "20260726130000_supplier_history_reliability.sql"
-      ],
-      "requiredExtensions": [],
-      "expectedObjectChanges": {
-        "tables": [],
-        "functions": [
-          "begin_beard_provider_attempt",
-          "lookup_beard_analysis_support_diagnostic",
-          "persist_beard_analysis_result"
-        ],
-        "policies": [],
-        "indexes": 0
-      },
-      "expectedDataChanges": 3,
-      "lockRisk": "low",
-      "tableRewriteRisk": "not_detected",
-      "destructiveBehavior": "none detected",
-      "longTransactionRisk": "low_or_unknown",
-      "durationClass": "measure_in_rehearsal",
-      "classification": "authority_change",
-      "rollbackClassification": "backup_and_forward_fix_decision_required",
-      "forwardFixStrategy": "append a reviewed migration; never rewrite immutable business history",
-      "verificationQuery": "compare migration head, authority inventory, object counts, grants, RLS, and focused domain contracts",
-      "stopCondition": "migration error, drift, timeout, or object mismatch",
-      "hostedApplicationStatus": "pending_rehearsal",
-      "authorizationRequired": true,
-      "sourceHash": "3b22ad162e7b57d402708f2ecd44b231d629cc839e7f5e5abf7585b8df383a30"
-    },
-    {
-      "filename": "20260727054718_beard_responses_parser_v1.sql",
-      "timestamp": "20260727054718",
-      "commit": "91138b75c6c11f2a73b0d7b955d92a7d79acfd43",
-      "milestone": "beard responses parser v1",
-      "purpose": "beard responses parser v1",
-      "dependencies": [
-        "20260726185624_beard_guard_strategy_v6.sql"
-      ],
-      "requiredExtensions": [],
-      "expectedObjectChanges": {
-        "tables": [],
-        "functions": [
-          "lookup_beard_analysis_support_diagnostic"
-        ],
-        "policies": [],
-        "indexes": 0
-      },
-      "expectedDataChanges": 0,
-      "lockRisk": "low",
-      "tableRewriteRisk": "not_detected",
-      "destructiveBehavior": "none detected",
-      "longTransactionRisk": "low_or_unknown",
-      "durationClass": "short_expected",
-      "classification": "authority_change",
-      "rollbackClassification": "code_rollback_or_forward_fix",
-      "forwardFixStrategy": "append a reviewed migration; never rewrite immutable business history",
-      "verificationQuery": "compare migration head, authority inventory, object counts, grants, RLS, and focused domain contracts",
-      "stopCondition": "migration error, drift, timeout, or object mismatch",
-      "hostedApplicationStatus": "pending_rehearsal",
-      "authorizationRequired": true,
-      "sourceHash": "91929f759c2d69e90fd3e6cc01ce02bd9846bae6c32ae187856ed16cc50fd35c"
-    },
-    {
-      "filename": "20260727065000_beard_provider_429_classification.sql",
-      "timestamp": "20260727065000",
-      "commit": "91138b75c6c11f2a73b0d7b955d92a7d79acfd43",
-      "milestone": "beard provider 429 classification",
-      "purpose": "beard provider 429 classification",
-      "dependencies": [
-        "20260727054718_beard_responses_parser_v1.sql"
-      ],
-      "requiredExtensions": [],
-      "expectedObjectChanges": {
-        "tables": [],
-        "functions": [
-          "lookup_beard_analysis_support_diagnostic"
-        ],
-        "policies": [],
-        "indexes": 0
-      },
-      "expectedDataChanges": 0,
-      "lockRisk": "low",
-      "tableRewriteRisk": "not_detected",
-      "destructiveBehavior": "none detected",
-      "longTransactionRisk": "low_or_unknown",
-      "durationClass": "short_expected",
-      "classification": "authority_change",
-      "rollbackClassification": "code_rollback_or_forward_fix",
-      "forwardFixStrategy": "append a reviewed migration; never rewrite immutable business history",
-      "verificationQuery": "compare migration head, authority inventory, object counts, grants, RLS, and focused domain contracts",
-      "stopCondition": "migration error, drift, timeout, or object mismatch",
-      "hostedApplicationStatus": "pending_rehearsal",
-      "authorizationRequired": true,
-      "sourceHash": "8411f2306274704201b9f386800f61150c480988c7b659c91f57abbf737d2753"
-    },
-    {
-      "filename": "20260727120000_beard_intelligence_v2.sql",
-      "timestamp": "20260727120000",
-      "commit": "594452ebd04df37c7bdc90da2bb0752b8239f538",
-      "milestone": "beard intelligence v2",
-      "purpose": "beard intelligence v2",
-      "dependencies": [
-        "20260727065000_beard_provider_429_classification.sql"
-      ],
-      "requiredExtensions": [],
-      "expectedObjectChanges": {
-        "tables": [],
-        "functions": [
-          "finish_beard_analysis_review",
-          "list_beard_analysis_history",
-          "reopen_beard_analysis"
-        ],
-        "policies": [],
-        "indexes": 0
-      },
-      "expectedDataChanges": 2,
-      "lockRisk": "low",
-      "tableRewriteRisk": "not_detected",
-      "destructiveBehavior": "none detected",
-      "longTransactionRisk": "low_or_unknown",
-      "durationClass": "measure_in_rehearsal",
-      "classification": "authority_change",
-      "rollbackClassification": "backup_and_forward_fix_decision_required",
-      "forwardFixStrategy": "append a reviewed migration; never rewrite immutable business history",
-      "verificationQuery": "compare migration head, authority inventory, object counts, grants, RLS, and focused domain contracts",
-      "stopCondition": "migration error, drift, timeout, or object mismatch",
-      "hostedApplicationStatus": "pending_rehearsal",
-      "authorizationRequired": true,
-      "sourceHash": "f06e569361f919fb66bc6bfb578d27359c2da32a71f8ef35ab2c81e3618f7e16"
-    },
-    {
-      "filename": "20260727121000_beard_support_lookup_v6_composition.sql",
-      "timestamp": "20260727121000",
-      "commit": "594452ebd04df37c7bdc90da2bb0752b8239f538",
-      "milestone": "beard support lookup v6 composition",
-      "purpose": "beard support lookup v6 composition",
-      "dependencies": [
-        "20260727120000_beard_intelligence_v2.sql"
-      ],
-      "requiredExtensions": [],
-      "expectedObjectChanges": {
-        "tables": [],
-        "functions": [
-          "lookup_beard_analysis_support_diagnostic"
-        ],
-        "policies": [],
-        "indexes": 0
-      },
-      "expectedDataChanges": 0,
-      "lockRisk": "low",
-      "tableRewriteRisk": "not_detected",
-      "destructiveBehavior": "none detected",
-      "longTransactionRisk": "low_or_unknown",
-      "durationClass": "short_expected",
-      "classification": "authority_change",
-      "rollbackClassification": "code_rollback_or_forward_fix",
-      "forwardFixStrategy": "append a reviewed migration; never rewrite immutable business history",
-      "verificationQuery": "compare migration head, authority inventory, object counts, grants, RLS, and focused domain contracts",
-      "stopCondition": "migration error, drift, timeout, or object mismatch",
-      "hostedApplicationStatus": "pending_rehearsal",
-      "authorizationRequired": true,
-      "sourceHash": "bc33e065ff1fd82e9763a2b900a1934813b2faa2f283d2613a0a6d15b6d97932"
-    },
-    {
-      "filename": "20260727130000_beard_legacy_null_target_review.sql",
-      "timestamp": "20260727130000",
-      "commit": "b54fff20d07658185b8ccd8d9d47559036e2c73f",
-      "milestone": "beard legacy null target review",
-      "purpose": "beard legacy null target review",
-      "dependencies": [
-        "20260727121000_beard_support_lookup_v6_composition.sql"
-      ],
-      "requiredExtensions": [],
-      "expectedObjectChanges": {
-        "tables": [],
-        "functions": [
-          "finish_beard_analysis_review"
-        ],
-        "policies": [],
-        "indexes": 0
-      },
-      "expectedDataChanges": 2,
-      "lockRisk": "low",
-      "tableRewriteRisk": "not_detected",
-      "destructiveBehavior": "none detected",
-      "longTransactionRisk": "low_or_unknown",
-      "durationClass": "measure_in_rehearsal",
-      "classification": "authority_change",
-      "rollbackClassification": "backup_and_forward_fix_decision_required",
-      "forwardFixStrategy": "append a reviewed migration; never rewrite immutable business history",
-      "verificationQuery": "compare migration head, authority inventory, object counts, grants, RLS, and focused domain contracts",
-      "stopCondition": "migration error, drift, timeout, or object mismatch",
-      "hostedApplicationStatus": "pending_rehearsal",
-      "authorizationRequired": true,
-      "sourceHash": "a210080eff1c88a31935a927f85e97ebb9dfed6ab2ea4b837140f8c8f7f3b1b0"
-    },
-    {
       "filename": "20260727131021_production_procurement_durable_workflow.sql",
       "timestamp": "20260727131021",
       "commit": "be29ea9a905547d712988353b442c0536247a42a",
       "milestone": "production procurement durable workflow",
       "purpose": "production procurement durable workflow",
       "dependencies": [
-        "20260727130000_beard_legacy_null_target_review.sql"
+        "20260727121000_supplier_history_reliability.sql"
       ],
       "requiredExtensions": [],
       "expectedObjectChanges": {
