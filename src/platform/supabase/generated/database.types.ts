@@ -7,31 +7,6 @@ export type Json =
   | Json[]
 
 export type Database = {
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       batch_material_consumptions: {
@@ -2621,8 +2596,14 @@ export type Database = {
       equipment_items: {
         Row: {
           archived_at: string | null
+          availability_state: string
+          calibration_date: string | null
+          calibration_due_date: string | null
+          calibration_note: string | null
+          calibration_status: string
           capacity_unit: string | null
           capacity_value: number | null
+          category: string | null
           created_at: string
           equipment_type: string
           food_cosmetic_contact: boolean | null
@@ -2630,17 +2611,22 @@ export type Database = {
           internal_notes: string
           location: string | null
           manufacturer: string | null
+          material: string | null
           maximum_value: number | null
           minimum_value: number | null
           model: string | null
           name: string
+          operational_notes: string | null
           owner_id: string
+          ownership_state: string
           power_requirement: string | null
           precision_unit: string | null
           precision_value: number | null
+          primary_use: string | null
           purchase_cost: number | null
           purchase_currency: string | null
           purchase_date: string | null
+          quantity: number | null
           revision: number
           serial_number: string | null
           status: string
@@ -2652,8 +2638,14 @@ export type Database = {
         }
         Insert: {
           archived_at?: string | null
+          availability_state?: string
+          calibration_date?: string | null
+          calibration_due_date?: string | null
+          calibration_note?: string | null
+          calibration_status?: string
           capacity_unit?: string | null
           capacity_value?: number | null
+          category?: string | null
           created_at?: string
           equipment_type: string
           food_cosmetic_contact?: boolean | null
@@ -2661,17 +2653,22 @@ export type Database = {
           internal_notes?: string
           location?: string | null
           manufacturer?: string | null
+          material?: string | null
           maximum_value?: number | null
           minimum_value?: number | null
           model?: string | null
           name: string
+          operational_notes?: string | null
           owner_id: string
+          ownership_state?: string
           power_requirement?: string | null
           precision_unit?: string | null
           precision_value?: number | null
+          primary_use?: string | null
           purchase_cost?: number | null
           purchase_currency?: string | null
           purchase_date?: string | null
+          quantity?: number | null
           revision?: number
           serial_number?: string | null
           status?: string
@@ -2683,8 +2680,14 @@ export type Database = {
         }
         Update: {
           archived_at?: string | null
+          availability_state?: string
+          calibration_date?: string | null
+          calibration_due_date?: string | null
+          calibration_note?: string | null
+          calibration_status?: string
           capacity_unit?: string | null
           capacity_value?: number | null
+          category?: string | null
           created_at?: string
           equipment_type?: string
           food_cosmetic_contact?: boolean | null
@@ -2692,17 +2695,22 @@ export type Database = {
           internal_notes?: string
           location?: string | null
           manufacturer?: string | null
+          material?: string | null
           maximum_value?: number | null
           minimum_value?: number | null
           model?: string | null
           name?: string
+          operational_notes?: string | null
           owner_id?: string
+          ownership_state?: string
           power_requirement?: string | null
           precision_unit?: string | null
           precision_value?: number | null
+          primary_use?: string | null
           purchase_cost?: number | null
           purchase_currency?: string | null
           purchase_date?: string | null
+          quantity?: number | null
           revision?: number
           serial_number?: string | null
           status?: string
@@ -7220,17 +7228,27 @@ export type Database = {
           capacity: number | null
           capacity_unit: string | null
           category: string
-          colour: string
+          closure_type: string | null
+          colour: string | null
           created_at: string
           default_unit: string
-          description: string
+          description: string | null
           id: string
-          material: string
+          intended_product_use: string | null
+          material: string | null
           name: string
-          notes: string
+          neck_closure_specification: string | null
+          notes: string | null
+          operational_notes: string | null
           owner_id: string
+          ownership_state: string
           reorder_threshold: number | null
+          sourcing_notes: string | null
+          specification_notes: string | null
           status: string
+          stock_state: string
+          supplier_id: string | null
+          supplier_product_id: string | null
           updated_at: string
           workspace_id: string
         }
@@ -7238,17 +7256,27 @@ export type Database = {
           capacity?: number | null
           capacity_unit?: string | null
           category: string
-          colour: string
+          closure_type?: string | null
+          colour?: string | null
           created_at: string
           default_unit: string
-          description: string
+          description?: string | null
           id: string
-          material: string
+          intended_product_use?: string | null
+          material?: string | null
           name: string
-          notes: string
+          neck_closure_specification?: string | null
+          notes?: string | null
+          operational_notes?: string | null
           owner_id: string
+          ownership_state?: string
           reorder_threshold?: number | null
+          sourcing_notes?: string | null
+          specification_notes?: string | null
           status: string
+          stock_state?: string
+          supplier_id?: string | null
+          supplier_product_id?: string | null
           updated_at: string
           workspace_id: string
         }
@@ -7256,21 +7284,45 @@ export type Database = {
           capacity?: number | null
           capacity_unit?: string | null
           category?: string
-          colour?: string
+          closure_type?: string | null
+          colour?: string | null
           created_at?: string
           default_unit?: string
-          description?: string
+          description?: string | null
           id?: string
-          material?: string
+          intended_product_use?: string | null
+          material?: string | null
           name?: string
-          notes?: string
+          neck_closure_specification?: string | null
+          notes?: string | null
+          operational_notes?: string | null
           owner_id?: string
+          ownership_state?: string
           reorder_threshold?: number | null
+          sourcing_notes?: string | null
+          specification_notes?: string | null
           status?: string
+          stock_state?: string
+          supplier_id?: string | null
+          supplier_product_id?: string | null
           updated_at?: string
           workspace_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "packaging_components_supplier_fk"
+            columns: ["workspace_id", "supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "packaging_components_supplier_product_fk"
+            columns: ["workspace_id", "supplier_product_id"]
+            isOneToOne: false
+            referencedRelation: "packaging_supplier_products"
+            referencedColumns: ["workspace_id", "id"]
+          },
           {
             foreignKeyName: "packaging_components_workspace_id_fkey"
             columns: ["workspace_id"]
@@ -8512,20 +8564,23 @@ export type Database = {
         Row: {
           availability_status: string | null
           created_at: string
-          currency: string
+          currency: string | null
           discontinued: boolean
           id: string
           is_preferred: boolean
           last_verified_date: string | null
           lead_time_days: number | null
+          lifecycle_status: string
           moq: number | null
           notes: string
           order_multiple: number | null
           owner_id: string
-          package_quantity: number
-          package_unit: string
+          package_description: string | null
+          package_quantity: number | null
+          package_unit: string | null
           packaging_component_id: string
-          price: number
+          price: number | null
+          price_state: string
           product_name: string
           product_url: string | null
           sample_available: boolean | null
@@ -8538,20 +8593,23 @@ export type Database = {
         Insert: {
           availability_status?: string | null
           created_at: string
-          currency: string
+          currency?: string | null
           discontinued?: boolean
           id: string
           is_preferred: boolean
           last_verified_date?: string | null
           lead_time_days?: number | null
+          lifecycle_status?: string
           moq?: number | null
           notes: string
           order_multiple?: number | null
           owner_id: string
-          package_quantity: number
-          package_unit: string
+          package_description?: string | null
+          package_quantity?: number | null
+          package_unit?: string | null
           packaging_component_id: string
-          price: number
+          price?: number | null
+          price_state?: string
           product_name: string
           product_url?: string | null
           sample_available?: boolean | null
@@ -8564,20 +8622,23 @@ export type Database = {
         Update: {
           availability_status?: string | null
           created_at?: string
-          currency?: string
+          currency?: string | null
           discontinued?: boolean
           id?: string
           is_preferred?: boolean
           last_verified_date?: string | null
           lead_time_days?: number | null
+          lifecycle_status?: string
           moq?: number | null
           notes?: string
           order_multiple?: number | null
           owner_id?: string
-          package_quantity?: number
-          package_unit?: string
+          package_description?: string | null
+          package_quantity?: number | null
+          package_unit?: string | null
           packaging_component_id?: string
-          price?: number
+          price?: number | null
+          price_state?: string
           product_name?: string
           product_url?: string | null
           sample_available?: boolean | null
@@ -9416,6 +9477,7 @@ export type Database = {
           acceptable_substitutes: string[]
           category: string
           created_at: string
+          decision_notes: string | null
           display_order: number
           id: string
           intended_formula_ids: string[]
@@ -9424,11 +9486,19 @@ export type Database = {
           needed_by: string | null
           notes: string
           owner_id: string
+          package_preference: string | null
           priority: string
           procurement_request_id: string
-          requested_quantity: number
+          reason: string | null
+          requested_quantity: number | null
           required_specifications: string[]
-          unit: string
+          requirement_type: string
+          sourcing_notes: string | null
+          status: string
+          target_supplier_id: string | null
+          target_supplier_product_domain: string | null
+          target_supplier_product_id: string | null
+          unit: string | null
           updated_at: string
           workspace_id: string
         }
@@ -9436,6 +9506,7 @@ export type Database = {
           acceptable_substitutes?: string[]
           category: string
           created_at?: string
+          decision_notes?: string | null
           display_order?: number
           id?: string
           intended_formula_ids?: string[]
@@ -9444,11 +9515,19 @@ export type Database = {
           needed_by?: string | null
           notes?: string
           owner_id: string
+          package_preference?: string | null
           priority?: string
           procurement_request_id: string
-          requested_quantity: number
+          reason?: string | null
+          requested_quantity?: number | null
           required_specifications?: string[]
-          unit: string
+          requirement_type?: string
+          sourcing_notes?: string | null
+          status?: string
+          target_supplier_id?: string | null
+          target_supplier_product_domain?: string | null
+          target_supplier_product_id?: string | null
+          unit?: string | null
           updated_at?: string
           workspace_id: string
         }
@@ -9456,6 +9535,7 @@ export type Database = {
           acceptable_substitutes?: string[]
           category?: string
           created_at?: string
+          decision_notes?: string | null
           display_order?: number
           id?: string
           intended_formula_ids?: string[]
@@ -9464,15 +9544,30 @@ export type Database = {
           needed_by?: string | null
           notes?: string
           owner_id?: string
+          package_preference?: string | null
           priority?: string
           procurement_request_id?: string
-          requested_quantity?: number
+          reason?: string | null
+          requested_quantity?: number | null
           required_specifications?: string[]
-          unit?: string
+          requirement_type?: string
+          sourcing_notes?: string | null
+          status?: string
+          target_supplier_id?: string | null
+          target_supplier_product_domain?: string | null
+          target_supplier_product_id?: string | null
+          unit?: string | null
           updated_at?: string
           workspace_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "procurement_requested_items_supplier_fk"
+            columns: ["workspace_id", "target_supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["workspace_id", "id"]
+          },
           {
             foreignKeyName: "procurement_requested_items_workspace_id_procurement_reque_fkey"
             columns: ["workspace_id", "procurement_request_id"]
@@ -16569,7 +16664,7 @@ export type Database = {
           cosing_functions_snapshot: string[] | null
           country_code: string | null
           created_at: string
-          currency: string
+          currency: string | null
           declared_inci: string | null
           default_inventory_unit: string | null
           discontinued: boolean
@@ -16580,15 +16675,18 @@ export type Database = {
           is_preferred: boolean
           last_verified_date: string | null
           lead_time_days: number | null
+          lifecycle_status: string
           moq: number | null
           notes: string
           operational_notes: string | null
           order_multiple: number | null
           origin: string | null
           owner_id: string
-          package_quantity: number
-          package_unit: string
-          price: number
+          package_description: string | null
+          package_quantity: number | null
+          package_unit: string | null
+          price: number | null
+          price_state: string
           processing_method: string | null
           product_name: string
           product_status: string | null
@@ -16613,7 +16711,7 @@ export type Database = {
           cosing_functions_snapshot?: string[] | null
           country_code?: string | null
           created_at: string
-          currency: string
+          currency?: string | null
           declared_inci?: string | null
           default_inventory_unit?: string | null
           discontinued?: boolean
@@ -16624,15 +16722,18 @@ export type Database = {
           is_preferred: boolean
           last_verified_date?: string | null
           lead_time_days?: number | null
+          lifecycle_status?: string
           moq?: number | null
           notes: string
           operational_notes?: string | null
           order_multiple?: number | null
           origin?: string | null
           owner_id: string
-          package_quantity: number
-          package_unit: string
-          price: number
+          package_description?: string | null
+          package_quantity?: number | null
+          package_unit?: string | null
+          price?: number | null
+          price_state?: string
           processing_method?: string | null
           product_name: string
           product_status?: string | null
@@ -16657,7 +16758,7 @@ export type Database = {
           cosing_functions_snapshot?: string[] | null
           country_code?: string | null
           created_at?: string
-          currency?: string
+          currency?: string | null
           declared_inci?: string | null
           default_inventory_unit?: string | null
           discontinued?: boolean
@@ -16668,15 +16769,18 @@ export type Database = {
           is_preferred?: boolean
           last_verified_date?: string | null
           lead_time_days?: number | null
+          lifecycle_status?: string
           moq?: number | null
           notes?: string
           operational_notes?: string | null
           order_multiple?: number | null
           origin?: string | null
           owner_id?: string
-          package_quantity?: number
-          package_unit?: string
-          price?: number
+          package_description?: string | null
+          package_quantity?: number | null
+          package_unit?: string | null
+          price?: number | null
+          price_state?: string
           processing_method?: string | null
           product_name?: string
           product_status?: string | null
@@ -17615,6 +17719,50 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "products"
             referencedColumns: ["workspace_id", "id"]
+          },
+        ]
+      }
+      workspace_foundation_status_events: {
+        Row: {
+          changed_at: string
+          changed_by: string
+          entity_id: string
+          entity_type: string
+          from_status: string | null
+          id: string
+          owner_id: string
+          to_status: string
+          workspace_id: string
+        }
+        Insert: {
+          changed_at?: string
+          changed_by: string
+          entity_id: string
+          entity_type: string
+          from_status?: string | null
+          id?: string
+          owner_id: string
+          to_status: string
+          workspace_id: string
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string
+          entity_id?: string
+          entity_type?: string
+          from_status?: string | null
+          id?: string
+          owner_id?: string
+          to_status?: string
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workspace_foundation_status_events_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -19305,9 +19453,6 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {},
   },

@@ -9,4 +9,4 @@ describe('procurement offer calculations',()=>{
   it('does not present incomplete landed cost as a complete total',()=>{const result=calculateOffer(item,{...offer,shipping_cost:null});expect(result.estimatedLandedTotal).toBeNull();expect(result.knownLandedTotal).toBe(315)})
   it('keeps incompatible units unknown',()=>{const result=calculateOffer(item,{...offer,package_unit:'ml'});expect(result.normalizedUnitPrice).toBeNull();expect(result.purchaseQuantity).toBeNull()})
 })
-describe('request workflow',()=>{it('allows only explicit forward/review transitions',()=>{expect(canTransitionProcurementRequest('needed','researching')).toBe(true);expect(canTransitionProcurementRequest('needed','ordered')).toBe(false);expect(canTransitionProcurementRequest('received','ordered')).toBe(false)})})
+describe('request workflow',()=>{it('allows only explicit forward/review transitions',()=>{expect(canTransitionProcurementRequest('identified','researching')).toBe(true);expect(canTransitionProcurementRequest('identified','ordered')).toBe(false);expect(canTransitionProcurementRequest('received','ordered')).toBe(false)})})

@@ -174,8 +174,9 @@ export interface Ingredient {
 
 export interface SupplierProduct {
   id: string; ingredientId: string; supplierName: string; productName: string; supplierSku?: string
-  packageQuantity: number; packageUnit: InventoryUnit; price: number; currency: string; productUrl?: string
+  packageQuantity?: number; packageUnit?: InventoryUnit; packageDescription?:string; price?: number; currency?: string; productUrl?: string
   notes: string; operationalNotes?:string; verificationNotes?:string; isPreferred: boolean; supplierId?:string
+  lifecycleStatus?:SupplierProductLifecycleStatus;priceState?:'unknown'|'quote_required'|'recorded'
   grade?:string; supplierGrade?:string; declaredInci?:string; categorySnapshot?:string; defaultInventoryUnit?:InventoryUnit
   cosingFunctionsSnapshot?:string[]; researchProfileSnapshot?:string; referenceEntryId?:string
   countryCode?:string; origin?:string; extractionMethod?:string; processingMethod?:string
@@ -183,6 +184,7 @@ export interface SupplierProduct {
   verification?:SupplierProductVerification
   createdAt: string; updatedAt: string
 }
+export type SupplierProductLifecycleStatus='candidate'|'evaluated'|'shortlisted'|'planned'|'quote_requested'|'available'|'unavailable'|'discontinued'|'rejected'
 export type OperationalReviewState='unknown'|'needs_review'|'reviewed'|'not_applicable'
 export interface SupplierProductVerification {inci:OperationalReviewState;supplierSpecification:OperationalReviewState;sds:OperationalReviewState;coa:OperationalReviewState;allergenInformation:OperationalReviewState;shelfLife:OperationalReviewState;origin:OperationalReviewState;extractionMethod:OperationalReviewState;processingMethod:OperationalReviewState;ifra:OperationalReviewState;cosing:OperationalReviewState}
 export type InventoryLotStatus = 'Active' | 'Quarantined' | 'Exhausted' | 'Expired' | 'Disposed'
@@ -225,9 +227,22 @@ export type CostLineScope = 'ProductionRun' | 'Product' | 'FormulaVersion'
 export type CostLineCategory = 'Packaging' | 'Labels' | 'Labour' | 'Freight' | 'Overhead' | 'Equipment' | 'Other'
 export interface CostLine { id:string; scope:CostLineScope; referenceId:string; category:CostLineCategory; description:string; amount:number; currency:string; quantity:number; notes:string; createdAt:string; updatedAt:string }
 
-export type PackagingComponentStatus='Active'|'Research'|'Archived'
-export interface PackagingComponent { id:string;name:string;category:string;description:string;defaultUnit:InventoryUnit;colour:string;material:string;capacity?:number;capacityUnit?:InventoryUnit;notes:string;status:PackagingComponentStatus;reorderThreshold?:number;createdAt:string;updatedAt:string }
-export interface PackagingSupplierProduct { id:string;packagingComponentId:string;supplierName:string;productName:string;supplierSku?:string;packageQuantity:number;packageUnit:InventoryUnit;price:number;currency:string;productUrl?:string;notes:string;isPreferred:boolean;supplierId?:string;createdAt:string;updatedAt:string }
+export type PackagingComponentStatus='planned'|'to_source'|'candidate'|'specification_required'|'selected'|'ordered'|'received'|'active'|'rejected'|'discontinued'
+export interface PackagingComponent {
+  id:string;name:string;category:string;description?:string;defaultUnit:InventoryUnit;colour?:string;material?:string
+  capacity?:number;capacityUnit?:InventoryUnit;notes?:string;status:PackagingComponentStatus;reorderThreshold?:number
+  intendedProductUse?:string;neckClosureSpecification?:string;closureType?:string;supplierId?:string;supplierProductId?:string
+  specificationNotes?:string;sourcingNotes?:string;operationalNotes?:string
+  ownershipState:'not_owned'|'ordered'|'owned';stockState:'not_recorded'|'none'|'available'|'unavailable'
+  createdAt:string;updatedAt:string
+}
+export interface PackagingSupplierProduct {
+  id:string;packagingComponentId:string;supplierName:string;productName:string;supplierSku?:string
+  packageQuantity?:number;packageUnit?:InventoryUnit;packageDescription?:string;price?:number;currency?:string
+  productUrl?:string;notes:string;isPreferred:boolean;supplierId?:string
+  lifecycleStatus?:SupplierProductLifecycleStatus;priceState?:'unknown'|'quote_required'|'recorded'
+  createdAt:string;updatedAt:string
+}
 export type PackagingInventoryLotStatus='Active'|'Quarantined'|'Exhausted'|'Disposed'|'Archived'
 export interface PackagingInventoryLot { id:string;packagingComponentId:string;packagingSupplierProductId?:string;internalLotNumber:string;supplierLotNumber?:string;receivedDate:string;openingQuantity:number;unit:InventoryUnit;location:string;status:PackagingInventoryLotStatus;notes:string;totalAcquisitionCost?:number;acquisitionCostCurrency?:string;costNotes?:string;quarantineIntakeId?:string;qualityReleaseReviewId?:string;createdAt:string;updatedAt:string }
 export type PackagingMovementType='Receipt'|'Consumption'|'Waste'|'Sample'|'Adjustment'

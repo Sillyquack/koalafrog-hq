@@ -3,9 +3,9 @@
   "generatedAt": "2026-07-29T14:00:00+02:00",
   "rcTag": "finished-goods-traceability-recall-v1-rc1",
   "rcCommit": "bd5617c70dd8ca21611f63750f2293e40a83c8b4",
-  "localMigrationHead": "20260729160000",
+  "localMigrationHead": "20260730123820",
   "hostedStateVerified": false,
-  "count": 87,
+  "count": 88,
   "migrations": [
     {
       "filename": "20260714210000_platform_foundation.sql",
@@ -3342,6 +3342,44 @@
       "hostedApplicationStatus": "pending_rehearsal",
       "authorizationRequired": true,
       "sourceHash": "6ed9dc04a9b1c5d081d834b26171a0e7e28ab85e50194975c323a999e59fa3e5"
+    },
+    {
+      "filename": "20260730123820_workspace_foundation_authoring_v1.sql",
+      "timestamp": "20260730123820",
+      "commit": null,
+      "milestone": "workspace foundation authoring v1",
+      "purpose": "workspace foundation authoring v1",
+      "dependencies": [
+        "20260729160000_rehearsal_definer_execute_hardening.sql"
+      ],
+      "requiredExtensions": [],
+      "expectedObjectChanges": {
+        "tables": [
+          "workspace_foundation_status_events"
+        ],
+        "functions": [
+          "capture_workspace_foundation_status_event_v1",
+          "normalize_workspace_foundation_v1"
+        ],
+        "policies": [
+          "workspace_foundation_status_events_owner_read"
+        ],
+        "indexes": 0
+      },
+      "expectedDataChanges": 7,
+      "lockRisk": "low",
+      "tableRewriteRisk": "not_detected",
+      "destructiveBehavior": "none detected",
+      "longTransactionRisk": "requires_rehearsal_measurement",
+      "durationClass": "measure_in_rehearsal",
+      "classification": "authority_change",
+      "rollbackClassification": "backup_and_forward_fix_decision_required",
+      "forwardFixStrategy": "append a reviewed migration; never rewrite immutable business history",
+      "verificationQuery": "compare migration head, authority inventory, object counts, grants, RLS, and focused domain contracts",
+      "stopCondition": "migration error, drift, timeout, or object mismatch",
+      "hostedApplicationStatus": "pending_rehearsal",
+      "authorizationRequired": true,
+      "sourceHash": "9adea904a895360182cc92af554a47985aaf41d4363aa7f7d406a5227d894ed6"
     }
   ]
 }
