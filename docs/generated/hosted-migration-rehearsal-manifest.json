@@ -3315,7 +3315,7 @@
     {
       "filename": "20260729160000_rehearsal_definer_execute_hardening.sql",
       "timestamp": "20260729160000",
-      "commit": null,
+      "commit": "bbf0a5ba8f4d509013b0742ebeee5f5f25b3071d",
       "milestone": "rehearsal definer execute hardening",
       "purpose": "rehearsal definer execute hardening",
       "dependencies": [

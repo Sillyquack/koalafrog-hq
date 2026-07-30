@@ -2,7 +2,7 @@
 
 Current milestone: Finished Goods, Traceability & Recall Readiness closeout. Finished Goods & Batch Genealogy V1 Slices 1–6, the [Platform Architecture Review](PLATFORM_ARCHITECTURE_REVIEW_2026-07-29.md), Platform Hardening & Legacy Authority Classification V1, Recall Readiness V1, and the Milestone Closeout and Release-Candidate Baseline are **PASS locally**.
 
-The local RC is documented in [release notes](FINISHED_GOODS_TRACEABILITY_RECALL_RC_1.md) and the [milestone closeout](FINISHED_GOODS_TRACEABILITY_RECALL_MILESTONE_CLOSEOUT.md). **Release Candidate & Deployment Hardening V1 — Local Preparation is PASS.** An authorized isolated hosted rehearsal applied the RC migrations, restored public relational data, and verified hosted security boundaries, but remains **BLOCKED** because managed Supabase Auth restoration was incomplete. It has not been merged or deployed.
+The local RC is documented in [release notes](FINISHED_GOODS_TRACEABILITY_RECALL_RC_1.md) and the [milestone closeout](FINISHED_GOODS_TRACEABILITY_RECALL_MILESTONE_CLOSEOUT.md). **Release Candidate & Deployment Hardening V1 — Local Preparation is PASS.** **Authorized Hosted Backup, Restore & Migration Rehearsal V1 is also PASS** on the isolated Auth-preserving physical-restore clone `jaghoxoaqzpiowzyfcnf`: 87 migrations, preserved Auth identity and workspace ownership, two-owner isolation, authenticated preview routes, controlled-write cleanup, and hosted performance were verified. It has not been merged or deployed.
 
 ## Phase 1: Foundation — Complete
 
@@ -109,7 +109,7 @@ Exact future sequence:
 1. Controlled Merge Review & Branch Integration V1 — **PASS locally**; branch not pushed, PR not created, and no merge performed.
 2. Explicit authorization to push the feature branch and create a Pull Request — exact next approval gate.
 3. Explicit authorization to merge after human review — separate later gate.
-4. Authorized Hosted Backup, Restore & Migration Rehearsal V1 — **BLOCKED** pending supported managed Auth restoration; its internal definer-helper default-execute finding is fixed locally and on the isolated target.
+4. Authorized Hosted Backup, Restore & Migration Rehearsal V1 — **PASS** on isolated project `jaghoxoaqzpiowzyfcnf`; the physical restore preserved managed Auth identity, the internal definer-helper default-execute finding is fixed, and authenticated preview acceptance and cleanup completed without production mutation.
 5. Downstream Reservation & Controlled Dispatch V1 — exact next local product milestone, on a separate branch.
 6. Shipment and Distribution Traceability.
 7. Controlled Recall Execution.

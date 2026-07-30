@@ -127,7 +127,7 @@ flowchart LR
 
 Advisor review does not require zero warnings. It requires zero unexplained critical findings. Existing FK and RLS-init-plan recommendations, two database lint warnings, and intentional authenticated security-definer workflows must be compared, explained, owned, and remediated where evidence warrants.
 
-The authorized isolated rehearsal discovered two internal `SECURITY DEFINER` helpers retaining PostgreSQL's default `PUBLIC` execute privilege. The focused `20260729160000_rehearsal_definer_execute_hardening.sql` migration revokes that unintended access without changing either helper's body or any domain workflow. The fix is validated locally and was applied only to the isolated rehearsal target. The rehearsal nevertheless remains **BLOCKED** because the source managed Auth identity was not restored through a supported secret-safe mechanism.
+The authorized isolated rehearsal discovered two internal `SECURITY DEFINER` helpers retaining PostgreSQL's default `PUBLIC` execute privilege. The focused rehearsal hardening migration revokes that unintended access without changing either helper's body or any domain workflow. The fix is validated locally and was applied only to isolated rehearsal targets. A subsequent supported physical restore to `koalafrog-hq-rc1-auth-rehearsal` (`jaghoxoaqzpiowzyfcnf`) preserved managed Auth identity, password hash, provider identity, confirmation state, and workspace ownership. The original production password was not tested; login validation used a rehearsal-only temporary password against the preserved UUID.
 
 ## 9. Application artifact, cache, and version strategy
 
@@ -202,7 +202,7 @@ It never links a hosted project, pushes Git, applies migrations, deploys functio
 
 ## 14. Current blockers and entry conditions
 
-Local preparation is merge-ready. The authorized isolated hosted rehearsal remains BLOCKED on managed Auth restoration. Production deployment is not ready.
+Local preparation is merge-ready. **Authorized Hosted Backup, Restore & Migration Rehearsal V1 is PASS:** the 87-migration head, hosted authority controls, restored Auth identity, two-owner isolation, private Storage reconstruction, authenticated Cloudflare preview, no-write application routes, controlled-write cleanup, and performance smoke were verified on `jaghoxoaqzpiowzyfcnf`. Production deployment is not authorized or ready; it retains its independent environment, backup, approval, and production-smoke gates.
 
 Hosted rehearsal entry requires:
 

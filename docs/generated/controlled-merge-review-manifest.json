@@ -15,8 +15,8 @@
   "targetOnlyCommitCount": 0,
   "migrationCounts": {
     "target": 64,
-    "integrated": 86,
-    "featureOnly": 22
+    "integrated": 87,
+    "featureOnly": 23
   },
   "conflictCount": 0,
   "semanticConflictCount": 0,
