@@ -1,0 +1,27 @@
+{
+  "version": "1.0.0",
+  "disposition": "PASS",
+  "productionProjectRef": "fetmeynkvylznapdikht",
+  "rehearsalProjectRef": "sudsujokeccipbigfcgq",
+  "rehearsalProjectName": "koalafrog-hq-rc2-auth-rehearsal",
+  "region": "eu-west-1",
+  "backup": {
+    "timestamp": "2026-07-30T04:17:57.342Z",
+    "type": "physical",
+    "status": "COMPLETED",
+    "restoreEligible": true,
+    "authDatabaseRecordsPreserved": true
+  },
+  "restoreVerification": {
+    "migrationCount": 62,
+    "authUsers": 1,
+    "authIdentities": 1,
+    "workspaces": 1,
+    "workspaceOwners": 1
+  },
+  "postMigrationVerification": {
+    "migrationCount": 87,
+    "strictSuffixApplied": 25,
+    "prefixReplayed": false
+  }
+}

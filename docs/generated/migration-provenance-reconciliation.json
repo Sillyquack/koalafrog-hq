@@ -3,9 +3,9 @@
   "generatedAt": "2026-07-30T00:00:00+02:00",
   "disposition": "PASS",
   "repository": {
-    "head": "35527eccaf4b85ab290f7d83d1cfde1ee1c6152f",
-    "originMain": "35527eccaf4b85ab290f7d83d1cfde1ee1c6152f",
-    "branch": "chore/migration-provenance-reconciliation",
+    "head": "76f288d18894a4071316394ec1115a0e08b7b1da",
+    "originMain": "76f288d18894a4071316394ec1115a0e08b7b1da",
+    "branch": "main",
     "migrationCount": 87,
     "migrations": [
       {

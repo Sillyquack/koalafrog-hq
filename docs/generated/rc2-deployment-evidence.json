@@ -1,0 +1,22 @@
+{
+  "version": "1.0.0",
+  "disposition": "PASS",
+  "provider": "Cloudflare Pages",
+  "environment": "Preview",
+  "project": "koalafrog-hq",
+  "deploymentId": "bca2db5e-fe5b-4d76-8bb4-eb634b35de2e",
+  "deploymentUrl": "https://bca2db5e.koalafrog-hq.pages.dev",
+  "sourceBranch": "chore/migration-provenance-reconciliation",
+  "sourceCommit": "5e6939b83f11c7f8635a72cc3d90ba09179087ab",
+  "status": "success",
+  "durationSeconds": 55,
+  "previewProjectRef": "sudsujokeccipbigfcgq",
+  "compiledBundleChecks": {
+    "rc2ProjectRefOccurrences": 1,
+    "productionProjectRefOccurrences": 0,
+    "priorRehearsalProjectRefOccurrences": 0
+  },
+  "workspaceRepository": "supabase",
+  "productionEnvironmentModified": false,
+  "productionDeploymentTriggered": false
+}

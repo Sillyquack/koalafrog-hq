@@ -1,0 +1,29 @@
+{
+  "version": "1.0.0",
+  "disposition": "PASS",
+  "rehearsalProjectRef": "sudsujokeccipbigfcgq",
+  "removed": {
+    "temporaryOwnerB": true,
+    "temporaryOwnerBWorkspace": true,
+    "databaseFixtures": true,
+    "previewSmokeSupplier": true
+  },
+  "finalRehearsalCounts": {
+    "migrations": 87,
+    "authUsers": 1,
+    "authIdentities": 1,
+    "workspaces": 1,
+    "fixtureSuppliers": 0,
+    "ownerBWorkspaces": 0
+  },
+  "finalProductionCounts": {
+    "migrations": 62,
+    "authUsers": 1,
+    "authIdentities": 1,
+    "workspaces": 1
+  },
+  "productionDatabaseModified": false,
+  "productionCloudflareModified": false,
+  "productionAuthModified": false,
+  "productionStorageModified": false
+}

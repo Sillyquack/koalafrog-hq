@@ -1,0 +1,27 @@
+{
+  "version": "1.0.0",
+  "disposition": "PASS",
+  "auth": {
+    "ownerAPreserved": true,
+    "temporaryOwnerBCreated": true,
+    "ownerAAuthenticated": true,
+    "ownerBAuthenticated": true
+  },
+  "database": {
+    "bidirectionalWorkspaceRlsIsolation": true,
+    "rpcOwnWorkspaceAllowed": true,
+    "rpcForeignWorkspaceDenied": true,
+    "controlledWriteRead": true,
+    "foreignReadReturnedZeroRows": true,
+    "forgedCrossWorkspaceWriteDenied": true
+  },
+  "cloudflarePreview": {
+    "authenticatedNoWriteSmoke": "PASS",
+    "controlledWriteSmoke": "PASS",
+    "controlledReadSmoke": "PASS",
+    "route": "/suppliers",
+    "fixtureName": "RC2_PREVIEW_SMOKE_SUPPLIER",
+    "browserTrafficTarget": "sudsujokeccipbigfcgq",
+    "productionProjectRefObserved": false
+  }
+}

@@ -1982,7 +1982,7 @@
     {
       "filename": "20260726122046_beard_semantic_failure_invariant.sql",
       "timestamp": "20260726122046",
-      "commit": null,
+      "commit": "5e6939b83f11c7f8635a72cc3d90ba09179087ab",
       "milestone": "beard semantic failure invariant",
       "purpose": "beard semantic failure invariant",
       "dependencies": [
@@ -2017,7 +2017,7 @@
     {
       "filename": "20260726124135_beard_support_lookup_backward_compatibility.sql",
       "timestamp": "20260726124135",
-      "commit": null,
+      "commit": "5e6939b83f11c7f8635a72cc3d90ba09179087ab",
       "milestone": "beard support lookup backward compatibility",
       "purpose": "beard support lookup backward compatibility",
       "dependencies": [
@@ -2050,7 +2050,7 @@
     {
       "filename": "20260726185922_beard_guard_strategy_v6.sql",
       "timestamp": "20260726185922",
-      "commit": null,
+      "commit": "5e6939b83f11c7f8635a72cc3d90ba09179087ab",
       "milestone": "beard guard strategy v6",
       "purpose": "beard guard strategy v6",
       "dependencies": [
@@ -2085,7 +2085,7 @@
     {
       "filename": "20260727043935_beard_provider_429_classification.sql",
       "timestamp": "20260727043935",
-      "commit": null,
+      "commit": "5e6939b83f11c7f8635a72cc3d90ba09179087ab",
       "milestone": "beard provider 429 classification",
       "purpose": "beard provider 429 classification",
       "dependencies": [
@@ -2118,7 +2118,7 @@
     {
       "filename": "20260727055227_beard_responses_parser_v1.sql",
       "timestamp": "20260727055227",
-      "commit": null,
+      "commit": "5e6939b83f11c7f8635a72cc3d90ba09179087ab",
       "milestone": "beard responses parser v1",
       "purpose": "beard responses parser v1",
       "dependencies": [
@@ -2151,7 +2151,7 @@
     {
       "filename": "20260727095115_beard_intelligence_v2.sql",
       "timestamp": "20260727095115",
-      "commit": null,
+      "commit": "5e6939b83f11c7f8635a72cc3d90ba09179087ab",
       "milestone": "beard intelligence v2",
       "purpose": "beard intelligence v2",
       "dependencies": [
@@ -2186,7 +2186,7 @@
     {
       "filename": "20260727095850_beard_support_lookup_v6_composition.sql",
       "timestamp": "20260727095850",
-      "commit": null,
+      "commit": "5e6939b83f11c7f8635a72cc3d90ba09179087ab",
       "milestone": "beard support lookup v6 composition",
       "purpose": "beard support lookup v6 composition",
       "dependencies": [
@@ -2219,7 +2219,7 @@
     {
       "filename": "20260727114702_beard_legacy_null_target_review.sql",
       "timestamp": "20260727114702",
-      "commit": null,
+      "commit": "5e6939b83f11c7f8635a72cc3d90ba09179087ab",
       "milestone": "beard legacy null target review",
       "purpose": "beard legacy null target review",
       "dependencies": [
@@ -2252,7 +2252,7 @@
     {
       "filename": "20260727120000_supplier_documentation.sql",
       "timestamp": "20260727120000",
-      "commit": null,
+      "commit": "5e6939b83f11c7f8635a72cc3d90ba09179087ab",
       "milestone": "supplier documentation",
       "purpose": "supplier documentation",
       "dependencies": [
@@ -2287,7 +2287,7 @@
     {
       "filename": "20260727121000_supplier_history_reliability.sql",
       "timestamp": "20260727121000",
-      "commit": null,
+      "commit": "5e6939b83f11c7f8635a72cc3d90ba09179087ab",
       "milestone": "supplier history reliability",
       "purpose": "supplier history reliability",
       "dependencies": [

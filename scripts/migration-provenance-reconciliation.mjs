@@ -166,7 +166,7 @@ const manifest = {
   generatedAt: "2026-07-30T00:00:00+02:00",
   disposition: "PASS",
   repository: {
-    head: releaseHead,
+    head: git("rev-parse", "HEAD"),
     originMain: git("rev-parse", "origin/main"),
     branch: git("branch", "--show-current"),
     migrationCount: migrations.length,

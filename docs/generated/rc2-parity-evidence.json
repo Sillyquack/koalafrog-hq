@@ -1,0 +1,46 @@
+{
+  "version": "1.0.0",
+  "disposition": "PASS",
+  "reference": "proven release schema",
+  "rehearsalProjectRef": "sudsujokeccipbigfcgq",
+  "counts": {
+    "tables": 198,
+    "columns": 3834,
+    "constraints": 1966,
+    "functions": 206,
+    "policies": 186,
+    "triggers": 59,
+    "indexes": 637,
+    "tableGrants": 3594,
+    "routineGrants": 632,
+    "rlsTables": 198,
+    "trackedComments": 27
+  },
+  "exactSemanticFingerprintMatch": {
+    "tables": true,
+    "columns": true,
+    "constraints": true,
+    "functions": true,
+    "policies": true,
+    "triggers": true,
+    "indexes": true,
+    "tableGrants": true,
+    "routineGrants": true,
+    "rls": true,
+    "trackedComments": true
+  },
+  "stableRoutineGrantDigest": "750135230a650eea652e262a58c2acb0",
+  "audits": {
+    "schemaReconciliation": "PASS",
+    "checksumReconciliation": "PASS",
+    "authority": "PASS",
+    "privileges": "PASS",
+    "securityAdvisors": "REVIEWED",
+    "performanceAdvisors": "REVIEWED",
+    "deploymentPreparation": "PASS",
+    "mergeReview": "PASS",
+    "documentation": "PASS",
+    "secrets": "PASS",
+    "restoreVerification": "PASS"
+  }
+}
