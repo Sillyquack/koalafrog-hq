@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-07-30",
+  "disposition": "PASS",
+  "production": {
+    "projectRef": "fetmeynkvylznapdikht",
+    "region": "eu-west-1",
+    "status": "ACTIVE_HEALTHY",
+    "beforeMigrationCount": 62,
+    "afterMigrationCount": 87,
+    "untouchedSurfaces": ["auth_configuration", "auth_users", "storage", "cloudflare", "frontend_deployment"]
+  },
+  "backup": {
+    "type": "physical",
+    "completedAt": "2026-07-30T04:17:57.342Z",
+    "restoreEligible": true,
+    "authPreservationProvenByRc2": true
+  },
+  "execution": {
+    "command": "supabase db push --linked --yes",
+    "cliVersion": "2.109.1",
+    "appliedCount": 25,
+    "elapsedSeconds": 5.78,
+    "userSeconds": 0.55,
+    "systemSeconds": 0.22,
+    "errors": []
+  },
+  "migrationDigests": {
+    "prefix62": "7fa82287f72399bca1c5b8c5eb070c56",
+    "suffix25": "dd930399754eb6f8ec8f64cec031b396",
+    "full87": "f1d3a1e31d171120d1e1f7b01bf7ea71",
+    "repositoryTreeSha256": "9ae49c2e5268c43e84def69f0905a2eb57bd81cd35bc8b902ab8b433a9220d49"
+  },
+  "schemaCounts": {
+    "tables": 198,
+    "columns": 3834,
+    "constraints": 1966,
+    "functions": 206,
+    "policies": 186,
+    "triggers": 59,
+    "indexes": 637,
+    "trackedComments": 27
+  },
+  "preservation": {
+    "authUsers": {"before": 1, "after": 1},
+    "authIdentities": {"before": 1, "after": 1},
+    "workspaces": {"before": 1, "after": 1},
+    "products": {"before": 4, "after": 4},
+    "ingredients": {"before": 10, "after": 10},
+    "suppliers": {"before": 58, "after": 58},
+    "formulaVersions": {"before": 3, "after": 3},
+    "labBatches": {"before": 0, "after": 0},
+    "inventoryLots": {"before": 0, "after": 0},
+    "inventoryMovements": {"before": 0, "after": 0},
+    "productionRuns": {"before": 0, "after": 0}
+  },
+  "validation": {
+    "repositoryAudits": "PASS",
+    "schemaParityWithRc2": "PASS",
+    "authAndDataPreservation": "PASS",
+    "advisorsReconciled": "PASS",
+    "authenticatedNoWriteSmoke": "PASS",
+    "cleanup": "PASS",
+    "waitingLocks": 0,
+    "fixtureRows": 0
+  },
+  "rehearsal": {
+    "projectRef": "sudsujokeccipbigfcgq",
+    "status": "ACTIVE_HEALTHY",
+    "modifiedDuringProductionRun": false
+  }
+}

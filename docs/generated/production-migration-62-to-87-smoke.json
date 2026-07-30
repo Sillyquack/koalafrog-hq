@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-07-30",
+  "applicationUrl": "https://koalafrog-hq.pages.dev",
+  "mode": "authenticated-no-write",
+  "owner": "existing-production-owner",
+  "routes": [
+    "/", "/products", "/ingredients", "/suppliers", "/procurement",
+    "/equipment", "/inventory", "/formulas", "/lab", "/production",
+    "/finished-goods", "/traceability", "/recall-readiness", "/compliance",
+    "/launch", "/platform"
+  ],
+  "routeCount": 16,
+  "hydrationFailures": [],
+  "browserErrors": [],
+  "browserWarnings": [],
+  "bundleProjectRefs": {
+    "fetmeynkvylznapdikht": 1,
+    "sudsujokeccipbigfcgq": 0,
+    "jaghoxoaqzpiowzyfcnf": 0
+  },
+  "writePerformed": false,
+  "writeReason": "A production write was not required to prove the migration.",
+  "postSmoke": {
+    "migrationCount": 87,
+    "fixtureRows": 0,
+    "waitingLocks": 0,
+    "authoritativeCountsUnchanged": true
+  },
+  "logReview": {
+    "postgresErrors": [],
+    "apiGatewayErrors": [],
+    "authObservation": {
+      "time": "2026-07-30T11:47:06+02:00",
+      "request": "GET /user",
+      "status": 500,
+      "message": "Unhandled server error: context canceled",
+      "classification": "transient navigation cancellation",
+      "resolution": "Subsequent authenticated routes passed and the final Auth error filter returned no results."
+    }
+  },
+  "status": "PASS"
+}

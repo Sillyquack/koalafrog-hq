@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-07-30",
+  "repositoryCommit": "2e0f0adf54ae5fff0a37960b21da65601573234c",
+  "prefixCount": 62,
+  "suffixCount": 25,
+  "finalCount": 87,
+  "classificationDefaults": {
+    "execution": "transactional ordered DDL with migration-local deterministic DML where declared",
+    "lockRisk": "reviewed in RC2; brief catalog/table locks, no waiting production locks observed",
+    "backfill": "migration-owned and idempotent where present",
+    "productionResult": "applied without reported error",
+    "rc2Result": "applied and parity-verified"
+  },
+  "suffix": [
+    ["20260727120000_supplier_documentation.sql", "d23adebc1d24cf5cd1bcb4f51ee167d3887b6666497706c7bf04212ae1b3fb83", "supplier documentation"],
+    ["20260727121000_supplier_history_reliability.sql", "9956472bd7943c08ccad9be510c48bb535faf8065fb88b96735c50a42c39ad2c", "supplier history and reliability"],
+    ["20260727131021_production_procurement_durable_workflow.sql", "4ca750f02e0abadb594df208241276e21f2650925b24eed2771209bb045c224a", "durable procurement workflow"],
+    ["20260727135143_production_procurement_supplier_matching.sql", "d0589a569fc6f7e859926d4cfc9cd84db928f5b6291dbe19089dc1720ea9b425", "procurement supplier matching"],
+    ["20260727141437_production_procurement_basket_scenarios.sql", "d71699eced18c81c8b876c6f8feff31494f979f7342d450da81994d659896a04", "procurement basket scenarios"],
+    ["20260727155213_procurement_semantic_separation_v1.sql", "6a06bd6bc60b849377863ce011f6f642b328088fc652a697cee0653377b95eaf", "procurement semantic separation"],
+    ["20260727165818_production_purchase_plan_approval_gate.sql", "9a0f33c296dc1e2887a3efd71a9505a7011ff26968d75d6e6103f16349b7175f", "purchase-plan approval gate"],
+    ["20260728080000_draft_purchase_order_handoff.sql", "38be68ada05795b7463805d9750dedfcf8a4dfdc108533ea9070585b7f7e4522", "draft purchase-order handoff"],
+    ["20260728090000_external_purchase_order_placement.sql", "c29fa48400abc16f89eda9a7698b7f6003a713e14a419d6edea5e35e2f9ce539", "external purchase-order placement"],
+    ["20260728100000_supplier_confirmation_and_shipments.sql", "73890599e9beda167bede32e0f8c96abef82b0e50e43933dede2a62ebb40fa2e", "supplier confirmation and shipments"],
+    ["20260728110000_physical_receiving_inspection_quarantine.sql", "7276bf176065375affe28420bd76687e1a09aea2e7c97c6666f30e44b8171f60", "receiving, inspection, and quarantine"],
+    ["20260728120000_controlled_quality_release_inventory_commitment.sql", "808cd3173b7ca1bb367f093eb0b3e12e72a0508c9b937455527164a4b4deb8cf", "quality release and inventory commitment"],
+    ["20260728130000_procurement_release_candidate_hardening.sql", "6f63ecb2ef33ea144ec2e719cdb457bfb1d58a237d744f425da72c9df6c3bbc7", "procurement release hardening"],
+    ["20260728140000_production_inventory_reservations.sql", "c5b4aa9920e49737f7cbb02a0887beda257233348902320ff340b8c83dd3bfd7", "production inventory reservations"],
+    ["20260728150000_production_inventory_consumption_reconciliation.sql", "86972d877f661b3b6204b5ebf1dcec5810f964b243485ebf50fcb49c356f74ae", "inventory consumption reconciliation"],
+    ["20260728154754_production_output_yield_reconciliation_v1.sql", "d5ffea2973142b35770a84c444441be732ad989237afecdda5ce82ac0efcc744", "output and yield reconciliation"],
+    ["20260728160000_production_inventory_control_contracts_v1.sql", "4c01a9aa414b7f015773094ef757a6af87d477a31dad5244f019e1493c569019", "inventory control contracts"],
+    ["20260728170000_packaging_run_planning_consumption_v1.sql", "66808ed349bfd37c35dd60e1aa81ee972f061e28bee7d3d64e75a53ede63bfe6", "packaging-run planning and consumption"],
+    ["20260728203257_finished_goods_lot_creation_quarantine_v1.sql", "8926351cb9a54b625a2779352e7103d31bc53d07b876476d39080b66a501b058", "finished-goods lot quarantine"],
+    ["20260729043721_finished_product_quality_release_v1.sql", "b5213b2fb74fc2bf6dc8fddfc5eea7e7fa26862ac0bfc18829f3c29b7fd34977", "finished-product quality release"],
+    ["20260729054425_active_finished_goods_inventory_controls_v1.sql", "708161f877400baac0671b04fb8657ae2c0249223ba55ad209437fd458da6f36", "active finished-goods inventory controls"],
+    ["20260729065048_batch_genealogy_traceability_v1.sql", "4c0561ea935c5418ba7c3a37f9333cba0fb6cf91452c720a049437bfb2de874c", "batch genealogy and traceability"],
+    ["20260729083226_platform_authority_hardening_v1.sql", "01bfa65ffb5ecfe41f90fd3ccaa76785fdc146de5aa69e3ba9529a44e4cf0e09", "platform authority hardening"],
+    ["20260729094510_recall_readiness_v1.sql", "f331d821e78607b122930dce7185355faf749ddcb12a6bc216e5b6809132eb94", "recall readiness"],
+    ["20260729160000_rehearsal_definer_execute_hardening.sql", "6ed9dc04a9b1c5d081d834b26171a0e7e28ab85e50194975c323a999e59fa3e5", "security-definer execute hardening"]
+  ]
+}
