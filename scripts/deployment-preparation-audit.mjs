@@ -108,17 +108,27 @@ function introducingCommitFor(path) {
   } catch { return null }
 }
 
+function auditedGitSnapshot(path, introducingCommit) {
+  if (introducingCommit) {
+    return execFileSync("git", ["show", `HEAD:${path}`], { encoding: "utf8" })
+  }
+  try {
+    return execFileSync("git", ["show", `:${path}`], { encoding: "utf8" })
+  } catch {
+    throw new Error(`Migration provenance unavailable from Git history or the staged index: ${basename(path)}`)
+  }
+}
+
 const migrations = migrationFiles.map((filename, index) => {
   const path = `supabase/migrations/${filename}`
   const sql = readFileSync(join(root, path), "utf8")
   const sourceHash = createHash("sha256").update(sql).digest("hex")
   const introducingCommit = introducingCommitFor(path)
   if (check) {
-    if (!introducingCommit) throw new Error(`Migration provenance unavailable from Git history: ${filename}`)
-    const committedSql = execFileSync("git", ["show", `HEAD:${path}`], { encoding: "utf8" })
-    const committedHash = createHash("sha256").update(committedSql).digest("hex")
-    if (committedHash !== sourceHash) throw new Error(`Migration differs from the current HEAD snapshot: ${filename}`)
-    execFileSync("git", ["cat-file", "-e", `${introducingCommit}:${path}`])
+    const auditedSql = auditedGitSnapshot(path, introducingCommit)
+    const auditedHash = createHash("sha256").update(auditedSql).digest("hex")
+    if (auditedHash !== sourceHash) throw new Error(`Migration differs from its audited Git snapshot: ${filename}`)
+    if (introducingCommit) execFileSync("git", ["cat-file", "-e", `${introducingCommit}:${path}`])
   }
   const drops = [...sql.matchAll(/\bdrop\s+(?:table|column|schema|type|function)\b/gi)].length
   const typeChanges = [...sql.matchAll(/\balter\s+column\b[\s\S]{0,120}\btype\b/gi)].length
@@ -200,8 +210,8 @@ const artifacts = {
     provenance: {
       invariant: "Committed evidence never stores the hash of the commit containing that evidence.",
       stableIdentityFields: ["orderedIndex", "timestamp", "filename", "sourceHash"],
-      introducingCommitResolution: "Derived at audit runtime with Git history; never persisted in this manifest.",
-      headVerification: "Each migration SHA-256 is compared with the same path at current HEAD during audit check.",
+      introducingCommitResolution: "Derived at audit runtime with Git history; a new pre-commit migration is verified from the staged index; neither reference is persisted in this manifest.",
+      headVerification: "Each migration SHA-256 is compared with the same path at current HEAD, or its exact staged snapshot before the introducing commit, during audit check.",
       cleanTreeGate: "deploy:preflight requires a clean working tree before running this audit.",
     },
     migrations,

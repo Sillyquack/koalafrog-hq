@@ -1,6 +1,6 @@
 {
   "counts": {
-    "foreignKeys": 629,
+    "foreignKeys": 630,
     "functions": 208,
     "indexes": 638,
     "materializedViews": 0,
@@ -18916,6 +18916,14 @@
           ],
           "name": "supplier_products_workspace_id_ingredient_id_fkey",
           "references": "ingredients"
+        },
+        {
+          "columns": [
+            "workspace_id",
+            "owner_id"
+          ],
+          "name": "supplier_products_workspace_owner_fk",
+          "references": "workspaces"
         }
       ],
       "generatedColumns": [],
@@ -18950,9 +18958,11 @@
         {
           "command": "*",
           "name": "owner_all",
-          "roles": null,
-          "using": "(owner_id = auth.uid())",
-          "withCheck": "(owner_id = auth.uid())"
+          "roles": [
+            "authenticated"
+          ],
+          "using": "((owner_id = ( SELECT auth.uid() AS uid)) AND (EXISTS ( SELECT 1\n   FROM workspaces workspace\n  WHERE ((workspace.id = supplier_products.workspace_id) AND (workspace.owner_id = ( SELECT auth.uid() AS uid))))))",
+          "withCheck": "((owner_id = ( SELECT auth.uid() AS uid)) AND (EXISTS ( SELECT 1\n   FROM workspaces workspace\n  WHERE ((workspace.id = supplier_products.workspace_id) AND (workspace.owner_id = ( SELECT auth.uid() AS uid)) AND (workspace.lifecycle_state = 'active'::text)))))"
         }
       ],
       "rlsEnabled": true,

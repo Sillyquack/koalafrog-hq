@@ -55,6 +55,7 @@ import type {
   TestTemplate,
   Tester,
 } from "../../../types/domain";
+import { sameSupplierProductIdentity } from "../../ingredients/domain/supplierProductIdentity";
 import type { BeardStudioState } from "../../../types/beardStudio";
 import { duplicateDossier as duplicateComplianceDossierDomain } from "../../compliance/domain/complianceLogic";
 import { canTransition, duplicateVersion } from "../domain/formulaLogic";
@@ -139,7 +140,7 @@ interface FormulaDataValue extends FormulaState {
     input: Omit<SupplierProduct, "id" | "createdAt" | "updatedAt"> & {
       id?: string;
     },
-  ): SupplierProduct;
+  ): Promise<SupplierProduct>;
   markSupplierPreferred(id: string): Promise<void>;
   markPackagingSupplierPreferred(id: string): Promise<void>;
   receiveStock(
@@ -632,7 +633,7 @@ export function FormulaDataProvider({
           ingredientKnowledgeEvidence:[...current.ingredientKnowledgeEvidence.filter(item=>item.ingredientKnowledgeProfileId!==aggregate.profile.id),...aggregate.evidence],
         }));return result instanceof Promise?result.then(()=>undefined):undefined
       },
-      saveSupplierProduct(input) {
+      async saveSupplierProduct(input) {
         const now = new Date().toISOString();
         const product: SupplierProduct = {
           ...input,
@@ -640,7 +641,16 @@ export function FormulaDataProvider({
           createdAt: now,
           updatedAt: now,
         };
-        commitState("saveSupplierProduct", (current) => ({
+        const duplicate = stateRef.current.supplierProducts.find(
+          (item) =>
+            item.id !== input.id &&
+            sameSupplierProductIdentity(item, input),
+        );
+        if (duplicate)
+          throw new Error(
+            "A Supplier Product with this supplier, ingredient, and product name already exists.",
+          );
+        await commitState("saveSupplierProduct", (current) => ({
           ...current,
           supplierProducts: input.id
             ? current.supplierProducts.map((item) =>
@@ -650,7 +660,14 @@ export function FormulaDataProvider({
               )
             : [...current.supplierProducts, product],
         }));
-        return product;
+        const persisted = stateRef.current.supplierProducts.find(
+          (item) => item.id === product.id,
+        );
+        if (!persisted)
+          throw new Error(
+            "The Supplier Product was not available after persistence. Refresh and retry.",
+          );
+        return persisted;
       },
       markSupplierPreferred(id) {
         return commitState("markSupplierPreferred", (current) => {

@@ -5,7 +5,7 @@
     "event envelope remains domain-specific"
   ],
   "authorityInventoryVersion": "1.0.0",
-  "branch": "feature/workspace-foundation-authoring-v1",
+  "branch": "fix/supplier-product-persistence",
   "deploymentApprovalGranted": false,
   "deploymentPrerequisites": [
     "hosted migration approval",
@@ -25,11 +25,11 @@
     "NO_COLOR is ignored when Playwright forces colour"
   ],
   "locallyValidated": true,
-  "migrationHead": "20260730123820",
+  "migrationHead": "20260730154408",
   "milestone": "Recall Readiness V1",
   "remotelyDeployed": false,
   "schemaCounts": {
-    "foreignKeys": 629,
+    "foreignKeys": 630,
     "functions": 208,
     "indexes": 638,
     "materializedViews": 0,

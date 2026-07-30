@@ -340,6 +340,66 @@ run('relational v9 migration against local Supabase', () => {
     await supabase!.auth.signOut()
   },30_000)
 
+  it('persists an incomplete owner-authorized Supplier Product and denies cross-workspace creation',async()=>{
+    const ownerA=await ownerClient('nullable-supplier-product-a'),ownerB=await ownerClient('nullable-supplier-product-b')
+    const importedA=await ownerA.client.rpc('import_v9_relational',{payload:relationalMigrationPayload(structuredClone(formulaSeed))})
+    const importedB=await ownerB.client.rpc('import_v9_relational',{payload:relationalMigrationPayload(structuredClone(formulaSeed))})
+    expect(importedA.error).toBeNull()
+    expect(importedB.error).toBeNull()
+    for(const [client,imported] of [[ownerA.client,importedA],[ownerB.client,importedB]] as const){
+      const snapshot=reconciliationSnapshot(formulaSeed)
+      expect((await client.rpc('complete_v9_reconciliation',{run_id:(imported.data as {migrationRunId:string}).migrationRunId,report:compareReconciliation(snapshot,snapshot)})).error).toBeNull()
+    }
+    const workspaceA=await ownerA.client.from('workspaces').select('id').single()
+    const supplierA=await ownerA.client.from('suppliers').insert({workspace_id:workspaceA.data!.id,owner_id:ownerA.ownerId,legal_name:'Nullable Supplier AS',trading_name:'Nullable Supplier',supplier_type:'raw_material',status:'candidate',internal_notes:'',is_preferred:false}).select('id').single()
+    expect(supplierA.error).toBeNull()
+    expect((await supabase!.auth.signInWithPassword({email:ownerA.email,password:ownerA.password})).error).toBeNull()
+    const repository=new SupabaseWorkspaceRepository()
+    const before=await repository.load(ownerA.ownerId),now='2026-07-30T15:00:00.000Z'
+    const candidate={
+      id:'supplier-product-nullable-candidate',
+      ingredientId:'i1',
+      supplierId:supplierA.data!.id,
+      supplierName:'Nullable Supplier',
+      productName:'Jojoba candidate with unknown commercial facts',
+      lifecycleStatus:'candidate' as const,
+      priceState:'unknown' as const,
+      productStatus:'research' as const,
+      notes:'',
+      isPreferred:false,
+      createdAt:now,
+      updatedAt:now,
+    }
+    const committed=await applicationAction(repository,before,'saveSupplierProduct',current=>({...current,supplierProducts:[...current.supplierProducts,candidate]}))
+    expect(committed.supplierProducts).toContainEqual(candidate)
+    const row=await ownerA.client.from('supplier_products').select('id,lifecycle_status,price_state,product_status,price,currency,package_quantity,package_unit,availability_status').eq('id',candidate.id).single()
+    expect(row.error).toBeNull()
+    expect(row.data).toMatchObject({id:candidate.id,lifecycle_status:'candidate',price_state:'unknown',product_status:'research',price:null,currency:null,package_quantity:null,package_unit:null})
+    expect(row.data?.availability_status).not.toBe('in_stock')
+    const reloaded=await new SupabaseWorkspaceRepository().load(ownerA.ownerId)
+    expect(reloaded.supplierProducts.find(item=>item.id===candidate.id)).toMatchObject({lifecycleStatus:'candidate',priceState:'unknown',productStatus:'research'})
+    expect(reloaded.inventoryLots.some(item=>item.supplierProductId===candidate.id)).toBe(false)
+    const crossWorkspace=await ownerB.client.from('supplier_products').insert({
+      workspace_id:workspaceA.data!.id,
+      owner_id:ownerB.ownerId,
+      id:'supplier-product-cross-workspace',
+      ingredient_id:'i1',
+      supplier_id:supplierA.data!.id,
+      supplier_name:'Nullable Supplier',
+      product_name:'Cross-workspace attempt',
+      lifecycle_status:'candidate',
+      price_state:'unknown',
+      product_status:'research',
+      notes:'',
+      is_preferred:false,
+      created_at:now,
+      updated_at:now,
+    })
+    expect(crossWorkspace.error).not.toBeNull()
+    expect((await ownerA.client.from('supplier_products').select('id').eq('id','supplier-product-cross-workspace')).data).toHaveLength(0)
+    await supabase!.auth.signOut()
+  },30_000)
+
   it('persists a Product Studio concept and creates a Draft procurement plan without stock writes',async()=>{
     const{client,ownerId,email,password}=await ownerClient('product-studio')
     const conceptId=`studio-${crypto.randomUUID()}`
