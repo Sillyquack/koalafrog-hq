@@ -25,6 +25,6 @@ export default defineConfig({
  },
  projects:[
   {name:'desktop',testMatch:/.*\.e2e\.ts/,testIgnore:/.*\.mobile\.e2e\.ts/,use:{...devices['Desktop Chrome'],viewport:{width:1440,height:900}}},
-  {name:'mobile',testMatch:/.*\.mobile\.e2e\.ts/,use:{browserName:'chromium',viewport:{width:390,height:844},deviceScaleFactor:1,isMobile:true,hasTouch:true}},
+  {name:'mobile',testMatch:[/.*\.mobile\.e2e\.ts/,/productionInventoryControl\.e2e\.ts/],use:{browserName:'chromium',viewport:{width:390,height:844},deviceScaleFactor:1,isMobile:true,hasTouch:true}},
  ],
 })

@@ -1,0 +1,17 @@
+{
+  "auditVersion": "1.0.0",
+  "generatedAt": "2026-07-29T12:00:00+02:00",
+  "scope": [
+    "dashboard",
+    "production",
+    "finished-goods",
+    "traceability",
+    "recall-readiness",
+    "compliance"
+  ],
+  "status": "PASS",
+  "findings": [],
+  "limitations": [
+    "Static gate only; keyboard, focus order, contrast, and screen-reader behaviour still require browser verification."
+  ]
+}

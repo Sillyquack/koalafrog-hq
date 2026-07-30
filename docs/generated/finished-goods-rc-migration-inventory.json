@@ -1,0 +1,434 @@
+{
+  "version": "1.0.0",
+  "branch": "feature/finished-goods-batch-genealogy-v1",
+  "firstMigration": "20260728154754_production_output_yield_reconciliation_v1.sql",
+  "finalMigrationHead": "20260729094510",
+  "count": 8,
+  "allRemoteStatusesUnverified": true,
+  "migrations": [
+    {
+      "filename": "20260728154754_production_output_yield_reconciliation_v1.sql",
+      "timestamp": "20260728154754",
+      "commit": "e80fabfefd8b63c47aa042175d133bf60c2f56de",
+      "milestone": "Slice 1",
+      "purpose": "Production Output identity and yield reconciliation",
+      "tablesAdded": [
+        "production_output_components",
+        "production_output_events",
+        "production_output_measurements",
+        "production_output_reconciliations",
+        "production_outputs"
+      ],
+      "functionsAddedOrReplaced": [
+        "complete_production_output_stage_v1",
+        "create_production_output_v1",
+        "default_production_output_stage",
+        "get_production_output_completion_readiness_v1",
+        "get_production_output_genealogy_v1",
+        "kf_output_normalize",
+        "kf_production_output_readiness_v1",
+        "prevent_production_output_history_mutation",
+        "reconcile_production_output_v1",
+        "record_production_output_component_v1",
+        "record_production_output_measurement_v1"
+      ],
+      "policiesAdded": [
+        "production_output_components_owner_read",
+        "production_output_events_owner_read",
+        "production_output_measurements_owner_read",
+        "production_output_reconciliations_owner_read",
+        "production_outputs_owner_read"
+      ],
+      "triggersAdded": [
+        "default_production_output_stage",
+        "production_output_components_append_only",
+        "production_output_events_append_only",
+        "production_output_measurements_append_only",
+        "production_output_reconciliations_append_only"
+      ],
+      "indexesAdded": [
+        "production_output_component_owner_idx",
+        "production_output_components_output_idx",
+        "production_output_event_owner_idx",
+        "production_output_events_run_idx",
+        "production_output_measurement_owner_idx",
+        "production_output_measurements_history_idx",
+        "production_output_owner_idx",
+        "production_output_reconciliation_owner_idx",
+        "production_output_reconciliations_history_idx",
+        "production_outputs_run_status_idx"
+      ],
+      "grantsChanged": true,
+      "legacyEffects": "none",
+      "compatibilityEffects": "additive",
+      "destructiveBehavior": "none; additive schema or authority revocation only",
+      "remoteApplicationStatus": "not_applied_or_verified_by_this_local_closeout",
+      "rollbackConsiderations": "restore from authorized pre-migration backup; do not rewrite immutable history",
+      "dependencies": [],
+      "sourceHash": "d5ffea2973142b35770a84c444441be732ad989237afecdda5ce82ac0efcc744"
+    },
+    {
+      "filename": "20260728170000_packaging_run_planning_consumption_v1.sql",
+      "timestamp": "20260728170000",
+      "commit": "a7d8bd972a74d4673296fcbc10a9c1b111e79daa",
+      "milestone": "Slice 2",
+      "purpose": "Packaging Run planning, reservation, use, and reconciliation",
+      "tablesAdded": [
+        "packaging_run_bulk_allocations",
+        "packaging_run_bulk_transfers",
+        "packaging_run_events",
+        "packaging_run_inventory_uses",
+        "packaging_run_reconciliations",
+        "packaging_run_requirements",
+        "packaging_run_reservations",
+        "packaging_runs"
+      ],
+      "functionsAddedOrReplaced": [
+        "allocate_bulk_to_packaging_run_v1",
+        "complete_packaging_run_v1",
+        "create_packaging_run_v1",
+        "get_packaging_available_bulk_v1",
+        "get_packaging_eligible_lots_v1",
+        "get_packaging_run_completion_readiness_v1",
+        "get_packaging_run_genealogy_v1",
+        "kf_completed_packaging_run_immutable",
+        "kf_packaging_available_bulk_v1",
+        "kf_packaging_run_append_only",
+        "kf_packaging_run_completion_readiness_v1",
+        "reconcile_packaging_run_v1",
+        "record_packaging_bulk_transfer_v1",
+        "record_packaging_inventory_use_v1",
+        "release_packaging_reservation_v1",
+        "release_packaging_run_bulk_allocation_v1",
+        "reserve_packaging_run_requirement_v1",
+        "reserve_packaging_run_requirements_v1"
+      ],
+      "policiesAdded": [],
+      "triggersAdded": [
+        "completed_packaging_run_immutable"
+      ],
+      "indexesAdded": [
+        "packaging_bulk_allocations_output_idx",
+        "packaging_bulk_allocations_owner_idx",
+        "packaging_bulk_transfers_allocation_idx",
+        "packaging_bulk_transfers_output_idx",
+        "packaging_bulk_transfers_owner_idx",
+        "packaging_bulk_transfers_run_idx",
+        "packaging_events_lot_idx",
+        "packaging_events_output_idx",
+        "packaging_events_owner_idx",
+        "packaging_events_production_run_idx",
+        "packaging_events_requirement_idx",
+        "packaging_events_run_idx",
+        "packaging_reconciliations_owner_idx",
+        "packaging_requirements_component_idx",
+        "packaging_requirements_owner_idx",
+        "packaging_requirements_run_idx",
+        "packaging_requirements_specification_line_idx",
+        "packaging_requirements_specification_version_idx",
+        "packaging_reservations_lot_idx",
+        "packaging_reservations_owner_idx",
+        "packaging_reservations_requirement_idx",
+        "packaging_reservations_run_idx",
+        "packaging_runs_formula_version_idx",
+        "packaging_runs_output_idx",
+        "packaging_runs_owner_idx",
+        "packaging_runs_product_idx",
+        "packaging_runs_production_run_idx",
+        "packaging_runs_specification_version_idx",
+        "packaging_uses_lot_idx",
+        "packaging_uses_owner_idx",
+        "packaging_uses_requirement_idx",
+        "packaging_uses_reservation_idx",
+        "packaging_uses_run_idx"
+      ],
+      "grantsChanged": true,
+      "legacyEffects": "none",
+      "compatibilityEffects": "additive",
+      "destructiveBehavior": "none; additive schema or authority revocation only",
+      "remoteApplicationStatus": "not_applied_or_verified_by_this_local_closeout",
+      "rollbackConsiderations": "restore from authorized pre-migration backup; do not rewrite immutable history",
+      "dependencies": [
+        "20260728154754_production_output_yield_reconciliation_v1.sql"
+      ],
+      "sourceHash": "66808ed349bfd37c35dd60e1aa81ee972f061e28bee7d3d64e75a53ede63bfe6"
+    },
+    {
+      "filename": "20260728203257_finished_goods_lot_creation_quarantine_v1.sql",
+      "timestamp": "20260728203257",
+      "commit": "21b3c3dc32d43480b473aa28c41f5ec5cd589813",
+      "milestone": "Slice 3",
+      "purpose": "Finished Goods Lot creation and quarantine",
+      "tablesAdded": [
+        "finished_goods_lot_events",
+        "finished_goods_lots",
+        "finished_goods_quarantines",
+        "packaged_output_reconciliations"
+      ],
+      "functionsAddedOrReplaced": [
+        "create_finished_goods_lot_v1",
+        "get_finished_goods_lot_genealogy_v1",
+        "get_packaging_run_finished_goods_readiness_v1",
+        "kf_finished_goods_append_only",
+        "kf_finished_goods_readiness_v1",
+        "record_packaged_output_reconciliation_v1"
+      ],
+      "policiesAdded": [
+        "owner_read"
+      ],
+      "triggersAdded": [],
+      "indexesAdded": [
+        "finished_goods_events_formula_idx",
+        "finished_goods_events_lot_idx",
+        "finished_goods_events_output_idx",
+        "finished_goods_events_owner_idx",
+        "finished_goods_events_product_idx",
+        "finished_goods_events_production_run_idx",
+        "finished_goods_events_run_idx",
+        "finished_goods_lots_formula_version_idx",
+        "finished_goods_lots_output_idx",
+        "finished_goods_lots_owner_idx",
+        "finished_goods_lots_packaging_version_idx",
+        "finished_goods_lots_product_idx",
+        "finished_goods_lots_production_run_idx",
+        "finished_goods_lots_run_idx",
+        "finished_goods_quarantines_owner_idx",
+        "finished_goods_quarantines_run_idx",
+        "packaged_output_reconciliations_owner_idx",
+        "packaged_output_reconciliations_run_idx"
+      ],
+      "grantsChanged": true,
+      "legacyEffects": "none",
+      "compatibilityEffects": "additive",
+      "destructiveBehavior": "none; additive schema or authority revocation only",
+      "remoteApplicationStatus": "not_applied_or_verified_by_this_local_closeout",
+      "rollbackConsiderations": "restore from authorized pre-migration backup; do not rewrite immutable history",
+      "dependencies": [
+        "20260728170000_packaging_run_planning_consumption_v1.sql"
+      ],
+      "sourceHash": "8926351cb9a54b625a2779352e7103d31bc53d07b876476d39080b66a501b058"
+    },
+    {
+      "filename": "20260729043721_finished_product_quality_release_v1.sql",
+      "timestamp": "20260729043721",
+      "commit": "f802fbbafb7710ec4fb161323803819eedad0659",
+      "milestone": "Slice 4",
+      "purpose": "Finished-product inspection, disposition, and quality release",
+      "tablesAdded": [
+        "finished_goods_deviations",
+        "finished_goods_disposition_reviews",
+        "finished_goods_inspections",
+        "finished_goods_inventory_movements",
+        "finished_goods_quality_events",
+        "released_finished_goods_inventory_lots"
+      ],
+      "functionsAddedOrReplaced": [
+        "get_finished_goods_inspection_plan_v1",
+        "get_finished_goods_quality_workspace_v1",
+        "get_finished_goods_release_readiness_v1",
+        "get_released_finished_goods_genealogy_v1",
+        "kf_finished_goods_inspection_plan_v1",
+        "kf_finished_goods_quality_guard",
+        "kf_finished_goods_release_readiness_v1",
+        "open_finished_goods_deviation_v1",
+        "record_finished_goods_disposition_v1",
+        "record_finished_goods_inspection_v1",
+        "resolve_finished_goods_deviation_v1"
+      ],
+      "policiesAdded": [
+        "owner_read"
+      ],
+      "triggersAdded": [
+        "finished_goods_lots_quality_guard",
+        "finished_goods_quarantines_quality_guard"
+      ],
+      "indexesAdded": [
+        "finished_goods_deviations_lot_status_idx",
+        "finished_goods_inspections_lot_effective_idx",
+        "finished_goods_inventory_movement_lot_idx",
+        "finished_goods_quality_events_lot_idx",
+        "finished_goods_reviews_lot_sequence_idx",
+        "released_finished_goods_batch_idx",
+        "released_finished_goods_source_idx"
+      ],
+      "grantsChanged": true,
+      "legacyEffects": "none",
+      "compatibilityEffects": "additive",
+      "destructiveBehavior": "none; additive schema or authority revocation only",
+      "remoteApplicationStatus": "not_applied_or_verified_by_this_local_closeout",
+      "rollbackConsiderations": "restore from authorized pre-migration backup; do not rewrite immutable history",
+      "dependencies": [
+        "20260728203257_finished_goods_lot_creation_quarantine_v1.sql"
+      ],
+      "sourceHash": "b5213b2fb74fc2bf6dc8fddfc5eea7e7fa26862ac0bfc18829f3c29b7fd34977"
+    },
+    {
+      "filename": "20260729054425_active_finished_goods_inventory_controls_v1.sql",
+      "timestamp": "20260729054425",
+      "commit": "941d768d5cbdc62f9843155fede4454b25c243c6",
+      "milestone": "Slice 5",
+      "purpose": "Movement-derived active Finished Goods inventory controls",
+      "tablesAdded": [
+        "finished_goods_inventory_events",
+        "finished_goods_inventory_operations",
+        "finished_goods_inventory_state_history"
+      ],
+      "functionsAddedOrReplaced": [
+        "get_finished_goods_inventory_workspace_v1",
+        "kf_finished_goods_inventory_snapshot_v1",
+        "list_finished_goods_inventory_fefo_v1",
+        "record_finished_goods_inventory_operation_v1"
+      ],
+      "policiesAdded": [
+        "owner_read"
+      ],
+      "triggersAdded": [],
+      "indexesAdded": [
+        "finished_goods_inventory_events_lot_idx",
+        "finished_goods_inventory_operations_lot_idx",
+        "finished_goods_inventory_related_movement_idx",
+        "finished_goods_inventory_state_active_idx",
+        "released_finished_goods_fefo_idx"
+      ],
+      "grantsChanged": true,
+      "legacyEffects": "none",
+      "compatibilityEffects": "additive",
+      "destructiveBehavior": "none; additive schema or authority revocation only",
+      "remoteApplicationStatus": "not_applied_or_verified_by_this_local_closeout",
+      "rollbackConsiderations": "restore from authorized pre-migration backup; do not rewrite immutable history",
+      "dependencies": [
+        "20260729043721_finished_product_quality_release_v1.sql"
+      ],
+      "sourceHash": "708161f877400baac0671b04fb8657ae2c0249223ba55ad209437fd458da6f36"
+    },
+    {
+      "filename": "20260729065048_batch_genealogy_traceability_v1.sql",
+      "timestamp": "20260729065048",
+      "commit": "0460e4f0d4fbac5d7a55144834f027ab433d1b19",
+      "milestone": "Slice 6",
+      "purpose": "Canonical batch genealogy and traceability read models",
+      "tablesAdded": [],
+      "functionsAddedOrReplaced": [
+        "get_finished_goods_backward_genealogy_v1",
+        "get_packaging_lot_forward_trace_v1",
+        "get_packaging_run_trace_v1",
+        "get_production_batch_trace_v1",
+        "get_raw_material_lot_forward_trace_v1",
+        "get_traceability_integrity_v1",
+        "get_traceability_readiness_v1",
+        "kf_finished_goods_backward_trace_v1",
+        "kf_forward_trace_result_v1",
+        "kf_traceability_inventory_impact_v1",
+        "search_finished_goods_traceability_v1"
+      ],
+      "policiesAdded": [],
+      "triggersAdded": [],
+      "indexesAdded": [
+        "batch_material_consumptions_lot_trace_idx",
+        "finished_goods_lots_output_trace_idx",
+        "finished_goods_lots_production_trace_idx"
+      ],
+      "grantsChanged": true,
+      "legacyEffects": "none",
+      "compatibilityEffects": "additive",
+      "destructiveBehavior": "none; additive schema or authority revocation only",
+      "remoteApplicationStatus": "not_applied_or_verified_by_this_local_closeout",
+      "rollbackConsiderations": "restore from authorized pre-migration backup; do not rewrite immutable history",
+      "dependencies": [
+        "20260729054425_active_finished_goods_inventory_controls_v1.sql"
+      ],
+      "sourceHash": "4c0561ea935c5418ba7c3a37f9333cba0fb6cf91452c720a049437bfb2de874c"
+    },
+    {
+      "filename": "20260729083226_platform_authority_hardening_v1.sql",
+      "timestamp": "20260729083226",
+      "commit": "984b19ad71343c8c22e2f2fab0d2319862df09a9",
+      "milestone": "Platform Hardening",
+      "purpose": "Freeze legacy writes and enforce controlled inventory authority",
+      "tablesAdded": [],
+      "functionsAddedOrReplaced": [
+        "append_inventory_movement_v1",
+        "append_packaging_inventory_movement_v1",
+        "record_inventory_lot_receipt_v1",
+        "record_packaging_lot_receipt_v1"
+      ],
+      "policiesAdded": [
+        "owner_read",
+        "owner_read",
+        "owner_read_legacy",
+        "owner_read_legacy",
+        "owner_read_legacy"
+      ],
+      "triggersAdded": [],
+      "indexesAdded": [],
+      "grantsChanged": true,
+      "legacyEffects": "freezes legacy Finished Goods and workspace write authority",
+      "compatibilityEffects": "retains read-only/service-only compatibility surfaces",
+      "destructiveBehavior": "none; additive schema or authority revocation only",
+      "remoteApplicationStatus": "not_applied_or_verified_by_this_local_closeout",
+      "rollbackConsiderations": "restore from authorized pre-migration backup; do not rewrite immutable history",
+      "dependencies": [
+        "20260729065048_batch_genealogy_traceability_v1.sql"
+      ],
+      "sourceHash": "01bfa65ffb5ecfe41f90fd3ccaa76785fdc146de5aa69e3ba9529a44e4cf0e09"
+    },
+    {
+      "filename": "20260729094510_recall_readiness_v1.sql",
+      "timestamp": "20260729094510",
+      "commit": "8c3dbd8fa60a0756b11a1ce293714ea7f6ab4814",
+      "milestone": "Recall Readiness",
+      "purpose": "Immutable recall assessment, scope, evidence, review, and approval",
+      "tablesAdded": [
+        "recall_readiness_affected_goods",
+        "recall_readiness_approvals",
+        "recall_readiness_case_revisions",
+        "recall_readiness_case_sequences",
+        "recall_readiness_cases",
+        "recall_readiness_events",
+        "recall_readiness_evidence",
+        "recall_readiness_gaps",
+        "recall_readiness_inventory_impacts",
+        "recall_readiness_reviews",
+        "recall_readiness_scope_snapshots"
+      ],
+      "functionsAddedOrReplaced": [
+        "approve_recall_readiness_revision_v1",
+        "close_recall_readiness_case_v1",
+        "compare_recall_readiness_revisions_v1",
+        "compare_recall_scope_to_live_inventory_v1",
+        "create_recall_readiness_case_v1",
+        "create_recall_readiness_revision_v1",
+        "generate_recall_readiness_scope_v1",
+        "get_recall_readiness_case_v1",
+        "get_recall_readiness_decision_readiness_v1",
+        "kf_recall_validate_identity_v1",
+        "kf_recall_workspace_v1",
+        "list_recall_readiness_cases_v1",
+        "register_recall_readiness_evidence_v1",
+        "submit_recall_readiness_review_v1"
+      ],
+      "policiesAdded": [],
+      "triggersAdded": [],
+      "indexesAdded": [
+        "recall_readiness_affected_scope_idx",
+        "recall_readiness_cases_list_idx",
+        "recall_readiness_events_case_idx",
+        "recall_readiness_evidence_case_idx",
+        "recall_readiness_gaps_revision_idx",
+        "recall_readiness_impact_scope_idx",
+        "recall_readiness_reviews_revision_idx",
+        "recall_readiness_revisions_case_idx"
+      ],
+      "grantsChanged": true,
+      "legacyEffects": "none",
+      "compatibilityEffects": "additive",
+      "destructiveBehavior": "none; additive schema or authority revocation only",
+      "remoteApplicationStatus": "not_applied_or_verified_by_this_local_closeout",
+      "rollbackConsiderations": "restore from authorized pre-migration backup; do not rewrite immutable history",
+      "dependencies": [
+        "20260729083226_platform_authority_hardening_v1.sql"
+      ],
+      "sourceHash": "f331d821e78607b122930dce7185355faf749ddcb12a6bc216e5b6809132eb94"
+    }
+  ]
+}

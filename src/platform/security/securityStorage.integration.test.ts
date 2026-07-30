@@ -209,16 +209,28 @@ run("local Supabase Auth, RLS, RPC, Storage, and cutover security", () => {
 
     const beforeRaw = (await userA.from("inventory_movements").select("id", { count: "exact", head: true })).count;
     const beforePackaging = (await userA.from("packaging_inventory_movements").select("id", { count: "exact", head: true })).count;
-    const plan = await userA.from("purchase_plans").insert({
+    expect((await userA.from("purchase_plans").insert({
       workspace_id: workspaceA, owner_id: userAId, title: "Controlled plan",
       status: "approved_internal", purpose: "Test", creation_key: crypto.randomUUID(),
-    }).select("id").single();
+    })).error).not.toBeNull();
+    const supplier=await userA.from("suppliers").insert({workspace_id:workspaceA,owner_id:userAId,legal_name:"Order supplier",supplier_type:"raw_material",status:"active"}).select("id").single();
+    expect(supplier.error).toBeNull();
+    const plan = await admin.from("purchase_plans").insert({
+      workspace_id: workspaceA, owner_id: userAId, supplier_id:supplier.data!.id, title: "Controlled plan",
+      status: "approved", purpose: "Test", creation_key: crypto.randomUUID(),
+    }).select("id,status").single();
     expect(plan.error).toBeNull();
+    expect((await admin.from("purchase_plan_lines").insert({workspace_id:workspaceA,owner_id:userAId,purchase_plan_id:plan.data!.id,inventory_domain:"raw_material",description:"Snapshot line",planned_quantity:1,unit:"kg"})).error).toBeNull();
     const orderKey = crypto.randomUUID();
-    const ordered = await userA.rpc("mark_purchase_plan_external_order", { plan_id: plan.data!.id, idempotency: orderKey });
-    const orderedRetry = await userA.rpc("mark_purchase_plan_external_order", { plan_id: plan.data!.id, idempotency: orderKey });
+    const ordered = await userA.rpc("create_purchase_order_from_plan", { target_plan_id: plan.data!.id, candidate_handoff_key: orderKey });
+    const orderedRetry = await userA.rpc("create_purchase_order_from_plan", { target_plan_id: plan.data!.id, candidate_handoff_key: orderKey });
     expect(ordered.error).toBeNull();
     expect(orderedRetry.data).toBe(ordered.data);
+    expect((await userA.from("purchase_orders").update({status:"fulfilled"}).eq("id",ordered.data)).error).not.toBeNull();
+    expect((await userA.from("supplier_events").insert({workspace_id:workspaceA,owner_id:userAId,supplier_id:supplier.data!.id,event_type:"purchase_placed",occurred_at:new Date().toISOString(),title:"Forged order event",purchase_order_id:ordered.data})).error?.message).toContain("PURCHASE_ORDER_EVENT_LINK_RPC_ONLY");
+    expect((await userB.rpc("create_purchase_order_from_plan",{target_plan_id:plan.data!.id,candidate_handoff_key:crypto.randomUUID()})).error).not.toBeNull();
+    expect((await anonymous.rpc("create_purchase_order_from_plan",{target_plan_id:plan.data!.id,candidate_handoff_key:crypto.randomUUID()})).error).not.toBeNull();
+    expect((await userA.from("purchase_plans").select("status").eq("id",plan.data!.id).single()).data?.status).toBe("approved");
     expect((await userA.from("inventory_movements").select("id", { count: "exact", head: true })).count).toBe(beforeRaw);
     expect((await userA.from("packaging_inventory_movements").select("id", { count: "exact", head: true })).count).toBe(beforePackaging);
   });
@@ -283,6 +295,7 @@ run("local Supabase Auth, RLS, RPC, Storage, and cutover security", () => {
     // Service-only lifecycle RPCs are intentionally absent from browser clients.
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const trusted=admin as any,a=userA as any;
+    const runKey=crypto.randomUUID(),durableOperation=`resp_durable_${runKey}`,conflictingOperation=`resp_conflict_${runKey}`,earlyOperation=`resp_early_${runKey}`;
     const createLiveJob=async(status="running",label:string=crypto.randomUUID())=>{
       const request=await a.from("procurement_requests").insert({workspace_id:workspaceA,owner_id:userAId,title:`Durable ${label}`,category:"raw_material",priority:"normal"}).select("id").single();
       expect(request.error).toBeNull();
@@ -320,21 +333,22 @@ run("local Supabase Auth, RLS, RPC, Storage, and cutover security", () => {
     ]);
     expect(starts.filter((result:{data:boolean})=>result.data===true)).toHaveLength(1);
     expect(starts.filter((result:{data:boolean})=>result.data===false)).toHaveLength(1);
-    const attached=await trusted.rpc("attach_procurement_background_operation",{candidate_attempt_id:intent.attempt_id,candidate_owner_id:userAId,candidate_provider_operation_id:"resp_durable_one",candidate_provider_status:"queued"});
+    const attached=await trusted.rpc("attach_procurement_background_operation",{candidate_attempt_id:intent.attempt_id,candidate_owner_id:userAId,candidate_provider_operation_id:durableOperation,candidate_provider_status:"queued"});
+    expect(attached.error).toBeNull();
     expect(attached.data).toBe("attached");
-    expect((await trusted.rpc("attach_procurement_background_operation",{candidate_attempt_id:intent.attempt_id,candidate_owner_id:userAId,candidate_provider_operation_id:"resp_durable_one",candidate_provider_status:"queued"})).data).toBe("duplicate");
-    expect((await trusted.rpc("attach_procurement_background_operation",{candidate_attempt_id:intent.attempt_id,candidate_owner_id:userAId,candidate_provider_operation_id:"resp_conflict",candidate_provider_status:"queued"})).error?.message).toContain("BACKGROUND_OPERATION_CONFLICT");
-    await trusted.rpc("store_procurement_background_webhook",{candidate_event_id:"evt_terminal_primary",candidate_provider_operation_id:"resp_durable_one",candidate_event_type:"response.completed"});
-    await trusted.rpc("store_procurement_background_webhook",{candidate_event_id:"evt_terminal_late",candidate_provider_operation_id:"resp_durable_one",candidate_event_type:"response.completed"});
+    expect((await trusted.rpc("attach_procurement_background_operation",{candidate_attempt_id:intent.attempt_id,candidate_owner_id:userAId,candidate_provider_operation_id:durableOperation,candidate_provider_status:"queued"})).data).toBe("duplicate");
+    expect((await trusted.rpc("attach_procurement_background_operation",{candidate_attempt_id:intent.attempt_id,candidate_owner_id:userAId,candidate_provider_operation_id:conflictingOperation,candidate_provider_status:"queued"})).error?.message).toContain("BACKGROUND_OPERATION_CONFLICT");
+    await trusted.rpc("store_procurement_background_webhook",{candidate_event_id:`evt_terminal_primary_${runKey}`,candidate_provider_operation_id:durableOperation,candidate_event_type:"response.completed"});
+    await trusted.rpc("store_procurement_background_webhook",{candidate_event_id:`evt_terminal_late_${runKey}`,candidate_provider_operation_id:durableOperation,candidate_event_type:"response.completed"});
 
     const earlyJob=await createLiveJob("running","early");
     const early=(await trusted.rpc("begin_procurement_background_submission",{candidate_workspace_id:workspaceA,candidate_job_id:earlyJob,candidate_owner_id:userAId,maximum_daily_invocations:100})).data[0] as{attempt_id:string};
-    expect((await trusted.rpc("store_procurement_background_webhook",{candidate_event_id:"evt_early",candidate_provider_operation_id:"resp_early",candidate_event_type:"response.completed"})).data).toBe("stored");
-    expect((await trusted.from("procurement_background_webhook_inbox").select("processing_state").eq("event_id","evt_early").single()).data?.processing_state).toBe("unmatched_pending");
+    expect((await trusted.rpc("store_procurement_background_webhook",{candidate_event_id:`evt_early_${runKey}`,candidate_provider_operation_id:earlyOperation,candidate_event_type:"response.completed"})).data).toBe("stored");
+    expect((await trusted.from("procurement_background_webhook_inbox").select("processing_state").eq("event_id",`evt_early_${runKey}`).single()).data?.processing_state).toBe("unmatched_pending");
     await trusted.rpc("start_procurement_background_submission",{candidate_attempt_id:early.attempt_id});
-    await trusted.rpc("attach_procurement_background_operation",{candidate_attempt_id:early.attempt_id,candidate_owner_id:userAId,candidate_provider_operation_id:"resp_early",candidate_provider_status:"in_progress"});
-    expect((await trusted.from("procurement_background_webhook_inbox").select("processing_state").eq("event_id","evt_early").single()).data?.processing_state).toBe("received");
-    expect((await trusted.rpc("store_procurement_background_webhook",{candidate_event_id:"evt_early",candidate_provider_operation_id:"resp_early",candidate_event_type:"response.completed"})).error).toBeNull();
+    await trusted.rpc("attach_procurement_background_operation",{candidate_attempt_id:early.attempt_id,candidate_owner_id:userAId,candidate_provider_operation_id:earlyOperation,candidate_provider_status:"in_progress"});
+    expect((await trusted.from("procurement_background_webhook_inbox").select("processing_state").eq("event_id",`evt_early_${runKey}`).single()).data?.processing_state).toBe("received");
+    expect((await trusted.rpc("store_procurement_background_webhook",{candidate_event_id:`evt_early_${runKey}`,candidate_provider_operation_id:earlyOperation,candidate_event_type:"response.completed"})).error).toBeNull();
     const retryWorker=crypto.randomUUID();
     expect((await trusted.rpc("claim_procurement_background_operation",{candidate_attempt_id:early.attempt_id,candidate_worker_id:retryWorker,candidate_stage:"retry_test",lease_seconds:30})).data).toBe(true);
     expect((await trusted.rpc("reschedule_procurement_background_operation",{candidate_attempt_id:early.attempt_id,candidate_worker_id:retryWorker,safe_failure_code:"BACKGROUND_RETRIEVAL_TRANSIENT",delay_seconds:30,increment_failure:true})).data).toBe(true);
@@ -346,19 +360,19 @@ run("local Supabase Auth, RLS, RPC, Storage, and cutover security", () => {
     ]);
     expect(claims.filter((result:{data:boolean})=>result.data===true)).toHaveLength(1);
     const winner=claims[0].data?workerA:workerB;
-    const terminalArgs={candidate_attempt_id:intent.attempt_id,candidate_worker_id:winner,candidate_event_id:"evt_terminal_primary",candidate_provider_status:"completed",candidate_candidates:[],candidate_partial:false,candidate_error_code:null,candidate_error_details:null,candidate_terminal_source:"webhook"};
+    const terminalArgs={candidate_attempt_id:intent.attempt_id,candidate_worker_id:winner,candidate_event_id:`evt_terminal_primary_${runKey}`,candidate_provider_status:"completed",candidate_candidates:[],candidate_partial:false,candidate_error_code:null,candidate_error_details:null,candidate_terminal_source:"webhook"};
     const finalized=await Promise.all([
       trusted.rpc("finalize_procurement_background_operation",terminalArgs),
       trusted.rpc("finalize_procurement_background_operation",terminalArgs),
     ]);
     expect(finalized.map((result:{data:string})=>result.data).sort()).toEqual(["duplicate","finalized"]);
     expect((await a.from("procurement_research_jobs").select("status,result_count").eq("id",jobId).single()).data).toEqual({status:"completed",result_count:0});
-    expect((await trusted.from("procurement_background_webhook_inbox").select("event_id,processing_state").in("event_id",["evt_terminal_primary","evt_terminal_late"]).order("event_id")).data).toEqual([
-      {event_id:"evt_terminal_late",processing_state:"duplicate"},
-      {event_id:"evt_terminal_primary",processing_state:"processed"},
+    expect((await trusted.from("procurement_background_webhook_inbox").select("event_id,processing_state").in("event_id",[`evt_terminal_primary_${runKey}`,`evt_terminal_late_${runKey}`]).order("event_id")).data).toEqual([
+      {event_id:`evt_terminal_late_${runKey}`,processing_state:"duplicate"},
+      {event_id:`evt_terminal_primary_${runKey}`,processing_state:"processed"},
     ]);
-    expect((await trusted.rpc("store_procurement_background_webhook",{candidate_event_id:"evt_after_terminal",candidate_provider_operation_id:"resp_durable_one",candidate_event_type:"response.completed"})).data).toBe("stored");
-    expect((await trusted.from("procurement_background_webhook_inbox").select("processing_state").eq("event_id","evt_after_terminal").single()).data?.processing_state).toBe("duplicate");
+    expect((await trusted.rpc("store_procurement_background_webhook",{candidate_event_id:`evt_after_terminal_${runKey}`,candidate_provider_operation_id:durableOperation,candidate_event_type:"response.completed"})).data).toBe("stored");
+    expect((await trusted.from("procurement_background_webhook_inbox").select("processing_state").eq("event_id",`evt_after_terminal_${runKey}`).single()).data?.processing_state).toBe("duplicate");
     expect((await trusted.rpc("begin_procurement_background_submission",{...beginArgs,candidate_owner_id:userBId})).error?.message).toContain("LIVE_JOB_UNAVAILABLE");
   });
 
@@ -639,5 +653,90 @@ run("local Supabase Auth, RLS, RPC, Storage, and cutover security", () => {
           .single()
       ).data?.state,
     ).toBe("Removed");
+  }, 30_000);
+
+  it("enforces RPC-only immutable ledgers and freezes legacy authority", async () => {
+    const now = new Date().toISOString();
+    const lotId = `authority-lot-${crypto.randomUUID()}`;
+    const receiptId = `authority-receipt-${crypto.randomUUID()}`;
+    const direct = await userA.from("inventory_movements").insert({
+      workspace_id: workspaceA,
+      owner_id: userAId,
+      id: `forged-${crypto.randomUUID()}`,
+      inventory_lot_id: formulaSeed.inventoryLots[0].id,
+      type: "Adjustment",
+      quantity: 1,
+      unit: formulaSeed.inventoryLots[0].unit,
+      reason: "Forged browser write",
+      notes: "",
+      occurred_at: now,
+      created_at: now,
+    });
+    expect(direct.error).not.toBeNull();
+
+    const receipt = await userA.rpc("record_inventory_lot_receipt_v1", {
+      candidate_lot: {
+        id: lotId,
+        ingredient_id: formulaSeed.ingredients[0].id,
+        internal_lot_number: `AUTH-${crypto.randomUUID()}`,
+        received_date: now.slice(0, 10),
+        opening_quantity: 10,
+        unit: "g",
+        location: "Authority test",
+        status: "Active",
+        notes: "",
+        created_at: now,
+        updated_at: now,
+      },
+      candidate_movement: {
+        id: receiptId,
+        inventory_lot_id: lotId,
+        type: "Receipt",
+        quantity: 10,
+        unit: "g",
+        reason: "Controlled receipt",
+        notes: "",
+        occurred_at: now,
+        created_at: now,
+      },
+    });
+    expect(receipt.error).toBeNull();
+    expect((await userA.from("inventory_movements").select("id").eq("id", receiptId)).data).toHaveLength(1);
+    expect((await userB.from("inventory_movements").select("id").eq("id", receiptId)).data).toHaveLength(0);
+
+    const movementId = `authority-use-${crypto.randomUUID()}`;
+    expect((await userA.rpc("append_inventory_movement_v1", {
+      candidate_movement: {
+        id: movementId,
+        inventory_lot_id: lotId,
+        type: "Sample",
+        quantity: 2,
+        unit: "g",
+        reason: "Controlled sample",
+        notes: "",
+        occurred_at: now,
+        created_at: now,
+      },
+    })).error).toBeNull();
+    expect((await userB.rpc("append_inventory_movement_v1", {
+      candidate_movement: {
+        id: `cross-owner-${crypto.randomUUID()}`,
+        inventory_lot_id: lotId,
+        type: "Sample",
+        quantity: 1,
+        unit: "g",
+        reason: "Cross-owner attempt",
+        notes: "",
+        occurred_at: now,
+        created_at: now,
+      },
+    })).error).not.toBeNull();
+
+    expect((await userA.from("finished_goods_batches").update({notes:"forged"}).eq("workspace_id",workspaceA)).error).not.toBeNull();
+    expect((await userA.rpc("register_finished_goods_output",{batch:{},receipt:{}})).error).not.toBeNull();
+    expect((await anonymous.rpc("register_document_object",{
+      document_id:"forged",dossier_id:"forged",object_bucket:"compliance-documents",
+      path:"forged",file_name:"forged",content_type:"text/plain",byte_size:1,content_checksum:null,
+    })).error).not.toBeNull();
   }, 30_000);
 });

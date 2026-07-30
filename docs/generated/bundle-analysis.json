@@ -1,0 +1,766 @@
+{
+  "auditVersion": "1.0.0",
+  "generatedAt": "2026-07-29T12:00:00+02:00",
+  "baseline": {
+    "largestJavaScriptBytes": 1590270,
+    "largestJavaScriptGzipBytes": 407400
+  },
+  "summary": {
+    "chunkCount": 107,
+    "javascriptChunkCount": 106,
+    "totalJavaScriptBytes": 1653403,
+    "largestJavaScriptBytes": 665139,
+    "largestJavaScriptGzipBytes": 185210
+  },
+  "chunks": [
+    {
+      "file": "dist/assets/BatchMaterialControlWorkspace-zGc8Pr3h.js",
+      "type": "javascript",
+      "bytes": 20665,
+      "gzipBytes": 5850,
+      "sha256": "4a5fbe7b9ca6ee8f6f3f9b44f0611c135626a87c6aacdac44098433f01e63952"
+    },
+    {
+      "file": "dist/assets/BeardButterStudioPage-C92JiFYp.js",
+      "type": "javascript",
+      "bytes": 11605,
+      "gzipBytes": 4075,
+      "sha256": "2bd9b262452bf33bbe1ed78326d438436bce75fa02194f2b19c6dcd0e2e58bbf"
+    },
+    {
+      "file": "dist/assets/BeardLogPage-DDPpJxhX.js",
+      "type": "javascript",
+      "bytes": 4322,
+      "gzipBytes": 1690,
+      "sha256": "ac600d1051976de8144b3092ca378bbdd70d1cd682581619527ae967980d599a"
+    },
+    {
+      "file": "dist/assets/BeardOilStudioPage-ChNTfZ25.js",
+      "type": "javascript",
+      "bytes": 18500,
+      "gzipBytes": 5811,
+      "sha256": "82118deb8cd9f310ddc132f75ddab7df6910afff1059175fa99833334867838d"
+    },
+    {
+      "file": "dist/assets/BeardOverviewPage-dS3J-xXV.js",
+      "type": "javascript",
+      "bytes": 71015,
+      "gzipBytes": 20814,
+      "sha256": "25b0991c91092998a6f9656e24f85f64f95be82bf53591f3da892a371bef1e9c"
+    },
+    {
+      "file": "dist/assets/BeardProfilePage-BYPhavst.js",
+      "type": "javascript",
+      "bytes": 5476,
+      "gzipBytes": 1734,
+      "sha256": "710b59bc501238c527520956c8781d24444b8987662be96f09fce091a6280875"
+    },
+    {
+      "file": "dist/assets/BeardStudioEditorGuard-gd5c1IUY.js",
+      "type": "javascript",
+      "bytes": 990,
+      "gzipBytes": 526,
+      "sha256": "8821bf0d6df4c834b53f9e784ec0e89f34325e0c967629e1b8d9f90e6b554164"
+    },
+    {
+      "file": "dist/assets/BeardStudioEmptyState-BGG1YmT0.js",
+      "type": "javascript",
+      "bytes": 658,
+      "gzipBytes": 389,
+      "sha256": "8fd65d2121d486a733a0aa5c9c45b42755f2a855259a678830779382df8cef29"
+    },
+    {
+      "file": "dist/assets/BeardStudioShell-laKaL2P4.js",
+      "type": "javascript",
+      "bytes": 1065,
+      "gzipBytes": 552,
+      "sha256": "244acc93610281e8410b579a8eec731a4440b26ff5bc1f0b891738587d28ccdf"
+    },
+    {
+      "file": "dist/assets/BenchmarkLabPage-B5glmL09.js",
+      "type": "javascript",
+      "bytes": 30195,
+      "gzipBytes": 8358,
+      "sha256": "c66024895f2bfc1e8e07c79f39cd27679649f51113264428c7e4851699de0d37"
+    },
+    {
+      "file": "dist/assets/BiblePage-GYeFprSA.js",
+      "type": "javascript",
+      "bytes": 5150,
+      "gzipBytes": 1711,
+      "sha256": "e68ae7fb16c4053ee39483b2ca5257d9d40872df167b1568ebeb01b30b9ce042"
+    },
+    {
+      "file": "dist/assets/ComplianceDossierPage-Vkp_5lRF.js",
+      "type": "javascript",
+      "bytes": 12216,
+      "gzipBytes": 4060,
+      "sha256": "1c7a326112a92563c8364c17a398c26e2ee2ea61f359586e80ba86cf59041532"
+    },
+    {
+      "file": "dist/assets/CompliancePage-QT-0JnP0.js",
+      "type": "javascript",
+      "bytes": 3984,
+      "gzipBytes": 1559,
+      "sha256": "fc833a0d832c290edd491ed786298c6185a55cefc700ab0e19693cff57058508"
+    },
+    {
+      "file": "dist/assets/CostingPage-C92Wieae.js",
+      "type": "javascript",
+      "bytes": 4187,
+      "gzipBytes": 1528,
+      "sha256": "e5fd709e18f333b54cfc221ffc45f16d33d985c5909aa566294e4eff9581ea06"
+    },
+    {
+      "file": "dist/assets/DevelopmentExperimentPage-DkDpoJVO.js",
+      "type": "javascript",
+      "bytes": 4870,
+      "gzipBytes": 1685,
+      "sha256": "66374abc0f26f350b67c30841ad84173896bf1e2cdba194690f033204d1d0aa1"
+    },
+    {
+      "file": "dist/assets/DevelopmentPage-NqUMUy6r.js",
+      "type": "javascript",
+      "bytes": 3149,
+      "gzipBytes": 1259,
+      "sha256": "da59ed9290c15a15d15f417654fec91309b7b1d554762afef23bdbeb9a381b1a"
+    },
+    {
+      "file": "dist/assets/EquipmentDetailPage-DH-JL_UH.js",
+      "type": "javascript",
+      "bytes": 4257,
+      "gzipBytes": 1510,
+      "sha256": "b63fe6d31cd7eec2b03fa32792ca933ffa4e259bc0b5f54b2df0c5cc08eca50c"
+    },
+    {
+      "file": "dist/assets/EquipmentPage-D1COeYvh.js",
+      "type": "javascript",
+      "bytes": 3468,
+      "gzipBytes": 1426,
+      "sha256": "8c32f1592923d501c3bf7f8aec7ac8cfaf830ee44e71a35af3690ffd780d1698"
+    },
+    {
+      "file": "dist/assets/ExperimentReviewPage-BIrZxSsi.js",
+      "type": "javascript",
+      "bytes": 5102,
+      "gzipBytes": 2078,
+      "sha256": "6949e659732ae6ffe1d18e282135a3a795479d900d7e25d4c42f6d72b19ff498"
+    },
+    {
+      "file": "dist/assets/FinishedGoodsDetailPage-C3YkVzVZ.js",
+      "type": "javascript",
+      "bytes": 5177,
+      "gzipBytes": 1716,
+      "sha256": "9d48cc6326d1e919ec7a48a4d65eb755b5f1c4de76d442488cb47dec249d8e54"
+    },
+    {
+      "file": "dist/assets/FinishedGoodsInventoryPage-BwDufOSx.js",
+      "type": "javascript",
+      "bytes": 8471,
+      "gzipBytes": 2892,
+      "sha256": "88ab1c745ef8d755e4b410a775b602e509ca1e242ee562e1b66077b7f9a3e5ca"
+    },
+    {
+      "file": "dist/assets/FinishedGoodsLotPage-CXq-tClI.js",
+      "type": "javascript",
+      "bytes": 18455,
+      "gzipBytes": 5093,
+      "sha256": "310639815608291ce881dd166ff41d8f325c432327208feb4a51a0febc491fcc"
+    },
+    {
+      "file": "dist/assets/FinishedGoodsPage-CqVmKR2j.js",
+      "type": "javascript",
+      "bytes": 2241,
+      "gzipBytes": 919,
+      "sha256": "cee76830ad761152bf78779c140eb3c8b7f49aa7c5160b3731dbbd5419250f64"
+    },
+    {
+      "file": "dist/assets/FormulaDetailPage-Cvm2AHt6.js",
+      "type": "javascript",
+      "bytes": 17345,
+      "gzipBytes": 5229,
+      "sha256": "4b732e42bd4abc3892ee25db2b2bb3762a2cdd26b6aae9db46c654ec933b31fd"
+    },
+    {
+      "file": "dist/assets/FormulaLibraryPage-FY9asz8D.js",
+      "type": "javascript",
+      "bytes": 3473,
+      "gzipBytes": 1402,
+      "sha256": "e6a0ff73f6d1fb4c0dc693acf030cf01310f27e44a84c3a060371d11b21506e4"
+    },
+    {
+      "file": "dist/assets/GroomingProductSelector-DSWGyqNy.js",
+      "type": "javascript",
+      "bytes": 1724,
+      "gzipBytes": 742,
+      "sha256": "0f72815ebae68d2faa982e2876f522f09a042b9663104a0ba08d1c1866448dbe"
+    },
+    {
+      "file": "dist/assets/GroomingToolsPage-DQjHjgpX.js",
+      "type": "javascript",
+      "bytes": 5120,
+      "gzipBytes": 1654,
+      "sha256": "c3c7f124b6fd7ea2a1a98d8e96705808700773bfe735126c7c2ab86013d011e2"
+    },
+    {
+      "file": "dist/assets/IngredientDetailPage-NatYw-D8.js",
+      "type": "javascript",
+      "bytes": 29994,
+      "gzipBytes": 7759,
+      "sha256": "a0dd5c35f0d9e3ce1a705b17b939b18d5f148bfd568fbb190077da8d33d0fc5e"
+    },
+    {
+      "file": "dist/assets/IngredientForm-ET9KMjCB.js",
+      "type": "javascript",
+      "bytes": 4748,
+      "gzipBytes": 1727,
+      "sha256": "355a530e1f922112a11e807b0b60069ff1cc2003eb5505fa009d68ed2f563177"
+    },
+    {
+      "file": "dist/assets/IngredientKnowledgePage-DFqfl-8d.js",
+      "type": "javascript",
+      "bytes": 27174,
+      "gzipBytes": 7271,
+      "sha256": "a63b02927ae0b62a856c9a6c9de6978ed5283a90258d9512cfe5f92bf866ce7e"
+    },
+    {
+      "file": "dist/assets/IngredientsPage-CSc6gsd5.js",
+      "type": "javascript",
+      "bytes": 4182,
+      "gzipBytes": 1441,
+      "sha256": "0f5fe7532e2ef976f9e95f230fc8958e22e6b2a45c98bbd3ccd6f64efc31beda"
+    },
+    {
+      "file": "dist/assets/IntelligenceThreadPage-DXTrZd9i.js",
+      "type": "javascript",
+      "bytes": 8345,
+      "gzipBytes": 2887,
+      "sha256": "d4a30344557cd3bc3e1390ee7685dc15454db30bf1f799b6e2a113d124767220"
+    },
+    {
+      "file": "dist/assets/InventoryPage-HejRl9YS.js",
+      "type": "javascript",
+      "bytes": 4234,
+      "gzipBytes": 1503,
+      "sha256": "f3651c8665bfa4cfdd8d94215c286b8b4eb5646c534e6bed536018d7d7aa5346"
+    },
+    {
+      "file": "dist/assets/KnowledgePage-nAGf1HY2.js",
+      "type": "javascript",
+      "bytes": 10643,
+      "gzipBytes": 3326,
+      "sha256": "10dd245cd8c35f35edfe5a934a60b693b78ffb139902dac4beb60a619d48a3c1"
+    },
+    {
+      "file": "dist/assets/LabBatchDetailPage-BZHg9knI.js",
+      "type": "javascript",
+      "bytes": 13381,
+      "gzipBytes": 3931,
+      "sha256": "d0f6c88771f463ccd64319f19d3a6f824e9849583d021eb0b22390b707141a9c"
+    },
+    {
+      "file": "dist/assets/LabPage-B1gBKSuJ.js",
+      "type": "javascript",
+      "bytes": 3902,
+      "gzipBytes": 1379,
+      "sha256": "08a354e053f29052ff83a5c280c8b931f9ee1d829e643b3b5a25be02157cfdda"
+    },
+    {
+      "file": "dist/assets/LaunchPage-BF7-0EzB.js",
+      "type": "javascript",
+      "bytes": 1589,
+      "gzipBytes": 762,
+      "sha256": "c32da5d2e393170a0839a212a3e51078980fac5a3aae0d63a09f03b2f3da5fd0"
+    },
+    {
+      "file": "dist/assets/LaunchPlanPage-CGsjxLOy.js",
+      "type": "javascript",
+      "bytes": 3566,
+      "gzipBytes": 1330,
+      "sha256": "fbceca7c3f85c47984ba46ef1171b6e7b82d2aad64ed899feff1ceb6ca286495"
+    },
+    {
+      "file": "dist/assets/LegacySupplierDetailRedirect-5tLhIgRj.js",
+      "type": "javascript",
+      "bytes": 278,
+      "gzipBytes": 233,
+      "sha256": "3cc7da55790c7d26f285e48b7df033dbc53d99c3fc35cfb34e3f38fb7ff639b0"
+    },
+    {
+      "file": "dist/assets/LengthMapPage-BGf_5v_V.js",
+      "type": "javascript",
+      "bytes": 4262,
+      "gzipBytes": 1346,
+      "sha256": "e7693db48a7503f829e5fd62bcacef4cb0a7ef57889a25718b47b024b1ebc896"
+    },
+    {
+      "file": "dist/assets/LotDetailPage-ClRrAe7n.js",
+      "type": "javascript",
+      "bytes": 6526,
+      "gzipBytes": 2454,
+      "sha256": "4593fb9d953010bc19199623c5a76bfda6452cdc6e29f0d22625513df6b7ec39"
+    },
+    {
+      "file": "dist/assets/NaturalDeodorantStudioPage-_pBzzWpv.js",
+      "type": "javascript",
+      "bytes": 16705,
+      "gzipBytes": 5396,
+      "sha256": "6d2e5dd77c96108f20d9b417b904d33305a76337243f4ef398deac365badb474"
+    },
+    {
+      "file": "dist/assets/OrderedInciDisclosure-BjK_8gAJ.js",
+      "type": "javascript",
+      "bytes": 1026,
+      "gzipBytes": 501,
+      "sha256": "abee52e19b63c14cf747f2575025d658bd2b2fbf583fccc85dc1f68a9edca264"
+    },
+    {
+      "file": "dist/assets/PackagingComponentDetailPage-eQ18Y-EM.js",
+      "type": "javascript",
+      "bytes": 4864,
+      "gzipBytes": 1697,
+      "sha256": "eeb14f8ba7bcf6fc37398663afc2faa408b2c95375bd2265ec0db374d7f5df61"
+    },
+    {
+      "file": "dist/assets/PackagingPage-B5--CGcZ.js",
+      "type": "javascript",
+      "bytes": 3861,
+      "gzipBytes": 1431,
+      "sha256": "54142425dbf9c018044482aafc16fa4c2145edc21d377cdea7f5b1dd7301cf44"
+    },
+    {
+      "file": "dist/assets/PackagingSpecificationPage-3Um7uVMR.js",
+      "type": "javascript",
+      "bytes": 4843,
+      "gzipBytes": 1669,
+      "sha256": "00ad6a8be956173980994c8c4b5d620aa0e0aea33f88c5c57d02311c6744f985"
+    },
+    {
+      "file": "dist/assets/ProcurementPage-CRyeT8tc.js",
+      "type": "javascript",
+      "bytes": 11815,
+      "gzipBytes": 3878,
+      "sha256": "6e94ecbfeeb61488237318176ab1141c58f3fdbf805abc9fabdc29d49e079fc5"
+    },
+    {
+      "file": "dist/assets/ProcurementRequestPage-CNvNsyoz.js",
+      "type": "javascript",
+      "bytes": 35800,
+      "gzipBytes": 9500,
+      "sha256": "d20a0be1a04e21463100f6158778590c552ac5d5675f4a3acbbcbd2853d2e7c3"
+    },
+    {
+      "file": "dist/assets/ProductDetailPage-YC2HwxeC.js",
+      "type": "javascript",
+      "bytes": 7122,
+      "gzipBytes": 2260,
+      "sha256": "315f2abe604e911c6f0451ff1711cac484b71fb0974979844ba394fb4a2ecf16"
+    },
+    {
+      "file": "dist/assets/ProductStudioPage-CP2PgRc2.js",
+      "type": "javascript",
+      "bytes": 6897,
+      "gzipBytes": 2280,
+      "sha256": "77aeb772e218301e79ec9ad2ad0df78a899cd23549d3a720f338bb36d95fedf1"
+    },
+    {
+      "file": "dist/assets/ProductionPage-BWFzn9a9.js",
+      "type": "javascript",
+      "bytes": 6781,
+      "gzipBytes": 2105,
+      "sha256": "b6334caf241548cb093df7383d3cd6f17ca3224ff66060ba9d5c584c2999be0c"
+    },
+    {
+      "file": "dist/assets/ProductionReadinessPage-CCa_32MC.js",
+      "type": "javascript",
+      "bytes": 89991,
+      "gzipBytes": 19646,
+      "sha256": "4cf7b12a33c720c20bd79f2e6c47566ecc3ccbeae5b742bd0733b3c1909f3bd2"
+    },
+    {
+      "file": "dist/assets/ProductionRunDetailPage-cJKYyKvj.js",
+      "type": "javascript",
+      "bytes": 61378,
+      "gzipBytes": 13481,
+      "sha256": "8ee1610498c2705e5529da4345c884ad6be33f41e82046df3b3d8c3916e3b579"
+    },
+    {
+      "file": "dist/assets/ProductsPage-DgCxSZcQ.js",
+      "type": "javascript",
+      "bytes": 5490,
+      "gzipBytes": 1946,
+      "sha256": "5ade35003e2bb937ae56e7f14e31becccf4848dd285a50423304c904985e91d5"
+    },
+    {
+      "file": "dist/assets/PurchasingIntelligencePanel-CMm8lm7X.js",
+      "type": "javascript",
+      "bytes": 20427,
+      "gzipBytes": 4746,
+      "sha256": "71acff6a7132ec8501b314fcee6836439e721844d41805d3881a66ff1b3bd39a"
+    },
+    {
+      "file": "dist/assets/RecallReadinessPage-D-2Kgt6G.js",
+      "type": "javascript",
+      "bytes": 25462,
+      "gzipBytes": 6600,
+      "sha256": "024ce50c1e7f27a33fc8280d224bf805b4f33248de9dd4dab846f696ba76a1ed"
+    },
+    {
+      "file": "dist/assets/ReceiveStockForm-nps4u9XM.js",
+      "type": "javascript",
+      "bytes": 3754,
+      "gzipBytes": 1337,
+      "sha256": "d835431bfbdd841e520d2ac987c60545ec0b511e2c0a52dbce1e9cc2eae8d2ff"
+    },
+    {
+      "file": "dist/assets/ReferenceEntryPage-DE1FIi9V.js",
+      "type": "javascript",
+      "bytes": 3985,
+      "gzipBytes": 1502,
+      "sha256": "f6b7d8b16b211c7042e951fc5677b83618db2ed030b2869217f79791cb32266b"
+    },
+    {
+      "file": "dist/assets/ReferenceLibraryPage-C0FuEx7R.js",
+      "type": "javascript",
+      "bytes": 2499,
+      "gzipBytes": 1085,
+      "sha256": "933ee38804347601286ec66f6791567905ddc036bb56f8b9a42ed3da753075e3"
+    },
+    {
+      "file": "dist/assets/ScentHousePage-CGQqkL-s.js",
+      "type": "javascript",
+      "bytes": 1802,
+      "gzipBytes": 806,
+      "sha256": "4a444edbb440a0aab9b76321d0fb42214f7c0baea31cc929815b6a0a26d6254e"
+    },
+    {
+      "file": "dist/assets/ScentMemoryDetailPage-D0aeDwxW.js",
+      "type": "javascript",
+      "bytes": 6419,
+      "gzipBytes": 2223,
+      "sha256": "a90f5ef897cf970825e41f9dbd947a08ba869d5d8223596827595516478c3b16"
+    },
+    {
+      "file": "dist/assets/ScentStudioPage-DT5iHcth.js",
+      "type": "javascript",
+      "bytes": 10196,
+      "gzipBytes": 3499,
+      "sha256": "5cb22a8959aacae19d1d9fa4e190a94f6443d4bb8889eeaa731bb8c8c24e0764"
+    },
+    {
+      "file": "dist/assets/SmartStartPage-Ds7qM-gJ.js",
+      "type": "javascript",
+      "bytes": 11488,
+      "gzipBytes": 3941,
+      "sha256": "de521fb0031fde9e83e2cc23b9c19e1c5f8b98555a5392deb4762a8cd2c4eed9"
+    },
+    {
+      "file": "dist/assets/SuppliersPage-Bgd0GHj3.js",
+      "type": "javascript",
+      "bytes": 33656,
+      "gzipBytes": 8434,
+      "sha256": "06ea02b5a7b7b3fcbe1b1a7fa6dbb7c2835a8a01601cad3e3a30875b7c174d7d"
+    },
+    {
+      "file": "dist/assets/TestSessionForm-CylS-ExS.js",
+      "type": "javascript",
+      "bytes": 1658,
+      "gzipBytes": 698,
+      "sha256": "65632985520b58666aadc98e9d8ed263bd8e7f344ba28494537f161f59fd3470"
+    },
+    {
+      "file": "dist/assets/TestingPage-C7N7lmdJ.js",
+      "type": "javascript",
+      "bytes": 7678,
+      "gzipBytes": 2311,
+      "sha256": "67fa6e2bba7cf5b10350235e1ede26f9c2fb1e8efa2d8d03a09094a992d46eff"
+    },
+    {
+      "file": "dist/assets/TraceabilityPage-L62vgfMs.js",
+      "type": "javascript",
+      "bytes": 13688,
+      "gzipBytes": 3811,
+      "sha256": "52dac1a3feb72ee5e48dc2fcc14879defdf3edc03211eebaca3ee91b2537fa0a"
+    },
+    {
+      "file": "dist/assets/TrimModePage-DOH_eIuz.js",
+      "type": "javascript",
+      "bytes": 5654,
+      "gzipBytes": 1846,
+      "sha256": "925ce784e8b93cdef0fee4855369c1a4d34b9022f3a54667d7c840db4dd68c8b"
+    },
+    {
+      "file": "dist/assets/TrimRecipesPage-D_xpbJGZ.js",
+      "type": "javascript",
+      "bytes": 4627,
+      "gzipBytes": 1680,
+      "sha256": "24e1b00ce5b753775ea8f024ee52e05183021d263b3bc848acaec58722139fdd"
+    },
+    {
+      "file": "dist/assets/archive-BVPkFZ9P.js",
+      "type": "javascript",
+      "bytes": 253,
+      "gzipBytes": 212,
+      "sha256": "8093babc11cb7cf33aaca1b2043a5ae21a9112f4ef4f3553bc5f5e7a3523b322"
+    },
+    {
+      "file": "dist/assets/arrow-left-pOxO0BDr.js",
+      "type": "javascript",
+      "bytes": 165,
+      "gzipBytes": 163,
+      "sha256": "91499c85cda706f727393825351471270f2d13e60011a74e799c1ab1fab41d8b"
+    },
+    {
+      "file": "dist/assets/beardStudioFormat-BEmgJWUR.js",
+      "type": "javascript",
+      "bytes": 123,
+      "gzipBytes": 118,
+      "sha256": "e644cbf57678e9534d5db31d755b026b61f16894c282c095c86eab5147edb85b"
+    },
+    {
+      "file": "dist/assets/brain-CCKzNAPC.js",
+      "type": "javascript",
+      "bytes": 577,
+      "gzipBytes": 308,
+      "sha256": "00d522d0bc6fb1bf6307f12322cfd366411a501f923c885dc713ce723049b3c6"
+    },
+    {
+      "file": "dist/assets/catalog-rc6wOhFJ.js",
+      "type": "javascript",
+      "bytes": 25984,
+      "gzipBytes": 5824,
+      "sha256": "f0a6a04412d54621f8d67ba34350670e33f3a5f46e189cf9bd7b70fd2a5bb204"
+    },
+    {
+      "file": "dist/assets/check-C-LvvlCa.js",
+      "type": "javascript",
+      "bytes": 124,
+      "gzipBytes": 140,
+      "sha256": "ad8bd24d91cfeec3b9a3404546972238cb600c98acc5993a73f3031f2be2fb7c"
+    },
+    {
+      "file": "dist/assets/chevron-left-Wfxpo7y_.js",
+      "type": "javascript",
+      "bytes": 130,
+      "gzipBytes": 146,
+      "sha256": "157f10578844d1a2450b425ab63c314068b39b54ce2154b7baac8872e34913bb"
+    },
+    {
+      "file": "dist/assets/chevron-right-CublE7nW.js",
+      "type": "javascript",
+      "bytes": 130,
+      "gzipBytes": 142,
+      "sha256": "ccef418c1d067abece7c116f493c56d274fb88af90551ae2d4cf6c9a533f518e"
+    },
+    {
+      "file": "dist/assets/chunk-KS7C4IRE-B_kHRcd5.js",
+      "type": "javascript",
+      "bytes": 97172,
+      "gzipBytes": 31857,
+      "sha256": "aec06d5945fbc93ec16bf7ef71940dd71a6e988f6f4bc2e8966ce6ca94bec5ac"
+    },
+    {
+      "file": "dist/assets/copy-DMMjO4gR.js",
+      "type": "javascript",
+      "bytes": 236,
+      "gzipBytes": 210,
+      "sha256": "71de804bf1f999530dc52459cefb925d48d35302f868099140b09e6cc66ca041"
+    },
+    {
+      "file": "dist/assets/createLucideIcon-DN0J77WO.js",
+      "type": "javascript",
+      "bytes": 1385,
+      "gzipBytes": 778,
+      "sha256": "141b762b7d74f48945b859d0015d28fd2ae73b4dba5e609bf5f629f92f10f152"
+    },
+    {
+      "file": "dist/assets/deodorantBenchmark-BZtFYzJA.js",
+      "type": "javascript",
+      "bytes": 5862,
+      "gzipBytes": 2191,
+      "sha256": "2b1a776398b01c0b95d2e79a6578e73ff74f44f80c03b51d180a4b9b9798da7d"
+    },
+    {
+      "file": "dist/assets/developmentExperiment-Bi8-HFgS.js",
+      "type": "javascript",
+      "bytes": 1496,
+      "gzipBytes": 693,
+      "sha256": "38d0dec8c000924044d6c84ace6f7d537f3f10239d08ff79676dd4ae64a2c9bc"
+    },
+    {
+      "file": "dist/assets/developmentExperimentActions-DYj2pA4C.js",
+      "type": "javascript",
+      "bytes": 244,
+      "gzipBytes": 182,
+      "sha256": "00fe95b181cad8cb3f404ea83e5e696667ba650fcdad5564338af3472157add2"
+    },
+    {
+      "file": "dist/assets/external-link-R3iIhIpQ.js",
+      "type": "javascript",
+      "bytes": 367,
+      "gzipBytes": 257,
+      "sha256": "a1f7a8f0576f8a8592d629ac2a07100c7cc2691fd230a1c8a4a0c875341059b9"
+    },
+    {
+      "file": "dist/assets/finishedGoodsLot-8oNkjv2g.js",
+      "type": "javascript",
+      "bytes": 305,
+      "gzipBytes": 231,
+      "sha256": "920803256514edfe65452f59831da834f97247794420c8f277e32e576b9091af"
+    },
+    {
+      "file": "dist/assets/finishedGoodsLotRepository-C_9gsEdI.js",
+      "type": "javascript",
+      "bytes": 2731,
+      "gzipBytes": 987,
+      "sha256": "899a618cc8ba14b14730910287785ecb74d32a6e314528e94877b0d38961f924"
+    },
+    {
+      "file": "dist/assets/format-Cq7Dvf7z.js",
+      "type": "javascript",
+      "bytes": 471,
+      "gzipBytes": 335,
+      "sha256": "a1e9e37f65819fda3b05472c5b0ee6f52c55ee7b4ffb3d270550aed682ef6b8f"
+    },
+    {
+      "file": "dist/assets/index-BrasFJcv.js",
+      "type": "javascript",
+      "bytes": 665139,
+      "gzipBytes": 185210,
+      "sha256": "1593719be8b6adc78f2c916cb99a7e0e43449bfdaff076cae4fc00b29dbc9e60"
+    },
+    {
+      "file": "dist/assets/index-GN2ojEo1.css",
+      "type": "css",
+      "bytes": 167954,
+      "gzipBytes": 29965,
+      "sha256": "b1e8fa4c6324149434b5c619a48ccbbc5f6408d543965689778c694a3a1e700f"
+    },
+    {
+      "file": "dist/assets/intelligenceExperimentHandoff-CRQGj6HJ.js",
+      "type": "javascript",
+      "bytes": 2061,
+      "gzipBytes": 862,
+      "sha256": "cef3a6156faa497a21c142cbffdd095619a81493d4b54c87b6753cd1d73fb379"
+    },
+    {
+      "file": "dist/assets/jsx-runtime-n5LQ9ujS.js",
+      "type": "javascript",
+      "bytes": 8535,
+      "gzipBytes": 3258,
+      "sha256": "ac8cfd5266e89970a24f3186c21a976b69d19a8a9efa0101b72904ffba16f39b"
+    },
+    {
+      "file": "dist/assets/knowledge-DldmNd1q.js",
+      "type": "javascript",
+      "bytes": 2115,
+      "gzipBytes": 799,
+      "sha256": "7e38f3fe7d3d68d1c42aee2baa546835ac9f08d86c37460fe0da1a26505989ce"
+    },
+    {
+      "file": "dist/assets/knowledgeRepository-CGHCBEFt.js",
+      "type": "javascript",
+      "bytes": 2800,
+      "gzipBytes": 995,
+      "sha256": "63f5f49ca957f10861422cc74588f662fa364721e1fe7ad19e71f21f883b0ff9"
+    },
+    {
+      "file": "dist/assets/lock-keyhole-CbaAlAPh.js",
+      "type": "javascript",
+      "bytes": 255,
+      "gzipBytes": 222,
+      "sha256": "ca9b8fdf5f86da84fef72eb574a51c355ccf9d8ca8dffbaf0fcf2ca296e36ec1"
+    },
+    {
+      "file": "dist/assets/map-pin-B8CjCCqS.js",
+      "type": "javascript",
+      "bytes": 259,
+      "gzipBytes": 226,
+      "sha256": "4b6e07aff6faa211941e056c9ae1dfdc16e47708d05541208a3c90bf73c28493"
+    },
+    {
+      "file": "dist/assets/package-check-BitNTDxi.js",
+      "type": "javascript",
+      "bytes": 415,
+      "gzipBytes": 278,
+      "sha256": "30c77a19c195854c4b5bd5e6ad679604342613f10a6d45b19a046684bd7e81d7"
+    },
+    {
+      "file": "dist/assets/play-DwMPsbst.js",
+      "type": "javascript",
+      "bytes": 190,
+      "gzipBytes": 180,
+      "sha256": "6a9a6f4478b8c0756e666551d655406e657bcf77f85269e10b0644ca9dffda28"
+    },
+    {
+      "file": "dist/assets/procurementInterchange-DTZFwg07.js",
+      "type": "javascript",
+      "bytes": 3362,
+      "gzipBytes": 1381,
+      "sha256": "5af08019859d172851b3f28874a7846a92c8a8746da9d3cf3c26d92c326ea0de"
+    },
+    {
+      "file": "dist/assets/productStudio-z7VloZpb.js",
+      "type": "javascript",
+      "bytes": 14331,
+      "gzipBytes": 5518,
+      "sha256": "f8e4b62057c3296ff9fc84c86434ff3cb3dd17049d37fc5eb8b2ff787376deeb"
+    },
+    {
+      "file": "dist/assets/refresh-cw-BwrgT1yy.js",
+      "type": "javascript",
+      "bytes": 321,
+      "gzipBytes": 228,
+      "sha256": "4c1e247c339d19527a1c59a6bd1a1070d62243af51d41438c4402db67495e26a"
+    },
+    {
+      "file": "dist/assets/researchProgress-C5zrBtHA.js",
+      "type": "javascript",
+      "bytes": 7316,
+      "gzipBytes": 2816,
+      "sha256": "7ccc171d6345dcc6ff29c4d032c8b01617b2c8a18ce80907ee359f4268ac1346"
+    },
+    {
+      "file": "dist/assets/save-BWHTrZ7P.js",
+      "type": "javascript",
+      "bytes": 327,
+      "gzipBytes": 228,
+      "sha256": "982fa277fb999712a5927776b36cc636b1bc5f77d3876fc49b156b45afb36bb3"
+    },
+    {
+      "file": "dist/assets/supplierProductPreference-Ccy4r3_6.js",
+      "type": "javascript",
+      "bytes": 181,
+      "gzipBytes": 164,
+      "sha256": "f345960b7612b90ee6597d1c40747e81418590c627f40cf5b65667dc654c7056"
+    },
+    {
+      "file": "dist/assets/trash-2-DBt2GhxD.js",
+      "type": "javascript",
+      "bytes": 328,
+      "gzipBytes": 217,
+      "sha256": "c1f698918df391c918fcb6edaee6db55b0f96038766433aec1363d88301b2698"
+    },
+    {
+      "file": "dist/assets/useProcurement-DGP6vXwB.js",
+      "type": "javascript",
+      "bytes": 1709,
+      "gzipBytes": 899,
+      "sha256": "e153f262c92bfbf8656f93455aecb96d8f7830a69b4ebaeb41651b3385ac561c"
+    },
+    {
+      "file": "dist/assets/useUnsavedIngredientKnowledgeGuard-CjWBF23t.js",
+      "type": "javascript",
+      "bytes": 431,
+      "gzipBytes": 301,
+      "sha256": "1e712cdf30c75ed4c06b5edd7563b27dd268704b7104c6a069791ebaa7610abd"
+    },
+    {
+      "file": "dist/assets/wrench-DEXUmnMR.js",
+      "type": "javascript",
+      "bytes": 303,
+      "gzipBytes": 239,
+      "sha256": "ec366501722f96a91b7ce13b1f442ee280401ce89c62c59488526f119c093d61"
+    }
+  ]
+}

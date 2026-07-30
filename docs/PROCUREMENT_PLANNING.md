@@ -217,6 +217,39 @@ Quote lines retain supplier currency. Merchandise, shipping, duties, tax, paymen
 
 ## Purchase Plans
 
-Lifecycle: Draft → Ready for review → Approved internally → Ordered externally → Partially received → Received. Cancelled and Archived are explicit terminal paths. “Approved internally” is not an external order. “Ordered externally” only records that a human placed the order elsewhere.
+Production procurement uses the current supplier-neutral lifecycle:
+
+`Published Scenario → verification required → checkout ready`
+
+Superseded and Cancelled are explicit terminal states. Approval freezes one versioned header, its supplier baskets, line-level canonical Ingredient/INCI and Supplier Product/package snapshots, costs, commercial assumptions, documents, freshness, warnings, and provenance. It does not create or place an order.
+
+Checkout readiness requires manual checks for delivery to Norway, shipping, tax/import, discount eligibility, package price, stock, package identity/MOQ/quantity, and required documents. Expected and verified facts remain separate. Policy `1.0.0` permits price increases up to 5% and shipping increases up to 10%; larger or hard identity/evidence changes require a new plan. Required verification is not waivable.
 
 Creating or reviewing a plan creates no Inventory Lot, Inventory Movement, packaging lot, payable, payment, or external transaction. Receipt automation is deliberately deferred behind a future explicit transactional review boundary; current receipts continue through their authoritative domain workflows.
+## Semantic lifecycle boundary
+
+Purchase Plans are internal decisions and never mean ordered or received. External execution uses a distinct Purchase Order and immutable Purchase Order Lines:
+
+`Purchase Plan → explicit order handoff → Purchase Order → future Receipt → Inventory Lot`
+
+Creating an order is explicit and idempotent. Recording placement only documents an external action already performed by the owner. Neither action creates stock, a receipt, a payment, incoming-goods truth, or consumes a discount.
+
+Production Readiness uses the multi-basket `create_draft_purchase_orders_from_plan` boundary, not the legacy singular handoff. It locks the checkout-ready plan, validates its revision and resolved verification gate, and transactionally creates one internal draft per supplier basket. Draft headers and lines preserve immutable plan/version/basket provenance plus expected, verified, and effective values with their source. The owner still performs checkout manually.
+
+Draft cancellation is a retained historical transition requiring an owner reason. It never deletes lines, rewrites the Purchase Plan, restores or consumes a discount, or implies supplier cancellation. Safe stored HTTP(S) supplier, product, documentation, and evidence links are navigation only.
+
+External placement is recorded one order at a time after manual supplier checkout. Basket-backed drafts use `record_verified_purchase_order_placement`, which preserves expected, verified, and actual commercial layers, line actuals, evidence, deterministic policy classification, actor, timestamp, and an idempotent supplier event. The older placement signature is legacy-only and rejects basket-backed drafts.
+
+Placement does not infer payment settlement or supplier confirmation. First-order discount use is retained on the placed order for reconciliation rather than silently changing shared discount availability. Mixed-currency deltas require an explicit exchange rate; otherwise they are not compared numerically.
+
+Historical plan statuses that previously represented ordering or receipt are preserved as linked Purchase Orders. Legacy line receipt quantities are review metadata only; Inventory Movements remain the sole stock truth.
+
+## Supplier confirmation and shipment execution
+
+Supplier responses are stored in versioned `purchase_order_confirmations` and line snapshots. The latest recorded version may supersede an earlier response without deleting it. Confirmation states distinguish confirmed, partial, backordered, unavailable, supplier-cancelled, substitution-proposed, and pending response. Placement actuals and original ordered quantities are never overwritten. Material differences require a recorded owner decision; incompatible units and unreviewed substitutions block shipment preparation.
+
+`purchase_order_shipments` supports multiple shipments per order and immutable line allocations. Cumulative shipped quantity may not exceed the accepted confirmation. Carrier, tracking, dispatch, delay, customs, and delivery-report evidence are logistics facts only. Opening a safe HTTP(S) link has no lifecycle effect.
+
+`delivery_reported` is deliberately not `received`: physical receipt, quantity inspection, document inspection, acceptance/rejection, lots, movements, and stock availability remain downstream. Confirmation and shipment RPCs authenticate the owner, validate the active workspace, lock aggregates, guard revisions, deduplicate retries and supplier events, and never mutate the Purchase Plan.
+
+Physical receiving is a separate aggregate linked explicitly to one or more shipments. Receipt lines preserve ordered, confirmed, and shipped snapshots alongside owner-entered physical counts. Discrepancies are append-only, inspections are versioned, and eligible quantities can enter quarantine without creating an Inventory Lot, Inventory Movement, or production availability.

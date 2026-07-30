@@ -1,5 +1,9 @@
 # Roadmap
 
+Current milestone: Finished Goods, Traceability & Recall Readiness closeout. Finished Goods & Batch Genealogy V1 Slices 1–6, the [Platform Architecture Review](PLATFORM_ARCHITECTURE_REVIEW_2026-07-29.md), Platform Hardening & Legacy Authority Classification V1, Recall Readiness V1, and the Milestone Closeout and Release-Candidate Baseline are **PASS locally**.
+
+The local RC is documented in [release notes](FINISHED_GOODS_TRACEABILITY_RECALL_RC_1.md) and the [milestone closeout](FINISHED_GOODS_TRACEABILITY_RECALL_MILESTONE_CLOSEOUT.md). **Release Candidate & Deployment Hardening V1 — Local Preparation is PASS.** **Authorized Hosted Backup, Restore & Migration Rehearsal V1 is also PASS** on the isolated Auth-preserving physical-restore clone `jaghoxoaqzpiowzyfcnf`: 87 migrations, preserved Auth identity and workspace ownership, two-owner isolation, authenticated preview routes, controlled-write cleanup, and hosted performance were verified. It has not been merged or deployed.
+
 ## Phase 1: Foundation — Complete
 
 Responsive application shell, domain models, local fixtures, core layouts for Dashboard, Products, Ingredients, Lab, and Scent House, placeholder modules, and repository documentation.
@@ -52,6 +56,68 @@ Phase 6 now replaces overlapping manual packaging Cost Lines with authoritative 
 - Phase 9C+: Operations Copilot and later Intelligence work — Future
 - Phase 10A: Procurement, Suppliers & Equipment Foundation — Implemented locally; hosted migration pending
 
+## Operational milestone closeout — 2026-07-28
+
+### Procurement Readiness V1 — Complete
+
+Release Candidate validated. The delivered procurement lifecycle preserves internal Purchase Plan truth separately from external Purchase Order execution, then carries confirmed supply through shipment, physical receipt, inspection, quarantine, quality release, Inventory Lot creation, and exactly-once opening movement.
+
+### Production Inventory Control V1 — Complete
+
+Release Candidate: **PASS**. Closeout date: **2026-07-28**.
+
+Completed capabilities:
+
+- immutable Batch Material Requirements;
+- eligible released-lot selection with deterministic FEFO recommendation;
+- durable lot allocation and concurrency-safe reservation;
+- distinct planned and actual weighing;
+- productive consumption and waste;
+- explicit reservation release;
+- staged return without a positive movement;
+- controlled post-consumption physical return;
+- exact material reconciliation with documented variance;
+- authoritative server-side completion readiness;
+- immutable historical provenance;
+- shared Lab and Production operator workflows;
+- complete desktop and 390 px mobile lifecycle coverage.
+
+The closeout and architecture review are recorded in [Production Inventory Control V1 release closeout](PRODUCTION_INVENTORY_CONTROL_RELEASE_CLOSEOUT.md).
+
+### Finished Goods & Batch Genealogy V1
+
+**Status:** COMPLETE locally; Slices 1–6 PASS, architecture review PASS, platform hardening PASS, Recall Readiness PASS, and RC closeout PASS.
+
+High-level objective: transform completed Production output into controlled Finished Goods Lots with immutable batch genealogy, yield reconciliation, quality release, packaging identity, and traceability back to every consumed raw-material lot.
+
+This milestone hardens and extends the lightweight Finished Goods/output registration delivered in Phase 6. It does not replace the separate raw-material, packaging, or Finished Goods ledgers.
+
+Approved implementation sequence:
+
+1. Production Output & Yield Reconciliation — **PASS**
+2. Packaging Run Planning, Bulk Allocation & Packaging Control — **PASS**
+3. Finished Goods Lot Creation & Quarantine — **PASS**
+4. Finished Goods Inspection & Quality Release — **PASS**
+5. Finished Goods Inventory & Cost — **PASS**
+6. Batch Genealogy & Traceability — **PASS**
+7. Platform Hardening & Legacy Authority Classification — **PASS**
+8. Recall Readiness — **PASS locally**; internal assessment only, with immutable scopes and no execution actions. See [Recall Readiness V1](RECALL_READINESS_V1.md).
+9. Milestone Closeout and Release-Candidate Baseline — **PASS locally**
+
+Exact future sequence:
+
+1. Controlled Merge Review & Branch Integration V1 — **PASS locally**; branch not pushed, PR not created, and no merge performed.
+2. Explicit authorization to push the feature branch and create a Pull Request — exact next approval gate.
+3. Explicit authorization to merge after human review — separate later gate.
+4. Authorized Hosted Backup, Restore & Migration Rehearsal V1 — **PASS** on isolated project `jaghoxoaqzpiowzyfcnf`; the physical restore preserved managed Auth identity, the internal definer-helper default-execute finding is fixed, and authenticated preview acceptance and cleanup completed without production mutation.
+5. Downstream Reservation & Controlled Dispatch V1 — exact next local product milestone, on a separate branch.
+6. Shipment and Distribution Traceability.
+7. Controlled Recall Execution.
+
+Hosted rehearsal should normally precede production deployment. Local downstream development may proceed separately without moving or rewriting the frozen RC tag. Hosted backup, migration, configuration, validation, deployment, and any remote mutation require explicit authorization. Recall Execution must not be implemented before distribution/customer data authorities and responsible governance exist.
+
+Slice 2 owns durable packaging allocations and reservations, reservation-aware availability, concurrency-safe bulk and component allocation, release and safe staged return, exactly-once consumption, waste/damage, reconciliation, readiness, cost provenance and genealogy. It creates no Finished Goods Lot and performs no Finished Goods release or opening movement.
+
 ## Koalafrog HQ v0.13.0 — Delivered
 
 **Release theme:** Benchmark Lab, Living Research and Beard Studio
@@ -84,4 +150,16 @@ v0.14.0 will be selected only after the stabilization review. No release theme o
 
 # Documentation phase — Koalafrog Bible (implemented locally)
 
+Finished Goods & Batch Genealogy V1 Slice 3 establishes immutable Finished Goods Lot creation and explicit quarantine from completed Packaging Runs. Finished-product inspection and controlled release remain Slice 4.
+
 The repository now contains a typed, searchable, cross-linked in-app operations manual under Knowledge → Koalafrog Bible, contextual route help, a verified limitations register, playbooks, glossary, and governance tests. Supplier and Equipment guidance reflects the Phase 10A implementation and its deliberate no-ordering, no-payment, and no-safety-certification boundaries.
+### Finished Goods & Batch Genealogy V1 — Slice 4
+
+Finished-product inspection, immutable deviations, partial Hold/Reject/Release disposition, controlled active-inventory creation, and exactly-once opening movements are implemented locally. See [Finished-Product Inspection, Disposition & Controlled Quality Release](FINISHED_PRODUCT_INSPECTION_AND_QUALITY_RELEASE.md).
+# Slice 5 checkpoint
+
+Active Finished Goods Inventory Controls, Valuation & Operational Availability are implemented on `feature/finished-goods-batch-genealogy-v1`; see [ACTIVE_FINISHED_GOODS_INVENTORY_CONTROLS.md](ACTIVE_FINISHED_GOODS_INVENTORY_CONTROLS.md). Recall Readiness is implemented separately as an internal assessment authority. Downstream reservation, shipment, sales, Recall Execution, and accounting remain future milestones.
+
+### Finished Goods & Batch Genealogy V1 — Slice 6
+
+Canonical read-only backward genealogy, raw-material and packaging-lot forward trace, deterministic identity search, confidence/readiness, integrity findings, and current Slice 5 inventory impact are implemented locally. See [Batch Genealogy and Traceability](BATCH_GENEALOGY_AND_TRACEABILITY.md). Recall execution remains outside scope.

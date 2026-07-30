@@ -1,5 +1,33 @@
 # Architecture
 
+## Finished Goods, Traceability & Recall local RC
+
+The finalized operational chain is:
+
+```mermaid
+flowchart LR
+  P["Procurement"] --> R["Raw-Material Inventory"]
+  R --> M["Production"]
+  M --> K["Packaging"]
+  K --> F["Finished Goods"]
+  F --> Q["Quality Release"]
+  Q --> A["Active Inventory"]
+  A --> T["Traceability"]
+  T --> C["Recall Readiness"]
+```
+
+The local Release Candidate is `1.0.0-rc.1`, documented by [release notes](FINISHED_GOODS_TRACEABILITY_RECALL_RC_1.md), the [milestone closeout](FINISHED_GOODS_TRACEABILITY_RECALL_MILESTONE_CLOSEOUT.md), and the generated [RC manifest](generated/finished-goods-traceability-recall-rc.json).
+
+Downstream reservation, customer allocation, dispatch, shipment, distribution/customer tracing, notifications, returns, destruction execution, accounting, legal classification, and Recall Execution are excluded. Recall approval freezes an internal assessment package; it does not perform an operational action. Merge readiness and deployment readiness remain separate decisions.
+
+### Deployment boundary
+
+The frozen local RC tag remains `finished-goods-traceability-recall-v1-rc1` at `bd5617c`. Deployment-support commits occur after that baseline and cannot change its identity. Local Supabase, hosted rehearsal, and production are separate environments with separate targets, credentials, authorization, evidence, and stop conditions.
+
+Migrations in `supabase/migrations` are the schema authority; generated manifests are evidence, not executable replacements. A hosted operator must back up and prove an isolated restore before migration rehearsal. Code rollback does not imply schema rollback, and append-only history normally requires forward-fix after new-schema writes.
+
+Cloudflare hosts the browser artifact; Supabase owns hosted database, Auth, Storage, and Edge runtime. Browser builds receive only public client configuration. Server secrets remain out of Vite and source control. Release approval, monitoring, smoke acceptance, and rollback/forward-fix decisions are explicit governance records. Hosted targets remain unverified until [Deployment Hardening Local Preparation](DEPLOYMENT_HARDENING_LOCAL_PREPARATION.md) enters an authorized rehearsal.
+
 ## Ingredient Knowledge boundary
 
 `Reference Ingredient → Workspace Ingredient → Ingredient Knowledge → Product Studio / Formula / Lab / Testing`. Profiles remain subordinate to canonical Workspace Ingredients. Repeatable roles, compatibility, and evidence are relational and owner-isolated. Downstream workflows consume known values and preserve weak fallback semantics. See [INGREDIENT_KNOWLEDGE.md](INGREDIENT_KNOWLEDGE.md).
@@ -52,6 +80,8 @@ Supabase provides:
 
 Backend clients, generated database types, and query details remain in the platform infrastructure area and do not leak into feature components.
 
+The current compatibility boundary, legacy authority classifications, canonical ledgers, and removal order are versioned in [Compatibility and legacy authority](COMPATIBILITY_AND_LEGACY_AUTHORITY.md). Generated inventories in `docs/generated` are deterministic audit evidence; they do not replace migrations or domain contracts.
+
 Product Studio Formula handoffs may attach optional ordered phase definitions and a structured manufacturing-process draft to an existing Formula Version. Formula Lines remain the canonical percentage composition and carry their phase association. Lab Batch creation snapshots those lines and process steps for execution; the Formula Version remains unchanged, and planning never creates Inventory Movements.
 
 The Core Formulation Engine separates reusable formulation archetypes from familiar Product Studio templates. The typed registry owns capability maturity and template-to-archetype mapping; shared handoff validation resolves capabilities from the saved concept type rather than product-name conditionals. See [FORMULATION_ENGINE.md](FORMULATION_ENGINE.md).
@@ -81,6 +111,18 @@ Actual physical Packaging allocation cost is authoritative once committed. Overl
 
 Persistence advances from workspace v7 to v8. The explicit Phase 5 migration preserves all Phase 1–5 collections and adds empty Phase 6 collections; seed records are used only for new workspaces.
 
+## Production Inventory Control V1
+
+The current controlled raw-material execution boundary extends the earlier Production model without replacing its ledgers. A Batch Material Requirement is an immutable execution snapshot. Released Inventory Lots are allocated and transactionally reserved; availability is movement-derived balance less active reservations. Planned weighing records intent, actual weighing records observation, and neither changes physical stock. Productive consumption and waste append separate movements exactly once. Reservation release, staged return, and post-consumption physical return retain distinct identities and accounting effects.
+
+Completion readiness is server-authoritative. The read-only readiness RPC and completion trigger call the same versioned evaluator, while the browser only renders its structured blockers. Historical provenance is assembled server-side from execution snapshots and immutable lifecycle identities; edits to current Ingredient or other master labels do not rewrite batch history.
+
+Raw-material and Packaging ledgers remain separate. Production Inventory Control V1 did not claim Packaging reservation, return, waste/damage, or release-state parity. Finished Goods & Batch Genealogy Slice 2 now owns the minimum safe Packaging Control extension: evolve the existing packaging commitment model additively for durable reservation, reservation-aware availability, release, safe staged return, waste/damage and reconciliation without folding Packaging or Finished Goods into raw-material tables.
+
+Slice 2 is documented in [Packaging Run Planning, Bulk Allocation & Packaging Control](PACKAGING_RUN_PLANNING_AND_CONTROL.md). Completed Production Output retained bulk is allocated under row lock; Packaging Lots remain movement-ledger truth; run-scoped reservations create no movement; productive use and waste create separate exactly-once negative movements; staged return releases unused reservation without inventing stock. Packaging Run completion is server-authoritative and creates neither a Finished Goods Lot nor an opening movement.
+
+See [Production Inventory Control V1 release closeout](PRODUCTION_INVENTORY_CONTROL_RELEASE_CLOSEOUT.md) for the audited lifecycle, authority boundaries, accepted limitations, and entry conditions for the next milestone.
+
 ## Phase 7 — Compliance Evidence and Launch Readiness
 
 A Compliance Dossier binds one exact Product, Formula Version, optional Packaging Specification Version, optional Label Artwork Version, target market, and language. Old dossiers remain immutable configuration history. Duplication creates a new record and marks copied version-sensitive evidence Needs Review; CPSR and CPNP validity are never carried forward automatically.
@@ -106,4 +148,31 @@ Phase 8B.1 adds the final relational destination independently of application cu
 Phase 8B.2 routes persistent provider commands through a persistence-confirmed action executor and a session-selected repository. Phase 8B.3A expands the inventory to 66 commands with Compliance Document metadata actions, adds private versioned Storage, and makes startup authority explicit. The Local adapter remains the development default. `VITE_WORKSPACE_REPOSITORY=supabase` requires Auth plus an activated workspace and hydrates all relational state before mounting the provider; loading/failure never falls back to Local. RLS is owner-scoped across roots and children, Storage paths begin with `auth.uid()`, and security-definer lifecycle RPCs revalidate ownership and relationships. Live two-user tests prove anonymous/cross-owner denial, legitimate owner workflows, RPC boundaries, and private file isolation.
 # Ingredient Knowledge editor reliability
 
+## Finished Goods quarantine boundary
+
+Quarantined Finished Goods Lots are created only from authoritative completed Packaging Runs through locked RPC conversion. They preserve Product, Formula, Packaging, intended Label, cost, and genealogy snapshots and create no active Finished Goods movement. See [Finished Goods Lot Creation and Quarantine](FINISHED_GOODS_LOT_CREATION_AND_QUARANTINE.md).
+
 Ingredient Knowledge uses semantic aggregate normalization for dirty-state detection and an explicitly updated post-transaction baseline. The application’s data-router boundary enables supported navigation blocking without replacing the existing route table. Browser unload protection exists only while dirty. Legacy Evidence identifiers are sanitized for presentation without view-time persistence changes. Ingredient Knowledge timestamps provide stale-write detection, not complete revision history.
+Finished-product quality release is documented in [Finished-Product Inspection, Disposition & Controlled Quality Release](FINISHED_PRODUCT_INSPECTION_AND_QUALITY_RELEASE.md). Quarantine, inspection, Hold/Reject/Release reviews, released inventory sub-lots, and opening movements are distinct authorities. Active Finished Goods balance is movement-derived and can only originate from a controlled Release.
+# Active Finished Goods inventory
+
+Quality-released Finished Goods use their own append-only movement ledger and append-only operational-state overlay. On-hand, locations, availability, and valuation are server-derived through authenticated RPCs. See [ACTIVE_FINISHED_GOODS_INVENTORY_CONTROLS.md](ACTIVE_FINISHED_GOODS_INVENTORY_CONTROLS.md).
+
+## Batch genealogy and traceability
+
+Slice 6 adds no ledger and no lifecycle mutation. Authenticated bounded RPCs reconstruct a canonical DAG from exact immutable foreign keys, preserve historical snapshots, expose explicit missing-link/confidence states, and delegate current released-stock impact to Slice 5. See [Batch Genealogy and Traceability](BATCH_GENEALOGY_AND_TRACEABILITY.md).
+
+## Post-traceability platform review
+
+The 2026-07-29 [Platform Architecture Review](PLATFORM_ARCHITECTURE_REVIEW_2026-07-29.md) confirms that the supplier-to-released-Finished-Goods lifecycle, three physical ledgers, server-authority boundary, immutable evidence, costing snapshots, and traceability graph remain coherent.
+
+The current scaling boundary is architectural classification rather than a new ledger: `workspace_records`, legacy `finished_goods_batches`, `finished_goods_movements`, `packaging_allocations`, and their established RPCs remain compatibility surfaces and must receive no new controlled-workflow responsibility. Platform Hardening inventories and freezes those boundaries, automates privilege/RLS/FK-index review, keeps history queries bounded, and reduces selected provider/error-handling concentration. Recall Readiness consumes only canonical Slice 5 inventory and Slice 6 genealogy authority.
+# Recall Readiness authority
+
+Recall Readiness reuses the canonical Batch Genealogy trace and movement-derived Finished Goods inventory snapshot. Its cases, immutable revisions, frozen scopes, evidence metadata, reviews, and fingerprint-specific approvals are RPC-only authorities. Approval performs no recall, inventory, shipment, notification, return, destruction, accounting, or legal action. See [Recall Readiness V1](RECALL_READINESS_V1.md).
+
+## Controlled integration boundary
+
+The finished-goods feature RC remains a historical pre-merge identity. Local integration review uses disposable worktrees and an explicit non-squash merge simulation; neither the real feature branch nor `main` is rewritten. Because the reviewed `main` is the feature merge base, the future integration should create an explicit merge commit instead of silently fast-forwarding.
+
+Push, Pull Request creation, merge, hosted rehearsal, and production deployment are independent authorization gates. A merge must not trigger database migration, Auth/Storage mutation, environment mutation, or deployment. The actual merge commit becomes integration evidence; it does not replace or move the frozen feature RC tag.

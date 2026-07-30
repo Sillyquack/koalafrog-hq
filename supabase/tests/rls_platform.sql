@@ -1,6 +1,6 @@
 begin;
 -- Run with Supabase CLI test harness. Synthetic JWT claims must be supplied by the harness.
-select plan(270);
+select plan(284);
 select has_table('public','workspaces','workspaces exists');
 select has_table('public','workspace_records','record store exists');
 select has_table('public','procurement_research_jobs','Procurement jobs exist');
@@ -606,13 +606,13 @@ select matches(
 );
 select matches(
   pg_get_functiondef('public.begin_beard_provider_attempt(uuid,uuid,text,text,text)'::regprocedure),
-  'semantic_rule_version=''beard-semantic-safety-v4''',
-  'provider attempt records semantic v4'
+  'begin_beard_provider_attempt_v5',
+  'v6 provider attempt delegates to the private v5 semantic validator'
 );
 select matches(
   pg_get_functiondef('public.persist_beard_analysis_result(uuid,uuid,uuid,jsonb,jsonb,jsonb,jsonb)'::regprocedure),
-  'semantic_rule_version=''beard-semantic-safety-v4''',
-  'persistence requires semantic v4'
+  'persist_beard_analysis_result_v5',
+  'v6 persistence delegates to the private v5 semantic validator'
 );
 select is(
   (select prosecdef from pg_proc where oid='public.begin_beard_provider_attempt(uuid,uuid,text,text,text)'::regprocedure),
@@ -678,16 +678,16 @@ select has_column('public','supplier_document_records','capability_state','suppl
 select has_column('public','supplier_document_records','verification_state','supplier document verification is separate');
 select is((select relrowsecurity from pg_class where oid='public.supplier_document_records'::regclass),true,'supplier document RLS enabled');
 select is(has_table_privilege('anon','public.supplier_document_records','SELECT'),false,'anon cannot read supplier documents');
-select fk_ok('public','supplier_document_records','supplier_document_records_workspace_id_supplier_id_fkey','public','suppliers','supplier documents require an owned supplier');
+select fk_ok('public','supplier_document_records',array['workspace_id','supplier_id'],'public','suppliers',array['workspace_id','id'],'supplier documents require an owned supplier');
 select has_table('public','supplier_events','canonical supplier events exist');
 select has_column('public','supplier_events','event_type','supplier event meaning is structured');
 select has_column('public','supplier_events','occurred_at','supplier event time is explicit');
 select is((select relrowsecurity from pg_class where oid='public.supplier_events'::regclass),true,'supplier event RLS enabled');
 select is(has_table_privilege('anon','public.supplier_events','SELECT'),false,'anon cannot read supplier events');
 select is(has_table_privilege('authenticated','public.supplier_events','DELETE'),false,'supplier events are archived rather than deleted');
-select fk_ok('public','supplier_events','supplier_events_workspace_id_supplier_id_fkey','public','suppliers','supplier events require a supplier');
-select fk_ok('public','supplier_events','supplier_events_workspace_id_purchase_plan_id_fkey','public','purchase_plans','purchase event links are enforceable');
-select fk_ok('public','procurement_cart_scenario_items','procurement_cart_scenario_items_workspace_id_scenario_id_fkey','public','procurement_cart_scenarios','cart items require a scenario');
+select fk_ok('public','supplier_events',array['workspace_id','supplier_id'],'public','suppliers',array['workspace_id','id'],'supplier events require a supplier');
+select fk_ok('public','supplier_events',array['workspace_id','purchase_plan_id'],'public','purchase_plans',array['workspace_id','id'],'purchase event links are enforceable');
+select fk_ok('public','procurement_cart_scenario_items',array['workspace_id','scenario_id'],'public','procurement_cart_scenarios',array['workspace_id','id'],'cart items require a scenario');
 select col_type_is('public','procurement_supplier_discounts','status','text','discount status is constrained text');
 select has_function('public','import_procurement_purchasing_snapshot',array['uuid','jsonb'],'atomic purchasing-intelligence import exists');
 select is(has_function_privilege('authenticated','public.import_procurement_purchasing_snapshot(uuid,jsonb)','EXECUTE'),true,'owner may import purchasing intelligence');

@@ -11,7 +11,8 @@ The application inventories 66 persistent commands. The provider retains query s
 - Testing (4): create Tester, Template, Session, and immutable Response.
 - Production and Costing (10): create/update/transition Run, update Line, add/update Allocation, commit consumption, add/update Process Step, add Cost Line.
 - Packaging (10): create/update Component, save Supplier Product, receive stock, append Movement, create Specification, add/update Line, transition/duplicate Version.
-- Finished Goods (5): create Batch, add/update Packaging Allocation, commit Packaging consumption, append Movement.
+- Legacy Finished Goods (5): create Batch, add/update legacy Packaging Allocation, commit legacy Packaging consumption, append Movement.
+- Packaging Run Control: RPC-only run creation, bulk allocation/release/transfer, eligible-lot reads, durable reservation, staged return/release, consumption/waste, reconciliation, readiness, completion and genealogy. It creates no Finished Goods record or movement.
 - Compliance (7): create, duplicate, and update Dossier; update Regulatory Review; update PIF Section; create and update Compliance Document metadata.
 - Launch (2): update Plan and append Decision.
 
@@ -31,6 +32,8 @@ Four audit-critical operations use dedicated authenticated, transactional RPCs:
 - Production consumption commitment
 - Packaging consumption commitment
 - Finished Goods Batch creation/output registration
+
+- Traceability uses a typed read-only repository over authenticated search, backward/forward trace, readiness, integrity, Production Batch, and Packaging Run RPCs. It exposes no persistent command and creates no event; underlying immutable lifecycle events remain authoritative.
 
 Each RPC validates ownership, available ledger balance, compatible units, duplicate commitment, and linked allocation/movement state inside one database transaction. Production allocation cost snapshots are written at commitment and remain historical. Live local-Supabase regression tests cover the critical workflows, every major domain, normalized children, fresh hydration, stale-write rejection, duplicate rejection, rollback, and repository isolation. Local remains the default; selecting Supabase at startup is explicitly deferred to Phase 8B.3.
 

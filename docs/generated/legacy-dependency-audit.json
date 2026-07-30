@@ -1,0 +1,137 @@
+{
+  "findings": [
+    {
+      "allowance": {
+        "owner": "beard-studio",
+        "path": "src/features/beard-studio/beardStudioUi.test.ts",
+        "reason": "Regression assertion that Beard Studio does not write the compatibility record store.",
+        "removalTiming": "With the compatibility record store."
+      },
+      "modulePath": "src/features/beard-studio/beardStudioUi.test.ts",
+      "references": [
+        "workspace_records"
+      ],
+      "status": "allowed_compatibility"
+    },
+    {
+      "allowance": {
+        "owner": "finished-goods",
+        "path": "src/features/finished-goods-control/data/finishedGoodsLot.integration.test.ts",
+        "reason": "Canonical Finished Goods integration asserts that no legacy movement is created.",
+        "removalTiming": "When the legacy movement table is removed."
+      },
+      "modulePath": "src/features/finished-goods-control/data/finishedGoodsLot.integration.test.ts",
+      "references": [
+        "finished_goods_movements"
+      ],
+      "status": "allowed_compatibility"
+    },
+    {
+      "allowance": {
+        "owner": "packaging",
+        "path": "src/features/packaging-run/data/packagingRun.integration.test.ts",
+        "reason": "Canonical packaging integration proves separation from legacy Finished Goods tables.",
+        "removalTiming": "When the legacy Finished Goods tables are removed."
+      },
+      "modulePath": "src/features/packaging-run/data/packagingRun.integration.test.ts",
+      "references": [
+        "finished_goods_batches",
+        "finished_goods_movements"
+      ],
+      "status": "allowed_compatibility"
+    },
+    {
+      "allowance": {
+        "owner": "production",
+        "path": "src/features/production/data/productionOutput.integration.test.ts",
+        "reason": "Canonical production-output integration proves separation from legacy Finished Goods tables.",
+        "removalTiming": "When the legacy Finished Goods tables are removed."
+      },
+      "modulePath": "src/features/production/data/productionOutput.integration.test.ts",
+      "references": [
+        "finished_goods_batches",
+        "finished_goods_movements"
+      ],
+      "status": "allowed_compatibility"
+    },
+    {
+      "allowance": {
+        "owner": "platform",
+        "path": "src/platform/repository/relationalMigration.integration.test.ts",
+        "reason": "Compatibility and migration regression evidence.",
+        "removalTiming": "With the compatibility adapter."
+      },
+      "modulePath": "src/platform/repository/relationalMigration.integration.test.ts",
+      "references": [
+        "finished_goods_batches",
+        "register_finished_goods_output",
+        "commit_packaging_consumption"
+      ],
+      "status": "allowed_compatibility"
+    },
+    {
+      "allowance": {
+        "owner": "platform",
+        "path": "src/platform/repository/supabaseWorkspaceRepository.test.ts",
+        "reason": "Compatibility adapter regression coverage for the retired record-store path.",
+        "removalTiming": "With the compatibility adapter."
+      },
+      "modulePath": "src/platform/repository/supabaseWorkspaceRepository.test.ts",
+      "references": [
+        "workspace_records"
+      ],
+      "status": "allowed_compatibility"
+    },
+    {
+      "allowance": {
+        "owner": "platform",
+        "path": "src/platform/repository/supabaseWorkspaceRepository.ts",
+        "reason": "Compatibility hydration and fail-closed adapter errors for v9/legacy collections.",
+        "removalTiming": "After hosted relational reconciliation and legacy export retention approval."
+      },
+      "modulePath": "src/platform/repository/supabaseWorkspaceRepository.ts",
+      "references": [
+        "finished_goods_batches",
+        "finished_goods_movements",
+        "packaging_allocations"
+      ],
+      "status": "allowed_compatibility"
+    },
+    {
+      "allowance": {
+        "owner": "security",
+        "path": "src/platform/security/securityStorage.integration.test.ts",
+        "reason": "Security regression coverage for denied legacy authority.",
+        "removalTiming": "Retain while legacy structures exist."
+      },
+      "modulePath": "src/platform/security/securityStorage.integration.test.ts",
+      "references": [
+        "finished_goods_batches",
+        "finished_goods_movements",
+        "register_finished_goods_output",
+        "commit_packaging_consumption"
+      ],
+      "status": "allowed_compatibility"
+    },
+    {
+      "allowance": {
+        "owner": "platform",
+        "path": "src/platform/supabase/generated/database.types.ts",
+        "reason": "Generated schema inventory must describe legacy objects while they remain physically present.",
+        "removalTiming": "Regenerated automatically when legacy objects are removed."
+      },
+      "modulePath": "src/platform/supabase/generated/database.types.ts",
+      "references": [
+        "finished_goods_batches",
+        "finished_goods_movements",
+        "packaging_allocations",
+        "workspace_records",
+        "register_finished_goods_output",
+        "commit_packaging_consumption"
+      ],
+      "status": "allowed_compatibility"
+    }
+  ],
+  "generatedAt": "2026-07-29T12:00:00+02:00",
+  "version": "1.0.0"
+}

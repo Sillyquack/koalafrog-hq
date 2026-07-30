@@ -1,0 +1,299 @@
+{
+  "generatedAt": "2026-07-29T12:00:00+02:00",
+  "repositories": [
+    {
+      "controlledBoundaryViolation": false,
+      "directTableWrites": [
+        {
+          "operation": "update",
+          "table": "development_experiments"
+        }
+      ],
+      "domainOwner": "development",
+      "idempotency": "present",
+      "modulePath": "src/features/development/data/developmentExperimentRepository.ts",
+      "revision": "present",
+      "rpcTargets": [
+        "create_development_experiment",
+        "create_formula_branch_from_experiment",
+        "create_lab_batch_from_experiment",
+        "transition_development_experiment"
+      ],
+      "serverDerivedActor": true
+    },
+    {
+      "controlledBoundaryViolation": false,
+      "directTableWrites": [],
+      "domainOwner": "finished-goods-control",
+      "idempotency": "present",
+      "modulePath": "src/features/finished-goods-control/data/finishedGoodsInventoryRepository.ts",
+      "revision": "present",
+      "rpcTargets": [],
+      "serverDerivedActor": true
+    },
+    {
+      "controlledBoundaryViolation": false,
+      "directTableWrites": [],
+      "domainOwner": "finished-goods-control",
+      "idempotency": "not_detected",
+      "modulePath": "src/features/finished-goods-control/data/finishedGoodsLotRepository.ts",
+      "revision": "not_detected",
+      "rpcTargets": [
+        "create_finished_goods_lot_v1",
+        "get_finished_goods_lot_genealogy_v1",
+        "get_packaging_run_finished_goods_readiness_v1",
+        "record_packaged_output_reconciliation_v1"
+      ],
+      "serverDerivedActor": true
+    },
+    {
+      "controlledBoundaryViolation": false,
+      "directTableWrites": [],
+      "domainOwner": "finished-goods-control",
+      "idempotency": "not_detected",
+      "modulePath": "src/features/finished-goods-control/data/finishedGoodsQualityRepository.ts",
+      "revision": "not_detected",
+      "rpcTargets": [],
+      "serverDerivedActor": true
+    },
+    {
+      "controlledBoundaryViolation": false,
+      "directTableWrites": [],
+      "domainOwner": "formulas",
+      "idempotency": "not_detected",
+      "modulePath": "src/features/formulas/data/formulaRepository.ts",
+      "revision": "present",
+      "rpcTargets": [],
+      "serverDerivedActor": true
+    },
+    {
+      "controlledBoundaryViolation": false,
+      "directTableWrites": [],
+      "domainOwner": "knowledge",
+      "idempotency": "not_detected",
+      "modulePath": "src/features/knowledge/data/knowledgeRepository.ts",
+      "revision": "present",
+      "rpcTargets": [
+        "record_scent_memory_checkpoint"
+      ],
+      "serverDerivedActor": true
+    },
+    {
+      "controlledBoundaryViolation": false,
+      "directTableWrites": [],
+      "domainOwner": "packaging-run",
+      "idempotency": "not_detected",
+      "modulePath": "src/features/packaging-run/data/packagingRunRepository.ts",
+      "revision": "not_detected",
+      "rpcTargets": [
+        "allocate_bulk_to_packaging_run_v1",
+        "complete_packaging_run_v1",
+        "create_packaging_run_v1",
+        "get_packaging_available_bulk_v1",
+        "get_packaging_eligible_lots_v1",
+        "get_packaging_run_completion_readiness_v1",
+        "get_packaging_run_genealogy_v1",
+        "reconcile_packaging_run_v1",
+        "record_packaging_bulk_transfer_v1",
+        "record_packaging_inventory_use_v1",
+        "release_packaging_reservation_v1",
+        "release_packaging_run_bulk_allocation_v1",
+        "reserve_packaging_run_requirement_v1",
+        "reserve_packaging_run_requirements_v1"
+      ],
+      "serverDerivedActor": true
+    },
+    {
+      "controlledBoundaryViolation": false,
+      "directTableWrites": [
+        {
+          "operation": "insert",
+          "table": "procurement_offer_candidates"
+        },
+        {
+          "operation": "update",
+          "table": "procurement_research_jobs"
+        },
+        {
+          "operation": "update",
+          "table": "procurement_research_jobs"
+        },
+        {
+          "operation": "update",
+          "table": "procurement_research_jobs"
+        },
+        {
+          "operation": "update",
+          "table": "procurement_offer_candidates"
+        },
+        {
+          "operation": "update",
+          "table": "procurement_offer_candidates"
+        },
+        {
+          "operation": "insert",
+          "table": "procurement_supplier_offers"
+        }
+      ],
+      "domainOwner": "procurement",
+      "idempotency": "not_detected",
+      "modulePath": "src/features/procurement/data/procurementRepository.ts",
+      "revision": "present",
+      "rpcTargets": [
+        "accept_procurement_offer_candidate",
+        "create_product_studio_purchase_plan",
+        "create_purchase_order_from_plan",
+        "import_procurement_purchasing_snapshot",
+        "publish_procurement_research_results",
+        "record_purchase_order_placement"
+      ],
+      "serverDerivedActor": false
+    },
+    {
+      "controlledBoundaryViolation": false,
+      "directTableWrites": [],
+      "domainOwner": "procurement",
+      "idempotency": "present",
+      "modulePath": "src/features/procurement/production-readiness/data/productionReadinessRepository.ts",
+      "revision": "present",
+      "rpcTargets": [
+        "accept_supplier_product_ingredient_mapping",
+        "approve_production_procurement_scenario",
+        "cancel_draft_purchase_order",
+        "cancel_internal_purchase_plan",
+        "cancel_production_procurement_round",
+        "clear_production_requirement_match",
+        "complete_purchase_order_receiving",
+        "create_draft_purchase_orders_from_plan",
+        "create_production_procurement_round",
+        "create_purchase_order_receipt",
+        "create_purchase_order_shipment",
+        "decide_purchase_order_confirmation",
+        "delete_draft_production_procurement_scenario",
+        "generate_production_procurement_scenarios",
+        "generate_production_requirement_candidates",
+        "mark_purchase_plan_checkout_ready",
+        "place_purchase_order_receipt_into_quarantine",
+        "publish_production_procurement_scenario",
+        "record_purchase_order_receipt_discrepancy",
+        "record_purchase_order_receipt_inspection",
+        "record_purchase_order_receipt_line",
+        "record_purchase_order_shipment_status",
+        "record_purchase_order_supplier_confirmation",
+        "record_purchase_plan_verification",
+        "record_verified_purchase_order_placement",
+        "regenerate_production_procurement_requirements",
+        "reject_production_requirement_candidate",
+        "review_quarantined_inventory",
+        "select_production_requirement_supplier_product",
+        "update_production_procurement_round_products",
+        "waive_purchase_plan_verification"
+      ],
+      "serverDerivedActor": true
+    },
+    {
+      "controlledBoundaryViolation": false,
+      "directTableWrites": [],
+      "domainOwner": "production",
+      "idempotency": "not_detected",
+      "modulePath": "src/features/production/data/productionInventoryControlRepository.ts",
+      "revision": "present",
+      "rpcTargets": [
+        "consume_reserved_batch_material",
+        "eligible_batch_material_lots",
+        "get_batch_material_completion_readiness_v1",
+        "get_batch_material_provenance_v1",
+        "reconcile_batch_material_requirement",
+        "record_batch_material_return",
+        "record_batch_material_weighing",
+        "record_batch_material_weighing_v2",
+        "release_batch_material_reservation",
+        "reserve_batch_material_inventory"
+      ],
+      "serverDerivedActor": true
+    },
+    {
+      "controlledBoundaryViolation": false,
+      "directTableWrites": [],
+      "domainOwner": "production",
+      "idempotency": "not_detected",
+      "modulePath": "src/features/production/data/productionOutputRepository.ts",
+      "revision": "present",
+      "rpcTargets": [
+        "complete_production_output_stage_v1",
+        "create_production_output_v1",
+        "get_production_output_completion_readiness_v1",
+        "get_production_output_genealogy_v1",
+        "reconcile_production_output_v1",
+        "record_production_output_component_v1",
+        "record_production_output_measurement_v1"
+      ],
+      "serverDerivedActor": true
+    },
+    {
+      "controlledBoundaryViolation": false,
+      "directTableWrites": [],
+      "domainOwner": "recall-readiness",
+      "idempotency": "present",
+      "modulePath": "src/features/recall-readiness/data/recallReadinessRepository.ts",
+      "revision": "present",
+      "rpcTargets": [],
+      "serverDerivedActor": true
+    },
+    {
+      "controlledBoundaryViolation": false,
+      "directTableWrites": [],
+      "domainOwner": "traceability",
+      "idempotency": "not_detected",
+      "modulePath": "src/features/traceability/data/traceabilityRepository.ts",
+      "revision": "not_detected",
+      "rpcTargets": [],
+      "serverDerivedActor": true
+    },
+    {
+      "controlledBoundaryViolation": false,
+      "directTableWrites": [],
+      "domainOwner": "platform",
+      "idempotency": "not_detected",
+      "modulePath": "src/platform/repository/localWorkspaceRepository.ts",
+      "revision": "not_detected",
+      "rpcTargets": [],
+      "serverDerivedActor": true
+    },
+    {
+      "controlledBoundaryViolation": false,
+      "directTableWrites": [],
+      "domainOwner": "platform",
+      "idempotency": "not_detected",
+      "modulePath": "src/platform/repository/supabaseWorkspaceRepository.ts",
+      "revision": "present",
+      "rpcTargets": [
+        "append_inventory_movement_v1",
+        "append_packaging_inventory_movement_v1",
+        "commit_lab_consumption",
+        "commit_production_consumption",
+        "complete_v9_reconciliation",
+        "create_product_studio_formula_handoff",
+        "import_v9_relational",
+        "mark_packaging_supplier_product_preferred",
+        "mark_supplier_product_preferred",
+        "record_inventory_lot_receipt_v1",
+        "record_packaging_lot_receipt_v1",
+        "record_v9_migration_failure",
+        "save_ingredient_knowledge_aggregate"
+      ],
+      "serverDerivedActor": false
+    },
+    {
+      "controlledBoundaryViolation": false,
+      "directTableWrites": [],
+      "domainOwner": "platform",
+      "idempotency": "not_detected",
+      "modulePath": "src/platform/repository/workspaceRepository.ts",
+      "revision": "not_detected",
+      "rpcTargets": [],
+      "serverDerivedActor": true
+    }
+  ],
+  "version": "1.0.0"
+}

@@ -1,0 +1,496 @@
+{
+  "eventTypes": [
+    {
+      "classification": "audit_only",
+      "documented": true,
+      "domainOwner": "platform",
+      "sources": [
+        "supabase/migrations/20260728150000_production_inventory_consumption_reconciliation.sql",
+        "supabase/migrations/20260728160000_production_inventory_control_contracts_v1.sql"
+      ],
+      "type": "actual"
+    },
+    {
+      "classification": "audit_only",
+      "documented": true,
+      "domainOwner": "platform",
+      "sources": [
+        "supabase/migrations/20260716130000_development_experiments.sql"
+      ],
+      "type": "add"
+    },
+    {
+      "classification": "audit_only",
+      "documented": true,
+      "domainOwner": "platform",
+      "sources": [
+        "supabase/migrations/20260715120000_application_action_rpcs.sql",
+        "supabase/migrations/20260729083226_platform_authority_hardening_v1.sql"
+      ],
+      "type": "Adjustment"
+    },
+    {
+      "classification": "audit_only",
+      "documented": true,
+      "domainOwner": "platform",
+      "sources": [
+        "supabase/migrations/20260722110000_beard_persistence_diagnostics.sql",
+        "supabase/migrations/20260722130000_beard_observation_keys.sql"
+      ],
+      "type": "analysis"
+    },
+    {
+      "classification": "audit_only",
+      "documented": true,
+      "domainOwner": "platform",
+      "sources": [
+        "supabase/migrations/20260728154754_production_output_yield_reconciliation_v1.sql"
+      ],
+      "type": "approvalState"
+    },
+    {
+      "classification": "audit_only",
+      "documented": true,
+      "domainOwner": "beard-studio",
+      "sources": [
+        "supabase/migrations/20260721140000_beard_photo_analysis.sql",
+        "supabase/migrations/20260727120000_beard_intelligence_v2.sql"
+      ],
+      "type": "beard_photo_analysis"
+    },
+    {
+      "classification": "audit_only",
+      "documented": true,
+      "domainOwner": "platform",
+      "sources": [
+        "supabase/migrations/20260729054425_active_finished_goods_inventory_controls_v1.sql"
+      ],
+      "type": "blocked"
+    },
+    {
+      "classification": "audit_only",
+      "documented": true,
+      "domainOwner": "platform",
+      "sources": [
+        "supabase/migrations/20260728154754_production_output_yield_reconciliation_v1.sql"
+      ],
+      "type": "bulk_waste"
+    },
+    {
+      "classification": "audit_only",
+      "documented": true,
+      "domainOwner": "platform",
+      "sources": [
+        "supabase/migrations/20260716180000_procurement_equipment_foundation.sql"
+      ],
+      "type": "candidate"
+    },
+    {
+      "classification": "audit_only",
+      "documented": true,
+      "domainOwner": "platform",
+      "sources": [
+        "supabase/migrations/20260729094510_recall_readiness_v1.sql"
+      ],
+      "type": "consumer_batch_code"
+    },
+    {
+      "classification": "audit_only",
+      "documented": true,
+      "domainOwner": "platform",
+      "sources": [
+        "supabase/migrations/20260728170000_packaging_run_planning_consumption_v1.sql",
+        "supabase/migrations/20260728203257_finished_goods_lot_creation_quarantine_v1.sql",
+        "supabase/migrations/20260729065048_batch_genealogy_traceability_v1.sql"
+      ],
+      "type": "consumption"
+    },
+    {
+      "classification": "audit_only",
+      "documented": true,
+      "domainOwner": "platform",
+      "sources": [
+        "supabase/migrations/20260729054425_active_finished_goods_inventory_controls_v1.sql"
+      ],
+      "type": "controlled_positive_correction"
+    },
+    {
+      "classification": "audit_only",
+      "documented": true,
+      "domainOwner": "platform",
+      "sources": [
+        "supabase/migrations/20260729054425_active_finished_goods_inventory_controls_v1.sql"
+      ],
+      "type": "damaged"
+    },
+    {
+      "classification": "audit_only",
+      "documented": true,
+      "domainOwner": "platform",
+      "sources": [
+        "supabase/migrations/20260729054425_active_finished_goods_inventory_controls_v1.sql"
+      ],
+      "type": "destruction_writeoff"
+    },
+    {
+      "classification": "audit_only",
+      "documented": true,
+      "domainOwner": "platform",
+      "sources": [
+        "supabase/migrations/20260722110000_beard_persistence_diagnostics.sql",
+        "supabase/migrations/20260722130000_beard_observation_keys.sql",
+        "supabase/migrations/20260722190000_beard_support_diagnostic_lookup.sql",
+        "supabase/migrations/20260723060732_beard_semantic_safety_v4.sql",
+        "supabase/migrations/20260723125652_beard_provider_timeout_observability.sql",
+        "supabase/migrations/20260726121237_beard_semantic_failure_invariant.sql"
+      ],
+      "type": "entityIndex"
+    },
+    {
+      "classification": "audit_only",
+      "documented": true,
+      "domainOwner": "platform",
+      "sources": [
+        "supabase/migrations/20260728150000_production_inventory_consumption_reconciliation.sql"
+      ],
+      "type": "equipmentReference"
+    },
+    {
+      "classification": "audit_only",
+      "documented": true,
+      "domainOwner": "finished-goods",
+      "sources": [
+        "supabase/migrations/20260729094510_recall_readiness_v1.sql"
+      ],
+      "type": "finished_goods_lot"
+    },
+    {
+      "classification": "audit_only",
+      "documented": true,
+      "domainOwner": "finished-goods",
+      "sources": [
+        "supabase/migrations/20260729094510_recall_readiness_v1.sql"
+      ],
+      "type": "finished_goods_quality_review"
+    },
+    {
+      "classification": "audit_only",
+      "documented": true,
+      "domainOwner": "platform",
+      "sources": [
+        "supabase/migrations/20260725093000_procurement_purchasing_intelligence.sql",
+        "supabase/migrations/20260727141437_production_procurement_basket_scenarios.sql"
+      ],
+      "type": "fixed_amount"
+    },
+    {
+      "classification": "audit_only",
+      "documented": true,
+      "domainOwner": "platform",
+      "sources": [
+        "supabase/migrations/20260729054425_active_finished_goods_inventory_controls_v1.sql"
+      ],
+      "type": "held"
+    },
+    {
+      "classification": "audit_only",
+      "documented": true,
+      "domainOwner": "platform",
+      "sources": [
+        "supabase/migrations/20260729094510_recall_readiness_v1.sql"
+      ],
+      "type": "id"
+    },
+    {
+      "classification": "audit_only",
+      "documented": true,
+      "domainOwner": "platform",
+      "sources": [
+        "supabase/migrations/20260729065048_batch_genealogy_traceability_v1.sql"
+      ],
+      "type": "immutableId"
+    },
+    {
+      "classification": "audit_only",
+      "documented": true,
+      "domainOwner": "platform",
+      "sources": [
+        "supabase/migrations/20260729054425_active_finished_goods_inventory_controls_v1.sql"
+      ],
+      "type": "internal_transfer"
+    },
+    {
+      "classification": "audit_only",
+      "documented": true,
+      "domainOwner": "platform",
+      "sources": [
+        "supabase/migrations/20260729054425_active_finished_goods_inventory_controls_v1.sql"
+      ],
+      "type": "internal_transfer_in"
+    },
+    {
+      "classification": "audit_only",
+      "documented": true,
+      "domainOwner": "platform",
+      "sources": [
+        "supabase/migrations/20260728160000_production_inventory_control_contracts_v1.sql"
+      ],
+      "type": "lifecycleStatus"
+    },
+    {
+      "classification": "audit_only",
+      "documented": true,
+      "domainOwner": "platform",
+      "sources": [
+        "supabase/migrations/20260729054425_active_finished_goods_inventory_controls_v1.sql"
+      ],
+      "type": "loss_writeoff"
+    },
+    {
+      "classification": "audit_only",
+      "documented": true,
+      "domainOwner": "packaging",
+      "sources": [
+        "supabase/migrations/20260729065048_batch_genealogy_traceability_v1.sql",
+        "supabase/migrations/20260729094510_recall_readiness_v1.sql"
+      ],
+      "type": "packaging_inventory_lot"
+    },
+    {
+      "classification": "audit_only",
+      "documented": true,
+      "domainOwner": "packaging",
+      "sources": [
+        "supabase/migrations/20260729065048_batch_genealogy_traceability_v1.sql",
+        "supabase/migrations/20260729094510_recall_readiness_v1.sql"
+      ],
+      "type": "packaging_run"
+    },
+    {
+      "classification": "audit_only",
+      "documented": true,
+      "domainOwner": "platform",
+      "sources": [
+        "supabase/migrations/20260725093000_procurement_purchasing_intelligence.sql",
+        "supabase/migrations/20260727141437_production_procurement_basket_scenarios.sql"
+      ],
+      "type": "percentage"
+    },
+    {
+      "classification": "audit_only",
+      "documented": true,
+      "domainOwner": "platform",
+      "sources": [
+        "supabase/migrations/20260728150000_production_inventory_consumption_reconciliation.sql",
+        "supabase/migrations/20260728160000_production_inventory_control_contracts_v1.sql"
+      ],
+      "type": "planned"
+    },
+    {
+      "classification": "audit_only",
+      "documented": true,
+      "domainOwner": "platform",
+      "sources": [
+        "supabase/migrations/20260728160000_production_inventory_control_contracts_v1.sql"
+      ],
+      "type": "plannedSequence"
+    },
+    {
+      "classification": "audit_only",
+      "documented": true,
+      "domainOwner": "platform",
+      "sources": [
+        "supabase/migrations/20260728160000_production_inventory_control_contracts_v1.sql"
+      ],
+      "type": "present"
+    },
+    {
+      "classification": "audit_only",
+      "documented": true,
+      "domainOwner": "production",
+      "sources": [
+        "supabase/migrations/20260729065048_batch_genealogy_traceability_v1.sql",
+        "supabase/migrations/20260729094510_recall_readiness_v1.sql"
+      ],
+      "type": "production_batch"
+    },
+    {
+      "classification": "audit_only",
+      "documented": true,
+      "domainOwner": "production",
+      "sources": [
+        "supabase/migrations/20260729094510_recall_readiness_v1.sql"
+      ],
+      "type": "production_output"
+    },
+    {
+      "classification": "audit_only",
+      "documented": true,
+      "domainOwner": "platform",
+      "sources": [
+        "supabase/migrations/20260715120000_application_action_rpcs.sql",
+        "supabase/migrations/20260728120000_controlled_quality_release_inventory_commitment.sql"
+      ],
+      "type": "ProductionReceipt"
+    },
+    {
+      "classification": "audit_only",
+      "documented": true,
+      "domainOwner": "procurement",
+      "sources": [
+        "supabase/migrations/20260726130000_supplier_history_reliability.sql"
+      ],
+      "type": "purchase_placed"
+    },
+    {
+      "classification": "audit_only",
+      "documented": true,
+      "domainOwner": "platform",
+      "sources": [
+        "supabase/migrations/20260728170000_packaging_run_planning_consumption_v1.sql",
+        "supabase/migrations/20260729054425_active_finished_goods_inventory_controls_v1.sql"
+      ],
+      "type": "quantity"
+    },
+    {
+      "classification": "audit_only",
+      "documented": true,
+      "domainOwner": "inventory",
+      "sources": [
+        "supabase/migrations/20260729065048_batch_genealogy_traceability_v1.sql",
+        "supabase/migrations/20260729094510_recall_readiness_v1.sql"
+      ],
+      "type": "raw_material_inventory_lot"
+    },
+    {
+      "classification": "audit_only",
+      "documented": true,
+      "domainOwner": "platform",
+      "sources": [
+        "supabase/migrations/20260715120000_application_action_rpcs.sql"
+      ],
+      "type": "Receipt"
+    },
+    {
+      "classification": "audit_only",
+      "documented": true,
+      "domainOwner": "platform",
+      "sources": [
+        "supabase/migrations/20260728160000_production_inventory_control_contracts_v1.sql"
+      ],
+      "type": "referenceId"
+    },
+    {
+      "classification": "audit_only",
+      "documented": true,
+      "domainOwner": "platform",
+      "sources": [
+        "supabase/migrations/20260729043721_finished_product_quality_release_v1.sql"
+      ],
+      "type": "release"
+    },
+    {
+      "classification": "audit_only",
+      "documented": true,
+      "domainOwner": "platform",
+      "sources": [
+        "supabase/migrations/20260729043721_finished_product_quality_release_v1.sql",
+        "supabase/migrations/20260729054425_active_finished_goods_inventory_controls_v1.sql"
+      ],
+      "type": "release_receipt"
+    },
+    {
+      "classification": "audit_only",
+      "documented": true,
+      "domainOwner": "finished-goods",
+      "sources": [
+        "supabase/migrations/20260729094510_recall_readiness_v1.sql"
+      ],
+      "type": "released_finished_goods_inventory_lot"
+    },
+    {
+      "classification": "audit_only",
+      "documented": true,
+      "domainOwner": "platform",
+      "sources": [
+        "supabase/migrations/20260716130000_development_experiments.sql"
+      ],
+      "type": "remove"
+    },
+    {
+      "classification": "audit_only",
+      "documented": true,
+      "domainOwner": "platform",
+      "sources": [
+        "supabase/migrations/20260728154754_production_output_yield_reconciliation_v1.sql",
+        "supabase/migrations/20260728170000_packaging_run_planning_consumption_v1.sql"
+      ],
+      "type": "retained_bulk"
+    },
+    {
+      "classification": "audit_only",
+      "documented": true,
+      "domainOwner": "packaging",
+      "sources": [
+        "supabase/migrations/20260729094510_recall_readiness_v1.sql"
+      ],
+      "type": "supplier_packaging_lot"
+    },
+    {
+      "classification": "audit_only",
+      "documented": true,
+      "domainOwner": "suppliers",
+      "sources": [
+        "supabase/migrations/20260729094510_recall_readiness_v1.sql"
+      ],
+      "type": "supplier_raw_material_lot"
+    },
+    {
+      "classification": "audit_only",
+      "documented": true,
+      "domainOwner": "suppliers",
+      "sources": [
+        "supabase/migrations/20260726120000_supplier_documentation.sql"
+      ],
+      "type": "supplier_wide"
+    },
+    {
+      "classification": "audit_only",
+      "documented": true,
+      "domainOwner": "platform",
+      "sources": [
+        "supabase/migrations/20260729094510_recall_readiness_v1.sql"
+      ],
+      "type": "title"
+    },
+    {
+      "classification": "audit_only",
+      "documented": true,
+      "domainOwner": "platform",
+      "sources": [
+        "supabase/migrations/20260728154754_production_output_yield_reconciliation_v1.sql"
+      ],
+      "type": "transferred"
+    },
+    {
+      "classification": "audit_only",
+      "documented": true,
+      "domainOwner": "platform",
+      "sources": [
+        "supabase/migrations/20260728154754_production_output_yield_reconciliation_v1.sql"
+      ],
+      "type": "unexplained_variance"
+    },
+    {
+      "classification": "audit_only",
+      "documented": true,
+      "domainOwner": "platform",
+      "sources": [
+        "supabase/migrations/20260728170000_packaging_run_planning_consumption_v1.sql"
+      ],
+      "type": "waste"
+    }
+  ],
+  "generatedAt": "2026-07-29T12:00:00+02:00",
+  "version": "1.0.0"
+}

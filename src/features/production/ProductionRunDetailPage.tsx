@@ -15,10 +15,16 @@ import {
   productionCompletionWarnings,
   productionYieldVariance,
 } from "./domain/productionLogic";
+import { useActiveWorkspace } from "../../platform/startup/ActiveWorkspaceContext";
+import { BatchMaterialControlWorkspace } from "./components/BatchMaterialControlWorkspace";
+import { ProductionOutputWorkspace } from "./components/ProductionOutputWorkspace";
+import type { CompletionReadiness } from "./domain/productionInventoryControl";
 export function ProductionRunDetailPage() {
   const { productionRunId } = useParams();
   const d = useFormulaData();
+  const workspace = useActiveWorkspace();
   const [message, setMessage] = useState("");
+  const [materialReadiness, setMaterialReadiness] = useState<CompletionReadiness>();
   const run = d.productionRuns.find((r) => r.id === productionRunId);
   if (!run)
     return (
@@ -92,7 +98,7 @@ export function ProductionRunDetailPage() {
               </button>
             )}
             {run.status === "In Progress" && (
-              <button className="button primary" onClick={complete}>
+              <button className="button primary" disabled={workspace != null && !materialReadiness?.readyForCompletion} onClick={complete}>
                 <Check size={15} />
                 Complete Production Run
               </button>
@@ -141,6 +147,21 @@ export function ProductionRunDetailPage() {
           </strong>
         </div>
       </section>
+      {workspace ? (
+        <BatchMaterialControlWorkspace
+          kind="production"
+          batchId={run.id}
+          editable={run.status === "In Progress"}
+          requirements={lines.map((line) => ({
+            id: line.id,
+            name: line.ingredientNameSnapshot,
+            phase: line.phase,
+            targetQuantity: line.plannedQuantity,
+            unit: line.unit,
+          }))}
+          onReadinessChange={setMaterialReadiness}
+        />
+      ) : (
       <section className="panel execution-section">
         <SectionHeader
           title="Materials & weigh-ins"
@@ -271,6 +292,8 @@ export function ProductionRunDetailPage() {
           })}
         </div>
       </section>
+      )}
+      <ProductionOutputWorkspace run={run} />
       <div className="batch-detail-grid">
         <section className="panel">
           <SectionHeader

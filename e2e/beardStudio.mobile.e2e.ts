@@ -1,5 +1,13 @@
-import{expect,test}from'@playwright/test'
+import{expect,test,type Page}from'@playwright/test'
 import{signIn}from'./ingredientKnowledge.helpers'
+
+async function openProfileEditor(page:Page){
+ const targetLook=page.getByLabel('Target look')
+ await page.getByRole('button',{name:'Edit'}).click()
+ if(!await targetLook.isVisible())await page.getByRole('button',{name:'Edit'}).click()
+ await expect(targetLook).toBeVisible()
+ return targetLook
+}
 
 test('Beard Studio remains usable without horizontal overflow at 390px',async({page})=>{
  await signIn(page)
@@ -7,12 +15,12 @@ test('Beard Studio remains usable without horizontal overflow at 390px',async({p
  await page.getByRole('link',{name:/Open Beard Studio/}).click()
  await page.getByRole('button',{name:'Create editable starter setup'}).click()
  await page.getByRole('link',{name:'Profile',exact:true}).click()
- await page.getByRole('button',{name:'Edit'}).click()
- await page.getByLabel('Target look').fill('Mobile persisted target')
+ const targetLook=await openProfileEditor(page)
+ await targetLook.fill('Mobile persisted target')
  await page.getByRole('button',{name:'Save profile'}).click()
  await expect(page.getByRole('button',{name:'Save profile'})).toBeHidden()
  await page.reload()
- await page.getByRole('button',{name:'Edit'}).click()
+ await openProfileEditor(page)
  await expect(page.getByLabel('Target look')).toHaveValue('Mobile persisted target')
  const width=await page.locator('.beard-studio').evaluate(element=>element.scrollWidth)
  expect(width).toBeLessThanOrEqual(390)

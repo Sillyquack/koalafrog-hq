@@ -35,3 +35,6 @@ The live two-user matrix covers 35 representative tables: core Product/Formula r
 The private Storage matrix proves owner upload/download, second-user and anonymous denial, owner-prefixed path enforcement, version supersession, metadata isolation, and explicit removal. Storage metadata remains relational; file bytes remain only in the private bucket.
 
 See `PRODUCTION_CUTOVER.md` for hosted configuration, promotion, rollback, and evidence capture.
+# Slice 6 traceability migration note
+
+`20260729065048_batch_genealogy_traceability_v1.sql` is additive and read-only: it adds bounded genealogy/search RPCs and three measured traversal indexes. It creates no new stock ledger, lifecycle row, remote migration, or data rewrite.

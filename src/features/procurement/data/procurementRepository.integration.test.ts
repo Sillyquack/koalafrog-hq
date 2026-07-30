@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- local migration tables precede generated type refresh */
 import { createClient } from '@supabase/supabase-js'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { supabase } from '../../../platform/supabase/client'
@@ -5,7 +6,7 @@ import type { Database } from '../../../platform/supabase/generated/database.typ
 import { executeWorkspaceAction } from '../../../platform/actions/workspaceActionExecutor'
 import { SupabaseWorkspaceRepository } from '../../../platform/repository/supabaseWorkspaceRepository'
 import { compareQuotes, quoteArithmetic } from '../domain/procurement'
-import { createContact, createQuote, createSupplierDocument, createSupplierEvent, linkSupplierProduct, loadProcurement, markExternalOrder, updateRecord } from './procurementRepository'
+import { createContact, createPurchaseOrderFromPlan, createQuote, createSupplierDocument, createSupplierEvent, linkSupplierProduct, loadProcurement, recordPurchaseOrderPlacement, updateRecord } from './procurementRepository'
 
 const url = import.meta.env.VITE_SUPABASE_TEST_URL as string | undefined
 const serviceKey = import.meta.env.VITE_SUPABASE_TEST_SERVICE_ROLE_KEY as string | undefined
@@ -65,9 +66,14 @@ run('Procurement production hydration against local Supabase', () => {
     const supplierEvent=await createSupplierEvent(workspaceId,{supplier_id:supplier.data.id,event_type:'communication',occurred_at:'2026-07-16T12:00:00Z',title:'Requested dispatch update',description:'Email sent.',expected_at:null})
     await updateRecord('supplier_events',supplierEvent.id,supplierEvent.revision,{description:'Reply received.'})
     await expect(updateRecord('supplier_events',supplierEvent.id,supplierEvent.revision,{description:'Stale rewrite'})).rejects.toThrow('changed')
-    const purchasePlan=await supabase!.from('purchase_plans').insert({...owned,supplier_id:supplier.data.id,title:'History purchase',status:'approved_internal',purpose:'Integration evidence'}).select('id').single()
+    const purchasePlan=await admin.from('purchase_plans').insert({...owned,supplier_id:supplier.data.id,title:'History purchase',status:'approved',purpose:'Integration evidence',currency:'NOK'}).select('id,revision').single()
     if(purchasePlan.error)throw purchasePlan.error
-    await markExternalOrder(purchasePlan.data.id)
+    const purchasePlanLine=await admin.from('purchase_plan_lines').insert({...owned,purchase_plan_id:purchasePlan.data.id,inventory_domain:'raw_material',supplier_product_id:'supplier-product-procurement',description:'Jojoba Oil snapshot',planned_quantity:1000,unit:'g',pack_count:1,pack_size:1000,estimated_unit_price:245,estimated_line_total:245,currency:'NOK'}).select('id').single()
+    if(purchasePlanLine.error)throw purchasePlanLine.error
+    const orderId=await createPurchaseOrderFromPlan(purchasePlan.data.id)
+    await recordPurchaseOrderPlacement(orderId,1,'ORDER-TEST-1')
+    expect((await supabase!.from('purchase_plans').select('status').eq('id',purchasePlan.data.id).single()).data?.status).toBe('approved')
+    expect((await (supabase as any).from('purchase_order_lines').select('product_name_snapshot,ordered_quantity,legacy_received_quantity').eq('purchase_order_id',orderId).single()).data).toEqual({product_name_snapshot:'Jojoba Oil snapshot',ordered_quantity:1000,legacy_received_quantity:null})
     await linkSupplierProduct('supplier_products','supplier-product-procurement',supplier.data.id,now)
 
     const workspaceRepository=new SupabaseWorkspaceRepository(),beforePreference=await workspaceRepository.load(ownerId)
@@ -106,7 +112,8 @@ run('Procurement production hydration against local Supabase', () => {
     expect(data.supplierDocuments.find(item=>item.id===supplierDocument.id)).toMatchObject({supplier_id:supplier.data.id,capability_state:'available_on_request',verification_state:'pending_review',evidence_url:null})
     expect(data.supplierEvents.find(item=>item.id===supplierEvent.id)).toMatchObject({supplier_id:supplier.data.id,event_type:'communication',description:'Reply received.'})
     expect(data.supplierEvents.some(item=>item.event_type==='quote_received'&&item.supplier_quote_id===quote.data.id)).toBe(true)
-    expect(data.supplierEvents.some(item=>item.event_type==='purchase_placed'&&item.purchase_plan_id===purchasePlan.data.id)).toBe(true)
+    expect(data.supplierEvents.some(item=>item.event_type==='purchase_placed'&&item.purchase_plan_id===purchasePlan.data.id&&item.purchase_order_id===orderId)).toBe(true)
+    expect(data.purchaseOrders.find(item=>item.id===orderId)).toMatchObject({source_purchase_plan_id:purchasePlan.data.id,status:'placed',order_reference:'ORDER-TEST-1'})
     const linkedProduct=await supabase!.from('supplier_products').select('supplier_id,price,notes').eq('id','supplier-product-procurement').single()
     expect(linkedProduct.data).toMatchObject({supplier_id:supplier.data.id,price:245,notes:'Historical offer'})
     expect((await supabase!.from('inventory_lots').select('supplier_product_id,internal_lot_number').eq('id','lot-procurement').single()).data).toEqual({supplier_product_id:'supplier-product-procurement',internal_lot_number:'KF-PROC-LOT'})

@@ -1,0 +1,1168 @@
+{
+  "version": "1.0.0",
+  "generatedAt": "2026-07-29T16:00:00+02:00",
+  "targetBranch": "main",
+  "targetHead": "b54fff20d07658185b8ccd8d9d47559036e2c73f",
+  "auditedFeatureHead": "61c82d1cf47c8c1a57eddab04261e63a55848bb3",
+  "targetMigrationCount": 64,
+  "integratedMigrationCount": 87,
+  "featureOnlyMigrationCount": 23,
+  "duplicateTimestampCount": 0,
+  "lexicalOrderValid": true,
+  "migrationHead": "20260729160000",
+  "conflicts": [],
+  "semanticFindings": [],
+  "migrations": [
+    {
+      "filename": "20260714210000_platform_foundation.sql",
+      "timestamp": "20260714210000",
+      "targetContains": true,
+      "featureOnly": false,
+      "predecessor": null,
+      "sourceHash": "f3664ead074aaff703fd38ea3e771b68ef1b6c73fcdad1a15da277455f3b5287",
+      "securitySensitive": true,
+      "replacesFunctions": [],
+      "destructiveStatements": 0,
+      "requiresLineReview": false
+    },
+    {
+      "filename": "20260715090000_relational_domain.sql",
+      "timestamp": "20260715090000",
+      "targetContains": true,
+      "featureOnly": false,
+      "predecessor": "20260714210000_platform_foundation.sql",
+      "sourceHash": "9682396eeeeca5393cf57f791e22d60be411915f6c164fa4271affb4c355830c",
+      "securitySensitive": true,
+      "replacesFunctions": [
+        "complete_v9_reconciliation",
+        "import_v9_relational",
+        "record_v9_migration_failure"
+      ],
+      "destructiveStatements": 0,
+      "requiresLineReview": false
+    },
+    {
+      "filename": "20260715120000_application_action_rpcs.sql",
+      "timestamp": "20260715120000",
+      "targetContains": true,
+      "featureOnly": false,
+      "predecessor": "20260715090000_relational_domain.sql",
+      "sourceHash": "89a8b38b9a7aa07081a1f9815b4919bdff43d5d33b3b6c6f12b0ed344f1a3dd3",
+      "securitySensitive": true,
+      "replacesFunctions": [
+        "commit_lab_consumption",
+        "commit_packaging_consumption",
+        "commit_production_consumption",
+        "kf_convert_quantity",
+        "kf_inventory_balance",
+        "kf_packaging_balance",
+        "register_finished_goods_output"
+      ],
+      "destructiveStatements": 0,
+      "requiresLineReview": false
+    },
+    {
+      "filename": "20260715121000_rpc_helper_permissions.sql",
+      "timestamp": "20260715121000",
+      "targetContains": true,
+      "featureOnly": false,
+      "predecessor": "20260715120000_application_action_rpcs.sql",
+      "sourceHash": "2b872bc27900f6e45d794e308473cf42074946db07122cb51dddeb948721fea2",
+      "securitySensitive": true,
+      "replacesFunctions": [],
+      "destructiveStatements": 0,
+      "requiresLineReview": false
+    },
+    {
+      "filename": "20260715130000_document_storage_lifecycle.sql",
+      "timestamp": "20260715130000",
+      "targetContains": true,
+      "featureOnly": false,
+      "predecessor": "20260715121000_rpc_helper_permissions.sql",
+      "sourceHash": "d3f7eb957ef85404b742553ba21cf032f62b427e92666796cb63496f50ef2e37",
+      "securitySensitive": true,
+      "replacesFunctions": [
+        "complete_v9_reconciliation",
+        "register_document_object",
+        "remove_current_document_object"
+      ],
+      "destructiveStatements": 0,
+      "requiresLineReview": false
+    },
+    {
+      "filename": "20260715140000_clean_workspace_bootstrap.sql",
+      "timestamp": "20260715140000",
+      "targetContains": true,
+      "featureOnly": false,
+      "predecessor": "20260715130000_document_storage_lifecycle.sql",
+      "sourceHash": "f97a508dbc961ae12aefffb8cc1fafc5603fe16eba144a7551a2b69e87db4f99",
+      "securitySensitive": true,
+      "replacesFunctions": [
+        "create_clean_workspace"
+      ],
+      "destructiveStatements": 0,
+      "requiresLineReview": false
+    },
+    {
+      "filename": "20260715193000_nullable_product_target_launch_date.sql",
+      "timestamp": "20260715193000",
+      "targetContains": true,
+      "featureOnly": false,
+      "predecessor": "20260715140000_clean_workspace_bootstrap.sql",
+      "sourceHash": "13fbfb830354d7dac6b2d8f7195d82ea4ebd8e5b15e7077fd10d71ce35cf54de",
+      "securitySensitive": false,
+      "replacesFunctions": [],
+      "destructiveStatements": 0,
+      "requiresLineReview": false
+    },
+    {
+      "filename": "20260715200000_intelligence_foundation.sql",
+      "timestamp": "20260715200000",
+      "targetContains": true,
+      "featureOnly": false,
+      "predecessor": "20260715193000_nullable_product_target_launch_date.sql",
+      "sourceHash": "0919dc808c13068d0bc8c868a490858b1ca244a13ff7c9d147c7e3fd4df388d4",
+      "securitySensitive": true,
+      "replacesFunctions": [],
+      "destructiveStatements": 0,
+      "requiresLineReview": false
+    },
+    {
+      "filename": "20260716090000_intelligence_memory.sql",
+      "timestamp": "20260716090000",
+      "targetContains": true,
+      "featureOnly": false,
+      "predecessor": "20260715200000_intelligence_foundation.sql",
+      "sourceHash": "28f685f050951d22a67a79b3e2fb22c3ff9f651f1f965a6bd0c195af72689f49",
+      "securitySensitive": true,
+      "replacesFunctions": [
+        "record_scent_memory_checkpoint",
+        "validate_scent_memory_context"
+      ],
+      "destructiveStatements": 0,
+      "requiresLineReview": false
+    },
+    {
+      "filename": "20260716130000_development_experiments.sql",
+      "timestamp": "20260716130000",
+      "targetContains": true,
+      "featureOnly": false,
+      "predecessor": "20260716090000_intelligence_memory.sql",
+      "sourceHash": "95a63c2e1dcf09f6485351afec2c0556e5553f6b677452a93fa35aefa9cf37fe",
+      "securitySensitive": true,
+      "replacesFunctions": [
+        "create_development_experiment",
+        "create_formula_branch_from_experiment",
+        "create_lab_batch_from_experiment",
+        "guard_development_experiment_status",
+        "guard_experiment_provenance",
+        "transition_development_experiment"
+      ],
+      "destructiveStatements": 0,
+      "requiresLineReview": false
+    },
+    {
+      "filename": "20260716180000_procurement_equipment_foundation.sql",
+      "timestamp": "20260716180000",
+      "targetContains": true,
+      "featureOnly": false,
+      "predecessor": "20260716130000_development_experiments.sql",
+      "sourceHash": "994825923719fe7d7dccfba96e4faf527cba2e7b88713f2a623d72ae89449194",
+      "securitySensitive": true,
+      "replacesFunctions": [
+        "convert_supplier_candidate",
+        "mark_purchase_plan_external_order"
+      ],
+      "destructiveStatements": 0,
+      "requiresLineReview": false
+    },
+    {
+      "filename": "20260716200000_procurement_quote_line_created_at.sql",
+      "timestamp": "20260716200000",
+      "targetContains": true,
+      "featureOnly": false,
+      "predecessor": "20260716180000_procurement_equipment_foundation.sql",
+      "sourceHash": "04745303d17036f023d04cd1617c011f43ca7127f00d5c07c50fb7c8f6efb019",
+      "securitySensitive": false,
+      "replacesFunctions": [],
+      "destructiveStatements": 0,
+      "requiresLineReview": false
+    },
+    {
+      "filename": "20260716210000_atomic_supplier_product_preference.sql",
+      "timestamp": "20260716210000",
+      "targetContains": true,
+      "featureOnly": false,
+      "predecessor": "20260716200000_procurement_quote_line_created_at.sql",
+      "sourceHash": "f5a92b1c35bf5ac64a3cce831f249e7e9ac42e29cbba18c0bd164a86f07f72b1",
+      "securitySensitive": true,
+      "replacesFunctions": [
+        "mark_packaging_supplier_product_preferred",
+        "mark_supplier_product_preferred"
+      ],
+      "destructiveStatements": 0,
+      "requiresLineReview": false
+    },
+    {
+      "filename": "20260716220000_ingredient_metadata_clarity.sql",
+      "timestamp": "20260716220000",
+      "targetContains": true,
+      "featureOnly": false,
+      "predecessor": "20260716210000_atomic_supplier_product_preference.sql",
+      "sourceHash": "f5981e0260cdbe5760b20076d7056902b32797068474342ed8986bbb1bc52f63",
+      "securitySensitive": false,
+      "replacesFunctions": [],
+      "destructiveStatements": 0,
+      "requiresLineReview": false
+    },
+    {
+      "filename": "20260716230000_ingredient_reference_adoption.sql",
+      "timestamp": "20260716230000",
+      "targetContains": true,
+      "featureOnly": false,
+      "predecessor": "20260716220000_ingredient_metadata_clarity.sql",
+      "sourceHash": "92e1b771b8afe2f891cd842c64f2593b0215e464cd96693e91dfef1ef4af9d5e",
+      "securitySensitive": false,
+      "replacesFunctions": [],
+      "destructiveStatements": 0,
+      "requiresLineReview": false
+    },
+    {
+      "filename": "20260717090000_milligram_unit_support.sql",
+      "timestamp": "20260717090000",
+      "targetContains": true,
+      "featureOnly": false,
+      "predecessor": "20260716230000_ingredient_reference_adoption.sql",
+      "sourceHash": "07356fc0acdab4c4a792d03f13df8d5bc1286009406efa8612f9ab33d5471712",
+      "securitySensitive": true,
+      "replacesFunctions": [
+        "create_lab_batch_from_experiment",
+        "kf_convert_quantity"
+      ],
+      "destructiveStatements": 0,
+      "requiresLineReview": false
+    },
+    {
+      "filename": "20260717110000_ingredient_supplier_workflow.sql",
+      "timestamp": "20260717110000",
+      "targetContains": true,
+      "featureOnly": false,
+      "predecessor": "20260717090000_milligram_unit_support.sql",
+      "sourceHash": "555c13dded2b921e5c9d6a6782126dcd84123eb7f91c802304b2d77290e8c3ac",
+      "securitySensitive": false,
+      "replacesFunctions": [],
+      "destructiveStatements": 0,
+      "requiresLineReview": false
+    },
+    {
+      "filename": "20260717120000_atomic_preference_timestamp_alignment.sql",
+      "timestamp": "20260717120000",
+      "targetContains": true,
+      "featureOnly": false,
+      "predecessor": "20260717110000_ingredient_supplier_workflow.sql",
+      "sourceHash": "3b36565095d5e335de0d470a4367b5b26c6fded806433584db543113bc60655a",
+      "securitySensitive": true,
+      "replacesFunctions": [
+        "mark_packaging_supplier_product_preferred",
+        "mark_supplier_product_preferred"
+      ],
+      "destructiveStatements": 0,
+      "requiresLineReview": false
+    },
+    {
+      "filename": "20260718090000_product_studio_concepts.sql",
+      "timestamp": "20260718090000",
+      "targetContains": true,
+      "featureOnly": false,
+      "predecessor": "20260717120000_atomic_preference_timestamp_alignment.sql",
+      "sourceHash": "cdf64ff1189e79708c86d3ea4c771a5d35e7e98c8ad9b1cca527ade35cf6e1d0",
+      "securitySensitive": true,
+      "replacesFunctions": [
+        "create_product_studio_purchase_plan"
+      ],
+      "destructiveStatements": 0,
+      "requiresLineReview": false
+    },
+    {
+      "filename": "20260718120000_beard_butter_multiphase.sql",
+      "timestamp": "20260718120000",
+      "targetContains": true,
+      "featureOnly": false,
+      "predecessor": "20260718090000_product_studio_concepts.sql",
+      "sourceHash": "c20d744e764e32a1b5b5051d2bbbe844fbdc314b7544fab6a0dc701bc7c5f814",
+      "securitySensitive": false,
+      "replacesFunctions": [
+        "inherit_formula_process_metadata",
+        "snapshot_experiment_lab_process"
+      ],
+      "destructiveStatements": 0,
+      "requiresLineReview": false
+    },
+    {
+      "filename": "20260719090000_atomic_product_studio_formula_handoff.sql",
+      "timestamp": "20260719090000",
+      "targetContains": true,
+      "featureOnly": false,
+      "predecessor": "20260718120000_beard_butter_multiphase.sql",
+      "sourceHash": "2fa4d1d3b99213b1efec05310c9fc3d392d4ca97e2d788b12fa8cc5cd60d66d9",
+      "securitySensitive": true,
+      "replacesFunctions": [
+        "create_product_studio_formula_handoff"
+      ],
+      "destructiveStatements": 0,
+      "requiresLineReview": false
+    },
+    {
+      "filename": "20260720090000_natural_deodorant_product_studio.sql",
+      "timestamp": "20260720090000",
+      "targetContains": true,
+      "featureOnly": false,
+      "predecessor": "20260719090000_atomic_product_studio_formula_handoff.sql",
+      "sourceHash": "418478643d14e2c92802e93bfd3901ade069d2f0a2c55192cec5eabaf622ae99",
+      "securitySensitive": false,
+      "replacesFunctions": [],
+      "destructiveStatements": 0,
+      "requiresLineReview": false
+    },
+    {
+      "filename": "20260720120000_ingredient_knowledge_foundation.sql",
+      "timestamp": "20260720120000",
+      "targetContains": true,
+      "featureOnly": false,
+      "predecessor": "20260720090000_natural_deodorant_product_studio.sql",
+      "sourceHash": "315ef424c6c9a929fe79055ef350fd698fbe438eb8beec9e3bca657f684422ac",
+      "securitySensitive": true,
+      "replacesFunctions": [
+        "import_v9_relational",
+        "protect_linked_ingredient_knowledge_evidence",
+        "save_ingredient_knowledge_aggregate",
+        "validate_ingredient_knowledge_evidence_links"
+      ],
+      "destructiveStatements": 0,
+      "requiresLineReview": false
+    },
+    {
+      "filename": "20260720160000_beard_studio_foundation.sql",
+      "timestamp": "20260720160000",
+      "targetContains": true,
+      "featureOnly": false,
+      "predecessor": "20260720120000_ingredient_knowledge_foundation.sql",
+      "sourceHash": "033751d3b86b7c43fceeeb1d080aaa62ee9293b599738e8fa8732a67f4cf491e",
+      "securitySensitive": true,
+      "replacesFunctions": [],
+      "destructiveStatements": 0,
+      "requiresLineReview": false
+    },
+    {
+      "filename": "20260720170000_beard_studio_hosted_runtime.sql",
+      "timestamp": "20260720170000",
+      "targetContains": true,
+      "featureOnly": false,
+      "predecessor": "20260720160000_beard_studio_foundation.sql",
+      "sourceHash": "8cf085e9ec417c056ce0d949d905b95b64a764817814bfda6ed9dbf3190aa215",
+      "securitySensitive": true,
+      "replacesFunctions": [
+        "save_beard_studio_workspace"
+      ],
+      "destructiveStatements": 0,
+      "requiresLineReview": false
+    },
+    {
+      "filename": "20260720180000_beard_studio_child_replacement.sql",
+      "timestamp": "20260720180000",
+      "targetContains": true,
+      "featureOnly": false,
+      "predecessor": "20260720170000_beard_studio_hosted_runtime.sql",
+      "sourceHash": "74265639d1743366c41fd3276e599ef5aceb01e88dabc92bbccf943bca937470",
+      "securitySensitive": true,
+      "replacesFunctions": [],
+      "destructiveStatements": 0,
+      "requiresLineReview": false
+    },
+    {
+      "filename": "20260720190000_beard_studio_merge_cleanup.sql",
+      "timestamp": "20260720190000",
+      "targetContains": true,
+      "featureOnly": false,
+      "predecessor": "20260720180000_beard_studio_child_replacement.sql",
+      "sourceHash": "530022c63e9c5d783d27fa13cac629c032e2337f027b4cc95f2936e6d27d2c35",
+      "securitySensitive": false,
+      "replacesFunctions": [],
+      "destructiveStatements": 1,
+      "requiresLineReview": false
+    },
+    {
+      "filename": "20260720200000_beard_studio_workspace_integrity.sql",
+      "timestamp": "20260720200000",
+      "targetContains": true,
+      "featureOnly": false,
+      "predecessor": "20260720190000_beard_studio_merge_cleanup.sql",
+      "sourceHash": "f7ba1a1a9183b8a0b9ddfd8edc3c6b9fae5c64a3424eee23f96e2d87c5b640eb",
+      "securitySensitive": false,
+      "replacesFunctions": [],
+      "destructiveStatements": 0,
+      "requiresLineReview": false
+    },
+    {
+      "filename": "20260720210000_beard_studio_stale_write_guard.sql",
+      "timestamp": "20260720210000",
+      "targetContains": true,
+      "featureOnly": false,
+      "predecessor": "20260720200000_beard_studio_workspace_integrity.sql",
+      "sourceHash": "2a1b871afef52880b968b498f4b7f9461b682def8e0b94bd7b05dcddd88a17e2",
+      "securitySensitive": true,
+      "replacesFunctions": [],
+      "destructiveStatements": 0,
+      "requiresLineReview": false
+    },
+    {
+      "filename": "20260720220000_beard_log_cascade_cleanup.sql",
+      "timestamp": "20260720220000",
+      "targetContains": true,
+      "featureOnly": false,
+      "predecessor": "20260720210000_beard_studio_stale_write_guard.sql",
+      "sourceHash": "6190fb01cfbb4622b511d78eb46be6118629dc37e39f98287d9f9914ff22459e",
+      "securitySensitive": false,
+      "replacesFunctions": [
+        "prevent_beard_log_mutation"
+      ],
+      "destructiveStatements": 0,
+      "requiresLineReview": false
+    },
+    {
+      "filename": "20260721140000_beard_photo_analysis.sql",
+      "timestamp": "20260721140000",
+      "targetContains": true,
+      "featureOnly": false,
+      "predecessor": "20260720220000_beard_log_cascade_cleanup.sql",
+      "sourceHash": "6f6dcd26e2bd90cba8f4708c74367827fd39b828226bed171d43b1317a89ced3",
+      "securitySensitive": true,
+      "replacesFunctions": [],
+      "destructiveStatements": 0,
+      "requiresLineReview": false
+    },
+    {
+      "filename": "20260721150000_beard_photo_privilege_hardening.sql",
+      "timestamp": "20260721150000",
+      "targetContains": true,
+      "featureOnly": false,
+      "predecessor": "20260721140000_beard_photo_analysis.sql",
+      "sourceHash": "8c0e16d252e80bcd614946d24ff7cd70dab580894383264007117024384de4ef",
+      "securitySensitive": true,
+      "replacesFunctions": [],
+      "destructiveStatements": 0,
+      "requiresLineReview": false
+    },
+    {
+      "filename": "20260721210000_beard_photo_attempt_provenance.sql",
+      "timestamp": "20260721210000",
+      "targetContains": true,
+      "featureOnly": false,
+      "predecessor": "20260721150000_beard_photo_privilege_hardening.sql",
+      "sourceHash": "17268e7c121af307b30a799545b8afb2b5f31b72d182d6f0ecd12df98de02b57",
+      "securitySensitive": true,
+      "replacesFunctions": [],
+      "destructiveStatements": 0,
+      "requiresLineReview": false
+    },
+    {
+      "filename": "20260722090000_beard_semantic_diagnostics.sql",
+      "timestamp": "20260722090000",
+      "targetContains": true,
+      "featureOnly": false,
+      "predecessor": "20260721210000_beard_photo_attempt_provenance.sql",
+      "sourceHash": "241b16aaa83ef0a4e8b4d54d5ba17f864e6dff28ebbff455590f14a53bcf8f71",
+      "securitySensitive": true,
+      "replacesFunctions": [
+        "begin_beard_provider_attempt"
+      ],
+      "destructiveStatements": 0,
+      "requiresLineReview": false
+    },
+    {
+      "filename": "20260722100000_beard_guard_strategy_semantics.sql",
+      "timestamp": "20260722100000",
+      "targetContains": true,
+      "featureOnly": false,
+      "predecessor": "20260722090000_beard_semantic_diagnostics.sql",
+      "sourceHash": "ffc79406f078c8f13ad55be3c0e99e64f9db7a273e073ea12d4bd9393b8cee7b",
+      "securitySensitive": true,
+      "replacesFunctions": [
+        "begin_beard_provider_attempt"
+      ],
+      "destructiveStatements": 0,
+      "requiresLineReview": false
+    },
+    {
+      "filename": "20260722101000_beard_semantic_v3_constraints.sql",
+      "timestamp": "20260722101000",
+      "targetContains": true,
+      "featureOnly": false,
+      "predecessor": "20260722100000_beard_guard_strategy_semantics.sql",
+      "sourceHash": "57b401e604e87b8cde1911f1f1e6a342e9fd62e9c68edf8c33f2dc3e596fdb16",
+      "securitySensitive": false,
+      "replacesFunctions": [],
+      "destructiveStatements": 0,
+      "requiresLineReview": false
+    },
+    {
+      "filename": "20260722110000_beard_persistence_diagnostics.sql",
+      "timestamp": "20260722110000",
+      "targetContains": true,
+      "featureOnly": false,
+      "predecessor": "20260722101000_beard_semantic_v3_constraints.sql",
+      "sourceHash": "0c27e6ca601f7c336a30441bef741e2073c965319345d500e17c84989b20616f",
+      "securitySensitive": true,
+      "replacesFunctions": [],
+      "destructiveStatements": 0,
+      "requiresLineReview": false
+    },
+    {
+      "filename": "20260722130000_beard_observation_keys.sql",
+      "timestamp": "20260722130000",
+      "targetContains": true,
+      "featureOnly": false,
+      "predecessor": "20260722110000_beard_persistence_diagnostics.sql",
+      "sourceHash": "ca3c77be1865a7fbf1d2197eeef7df9320671132a86fe2d7a70c29803400f693",
+      "securitySensitive": true,
+      "replacesFunctions": [
+        "begin_beard_provider_attempt",
+        "persist_beard_analysis_result"
+      ],
+      "destructiveStatements": 0,
+      "requiresLineReview": false
+    },
+    {
+      "filename": "20260722190000_beard_support_diagnostic_lookup.sql",
+      "timestamp": "20260722190000",
+      "targetContains": true,
+      "featureOnly": false,
+      "predecessor": "20260722130000_beard_observation_keys.sql",
+      "sourceHash": "3a2423b1818dc746fdd537975ae67b43f9c66ed2b10b163e03c18e50fef3491f",
+      "securitySensitive": true,
+      "replacesFunctions": [],
+      "destructiveStatements": 0,
+      "requiresLineReview": false
+    },
+    {
+      "filename": "20260723044918_fix_beard_support_diagnostic_rpc.sql",
+      "timestamp": "20260723044918",
+      "targetContains": true,
+      "featureOnly": false,
+      "predecessor": "20260722190000_beard_support_diagnostic_lookup.sql",
+      "sourceHash": "27537bd5cdfdfc1876a32d96ad85e91196bd2b96ea2e9838d9cd9e104be535de",
+      "securitySensitive": true,
+      "replacesFunctions": [],
+      "destructiveStatements": 0,
+      "requiresLineReview": false
+    },
+    {
+      "filename": "20260723060732_beard_semantic_safety_v4.sql",
+      "timestamp": "20260723060732",
+      "targetContains": true,
+      "featureOnly": false,
+      "predecessor": "20260723044918_fix_beard_support_diagnostic_rpc.sql",
+      "sourceHash": "479104c02670d98e370f959898a6aded19a2ecb27cdd911de1cddb8bd7fecf07",
+      "securitySensitive": true,
+      "replacesFunctions": [
+        "begin_beard_provider_attempt",
+        "lookup_beard_analysis_support_diagnostic",
+        "persist_beard_analysis_result"
+      ],
+      "destructiveStatements": 0,
+      "requiresLineReview": false
+    },
+    {
+      "filename": "20260723071830_procurement_workspace_v1.sql",
+      "timestamp": "20260723071830",
+      "targetContains": true,
+      "featureOnly": false,
+      "predecessor": "20260723060732_beard_semantic_safety_v4.sql",
+      "sourceHash": "45be8c43757822b8c6fb23eef4a28cdea990b1a0cce597c1a4e4e3e91db009df",
+      "securitySensitive": true,
+      "replacesFunctions": [],
+      "destructiveStatements": 0,
+      "requiresLineReview": false
+    },
+    {
+      "filename": "20260723073840_assisted_procurement_research.sql",
+      "timestamp": "20260723073840",
+      "targetContains": true,
+      "featureOnly": false,
+      "predecessor": "20260723071830_procurement_workspace_v1.sql",
+      "sourceHash": "d60df8eea27f61eaf265bc5728fe5db9521e0da8ac07d845727a969c85131849",
+      "securitySensitive": true,
+      "replacesFunctions": [],
+      "destructiveStatements": 0,
+      "requiresLineReview": false
+    },
+    {
+      "filename": "20260723080007_live_procurement_provider.sql",
+      "timestamp": "20260723080007",
+      "targetContains": true,
+      "featureOnly": false,
+      "predecessor": "20260723073840_assisted_procurement_research.sql",
+      "sourceHash": "961c217000ff834e6547f210713cdf470d847e5c039b8c4b485d6722b2e66d5f",
+      "securitySensitive": false,
+      "replacesFunctions": [],
+      "destructiveStatements": 0,
+      "requiresLineReview": false
+    },
+    {
+      "filename": "20260723095108_procurement_stabilization.sql",
+      "timestamp": "20260723095108",
+      "targetContains": true,
+      "featureOnly": false,
+      "predecessor": "20260723080007_live_procurement_provider.sql",
+      "sourceHash": "47e0c73ad7af1db0e972a5d5b1ad4504262936b728d8013b7cb44f5a4aba38ce",
+      "securitySensitive": true,
+      "replacesFunctions": [],
+      "destructiveStatements": 0,
+      "requiresLineReview": false
+    },
+    {
+      "filename": "20260723105527_secure_live_procurement_invocation.sql",
+      "timestamp": "20260723105527",
+      "targetContains": true,
+      "featureOnly": false,
+      "predecessor": "20260723095108_procurement_stabilization.sql",
+      "sourceHash": "1b7d534fc247d7020bff88a7898fc924e221c6c016c462d760d6f11d3e9081d2",
+      "securitySensitive": true,
+      "replacesFunctions": [],
+      "destructiveStatements": 0,
+      "requiresLineReview": false
+    },
+    {
+      "filename": "20260723125652_beard_provider_timeout_observability.sql",
+      "timestamp": "20260723125652",
+      "targetContains": true,
+      "featureOnly": false,
+      "predecessor": "20260723105527_secure_live_procurement_invocation.sql",
+      "sourceHash": "e410f5c10cb11e181f63c4c87661e5083d55e94f825e602e1c56ee1e99172159",
+      "securitySensitive": true,
+      "replacesFunctions": [
+        "lookup_beard_analysis_support_diagnostic"
+      ],
+      "destructiveStatements": 0,
+      "requiresLineReview": false
+    },
+    {
+      "filename": "20260723191905_procurement_provider_diagnostics.sql",
+      "timestamp": "20260723191905",
+      "targetContains": true,
+      "featureOnly": false,
+      "predecessor": "20260723125652_beard_provider_timeout_observability.sql",
+      "sourceHash": "3defe83074376ee12431909dd7a77f0e4ef98f24903f162d5cae4d1ad0dc4d45",
+      "securitySensitive": true,
+      "replacesFunctions": [],
+      "destructiveStatements": 0,
+      "requiresLineReview": false
+    },
+    {
+      "filename": "20260723213000_procurement_background_research.sql",
+      "timestamp": "20260723213000",
+      "targetContains": true,
+      "featureOnly": false,
+      "predecessor": "20260723191905_procurement_provider_diagnostics.sql",
+      "sourceHash": "b382111e75859f0500cc1bb9e6ac3f23a1f22a5914a0c17a2acc0c2cf347a6a6",
+      "securitySensitive": true,
+      "replacesFunctions": [],
+      "destructiveStatements": 0,
+      "requiresLineReview": false
+    },
+    {
+      "filename": "20260724054059_procurement_background_rpc_boundary.sql",
+      "timestamp": "20260724054059",
+      "targetContains": true,
+      "featureOnly": false,
+      "predecessor": "20260723213000_procurement_background_research.sql",
+      "sourceHash": "9c8be558e8f36a3c8e1915c01f95b43a0ed21dd4df1655d9d8f51b1001a1901c",
+      "securitySensitive": true,
+      "replacesFunctions": [],
+      "destructiveStatements": 0,
+      "requiresLineReview": false
+    },
+    {
+      "filename": "20260724064750_procurement_background_retention_window.sql",
+      "timestamp": "20260724064750",
+      "targetContains": true,
+      "featureOnly": false,
+      "predecessor": "20260724054059_procurement_background_rpc_boundary.sql",
+      "sourceHash": "bc8ab10d2fef50422d826664ceec328757121cab36b8f8bcb73627e33207613d",
+      "securitySensitive": true,
+      "replacesFunctions": [
+        "reschedule_procurement_background_operation"
+      ],
+      "destructiveStatements": 0,
+      "requiresLineReview": false
+    },
+    {
+      "filename": "20260724124819_procurement_unmatched_webhook_lifecycle.sql",
+      "timestamp": "20260724124819",
+      "targetContains": true,
+      "featureOnly": false,
+      "predecessor": "20260724064750_procurement_background_retention_window.sql",
+      "sourceHash": "11868808a335123dd75b7c499b09d33e2a49839f88cf167c82a9d36751291d4d",
+      "securitySensitive": true,
+      "replacesFunctions": [
+        "attach_procurement_background_operation",
+        "mark_procurement_background_webhook_retry"
+      ],
+      "destructiveStatements": 0,
+      "requiresLineReview": false
+    },
+    {
+      "filename": "20260725093000_procurement_purchasing_intelligence.sql",
+      "timestamp": "20260725093000",
+      "targetContains": true,
+      "featureOnly": false,
+      "predecessor": "20260724124819_procurement_unmatched_webhook_lifecycle.sql",
+      "sourceHash": "893b4895ee39a372b8441e31b928b2601bc5142b646edd3f9cc6b33fd2b871b1",
+      "securitySensitive": true,
+      "replacesFunctions": [],
+      "destructiveStatements": 0,
+      "requiresLineReview": false
+    },
+    {
+      "filename": "20260725133000_procurement_purchasing_intelligence_hardening.sql",
+      "timestamp": "20260725133000",
+      "targetContains": true,
+      "featureOnly": false,
+      "predecessor": "20260725093000_procurement_purchasing_intelligence.sql",
+      "sourceHash": "442f16252b65c20b8d40c9d9046e3c7863744675fc4b1530d85ce37656a86c9b",
+      "securitySensitive": true,
+      "replacesFunctions": [],
+      "destructiveStatements": 0,
+      "requiresLineReview": false
+    },
+    {
+      "filename": "20260726120000_supplier_documentation.sql",
+      "timestamp": "20260726120000",
+      "targetContains": true,
+      "featureOnly": false,
+      "predecessor": "20260725133000_procurement_purchasing_intelligence_hardening.sql",
+      "sourceHash": "d23adebc1d24cf5cd1bcb4f51ee167d3887b6666497706c7bf04212ae1b3fb83",
+      "securitySensitive": true,
+      "replacesFunctions": [],
+      "destructiveStatements": 0,
+      "requiresLineReview": false
+    },
+    {
+      "filename": "20260726121237_beard_semantic_failure_invariant.sql",
+      "timestamp": "20260726121237",
+      "targetContains": true,
+      "featureOnly": false,
+      "predecessor": "20260726120000_supplier_documentation.sql",
+      "sourceHash": "a18247b202247ec54f87cb26bc74c34808661e68fb935964c6ca2674a45b008d",
+      "securitySensitive": true,
+      "replacesFunctions": [
+        "begin_beard_provider_attempt",
+        "lookup_beard_analysis_support_diagnostic",
+        "persist_beard_analysis_result"
+      ],
+      "destructiveStatements": 0,
+      "requiresLineReview": false
+    },
+    {
+      "filename": "20260726124000_beard_support_lookup_backward_compatibility.sql",
+      "timestamp": "20260726124000",
+      "targetContains": true,
+      "featureOnly": false,
+      "predecessor": "20260726121237_beard_semantic_failure_invariant.sql",
+      "sourceHash": "8a02655134b21ccce97a003e0b76fb27090ee5151d02b7aacc1e15a12396b181",
+      "securitySensitive": true,
+      "replacesFunctions": [],
+      "destructiveStatements": 0,
+      "requiresLineReview": false
+    },
+    {
+      "filename": "20260726130000_supplier_history_reliability.sql",
+      "timestamp": "20260726130000",
+      "targetContains": true,
+      "featureOnly": false,
+      "predecessor": "20260726124000_beard_support_lookup_backward_compatibility.sql",
+      "sourceHash": "9956472bd7943c08ccad9be510c48bb535faf8065fb88b96735c50a42c39ad2c",
+      "securitySensitive": true,
+      "replacesFunctions": [],
+      "destructiveStatements": 0,
+      "requiresLineReview": false
+    },
+    {
+      "filename": "20260726185624_beard_guard_strategy_v6.sql",
+      "timestamp": "20260726185624",
+      "targetContains": true,
+      "featureOnly": false,
+      "predecessor": "20260726130000_supplier_history_reliability.sql",
+      "sourceHash": "3b22ad162e7b57d402708f2ecd44b231d629cc839e7f5e5abf7585b8df383a30",
+      "securitySensitive": true,
+      "replacesFunctions": [],
+      "destructiveStatements": 0,
+      "requiresLineReview": false
+    },
+    {
+      "filename": "20260727054718_beard_responses_parser_v1.sql",
+      "timestamp": "20260727054718",
+      "targetContains": true,
+      "featureOnly": false,
+      "predecessor": "20260726185624_beard_guard_strategy_v6.sql",
+      "sourceHash": "91929f759c2d69e90fd3e6cc01ce02bd9846bae6c32ae187856ed16cc50fd35c",
+      "securitySensitive": true,
+      "replacesFunctions": [
+        "lookup_beard_analysis_support_diagnostic"
+      ],
+      "destructiveStatements": 0,
+      "requiresLineReview": false
+    },
+    {
+      "filename": "20260727065000_beard_provider_429_classification.sql",
+      "timestamp": "20260727065000",
+      "targetContains": true,
+      "featureOnly": false,
+      "predecessor": "20260727054718_beard_responses_parser_v1.sql",
+      "sourceHash": "8411f2306274704201b9f386800f61150c480988c7b659c91f57abbf737d2753",
+      "securitySensitive": true,
+      "replacesFunctions": [
+        "lookup_beard_analysis_support_diagnostic"
+      ],
+      "destructiveStatements": 0,
+      "requiresLineReview": false
+    },
+    {
+      "filename": "20260727120000_beard_intelligence_v2.sql",
+      "timestamp": "20260727120000",
+      "targetContains": true,
+      "featureOnly": false,
+      "predecessor": "20260727065000_beard_provider_429_classification.sql",
+      "sourceHash": "f06e569361f919fb66bc6bfb578d27359c2da32a71f8ef35ab2c81e3618f7e16",
+      "securitySensitive": true,
+      "replacesFunctions": [],
+      "destructiveStatements": 0,
+      "requiresLineReview": false
+    },
+    {
+      "filename": "20260727121000_beard_support_lookup_v6_composition.sql",
+      "timestamp": "20260727121000",
+      "targetContains": true,
+      "featureOnly": false,
+      "predecessor": "20260727120000_beard_intelligence_v2.sql",
+      "sourceHash": "bc33e065ff1fd82e9763a2b900a1934813b2faa2f283d2613a0a6d15b6d97932",
+      "securitySensitive": true,
+      "replacesFunctions": [
+        "lookup_beard_analysis_support_diagnostic"
+      ],
+      "destructiveStatements": 0,
+      "requiresLineReview": false
+    },
+    {
+      "filename": "20260727130000_beard_legacy_null_target_review.sql",
+      "timestamp": "20260727130000",
+      "targetContains": true,
+      "featureOnly": false,
+      "predecessor": "20260727121000_beard_support_lookup_v6_composition.sql",
+      "sourceHash": "a210080eff1c88a31935a927f85e97ebb9dfed6ab2ea4b837140f8c8f7f3b1b0",
+      "securitySensitive": true,
+      "replacesFunctions": [
+        "finish_beard_analysis_review"
+      ],
+      "destructiveStatements": 0,
+      "requiresLineReview": false
+    },
+    {
+      "filename": "20260727131021_production_procurement_durable_workflow.sql",
+      "timestamp": "20260727131021",
+      "targetContains": false,
+      "featureOnly": true,
+      "predecessor": "20260727130000_beard_legacy_null_target_review.sql",
+      "sourceHash": "4ca750f02e0abadb594df208241276e21f2650925b24eed2771209bb045c224a",
+      "securitySensitive": true,
+      "replacesFunctions": [
+        "cancel_production_procurement_round",
+        "create_production_procurement_round",
+        "regenerate_production_procurement_requirements",
+        "update_production_procurement_round_products"
+      ],
+      "destructiveStatements": 0,
+      "requiresLineReview": true
+    },
+    {
+      "filename": "20260727135143_production_procurement_supplier_matching.sql",
+      "timestamp": "20260727135143",
+      "targetContains": false,
+      "featureOnly": true,
+      "predecessor": "20260727131021_production_procurement_durable_workflow.sql",
+      "sourceHash": "d0589a569fc6f7e859926d4cfc9cd84db928f5b6291dbe19089dc1720ea9b425",
+      "securitySensitive": true,
+      "replacesFunctions": [],
+      "destructiveStatements": 0,
+      "requiresLineReview": true
+    },
+    {
+      "filename": "20260727141437_production_procurement_basket_scenarios.sql",
+      "timestamp": "20260727141437",
+      "targetContains": false,
+      "featureOnly": true,
+      "predecessor": "20260727135143_production_procurement_supplier_matching.sql",
+      "sourceHash": "d71699eced18c81c8b876c6f8feff31494f979f7342d450da81994d659896a04",
+      "securitySensitive": true,
+      "replacesFunctions": [],
+      "destructiveStatements": 0,
+      "requiresLineReview": true
+    },
+    {
+      "filename": "20260727155213_procurement_semantic_separation_v1.sql",
+      "timestamp": "20260727155213",
+      "targetContains": false,
+      "featureOnly": true,
+      "predecessor": "20260727141437_production_procurement_basket_scenarios.sql",
+      "sourceHash": "6a06bd6bc60b849377863ce011f6f642b328088fc652a697cee0653377b95eaf",
+      "securitySensitive": true,
+      "replacesFunctions": [],
+      "destructiveStatements": 2,
+      "requiresLineReview": true
+    },
+    {
+      "filename": "20260727165818_production_purchase_plan_approval_gate.sql",
+      "timestamp": "20260727165818",
+      "targetContains": false,
+      "featureOnly": true,
+      "predecessor": "20260727155213_procurement_semantic_separation_v1.sql",
+      "sourceHash": "9a0f33c296dc1e2887a3efd71a9505a7011ff26968d75d6e6103f16349b7175f",
+      "securitySensitive": true,
+      "replacesFunctions": [],
+      "destructiveStatements": 0,
+      "requiresLineReview": true
+    },
+    {
+      "filename": "20260728080000_draft_purchase_order_handoff.sql",
+      "timestamp": "20260728080000",
+      "targetContains": false,
+      "featureOnly": true,
+      "predecessor": "20260727165818_production_purchase_plan_approval_gate.sql",
+      "sourceHash": "38be68ada05795b7463805d9750dedfcf8a4dfdc108533ea9070585b7f7e4522",
+      "securitySensitive": true,
+      "replacesFunctions": [],
+      "destructiveStatements": 0,
+      "requiresLineReview": true
+    },
+    {
+      "filename": "20260728090000_external_purchase_order_placement.sql",
+      "timestamp": "20260728090000",
+      "targetContains": false,
+      "featureOnly": true,
+      "predecessor": "20260728080000_draft_purchase_order_handoff.sql",
+      "sourceHash": "c29fa48400abc16f89eda9a7698b7f6003a713e14a419d6edea5e35e2f9ce539",
+      "securitySensitive": true,
+      "replacesFunctions": [
+        "record_purchase_order_placement"
+      ],
+      "destructiveStatements": 0,
+      "requiresLineReview": true
+    },
+    {
+      "filename": "20260728100000_supplier_confirmation_and_shipments.sql",
+      "timestamp": "20260728100000",
+      "targetContains": false,
+      "featureOnly": true,
+      "predecessor": "20260728090000_external_purchase_order_placement.sql",
+      "sourceHash": "73890599e9beda167bede32e0f8c96abef82b0e50e43933dede2a62ebb40fa2e",
+      "securitySensitive": true,
+      "replacesFunctions": [],
+      "destructiveStatements": 0,
+      "requiresLineReview": true
+    },
+    {
+      "filename": "20260728110000_physical_receiving_inspection_quarantine.sql",
+      "timestamp": "20260728110000",
+      "targetContains": false,
+      "featureOnly": true,
+      "predecessor": "20260728100000_supplier_confirmation_and_shipments.sql",
+      "sourceHash": "7276bf176065375affe28420bd76687e1a09aea2e7c97c6666f30e44b8171f60",
+      "securitySensitive": true,
+      "replacesFunctions": [],
+      "destructiveStatements": 0,
+      "requiresLineReview": true
+    },
+    {
+      "filename": "20260728120000_controlled_quality_release_inventory_commitment.sql",
+      "timestamp": "20260728120000",
+      "targetContains": false,
+      "featureOnly": true,
+      "predecessor": "20260728110000_physical_receiving_inspection_quarantine.sql",
+      "sourceHash": "808cd3173b7ca1bb367f093eb0b3e12e72a0508c9b937455527164a4b4deb8cf",
+      "securitySensitive": true,
+      "replacesFunctions": [
+        "commit_lab_consumption",
+        "commit_packaging_consumption",
+        "commit_production_consumption"
+      ],
+      "destructiveStatements": 0,
+      "requiresLineReview": true
+    },
+    {
+      "filename": "20260728130000_procurement_release_candidate_hardening.sql",
+      "timestamp": "20260728130000",
+      "targetContains": false,
+      "featureOnly": true,
+      "predecessor": "20260728120000_controlled_quality_release_inventory_commitment.sql",
+      "sourceHash": "6f63ecb2ef33ea144ec2e719cdb457bfb1d58a237d744f425da72c9df6c3bbc7",
+      "securitySensitive": false,
+      "replacesFunctions": [],
+      "destructiveStatements": 0,
+      "requiresLineReview": true
+    },
+    {
+      "filename": "20260728140000_production_inventory_reservations.sql",
+      "timestamp": "20260728140000",
+      "targetContains": false,
+      "featureOnly": true,
+      "predecessor": "20260728130000_procurement_release_candidate_hardening.sql",
+      "sourceHash": "c5b4aa9920e49737f7cbb02a0887beda257233348902320ff340b8c83dd3bfd7",
+      "securitySensitive": true,
+      "replacesFunctions": [
+        "normalize_production_inventory_legacy_write",
+        "protect_inventory_lot_eligibility_controls"
+      ],
+      "destructiveStatements": 0,
+      "requiresLineReview": true
+    },
+    {
+      "filename": "20260728150000_production_inventory_consumption_reconciliation.sql",
+      "timestamp": "20260728150000",
+      "targetContains": false,
+      "featureOnly": true,
+      "predecessor": "20260728140000_production_inventory_reservations.sql",
+      "sourceHash": "86972d877f661b3b6204b5ebf1dcec5810f964b243485ebf50fcb49c356f74ae",
+      "securitySensitive": true,
+      "replacesFunctions": [],
+      "destructiveStatements": 0,
+      "requiresLineReview": true
+    },
+    {
+      "filename": "20260728154754_production_output_yield_reconciliation_v1.sql",
+      "timestamp": "20260728154754",
+      "targetContains": false,
+      "featureOnly": true,
+      "predecessor": "20260728150000_production_inventory_consumption_reconciliation.sql",
+      "sourceHash": "d5ffea2973142b35770a84c444441be732ad989237afecdda5ce82ac0efcc744",
+      "securitySensitive": true,
+      "replacesFunctions": [],
+      "destructiveStatements": 0,
+      "requiresLineReview": true
+    },
+    {
+      "filename": "20260728160000_production_inventory_control_contracts_v1.sql",
+      "timestamp": "20260728160000",
+      "targetContains": false,
+      "featureOnly": true,
+      "predecessor": "20260728154754_production_output_yield_reconciliation_v1.sql",
+      "sourceHash": "4c01a9aa414b7f015773094ef757a6af87d477a31dad5244f019e1493c569019",
+      "securitySensitive": true,
+      "replacesFunctions": [
+        "enforce_batch_inventory_completion"
+      ],
+      "destructiveStatements": 0,
+      "requiresLineReview": true
+    },
+    {
+      "filename": "20260728170000_packaging_run_planning_consumption_v1.sql",
+      "timestamp": "20260728170000",
+      "targetContains": false,
+      "featureOnly": true,
+      "predecessor": "20260728160000_production_inventory_control_contracts_v1.sql",
+      "sourceHash": "66808ed349bfd37c35dd60e1aa81ee972f061e28bee7d3d64e75a53ede63bfe6",
+      "securitySensitive": true,
+      "replacesFunctions": [],
+      "destructiveStatements": 0,
+      "requiresLineReview": true
+    },
+    {
+      "filename": "20260728203257_finished_goods_lot_creation_quarantine_v1.sql",
+      "timestamp": "20260728203257",
+      "targetContains": false,
+      "featureOnly": true,
+      "predecessor": "20260728170000_packaging_run_planning_consumption_v1.sql",
+      "sourceHash": "8926351cb9a54b625a2779352e7103d31bc53d07b876476d39080b66a501b058",
+      "securitySensitive": true,
+      "replacesFunctions": [],
+      "destructiveStatements": 0,
+      "requiresLineReview": true
+    },
+    {
+      "filename": "20260729043721_finished_product_quality_release_v1.sql",
+      "timestamp": "20260729043721",
+      "targetContains": false,
+      "featureOnly": true,
+      "predecessor": "20260728203257_finished_goods_lot_creation_quarantine_v1.sql",
+      "sourceHash": "b5213b2fb74fc2bf6dc8fddfc5eea7e7fa26862ac0bfc18829f3c29b7fd34977",
+      "securitySensitive": true,
+      "replacesFunctions": [],
+      "destructiveStatements": 0,
+      "requiresLineReview": true
+    },
+    {
+      "filename": "20260729054425_active_finished_goods_inventory_controls_v1.sql",
+      "timestamp": "20260729054425",
+      "targetContains": false,
+      "featureOnly": true,
+      "predecessor": "20260729043721_finished_product_quality_release_v1.sql",
+      "sourceHash": "708161f877400baac0671b04fb8657ae2c0249223ba55ad209437fd458da6f36",
+      "securitySensitive": true,
+      "replacesFunctions": [],
+      "destructiveStatements": 0,
+      "requiresLineReview": true
+    },
+    {
+      "filename": "20260729065048_batch_genealogy_traceability_v1.sql",
+      "timestamp": "20260729065048",
+      "targetContains": false,
+      "featureOnly": true,
+      "predecessor": "20260729054425_active_finished_goods_inventory_controls_v1.sql",
+      "sourceHash": "4c0561ea935c5418ba7c3a37f9333cba0fb6cf91452c720a049437bfb2de874c",
+      "securitySensitive": true,
+      "replacesFunctions": [],
+      "destructiveStatements": 0,
+      "requiresLineReview": true
+    },
+    {
+      "filename": "20260729083226_platform_authority_hardening_v1.sql",
+      "timestamp": "20260729083226",
+      "targetContains": false,
+      "featureOnly": true,
+      "predecessor": "20260729065048_batch_genealogy_traceability_v1.sql",
+      "sourceHash": "01bfa65ffb5ecfe41f90fd3ccaa76785fdc146de5aa69e3ba9529a44e4cf0e09",
+      "securitySensitive": true,
+      "replacesFunctions": [
+        "append_inventory_movement_v1",
+        "append_packaging_inventory_movement_v1",
+        "record_inventory_lot_receipt_v1",
+        "record_packaging_lot_receipt_v1"
+      ],
+      "destructiveStatements": 0,
+      "requiresLineReview": true
+    },
+    {
+      "filename": "20260729094510_recall_readiness_v1.sql",
+      "timestamp": "20260729094510",
+      "targetContains": false,
+      "featureOnly": true,
+      "predecessor": "20260729083226_platform_authority_hardening_v1.sql",
+      "sourceHash": "f331d821e78607b122930dce7185355faf749ddcb12a6bc216e5b6809132eb94",
+      "securitySensitive": true,
+      "replacesFunctions": [],
+      "destructiveStatements": 0,
+      "requiresLineReview": true
+    },
+    {
+      "filename": "20260729160000_rehearsal_definer_execute_hardening.sql",
+      "timestamp": "20260729160000",
+      "targetContains": false,
+      "featureOnly": true,
+      "predecessor": "20260729094510_recall_readiness_v1.sql",
+      "sourceHash": "6ed9dc04a9b1c5d081d834b26171a0e7e28ab85e50194975c323a999e59fa3e5",
+      "securitySensitive": true,
+      "replacesFunctions": [],
+      "destructiveStatements": 0,
+      "requiresLineReview": true
+    }
+  ]
+}

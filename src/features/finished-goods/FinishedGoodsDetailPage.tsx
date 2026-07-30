@@ -1,12 +1,9 @@
-import { ArrowLeft, Plus, Scale } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
-import { useState } from "react";
 import { PageHeader } from "../../components/ui/PageHeader";
 import { SectionHeader } from "../../components/ui/SectionHeader";
 import { StatusPill } from "../../components/ui/StatusPill";
-import type { FinishedGoodsMovementType } from "../../types/domain";
 import { useFormulaData } from "../formulas/state/FormulaDataContext";
-import { packagingLotBalance } from "../packaging/domain/packagingLogic";
 import {
   finishedGoodsBalance,
   finishedGoodsCostBasis,
@@ -14,7 +11,6 @@ import {
 export function FinishedGoodsDetailPage() {
   const { finishedGoodsBatchId } = useParams(),
     d = useFormulaData(),
-    [message, setMessage] = useState(""),
     batch = d.finishedGoodsBatches.find((b) => b.id === finishedGoodsBatchId);
   if (!batch)
     return (
@@ -31,9 +27,6 @@ export function FinishedGoodsDetailPage() {
     ),
     packSpec = d.packagingSpecifications.find(
       (s) => s.id === packVersion?.packagingSpecificationId,
-    ),
-    lines = d.packagingSpecificationLines.filter(
-      (l) => l.packagingSpecificationVersionId === packVersion?.id,
     ),
     allocations = d.packagingAllocations.filter(
       (a) => a.finishedGoodsBatchId === batch.id,
@@ -54,35 +47,6 @@ export function FinishedGoodsDetailPage() {
         : undefined,
       batch.packagingCostSnapshot ?? 0,
     );
-  const addMovement = async () => {
-    const type = (window.prompt(
-        "Movement type: Sample, Tester, Sale, Waste, InternalUse, Adjustment",
-        "Sample",
-      ) ?? "") as FinishedGoodsMovementType,
-      quantity = Number(window.prompt("Quantity"));
-    if (!quantity) return;
-    try {
-      await d.addFinishedGoodsMovement({
-        finishedGoodsBatchId: batch.id,
-        type,
-        quantity,
-        unit: batch.unit,
-        reason: "Manual Finished Goods movement",
-        notes: "",
-        occurredAt: new Date().toISOString(),
-      });
-    } catch (e) {
-      setMessage(e instanceof Error ? e.message : "Movement failed.");
-    }
-  };
-  const commit = async () => {
-    try {
-      const errors = await Promise.resolve(d.commitPackagingConsumption(batch.id));
-      setMessage(errors.join(" ") || "Packaging Consumption committed.");
-    } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Packaging Consumption failed.");
-    }
-  };
   return (
     <>
       <Link className="back-link" to="/finished-goods">
@@ -90,15 +54,9 @@ export function FinishedGoodsDetailPage() {
         Finished Goods
       </Link>
       <PageHeader
-        eyebrow={`${product?.name} / Finished Goods`}
+        eyebrow={`${product?.name} / Legacy Finished Goods history`}
         title={batch.finishedGoodsBatchNumber}
-        description="Physical output registration; Active does not imply regulatory approval or legal sale readiness."
-        action={
-          <button className="button primary" disabled={d.pendingActions.includes("addFinishedGoodsMovement")} onClick={addMovement}>
-            <Plus size={14} />
-            Record Movement
-          </button>
-        }
+        description="Read-only compatibility record. Active does not imply regulatory approval, quality release, or legal sale readiness."
       />
       <section className="batch-source">
         <div>
@@ -140,102 +98,29 @@ export function FinishedGoodsDetailPage() {
       {packVersion && (
         <section className="panel execution-section">
           <SectionHeader
-            title="Packaging allocation"
-            detail="One or more physical lots per component; no stock change before explicit commit"
-            action={
-              <button className="button ghost" disabled={d.pendingActions.includes("commitPackagingConsumption")} onClick={commit}>
-                <Scale size={14} />
-                {d.pendingActions.includes("commitPackagingConsumption") ? "Committing…" : "Commit Packaging Consumption"}
-              </button>
-            }
+            title="Historical packaging allocation"
+            detail="Read-only evidence retained from the legacy commitment workflow"
           />
-          {(message || d.actionError) && (
-            <p
-              className={
-                message.includes("committed") ? "success-message" : "form-error"
-              }
-            >
-              {message || d.actionError}
-            </p>
-          )}
           <div className="execution-lines">
-            {lines.map((line) => {
-              const component = d.packagingComponents.find(
-                  (c) => c.id === line.packagingComponentId,
-                ),
-                own = allocations.filter(
-                  (a) => a.packagingSpecificationLineId === line.id,
-                ),
-                lots = d.packagingInventoryLots.filter(
-                  (l) =>
-                    l.packagingComponentId === component?.id &&
-                    l.status === "Active",
-                );
+            {allocations.map((allocation) => {
+              const line = d.packagingSpecificationLines.find((item) => item.id === allocation.packagingSpecificationLineId);
+              const component = d.packagingComponents.find((item) => item.id === line?.packagingComponentId);
+              const lot = d.packagingInventoryLots.find((item) => item.id === allocation.packagingInventoryLotId);
               return (
-                <article key={line.id}>
+                <article key={allocation.id}>
                   <div className="execution-plan">
-                    <h3>{component?.name}</h3>
+                    <h3>{component?.name ?? "Unknown component"}</h3>
                     <p>
-                      Required{" "}
-                      <b>
-                        {line.quantityPerUnit * batch.initialQuantity}{" "}
-                        {line.unit}
-                      </b>
+                      {allocation.quantity} {allocation.unit} · {lot?.internalLotNumber ?? "No physical lot recorded"}
                     </p>
                   </div>
-                  <div className="allocations">
-                    {own.map((a) => (
-                      <div key={a.id}>
-                        <select
-                          disabled={!!a.packagingInventoryMovementId}
-                          value={a.packagingInventoryLotId ?? ""}
-                          onChange={(e) =>
-                            d.updatePackagingAllocation(a.id, {
-                              packagingInventoryLotId: e.target.value,
-                            })
-                          }
-                        >
-                          <option value="">Select physical lot</option>
-                          {lots.map((l) => (
-                            <option key={l.id} value={l.id}>
-                              {l.internalLotNumber} ·{" "}
-                              {packagingLotBalance(
-                                l,
-                                d.packagingInventoryMovements,
-                              )}{" "}
-                              {l.unit}
-                            </option>
-                          ))}
-                        </select>
-                        <input
-                          disabled={!!a.packagingInventoryMovementId}
-                          type="number"
-                          value={a.quantity}
-                          onChange={(e) =>
-                            d.updatePackagingAllocation(a.id, {
-                              quantity: Number(e.target.value),
-                            })
-                          }
-                        />
-                        <span>{a.unit}</span>
-                        {a.packagingInventoryMovementId && (
-                          <StatusPill tone="green">Committed</StatusPill>
-                        )}
-                      </div>
-                    ))}
-                    <button
-                      className="text-button"
-                      onClick={() =>
-                        d.addPackagingAllocation(batch.id, line.id)
-                      }
-                    >
-                      <Plus size={13} />
-                      Add lot allocation
-                    </button>
-                  </div>
+                  <StatusPill tone={allocation.packagingInventoryMovementId ? "green" : "neutral"}>
+                    {allocation.packagingInventoryMovementId ? "Historically committed" : "Uncommitted legacy record"}
+                  </StatusPill>
                 </article>
               );
             })}
+            {!allocations.length && <p className="empty-copy">No historical packaging allocations were recorded.</p>}
           </div>
         </section>
       )}
