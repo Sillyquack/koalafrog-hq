@@ -32,6 +32,8 @@
     "audit:finished-goods-rc": "node scripts/finished-goods-rc-evidence.mjs",
     "audit:environment:write": "node scripts/deployment-preparation-audit.mjs --write",
     "audit:environment": "node scripts/deployment-preparation-audit.mjs --check",
+    "audit:migration-provenance:write": "node scripts/migration-provenance-reconciliation.mjs --write",
+    "audit:migration-provenance": "node scripts/migration-provenance-reconciliation.mjs",
     "audit:migrations": "node scripts/deployment-preparation-audit.mjs --check",
     "test:deployment-preparation": "node scripts/test-deployment-preparation.mjs",
     "deploy:preflight": "node scripts/deploy-preflight.mjs",

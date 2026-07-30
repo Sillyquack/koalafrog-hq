@@ -54,7 +54,7 @@
       "domainOwner": "beard-studio",
       "sources": [
         "supabase/migrations/20260721140000_beard_photo_analysis.sql",
-        "supabase/migrations/20260727120000_beard_intelligence_v2.sql"
+        "supabase/migrations/20260727095115_beard_intelligence_v2.sql"
       ],
       "type": "beard_photo_analysis"
     },
@@ -142,7 +142,7 @@
         "supabase/migrations/20260722190000_beard_support_diagnostic_lookup.sql",
         "supabase/migrations/20260723060732_beard_semantic_safety_v4.sql",
         "supabase/migrations/20260723125652_beard_provider_timeout_observability.sql",
-        "supabase/migrations/20260726121237_beard_semantic_failure_invariant.sql"
+        "supabase/migrations/20260726122046_beard_semantic_failure_invariant.sql"
       ],
       "type": "entityIndex"
     },
@@ -338,7 +338,7 @@
       "documented": true,
       "domainOwner": "procurement",
       "sources": [
-        "supabase/migrations/20260726130000_supplier_history_reliability.sql"
+        "supabase/migrations/20260727121000_supplier_history_reliability.sql"
       ],
       "type": "purchase_placed"
     },
@@ -450,7 +450,7 @@
       "documented": true,
       "domainOwner": "suppliers",
       "sources": [
-        "supabase/migrations/20260726120000_supplier_documentation.sql"
+        "supabase/migrations/20260727120000_supplier_documentation.sql"
       ],
       "type": "supplier_wide"
     },

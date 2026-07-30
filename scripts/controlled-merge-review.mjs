@@ -32,8 +32,8 @@ function git(args) {
 }
 
 function ensureIdentity() {
-  if (git(["rev-parse", targetBranch]) !== targetHead) throw new Error("Stale target branch: rerun the controlled review.")
-  if (git(["merge-base", targetBranch, auditedFeatureHead]) !== mergeBase) throw new Error("Merge base changed.")
+  if (git(["rev-parse", targetHead]) !== targetHead) throw new Error("Historical target commit is unavailable.")
+  if (git(["merge-base", targetHead, auditedFeatureHead]) !== mergeBase) throw new Error("Historical merge base changed.")
   if (git(["rev-parse", `${rcTag}^{}`]) !== rcTarget) throw new Error("Frozen RC tag target changed.")
   if (git(["rev-list", "--count", `${mergeBase}..${auditedFeatureHead}`]) !== "76") throw new Error("Audited feature history changed.")
 }

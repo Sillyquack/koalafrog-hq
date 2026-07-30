@@ -16,7 +16,7 @@
   "migrationCounts": {
     "target": 64,
     "integrated": 87,
-    "featureOnly": 23
+    "featureOnly": 33
   },
   "conflictCount": 0,
   "semanticConflictCount": 0,
