@@ -41,6 +41,8 @@
     "audit:restore": "node scripts/local-restore-verify.mjs",
     "audit:merge-review:write": "node scripts/controlled-merge-review.mjs --write",
     "audit:merge-review": "node scripts/controlled-merge-review.mjs --check",
+    "audit:release-1-0:write": "node scripts/release-1-0-baseline.mjs --write",
+    "audit:release-1-0": "node scripts/release-1-0-baseline.mjs --check",
     "test:merge-review": "node scripts/test-controlled-merge-review.mjs",
     "build:analyze": "node scripts/build-analysis.mjs",
     "test:accessibility": "node scripts/accessibility-audit.mjs",

@@ -5,7 +5,7 @@
     "event envelope remains domain-specific"
   ],
   "authorityInventoryVersion": "1.0.0",
-  "branch": "main",
+  "branch": "docs/release-1-0-baseline",
   "deploymentApprovalGranted": false,
   "deploymentPrerequisites": [
     "hosted migration approval",
