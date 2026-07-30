@@ -1,5 +1,5 @@
 begin;
-select plan(22);
+select plan(24);
 
 select col_is_null('public','supplier_products','price','Supplier Product price may be unknown');
 select col_is_null('public','supplier_products','currency','Supplier Product currency may be unknown');
@@ -7,6 +7,26 @@ select col_is_null('public','supplier_products','package_quantity','Supplier Pro
 select col_is_null('public','supplier_products','package_unit','Supplier Product package unit may be unknown');
 select has_column('public','supplier_products','price_state','Supplier Product records price knowledge explicitly');
 select has_column('public','supplier_products','lifecycle_status','Supplier Product records lifecycle explicitly');
+select ok(
+  exists(
+    select 1
+    from pg_constraint
+    where conrelid = 'public.supplier_products'::regclass
+      and conname = 'supplier_products_price_state_consistency'
+      and contype = 'c'
+  ),
+  'Supplier Product price-state consistency remains enforced'
+);
+select ok(
+  exists(
+    select 1
+    from pg_constraint
+    where conrelid = 'public.packaging_supplier_products'::regclass
+      and conname = 'packaging_supplier_products_price_state_consistency'
+      and contype = 'c'
+  ),
+  'Packaging Supplier Product price-state consistency remains enforced'
+);
 
 select has_column('public','packaging_components','specification_notes','Packaging supports draft specifications');
 select has_column('public','packaging_components','sourcing_notes','Packaging supports sourcing notes');
