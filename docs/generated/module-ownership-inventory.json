@@ -164,19 +164,33 @@
     {
       "canonicalRepository": null,
       "classification": "canonical_read_model",
-      "crossDomainDependencies": [
-        "../../platform/operations/ownerOperationReceipt"
-      ],
+      "crossDomainDependencies": [],
       "domainOwner": "shared-ui",
       "legacyDependency": [],
-      "modulePath": "src/components/ui/OperationReceipt.tsx",
+      "modulePath": "src/components/ui/OperationReceiptPanel.test.tsx",
       "objectType": "module",
       "responsibility": "module",
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 696,
-        "lines": 13
+        "bytes": 2127,
+        "lines": 61
+      }
+    },
+    {
+      "canonicalRepository": null,
+      "classification": "canonical_read_model",
+      "crossDomainDependencies": [],
+      "domainOwner": "shared-ui",
+      "legacyDependency": [],
+      "modulePath": "src/components/ui/OperationReceiptPanel.tsx",
+      "objectType": "module",
+      "responsibility": "module",
+      "riskNotes": [],
+      "serverAuthoritativePoliciesConsumed": [],
+      "sizeMetrics": {
+        "bytes": 3684,
+        "lines": 26
       }
     },
     {
@@ -1894,8 +1908,8 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 17869,
-        "lines": 65
+        "bytes": 17996,
+        "lines": 66
       }
     },
     {
@@ -1910,7 +1924,7 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 1300,
+        "bytes": 1305,
         "lines": 45
       }
     },
@@ -1926,7 +1940,7 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 479,
+        "bytes": 492,
         "lines": 21
       }
     },
@@ -2096,6 +2110,7 @@
       "canonicalRepository": null,
       "classification": "canonical_read_model",
       "crossDomainDependencies": [
+        "../../components/ui/OperationReceiptPanel",
         "../../components/ui/PageHeader",
         "../../components/ui/SectionHeader",
         "../../components/ui/StatusPill",
@@ -2112,8 +2127,8 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 11581,
-        "lines": 25
+        "bytes": 12020,
+        "lines": 27
       }
     },
     {
@@ -3201,8 +3216,8 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 7471,
-        "lines": 29
+        "bytes": 8160,
+        "lines": 32
       }
     },
     {
@@ -3708,7 +3723,7 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 7754,
+        "bytes": 7826,
         "lines": 30
       }
     },
@@ -3764,7 +3779,7 @@
       "canonicalRepository": null,
       "classification": "canonical_read_model",
       "crossDomainDependencies": [
-        "../../components/ui/OperationReceipt",
+        "../../components/ui/OperationReceiptPanel",
         "../../components/ui/PageHeader",
         "../../platform/operations/ownerOperationReceipt"
       ],
@@ -3776,7 +3791,7 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 11568,
+        "bytes": 11640,
         "lines": 66
       }
     },
@@ -3792,8 +3807,8 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 18473,
-        "lines": 50
+        "bytes": 19095,
+        "lines": 53
       }
     },
     {
@@ -6714,6 +6729,24 @@
     {
       "canonicalRepository": null,
       "classification": "canonical_read_model",
+      "crossDomainDependencies": [
+        "../supabase/client"
+      ],
+      "domainOwner": "platform",
+      "legacyDependency": [],
+      "modulePath": "src/platform/operations/ownerOperationEvidenceRepository.ts",
+      "objectType": "repository",
+      "responsibility": "repository",
+      "riskNotes": [],
+      "serverAuthoritativePoliciesConsumed": [],
+      "sizeMetrics": {
+        "bytes": 2683,
+        "lines": 80
+      }
+    },
+    {
+      "canonicalRepository": null,
+      "classification": "canonical_read_model",
       "crossDomainDependencies": [],
       "domainOwner": "platform",
       "legacyDependency": [],
@@ -6723,8 +6756,8 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 2550,
-        "lines": 32
+        "bytes": 3189,
+        "lines": 39
       }
     },
     {
@@ -6739,8 +6772,43 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 4442,
-        "lines": 129
+        "bytes": 6157,
+        "lines": 178
+      }
+    },
+    {
+      "canonicalRepository": null,
+      "classification": "canonical_read_model",
+      "crossDomainDependencies": [],
+      "domainOwner": "platform",
+      "legacyDependency": [],
+      "modulePath": "src/platform/operations/platformMigrationStatus.test.ts",
+      "objectType": "module",
+      "responsibility": "module",
+      "riskNotes": [],
+      "serverAuthoritativePoliciesConsumed": [],
+      "sizeMetrics": {
+        "bytes": 842,
+        "lines": 26
+      }
+    },
+    {
+      "canonicalRepository": null,
+      "classification": "canonical_read_model",
+      "crossDomainDependencies": [
+        "../../../docs/generated/hosted-migration-rehearsal-manifest.json",
+        "../supabase/client"
+      ],
+      "domainOwner": "platform",
+      "legacyDependency": [],
+      "modulePath": "src/platform/operations/platformMigrationStatus.ts",
+      "objectType": "module",
+      "responsibility": "module",
+      "riskNotes": [],
+      "serverAuthoritativePoliciesConsumed": [],
+      "sizeMetrics": {
+        "bytes": 2132,
+        "lines": 68
       }
     },
     {
@@ -6762,11 +6830,12 @@
       "serverAuthoritativePoliciesConsumed": [
         "../features/development/data/developmentExperimentRepository",
         "../features/procurement/data/procurementRepository",
+        "./operations/ownerOperationEvidenceRepository",
         "./repository/supabaseWorkspaceRepository"
       ],
       "sizeMetrics": {
-        "bytes": 10032,
-        "lines": 113
+        "bytes": 14449,
+        "lines": 135
       }
     },
     {
@@ -6967,8 +7036,8 @@
         "../repository/supabaseWorkspaceRepository"
       ],
       "sizeMetrics": {
-        "bytes": 47487,
-        "lines": 743
+        "bytes": 48842,
+        "lines": 780
       }
     },
     {
@@ -7125,8 +7194,8 @@
       ],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 663803,
-        "lines": 19460
+        "bytes": 664604,
+        "lines": 19496
       }
     },
     {

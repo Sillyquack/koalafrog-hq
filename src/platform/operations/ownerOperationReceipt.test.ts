@@ -1,5 +1,5 @@
 import {describe,expect,it} from 'vitest'
-import {buildOwnerOperationExport,receiptFromPersistedRow,reconcileOwnerRecords} from './ownerOperationReceipt'
+import {buildOwnerOperationExport,isOwnerOperationReceipt,receiptFromPersistedRow,reconcileOwnerRecords} from './ownerOperationReceipt'
 
 const workspaceId='11111111-1111-4111-8111-111111111111'
 const row={id:'22222222-2222-4222-8222-222222222222',workspace_id:workspaceId,created_at:'2026-07-30T12:00:00.000Z',name:'Precision scale',equipment_type:'scale',owner_id:'secret-owner',access_token:'secret'}
@@ -20,12 +20,19 @@ describe('owner operation receipts',()=>{
   expect(result).toEqual({classification:'ambiguous_conflict',candidateIds:[row.id,'33333333-3333-4333-8333-333333333333']})
  })
  it('exports only allowlisted fields and only the active workspace',()=>{
-  const exported=buildOwnerOperationExport(workspaceId,{equipment:[row,{...row,id:'other',workspace_id:'other-workspace'}]},'2026-07-30T13:00:00.000Z')
-  expect(exported.records.equipment).toEqual([{id:row.id,workspace_id:workspaceId,name:'Precision scale',equipment_type:'scale',created_at:row.created_at}])
+  const exported=buildOwnerOperationExport(workspaceId,{equipment:[{...row,id:'z-record'},{...row,id:'a-record'},{...row,id:'other',workspace_id:'other-workspace'}]},'2026-07-30T13:00:00.000Z')
+  expect(exported.records.equipment?.map(item=>item.id)).toEqual(['a-record','z-record'])
   expect(JSON.stringify(exported)).not.toMatch(/secret-owner|access_token|secret/)
  })
  it('keeps requested-item parent identity auditable',()=>{
   const item={...row,procurement_request_id:'request-id',name:'Jojoba oil',category:'raw_material'}
   expect(receiptFromPersistedRow('procurement_requested_item',workspaceId,item,{name:'Jojoba oil'},'request-id').parent).toEqual({entityType:'procurement_request',recordId:'request-id'})
+ })
+ it('validates navigation receipts against entity, persisted ID, and active workspace',()=>{
+  const receipt=receiptFromPersistedRow('packaging_component',workspaceId,row,{name:'Precision scale'})
+  expect(isOwnerOperationReceipt(receipt,{entityType:'packaging_component',recordId:row.id,workspaceId})).toBe(true)
+  expect(isOwnerOperationReceipt({...receipt,workspaceId:'other'},{entityType:'packaging_component',recordId:row.id,workspaceId})).toBe(false)
+  expect(isOwnerOperationReceipt({...receipt,operation:'invented'})).toBe(false)
+  expect(isOwnerOperationReceipt({entityType:'packaging_component',recordId:row.id})).toBe(false)
  })
 })

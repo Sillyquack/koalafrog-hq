@@ -5,7 +5,7 @@ import{PageHeader}from'../../components/ui/PageHeader'
 import{useProcurement}from'./useProcurement'
 import{procurementActions}from'./actions/procurementActions'
 import{equipmentReadiness}from'./domain/procurement'
-import{OperationReceipt}from'../../components/ui/OperationReceipt'
+import{OperationReceiptPanel}from'../../components/ui/OperationReceiptPanel'
 import type{OwnerOperationReceipt}from'../../platform/operations/ownerOperationReceipt'
 
 const text=(data:FormData,name:string)=>String(data.get(name)??'').trim()
@@ -19,7 +19,7 @@ export function EquipmentPage(){
  const visible=data.equipment.filter(x=>!x.archived_at&&`${x.name} ${x.equipment_type}`.toLowerCase().includes(search.toLowerCase()))
  return <div className="equipment-page"><PageHeader eyebrow="Owned assets and planned tools" title="Equipment" description="Structured ownership, availability and calibration facts. Reference knowledge never counts as owned equipment." action={<button className="button primary" onClick={()=>setCreating(x=>!x)}><Plus size={14}/>Add Equipment</button>}/>
  {creating&&<EquipmentForm onSubmit={create} message={message}/>}
- {receipt&&<OperationReceipt receipt={receipt}/>}
+ {receipt&&<OperationReceiptPanel result={{state:'confirmed',receipt}} onDismiss={()=>setReceipt(undefined)}/>}
  <label className="procurement-search"><Search size={15}/><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search equipment"/></label>
  <section className="equipment-library">{visible.length?visible.map(item=>{const ready=equipmentReadiness(item,data.capabilities,data.equipmentPolicies.find(x=>x.equipment_item_id===item.id),data.serviceEvents);return <Link className="panel" key={item.id} to={`/equipment/${item.id}`}><Gauge/><div><span className="eyebrow">{item.equipment_type.replaceAll('_',' ')} · {item.ownership_state.replaceAll('_',' ')}</span><h2>{item.name}</h2><p>{item.quantity??'Quantity not recorded'} · {item.availability_state.replaceAll('_',' ')} · {item.maximum_value==null?'Range not recorded':`${item.minimum_value??0}–${item.maximum_value} ${item.capacity_unit}`}</p></div><strong className={ready.state}>{ready.state}</strong></Link>}):<article className="panel procurement-empty"><Wrench/><h2>No Equipment recorded</h2><p>Register owned equipment or a planned candidate without inventing commercial or calibration facts.</p></article>}</section></div>
 }

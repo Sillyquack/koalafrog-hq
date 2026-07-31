@@ -1,12 +1,12 @@
 {
   "counts": {
     "foreignKeys": 630,
-    "functions": 208,
+    "functions": 209,
     "indexes": 638,
     "materializedViews": 0,
     "policies": 187,
     "providers": 5,
-    "repositories": 16,
+    "repositories": 17,
     "routes": 63,
     "tables": 199,
     "triggers": 71,

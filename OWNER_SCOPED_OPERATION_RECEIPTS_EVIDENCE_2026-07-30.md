@@ -80,3 +80,11 @@ or hosted write was used.
 
 Deploy preflight is run after the focused commit because its first invariant requires a
 clean working tree.
+
+## Post-1.0 evidence-surface follow-up
+
+The 2026-07-31 post-1.0 follow-up preserves this receipt schema and persistence
+authority while exposing the previously discarded Supplier Product,
+Packaging-destination, and requested-item receipts. It also adds an inspectable
+owner export and the narrow authenticated database migration-status contract.
+See [Workspace Seed Evidence Surfaces V1](WORKSPACE_SEED_EVIDENCE_SURFACES_2026-07-31.md).

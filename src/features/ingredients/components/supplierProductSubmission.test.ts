@@ -17,7 +17,7 @@ describe("Supplier Product form persistence", () => {
         onFailure,
       ),
     ).resolves.toBe(saved);
-    expect(onSuccess).toHaveBeenCalledOnce();
+    expect(onSuccess).toHaveBeenCalledWith(saved);
     expect(onFailure).not.toHaveBeenCalled();
   });
 

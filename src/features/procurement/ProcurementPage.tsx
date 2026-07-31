@@ -8,7 +8,7 @@ import {exportProcurement,parseProcurementJson} from './data/procurementIntercha
 import type {ProcurementData,ProcurementPriority,ProcurementRequestStatus} from './domain/procurement'
 import {useProcurement} from './useProcurement'
 import {PurchasingIntelligencePanel} from './PurchasingIntelligencePanel'
-import {OperationReceipt} from '../../components/ui/OperationReceipt'
+import {OperationReceiptPanel} from '../../components/ui/OperationReceiptPanel'
 import type {OwnerOperationReceipt} from '../../platform/operations/ownerOperationReceipt'
 
 const statuses:ProcurementRequestStatus[]=['identified','researching','specification_required','quote_requested','planned','ready_to_order','ordered','partially_received','received','cancelled','rejected']
@@ -48,7 +48,7 @@ export function ProcurementPage(){
    <label className="wide">Notes<textarea name="notes" rows={2}/></label><button className="button primary">Save request</button>
   </form>}
   {message&&<p className="form-message" role="status">{message}</p>}
-  {receipt&&<OperationReceipt receipt={receipt}/>}
+  {receipt&&<OperationReceiptPanel result={{state:'confirmed',receipt}} onDismiss={()=>setReceipt(undefined)}/>}
   {workspace&&<><PurchasingIntelligencePanel workspaceId={workspace.workspaceId} data={data} refresh={refresh}/><PurchaseExecutionPanel data={data} refresh={refresh}/></>}
   <section className="procurement-filters" aria-label="Filter procurement requests">
    <label><Search size={14}/><span className="visually-hidden">Search</span><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search requests"/></label>

@@ -7,6 +7,31 @@ export type Json =
   | Json[]
 
 export type Database = {
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       batch_material_consumptions: {
@@ -16821,6 +16846,13 @@ export type Database = {
             referencedRelation: "ingredients"
             referencedColumns: ["workspace_id", "id"]
           },
+          {
+            foreignKeyName: "supplier_products_workspace_owner_fk"
+            columns: ["workspace_id", "owner_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id", "owner_id"]
+          },
         ]
       }
       supplier_quote_lines: {
@@ -18410,6 +18442,7 @@ export type Database = {
         Args: { target_packaging_run_id: string }
         Returns: Json
       }
+      get_platform_migration_status_v1: { Args: never; Returns: Json }
       get_production_batch_trace_v1: {
         Args: { target_production_batch_id: string }
         Returns: Json
@@ -19453,6 +19486,9 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
   public: {
     Enums: {},
   },
