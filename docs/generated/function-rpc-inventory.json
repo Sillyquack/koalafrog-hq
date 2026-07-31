@@ -1295,6 +1295,23 @@
       "volatility": "v"
     },
     {
+      "approximateComplexity": 6,
+      "grants": [
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
+      ],
+      "name": "get_platform_migration_status_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "\"\"",
+      "securityDefiner": true,
+      "signature": "",
+      "sourceLength": 36,
+      "volatility": "s"
+    },
+    {
       "approximateComplexity": 11,
       "grants": [
         "authenticated=X/postgres",

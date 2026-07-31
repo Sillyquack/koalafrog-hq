@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Download, ShieldCheck, Upload } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Copy, Download, Eye, RefreshCw, ShieldCheck, Upload } from 'lucide-react'
 import { PageHeader } from '../components/ui/PageHeader'
 import { SectionHeader } from '../components/ui/SectionHeader'
 import { useFormulaData } from '../features/formulas/state/FormulaDataContext'
@@ -10,13 +10,22 @@ import { SupabaseWorkspaceRepository } from './repository/supabaseWorkspaceRepos
 import { loadDevelopmentBackup } from '../features/development/data/developmentExperimentRepository'
 import { loadProcurementBackup } from '../features/procurement/data/procurementRepository'
 import { platformVersionInfo } from './version'
-import {buildOwnerOperationExport,type OwnerOperationEntity} from './operations/ownerOperationReceipt'
+import {useActiveWorkspace} from './startup/ActiveWorkspaceContext'
+import {loadOwnerOperationEvidence} from './operations/ownerOperationEvidenceRepository'
+import {comparePlatformMigrationStatus,loadPlatformMigrationStatus,type PlatformMigrationStatus} from './operations/platformMigrationStatus'
 
 export function PlatformPage() {
   const data = useFormulaData()
+  const activeWorkspace = useActiveWorkspace()
   const [report, setReport] = useState<ReturnType<typeof validateV9Workspace>>()
   const [message, setMessage] = useState('')
   const [importMeta, setImportMeta] = useState('')
+  const [evidenceJson,setEvidenceJson]=useState('')
+  const [previewOpen,setPreviewOpen]=useState(false)
+  const [migrationStatus,setMigrationStatus]=useState<PlatformMigrationStatus|null>(null)
+  const [migrationError,setMigrationError]=useState('')
+  const previewCloseRef=useRef<HTMLButtonElement>(null)
+  const activeWorkspaceId=activeWorkspace?.workspaceId
   const collections = Object.fromEntries(
     migrationCollectionOrder.map(collection => [collection, data[collection]]),
   ) as unknown as Parameters<typeof createBackup>[0]
@@ -47,22 +56,33 @@ export function PlatformPage() {
     }
   }
 
-  const exportOperationEvidence = async () => {
-    try {
-      if(!supabase)throw new Error('Configure Supabase before exporting operation evidence.')
-      const evidenceClient=supabase
-      const {data:{user},error:authError}=await evidenceClient.auth.getUser()
-      if(authError||!user)throw new Error('Authenticated owner required.')
-      const workspace=await evidenceClient.from('workspaces').select('id').eq('owner_id',user.id).single()
-      if(workspace.error)throw workspace.error
-      const tables=[['supplier_product','supplier_products'],['equipment','equipment_items'],['packaging_component','packaging_components'],['procurement_request','procurement_requests'],['procurement_requested_item','procurement_requested_items']] as const satisfies readonly(readonly[OwnerOperationEntity,'supplier_products'|'equipment_items'|'packaging_components'|'procurement_requests'|'procurement_requested_items'])[]
-      const entries=await Promise.all(tables.map(async([entity,table])=>{const result=await evidenceClient.from(table).select('*').eq('workspace_id',workspace.data.id);if(result.error)throw result.error;return[entity,result.data??[]] as const}))
-      const json=JSON.stringify(buildOwnerOperationExport(workspace.data.id,Object.fromEntries(entries)),null,2)
-      const url=URL.createObjectURL(new Blob([json],{type:'application/json'})),anchor=document.createElement('a')
-      anchor.href=url;anchor.download='koalafrog-owner-operation-evidence.json';anchor.click();URL.revokeObjectURL(url)
-      setMessage('Owner-scoped operation evidence exported with internal record IDs.')
-    }catch(error){setMessage(error instanceof Error?error.message:'Operation evidence export failed.')}
+  const operationEvidenceJson = async () => {
+    if(evidenceJson)return evidenceJson
+    if(!activeWorkspaceId)throw new Error('An active owner workspace is required.')
+    const json=JSON.stringify(await loadOwnerOperationEvidence(activeWorkspaceId),null,2)
+    setEvidenceJson(json)
+    return json
   }
+
+  const previewOperationEvidence = async () => {
+    try {
+      await operationEvidenceJson();setPreviewOpen(true);setMessage('Owner-scoped evidence is ready to inspect.')
+    }catch(error){setMessage(error instanceof Error?error.message:'Operation evidence preview failed.')}
+  }
+  const copyOperationEvidence=async()=>{
+    try{const json=await operationEvidenceJson();await navigator.clipboard.writeText(json);setMessage('Owner-scoped operation evidence JSON copied.')}
+    catch(error){setMessage(error instanceof Error?error.message:'Could not copy operation evidence JSON.')}
+  }
+  const downloadOperationEvidence=async()=>{
+    try{const json=await operationEvidenceJson(),url=URL.createObjectURL(new Blob([json],{type:'application/json'})),anchor=document.createElement('a');anchor.href=url;anchor.download='koalafrog-owner-operation-evidence.json';anchor.click();URL.revokeObjectURL(url);setMessage('Owner-scoped operation evidence JSON downloaded.')}
+    catch(error){setMessage(error instanceof Error?error.message:'Operation evidence download failed.')}
+  }
+
+  const refreshMigrationStatus=async()=>{setMigrationError('');try{setMigrationStatus(await loadPlatformMigrationStatus())}catch(error){setMigrationStatus(null);setMigrationError(error instanceof Error?error.message:'Migration status unavailable.')}}
+  useEffect(()=>{if(!activeWorkspaceId)return;let current=true;void loadPlatformMigrationStatus().then(status=>{if(current)setMigrationStatus(status)}).catch(error=>{if(current)setMigrationError(error instanceof Error?error.message:'Migration status unavailable.')});return()=>{current=false}},[activeWorkspaceId])
+  useEffect(()=>{if(previewOpen)previewCloseRef.current?.focus()},[previewOpen])
+  const compatibility=comparePlatformMigrationStatus(migrationStatus)
+  const evidence=evidenceJson?JSON.parse(evidenceJson) as {generatedAt:string;records:Record<string,unknown[]>}:null
 
   const migrate = async () => {
     if (!report || report.blockingErrors) return setMessage('Run a successful dry run first.')
@@ -105,8 +125,10 @@ export function PlatformPage() {
     </section>
     <div className="compliance-notice"><ShieldCheck /><div><strong>{isSupabaseConfigured ? 'Supabase client configured' : 'Supabase setup required'}</strong><p>Browser-safe anon credentials only. Service-role secrets never belong in the frontend.</p></div></div>
     <div className="compliance-grid">
-      <section className="panel"><SectionHeader title="Local v9 migration" detail="Explicit dry run before any remote write" /><button className="button ghost" onClick={() => setReport(validateV9Workspace(collections))}>Validate local workspace</button>{report && <><h3>{report.state}</h3><p>{report.recordsReady} records ready · {report.blockingErrors} blocking errors · {report.warnings} warnings</p><button className="button primary" disabled={!!report.blockingErrors || !isSupabaseConfigured} onClick={migrate}>Import to Supabase</button></>}{message && <p className="form-error">{message}</p>}</section>
-      <section className="panel"><SectionHeader title="Koalafrog Backup" detail="Data export plus explicit Storage manifest" /><button className="button ghost" onClick={exportBackup}><Download size={14} />Export Koalafrog Backup</button><button className="button ghost" onClick={() => void exportOperationEvidence()}><Download size={14} />Export operation evidence</button><label className="button ghost"><Upload size={14} />Validate Backup<input hidden type="file" accept="application/json" onChange={event => event.target.files?.[0] && inspect(event.target.files[0])} /></label>{importMeta && <p>{importMeta}</p>}<p className="empty-copy">Operation evidence contains internal IDs for five explicitly supported domains. The backup manifest lists private document versions and lifecycle state, but file binaries are not included.</p></section>
+      <section className="panel"><SectionHeader title="Local v9 migration" detail="Explicit dry run before any remote write" /><button className="button ghost" onClick={() => setReport(validateV9Workspace(collections))}>Validate local workspace</button>{report && <><h3>{report.state}</h3><p>{report.recordsReady} records ready · {report.blockingErrors} blocking errors · {report.warnings} warnings</p><button className="button primary" disabled={!!report.blockingErrors || !isSupabaseConfigured} onClick={migrate}>Import to Supabase</button></>}{message && <p className="form-error" role="status" aria-live="polite">{message}</p>}</section>
+      <section className="panel"><SectionHeader title="Koalafrog Backup" detail="Data export plus explicit Storage manifest" /><button className="button ghost" onClick={exportBackup}><Download size={14} />Export Koalafrog Backup</button><label className="button ghost"><Upload size={14} />Validate Backup<input hidden type="file" accept="application/json" onChange={event => event.target.files?.[0] && inspect(event.target.files[0])} /></label>{importMeta && <p>{importMeta}</p>}<div className="evidence-export-actions" aria-label="Owner operation evidence export"><button className="button ghost" onClick={()=>void previewOperationEvidence()}><Eye size={14}/>Preview JSON</button><button className="button ghost" onClick={()=>void copyOperationEvidence()}><Copy size={14}/>Copy JSON</button><button className="button ghost" onClick={()=>void downloadOperationEvidence()}><Download size={14}/>Download JSON</button></div><p className="empty-copy">Operation evidence contains stable internal IDs for five explicitly supported domains. It is owner-authenticated, workspace-scoped, and excludes arbitrary database payloads. The backup manifest lists private document versions and lifecycle state, but file binaries are not included.</p></section>
+      <section className={`panel migration-status-card ${compatibility.state}`} aria-labelledby="migration-status-title"><SectionHeader title="Database migration compatibility" detail="Narrow authenticated server-authoritative diagnostic"/><h3 id="migration-status-title">{compatibility.state==='match'?'Match':compatibility.state==='mismatch'?'Mismatch — production operations blocked':'Unknown — production operations blocked'}</h3><dl><div><dt>Actual migration count</dt><dd>{migrationStatus?.migrationCount??'Unknown'}</dd></div><div><dt>Actual migration head</dt><dd className="receipt-id">{migrationStatus?.currentMigrationVersion??'Unknown'}</dd></div><div><dt>Expected application count</dt><dd>{compatibility.expected.migrationCount}</dd></div><div><dt>Expected application head</dt><dd className="receipt-id">{compatibility.expected.currentMigrationVersion}</dd></div><div><dt>Evaluated</dt><dd>{migrationStatus?.evaluatedAt??'Not evaluated'}</dd></div></dl>{migrationError&&<p role="alert" className="form-error">{migrationError}</p>}<p><strong>A mismatch or unknown result blocks production data operations.</strong> No migration SQL, credentials, hostnames, or generic query access are exposed.</p><button className="button ghost" onClick={()=>void refreshMigrationStatus()}><RefreshCw size={14}/>Refresh status</button></section>
     </div>
+    {previewOpen&&evidence&&<div className="modal-backdrop" role="presentation"><section className="workspace-modal evidence-preview-dialog" role="dialog" aria-modal="true" aria-labelledby="evidence-preview-title" aria-describedby="evidence-preview-warning" onKeyDown={event=>{if(event.key==='Escape')setPreviewOpen(false)}}><button ref={previewCloseRef} className="text-button modal-close" onClick={()=>setPreviewOpen(false)} aria-label="Close operation evidence preview">Close</button><span className="eyebrow">Owner-scoped allowlisted JSON</span><h2 id="evidence-preview-title">Operation evidence preview</h2><p id="evidence-preview-warning"><strong>Stable internal record IDs are included.</strong> No credentials, Auth internals, or arbitrary table payloads are included.</p><dl className="evidence-preview-summary"><div><dt>Generated</dt><dd>{evidence.generatedAt}</dd></div><div><dt>Categories</dt><dd>{Object.keys(evidence.records).join(', ')}</dd></div><div><dt>Records</dt><dd>{Object.values(evidence.records).reduce((total,records)=>total+records.length,0)}</dd></div></dl><pre tabIndex={0}>{evidenceJson}</pre><footer><button className="button ghost" onClick={()=>void copyOperationEvidence()}><Copy size={14}/>Copy exact JSON</button><button className="button ghost" onClick={()=>void downloadOperationEvidence()}><Download size={14}/>Download exact JSON</button><button className="button primary" onClick={()=>setPreviewOpen(false)}>Done</button></footer></section></div>}
   </>
 }

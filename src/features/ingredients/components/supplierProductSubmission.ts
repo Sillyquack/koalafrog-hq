@@ -6,12 +6,12 @@ export function persistenceErrorMessage(cause: unknown) {
 
 export async function persistSupplierProductForm<T>(
   persist: () => Promise<T>,
-  onSuccess: () => void,
+  onSuccess: (saved: T) => void,
   onFailure: (message: string) => void,
 ) {
   try {
     const saved = await persist();
-    onSuccess();
+    onSuccess(saved);
     return saved;
   } catch (cause) {
     onFailure(persistenceErrorMessage(cause));

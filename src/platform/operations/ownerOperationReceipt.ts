@@ -21,6 +21,54 @@ export interface OwnerOperationReceipt {
   };
 }
 
+const ownerOperationEntities: OwnerOperationEntity[] = [
+  "supplier_product",
+  "equipment",
+  "packaging_component",
+  "procurement_request",
+  "procurement_requested_item",
+];
+const ownerOperationKinds: OwnerOperationKind[] = [
+  "created",
+  "updated",
+  "reused",
+];
+
+export function isOwnerOperationReceipt(
+  value: unknown,
+  expected: {
+    entityType?: OwnerOperationEntity;
+    recordId?: string;
+    workspaceId?: string;
+  } = {},
+): value is OwnerOperationReceipt {
+  if (!value || typeof value !== "object") return false;
+  const receipt = value as Partial<OwnerOperationReceipt>;
+  return (
+    receipt.schemaVersion === 1 &&
+    ownerOperationEntities.includes(receipt.entityType as OwnerOperationEntity) &&
+    typeof receipt.recordId === "string" &&
+    !!receipt.recordId &&
+    typeof receipt.workspaceId === "string" &&
+    !!receipt.workspaceId &&
+    ownerOperationKinds.includes(receipt.operation as OwnerOperationKind) &&
+    typeof receipt.persistedAt === "string" &&
+    !!receipt.naturalIdentity &&
+    typeof receipt.naturalIdentity === "object" &&
+    !Array.isArray(receipt.naturalIdentity) &&
+    Object.values(receipt.naturalIdentity).every(
+      (item) => typeof item === "string",
+    ) &&
+    (!receipt.parent ||
+      (receipt.parent.entityType === "procurement_request" &&
+        typeof receipt.parent.recordId === "string" &&
+        !!receipt.parent.recordId)) &&
+    (!expected.entityType || receipt.entityType === expected.entityType) &&
+    (!expected.recordId || receipt.recordId === expected.recordId) &&
+    (!expected.workspaceId || receipt.workspaceId === expected.workspaceId)
+  );
+}
+
 export type ReconciliationResult =
   | { classification: "create" }
   | { classification: "reuse"; receipt: OwnerOperationReceipt }
@@ -116,6 +164,7 @@ export function buildOwnerOperationExport(
   for (const entity of Object.keys(safeFields) as OwnerOperationEntity[]) {
     records[entity] = (input[entity] ?? [])
       .filter((row) => row.workspace_id === workspaceId)
+      .sort((left, right) => String(left.id).localeCompare(String(right.id)))
       .map((row) =>
         Object.fromEntries(
           safeFields[entity]

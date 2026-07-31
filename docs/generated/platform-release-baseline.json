@@ -5,7 +5,7 @@
     "event envelope remains domain-specific"
   ],
   "authorityInventoryVersion": "1.0.0",
-  "branch": "fix/owner-scoped-operation-receipts",
+  "branch": "fix/workspace-seed-evidence-surfaces",
   "deploymentApprovalGranted": false,
   "deploymentPrerequisites": [
     "hosted migration approval",
@@ -25,17 +25,17 @@
     "NO_COLOR is ignored when Playwright forces colour"
   ],
   "locallyValidated": true,
-  "migrationHead": "20260730154408",
+  "migrationHead": "20260731044225",
   "milestone": "Recall Readiness V1",
   "remotelyDeployed": false,
   "schemaCounts": {
     "foreignKeys": 630,
-    "functions": 208,
+    "functions": 209,
     "indexes": 638,
     "materializedViews": 0,
     "policies": 187,
     "providers": 5,
-    "repositories": 16,
+    "repositories": 17,
     "routes": 63,
     "tables": 199,
     "triggers": 71,

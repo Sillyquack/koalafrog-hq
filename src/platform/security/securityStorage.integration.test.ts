@@ -739,4 +739,41 @@ run("local Supabase Auth, RLS, RPC, Storage, and cutover security", () => {
       path:"forged",file_name:"forged",content_type:"text/plain",byte_size:1,content_checksum:null,
     })).error).not.toBeNull();
   }, 30_000);
+
+  it("exposes only narrow migration status to authenticated active workspace owners", async () => {
+    const ownerStatus = await userA.rpc("get_platform_migration_status_v1");
+    expect(ownerStatus.error).toBeNull();
+    expect(ownerStatus.data).toMatchObject({
+      migration_count: 90,
+      current_migration_version: "20260731044225",
+    });
+    expect(Object.keys(ownerStatus.data as Record<string, unknown>).sort()).toEqual([
+      "current_migration_version",
+      "evaluated_at",
+      "migration_count",
+    ]);
+    expect(
+      (await anonymous.rpc("get_platform_migration_status_v1")).error,
+    ).not.toBeNull();
+
+    const email = `status-no-workspace-${crypto.randomUUID()}@example.test`;
+    const password = `Local-${crypto.randomUUID()}-9a!`;
+    const created = await admin.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+    });
+    if (created.error) throw created.error;
+    users.push(created.data.user.id);
+    const withoutWorkspace = createClient(url!, anonKey!, {
+      auth: { persistSession: false },
+    });
+    expect(
+      (await withoutWorkspace.auth.signInWithPassword({ email, password })).error,
+    ).toBeNull();
+    expect(
+      (await withoutWorkspace.rpc("get_platform_migration_status_v1")).error
+        ?.message,
+    ).toContain("ACTIVE_OWNER_WORKSPACE_REQUIRED");
+  });
 });

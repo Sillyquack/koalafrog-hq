@@ -255,6 +255,16 @@
       "directTableWrites": [],
       "domainOwner": "platform",
       "idempotency": "not_detected",
+      "modulePath": "src/platform/operations/ownerOperationEvidenceRepository.ts",
+      "revision": "not_detected",
+      "rpcTargets": [],
+      "serverDerivedActor": true
+    },
+    {
+      "controlledBoundaryViolation": false,
+      "directTableWrites": [],
+      "domainOwner": "platform",
+      "idempotency": "not_detected",
       "modulePath": "src/platform/repository/localWorkspaceRepository.ts",
       "revision": "not_detected",
       "rpcTargets": [],

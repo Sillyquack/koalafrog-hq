@@ -4,6 +4,7 @@ import{useFormulaData}from'../../formulas/state/FormulaDataContext'
 import{useProcurement}from'../../procurement/useProcurement'
 import{emptySupplierProductVerification,gradeSuggestions,inheritedSupplierProductProfile,supplierProductCompletion}from'../domain/supplierProductIntelligence'
 import{persistSupplierProductForm}from'./supplierProductSubmission'
+import type{OwnerOperationReceipt}from'../../../platform/operations/ownerOperationReceipt'
 
 const units:InventoryUnit[]=['mg','g','kg','ml','L','pcs']
 const states:OperationalReviewState[]=['unknown','needs_review','reviewed','not_applicable']
@@ -11,7 +12,7 @@ const checks:[keyof SupplierProductVerification,string][]=[['inci','INCI reviewe
 const text=(form:FormData,key:string)=>String(form.get(key)??'').trim()
 const labelFor=(value:string)=>value.replaceAll('_',' ').replace(/^\w/,letter=>letter.toUpperCase())
 
-export function SupplierProductForm({ingredientId,product,onClose}:{ingredientId:string;product?:SupplierProduct;onClose:()=>void}){
+export function SupplierProductForm({ingredientId,product,onClose}:{ingredientId:string;product?:SupplierProduct;onClose:(receipt?:OwnerOperationReceipt)=>void}){
  const{saveSupplierProduct,ingredients}=useFormulaData(),{data:procurement}=useProcurement(),ingredient=ingredients.find(x=>x.id===ingredientId)
  const inherited=ingredient?inheritedSupplierProductProfile(ingredient,product):undefined
  const verification={...emptySupplierProductVerification(),...product?.verification}
@@ -60,5 +61,5 @@ export function SupplierProductForm({ingredientId,product,onClose}:{ingredientId
 
  <section className="supplier-save-preview" aria-label="Supplier Product summary preview"><div><span className="eyebrow">Before saving</span><h3>{values.productName||'Product name not entered'}</h3><p>{values.supplierName||'Supplier not entered'} · {values.packageQuantity||'—'} {values.packageUnit||''} · {values.price||'—'} {values.currency}</p><p>{values.grade||values.supplierGrade||'Grade not recorded'} · {values.origin||'Origin not recorded'} · {labelFor(values.status)}{values.preferred?' · Preferred':''}</p></div><div className="supplier-progress" aria-label="Optional completion status">{Object.entries(completion).map(([key,value])=><div key={key}><span>{labelFor(key)}</span><strong>{value}%</strong><i><b style={{width:`${value}%`}}/></i></div>)}</div></section>
  <p className="completion-note">Completion is guidance only. This Supplier Product is usable without reaching 100%.</p>
- {error&&<p className="form-error" role="alert">{error}</p>}<footer><button type="button" className="button ghost" disabled={saving} onClick={onClose}>Cancel</button><button className="button primary" disabled={saving}>{saving?'Saving…':'Save Supplier Product'}</button></footer></form></div>
+ {error&&<p className="form-error" role="alert">{error}</p>}<footer><button type="button" className="button ghost" disabled={saving} onClick={()=>onClose()}>Cancel</button><button className="button primary" disabled={saving}>{saving?'Saving…':'Save Supplier Product'}</button></footer></form></div>
 }

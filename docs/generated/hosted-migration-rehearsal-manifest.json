@@ -3,9 +3,9 @@
   "generatedAt": "2026-07-29T14:00:00+02:00",
   "rcTag": "finished-goods-traceability-recall-v1-rc1",
   "rcCommit": "bd5617c70dd8ca21611f63750f2293e40a83c8b4",
-  "localMigrationHead": "20260730154408",
+  "localMigrationHead": "20260731044225",
   "hostedStateVerified": false,
-  "count": 89,
+  "count": 90,
   "provenance": {
     "invariant": "Committed evidence never stores the hash of the commit containing that evidence.",
     "stableIdentityFields": [
@@ -3425,6 +3425,39 @@
       "hostedApplicationStatus": "pending_rehearsal",
       "authorizationRequired": true,
       "sourceHash": "50032fc97722afa64bbb810d971c29325f31f6e507bdedd290042c0f51dfc6b1"
+    },
+    {
+      "orderedIndex": 90,
+      "filename": "20260731044225_workspace_seed_evidence_surfaces_v1.sql",
+      "timestamp": "20260731044225",
+      "milestone": "workspace seed evidence surfaces v1",
+      "purpose": "workspace seed evidence surfaces v1",
+      "dependencies": [
+        "20260730154408_supplier_product_owner_workspace_integrity.sql"
+      ],
+      "requiredExtensions": [],
+      "expectedObjectChanges": {
+        "tables": [],
+        "functions": [
+          "get_platform_migration_status_v1"
+        ],
+        "policies": [],
+        "indexes": 0
+      },
+      "expectedDataChanges": 0,
+      "lockRisk": "low",
+      "tableRewriteRisk": "not_detected",
+      "destructiveBehavior": "none detected",
+      "longTransactionRisk": "low_or_unknown",
+      "durationClass": "short_expected",
+      "classification": "authority_change",
+      "rollbackClassification": "code_rollback_or_forward_fix",
+      "forwardFixStrategy": "append a reviewed migration; never rewrite immutable business history",
+      "verificationQuery": "compare migration head, authority inventory, object counts, grants, RLS, and focused domain contracts",
+      "stopCondition": "migration error, drift, timeout, or object mismatch",
+      "hostedApplicationStatus": "pending_rehearsal",
+      "authorizationRequired": true,
+      "sourceHash": "31d1f2f2e18595a9f4b0e09293f46cab721c7ef7b235cff9d539a8575141bd62"
     }
   ]
 }
