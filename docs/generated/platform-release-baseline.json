@@ -5,7 +5,7 @@
     "event envelope remains domain-specific"
   ],
   "authorityInventoryVersion": "1.0.0",
-  "branch": "ops/repair-jojoba-canonical-supplier-link",
+  "branch": "feature/workspace-foundation-seed-v2-final-44",
   "deploymentApprovalGranted": false,
   "deploymentPrerequisites": [
     "hosted migration approval",
