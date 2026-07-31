@@ -8,6 +8,8 @@ import {exportProcurement,parseProcurementJson} from './data/procurementIntercha
 import type {ProcurementData,ProcurementPriority,ProcurementRequestStatus} from './domain/procurement'
 import {useProcurement} from './useProcurement'
 import {PurchasingIntelligencePanel} from './PurchasingIntelligencePanel'
+import {OperationReceipt} from '../../components/ui/OperationReceipt'
+import type {OwnerOperationReceipt} from '../../platform/operations/ownerOperationReceipt'
 
 const statuses:ProcurementRequestStatus[]=['identified','researching','specification_required','quote_requested','planned','ready_to_order','ordered','partially_received','received','cancelled','rejected']
 const priorities:ProcurementPriority[]=['low','normal','high','urgent']
@@ -20,7 +22,7 @@ function PurchaseExecutionPanel({data,refresh}:{data:ProcurementData;refresh:()=
 }
 
 export function ProcurementPage(){
- const{workspace,data,error,refresh}=useProcurement(),[creating,setCreating]=useState(false),[message,setMessage]=useState(''),[search,setSearch]=useState(''),[status,setStatus]=useState(''),[category,setCategory]=useState(''),[supplier,setSupplier]=useState(''),[priority,setPriority]=useState(''),importRef=useRef<HTMLInputElement>(null)
+ const{workspace,data,error,refresh}=useProcurement(),[creating,setCreating]=useState(false),[message,setMessage]=useState(''),[receipt,setReceipt]=useState<OwnerOperationReceipt>(),[search,setSearch]=useState(''),[status,setStatus]=useState(''),[category,setCategory]=useState(''),[supplier,setSupplier]=useState(''),[priority,setPriority]=useState(''),importRef=useRef<HTMLInputElement>(null)
  const categories=useMemo(()=>[...new Set(data?.requests.map(x=>x.category)??[])].sort(),[data])
  const visible=useMemo(()=>data?.requests.filter(request=>{
   const items=data.requestedItems.filter(x=>x.procurement_request_id===request.id),supplierIds=new Set(data.offers.filter(x=>items.some(item=>item.id===x.requested_item_id)).map(x=>x.supplier_id))
@@ -28,7 +30,7 @@ export function ProcurementPage(){
  })??[],[data,search,status,category,priority,supplier])
  if(error)return <section className="panel procurement-state" role="alert"><h1>Procurement unavailable</h1><p>{error}</p><button className="button ghost" onClick={refresh}>Retry</button></section>
  if(!data)return <section className="panel procurement-state"><p>Loading hosted procurement…</p></section>
- const create=async(form:HTMLFormElement)=>{if(!workspace)return;const values=Object.fromEntries(new FormData(form));try{await procurementActions.createRequest(workspace.workspaceId,{title:values.title,status:'identified',category:values.category,priority:values.priority,needed_by:values.needed_by||null,notes:values.notes||''});setCreating(false);setMessage('Request created.');await refresh()}catch(cause){setMessage(cause instanceof Error?cause.message:'Could not create request.')}}
+ const create=async(form:HTMLFormElement)=>{if(!workspace)return;const values=Object.fromEntries(new FormData(form));try{setReceipt(await procurementActions.createRequest(workspace.workspaceId,{title:values.title,status:'identified',category:values.category,priority:values.priority,needed_by:values.needed_by||null,notes:values.notes||''}));setCreating(false);setMessage('Request created.');await refresh()}catch(cause){setMessage(cause instanceof Error?cause.message:'Could not create request.')}}
  const createDemo=async()=>{if(!workspace)return;try{await procurementActions.importSnapshot(workspace.workspaceId,procurementDemo);setMessage('Demo request added.');await refresh()}catch(cause){setMessage(cause instanceof Error?cause.message:'Could not add demo request.')}}
  const importJson=async(file:File)=>{if(!workspace)return;try{const bundle=parseProcurementJson(await file.text());await procurementActions.importSnapshot(workspace.workspaceId,bundle);setMessage('Procurement JSON imported.');await refresh()}catch(cause){setMessage(cause instanceof Error?cause.message:'Could not import JSON.')}finally{if(importRef.current)importRef.current.value=''}}
  return <div className="procurement-workspace">
@@ -46,6 +48,7 @@ export function ProcurementPage(){
    <label className="wide">Notes<textarea name="notes" rows={2}/></label><button className="button primary">Save request</button>
   </form>}
   {message&&<p className="form-message" role="status">{message}</p>}
+  {receipt&&<OperationReceipt receipt={receipt}/>}
   {workspace&&<><PurchasingIntelligencePanel workspaceId={workspace.workspaceId} data={data} refresh={refresh}/><PurchaseExecutionPanel data={data} refresh={refresh}/></>}
   <section className="procurement-filters" aria-label="Filter procurement requests">
    <label><Search size={14}/><span className="visually-hidden">Search</span><input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search requests"/></label>

@@ -164,6 +164,24 @@
     {
       "canonicalRepository": null,
       "classification": "canonical_read_model",
+      "crossDomainDependencies": [
+        "../../platform/operations/ownerOperationReceipt"
+      ],
+      "domainOwner": "shared-ui",
+      "legacyDependency": [],
+      "modulePath": "src/components/ui/OperationReceipt.tsx",
+      "objectType": "module",
+      "responsibility": "module",
+      "riskNotes": [],
+      "serverAuthoritativePoliciesConsumed": [],
+      "sizeMetrics": {
+        "bytes": 696,
+        "lines": 13
+      }
+    },
+    {
+      "canonicalRepository": null,
+      "classification": "canonical_read_model",
       "crossDomainDependencies": [],
       "domainOwner": "shared-ui",
       "legacyDependency": [],
@@ -1806,8 +1824,10 @@
       "crossDomainDependencies": [
         "../../../platform/actions/workspaceActionExecutor",
         "../../../platform/actions/workspaceActions",
+        "../../../platform/operations/ownerOperationReceipt",
         "../../../platform/repository/localWorkspaceRepository",
         "../../../platform/repository/workspaceRepository",
+        "../../../platform/startup/ActiveWorkspaceContext",
         "../../../types/beardStudio",
         "../../../types/domain",
         "../../compliance/domain/complianceLogic",
@@ -1838,8 +1858,8 @@
         "../data/formulaRepository"
       ],
       "sizeMetrics": {
-        "bytes": 76269,
-        "lines": 1996
+        "bytes": 77448,
+        "lines": 2014
       }
     },
     {
@@ -3202,7 +3222,7 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 7065,
+        "bytes": 7218,
         "lines": 28
       }
     },
@@ -3436,6 +3456,7 @@
       "canonicalRepository": null,
       "classification": "canonical_read_model",
       "crossDomainDependencies": [
+        "../../../platform/operations/ownerOperationReceipt",
         "../../../platform/supabase/client",
         "../domain/assistedResearch"
       ],
@@ -3447,8 +3468,8 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 12254,
-        "lines": 47
+        "bytes": 12877,
+        "lines": 48
       }
     },
     {
@@ -3687,8 +3708,8 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 7464,
-        "lines": 27
+        "bytes": 7754,
+        "lines": 30
       }
     },
     {
@@ -3743,7 +3764,9 @@
       "canonicalRepository": null,
       "classification": "canonical_read_model",
       "crossDomainDependencies": [
-        "../../components/ui/PageHeader"
+        "../../components/ui/OperationReceipt",
+        "../../components/ui/PageHeader",
+        "../../platform/operations/ownerOperationReceipt"
       ],
       "domainOwner": "procurement",
       "legacyDependency": [],
@@ -3753,8 +3776,8 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 11289,
-        "lines": 63
+        "bytes": 11568,
+        "lines": 66
       }
     },
     {
@@ -6689,6 +6712,38 @@
       }
     },
     {
+      "canonicalRepository": null,
+      "classification": "canonical_read_model",
+      "crossDomainDependencies": [],
+      "domainOwner": "platform",
+      "legacyDependency": [],
+      "modulePath": "src/platform/operations/ownerOperationReceipt.test.ts",
+      "objectType": "module",
+      "responsibility": "module",
+      "riskNotes": [],
+      "serverAuthoritativePoliciesConsumed": [],
+      "sizeMetrics": {
+        "bytes": 2550,
+        "lines": 32
+      }
+    },
+    {
+      "canonicalRepository": null,
+      "classification": "canonical_read_model",
+      "crossDomainDependencies": [],
+      "domainOwner": "platform",
+      "legacyDependency": [],
+      "modulePath": "src/platform/operations/ownerOperationReceipt.ts",
+      "objectType": "module",
+      "responsibility": "module",
+      "riskNotes": [],
+      "serverAuthoritativePoliciesConsumed": [],
+      "sizeMetrics": {
+        "bytes": 4442,
+        "lines": 129
+      }
+    },
+    {
       "canonicalRepository": "../features/development/data/developmentExperimentRepository",
       "classification": "canonical_read_model",
       "crossDomainDependencies": [
@@ -6710,8 +6765,8 @@
         "./repository/supabaseWorkspaceRepository"
       ],
       "sizeMetrics": {
-        "bytes": 8054,
-        "lines": 95
+        "bytes": 10032,
+        "lines": 113
       }
     },
     {
@@ -6842,8 +6897,8 @@
         "./workspaceRepository"
       ],
       "sizeMetrics": {
-        "bytes": 22727,
-        "lines": 272
+        "bytes": 22937,
+        "lines": 273
       }
     },
     {

@@ -6,6 +6,8 @@ import {
   useRef,
   useState,
 } from "react";
+import { useActiveWorkspace } from "../../../platform/startup/ActiveWorkspaceContext";
+import type { OwnerOperationReceipt } from "../../../platform/operations/ownerOperationReceipt";
 import type {
   ComplianceDocument,
   ComplianceDossier,
@@ -140,7 +142,7 @@ interface FormulaDataValue extends FormulaState {
     input: Omit<SupplierProduct, "id" | "createdAt" | "updatedAt"> & {
       id?: string;
     },
-  ): Promise<SupplierProduct>;
+  ): Promise<OwnerOperationReceipt>;
   markSupplierPreferred(id: string): Promise<void>;
   markPackagingSupplierPreferred(id: string): Promise<void>;
   receiveStock(
@@ -207,7 +209,7 @@ interface FormulaDataValue extends FormulaState {
   addCostLine(input: Omit<CostLine, "id" | "createdAt" | "updatedAt">): void;
   createPackagingComponent(
     input: Omit<PackagingComponent, "id" | "createdAt" | "updatedAt">,
-  ): PackagingComponent;
+  ): Promise<OwnerOperationReceipt>;
   updatePackagingComponent(
     id: string,
     patch: Partial<PackagingComponent>,
@@ -301,6 +303,8 @@ export function FormulaDataProvider({
   initialState?: FormulaState;
 }) {
   const loaded = useMemo(() => initialState ?? repository.load(), [initialState,repository]);
+  const activeWorkspace = useActiveWorkspace();
+  const workspaceId = activeWorkspace?.workspaceId ?? "local-workspace";
   if (loaded instanceof Promise)
     throw new Error(
       "Asynchronous repository hydration belongs to the Phase 8B.3 startup boundary.",
@@ -667,7 +671,19 @@ export function FormulaDataProvider({
           throw new Error(
             "The Supplier Product was not available after persistence. Refresh and retry.",
           );
-        return persisted;
+        return {
+          schemaVersion: 1,
+          entityType: "supplier_product",
+          recordId: persisted.id,
+          workspaceId,
+          operation: input.id ? "updated" : "created",
+          persistedAt: persisted.createdAt,
+          naturalIdentity: {
+            ingredient_id: persisted.ingredientId,
+            supplier_name: persisted.supplierName,
+            product_name: persisted.productName,
+          },
+        };
       },
       markSupplierPreferred(id) {
         return commitState("markSupplierPreferred", (current) => {
@@ -1368,14 +1384,16 @@ export function FormulaDataProvider({
           ],
         }));
       },
-      createPackagingComponent(input) {
+      async createPackagingComponent(input) {
         const now = new Date().toISOString(),
           component = { ...input, id: uid(), createdAt: now, updatedAt: now };
-        commitState("createPackagingComponent", (c) => ({
+        await commitState("createPackagingComponent", (c) => ({
           ...c,
           packagingComponents: [...c.packagingComponents, component],
         }));
-        return component;
+        const persisted=stateRef.current.packagingComponents.find(item=>item.id===component.id)
+        if(!persisted)throw new Error("The Packaging Component was not available after persistence. Refresh and retry.")
+        return {schemaVersion:1,entityType:"packaging_component",recordId:persisted.id,workspaceId,operation:"created",persistedAt:persisted.createdAt,naturalIdentity:{name:persisted.name,category:persisted.category}};
       },
       updatePackagingComponent(id, patch) {
         commitState("updatePackagingComponent", (c) => ({
@@ -1978,7 +1996,7 @@ export function FormulaDataProvider({
         }));
       },
     }),
-    [state, pendingActions, actionError, commitState],
+    [state, pendingActions, actionError, commitState, workspaceId],
   );
   return (
     <FormulaDataContext.Provider value={value}>
