@@ -57,7 +57,7 @@ import type {
   TestTemplate,
   Tester,
 } from "../../../types/domain";
-import { sameSupplierProductIdentity } from "../../ingredients/domain/supplierProductIdentity";
+import { matchingSupplierProductIdentities } from "../../ingredients/domain/supplierProductIdentity";
 import type { BeardStudioState } from "../../../types/beardStudio";
 import { duplicateDossier as duplicateComplianceDossierDomain } from "../../compliance/domain/complianceLogic";
 import { canTransition, duplicateVersion } from "../domain/formulaLogic";
@@ -638,6 +638,14 @@ export function FormulaDataProvider({
         }));return result instanceof Promise?result.then(()=>undefined):undefined
       },
       async saveSupplierProduct(input) {
+        if (!input.id && !input.supplierId)
+          throw new Error(
+            "Select a canonical Supplier before creating a Supplier Product.",
+          );
+        if (input.supplierId && !input.supplierName.trim())
+          throw new Error(
+            "The selected canonical Supplier did not provide a display identity.",
+          );
         const now = new Date().toISOString();
         const product: SupplierProduct = {
           ...input,
@@ -645,12 +653,16 @@ export function FormulaDataProvider({
           createdAt: now,
           updatedAt: now,
         };
-        const duplicate = stateRef.current.supplierProducts.find(
-          (item) =>
-            item.id !== input.id &&
-            sameSupplierProductIdentity(item, input),
+        const duplicates = matchingSupplierProductIdentities(
+          stateRef.current.supplierProducts,
+          input,
+          input.id,
         );
-        if (duplicate)
+        if (duplicates.length > 1)
+          throw new Error(
+            "CONFLICT: Multiple legacy Supplier Products match this canonical identity. Review them before saving.",
+          );
+        if (duplicates.length === 1)
           throw new Error(
             "A Supplier Product with this supplier, ingredient, and product name already exists.",
           );
@@ -677,9 +689,12 @@ export function FormulaDataProvider({
           recordId: persisted.id,
           workspaceId,
           operation: input.id ? "updated" : "created",
-          persistedAt: persisted.createdAt,
+          persistedAt: input.id ? persisted.updatedAt : persisted.createdAt,
           naturalIdentity: {
             ingredient_id: persisted.ingredientId,
+            ...(persisted.supplierId
+              ? { supplier_id: persisted.supplierId }
+              : {}),
             supplier_name: persisted.supplierName,
             product_name: persisted.productName,
           },

@@ -34,6 +34,34 @@ export function normalizeProductRow(value: unknown) {
   return product
 }
 
+export function assertSupplierProductPersistenceReadback(
+  requested: Record<string, unknown>,
+  persisted: Record<string, unknown> | null | undefined,
+) {
+  if (!persisted)
+    throw new Error(
+      'Supplier Product persistence returned no owner-authorized readback.',
+    )
+  const expectedSupplierId = requested.supplierId ?? null
+  if (
+    persisted.id !== requested.id ||
+    persisted.ingredient_id !== requested.ingredientId ||
+    persisted.supplier_id !== expectedSupplierId ||
+    persisted.supplier_name !== requested.supplierName ||
+    persisted.product_name !== requested.productName
+  )
+    throw new Error(
+      'Supplier Product persistence readback did not match the selected canonical Supplier. The form remains open; refresh Supplier data and review the selection.',
+    )
+  if (
+    typeof persisted.created_at !== 'string' ||
+    typeof persisted.updated_at !== 'string'
+  )
+    throw new Error(
+      'Supplier Product persistence readback did not include its audit timestamps.',
+    )
+}
+
 export function relationalMigrationPayload(state: FormulaState) {
   return Object.fromEntries(Object.entries(state).filter(([collection])=>collection!=='beardStudio').map(([collection, records]) => [collection, toDatabaseValue(records)]))
 }
@@ -90,15 +118,29 @@ export class SupabaseWorkspaceRepository implements WorkspaceRepository {
         Object.assign(row,{workspace_id:workspace.data.id,owner_id:user.id})
         const existing = previousById.get(record.id)
         if (!existing) {
-          const inserted = await client.from(table).insert(row).select('id,workspace_id').single()
+          const inserted = collection === 'supplierProducts'
+            ? await client.from(table).insert(row).select().single()
+            : await client.from(table).insert(row).select('id,workspace_id').single()
           if (inserted.error) throw inserted.error
           if(inserted.data?.id!==record.id||inserted.data?.workspace_id!==workspace.data.id)throw new Error(`Persisted ${table} readback did not match the requested record.`)
+          if (collection === 'supplierProducts')
+            assertSupplierProductPersistenceReadback(
+              record as Record<string, unknown>,
+              inserted.data as unknown as Record<string, unknown>,
+            )
         } else {
           let update = client.from(table).update(row).eq('workspace_id',workspace.data.id).eq('id',record.id)
           if (existing.updatedAt) update = update.eq('updated_at',existing.updatedAt)
-          const updated = await update.select('id')
+          const updated = collection === 'supplierProducts'
+            ? await update.select()
+            : await update.select('id')
           if (updated.error) throw updated.error
           if (!updated.data?.length) throw new Error(`Conflict updating ${table}.${record.id}; refresh and retry.`)
+          if (collection === 'supplierProducts')
+            assertSupplierProductPersistenceReadback(
+              record as Record<string, unknown>,
+              updated.data[0] as unknown as Record<string, unknown>,
+            )
         }
         await this.persistEmbedded(collection, record as Record<string, unknown>, workspace.data.id, user.id, client)
       }

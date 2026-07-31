@@ -23,3 +23,18 @@ export function sameSupplierProductIdentity(
         normalizeIdentity(right.supplierName))
   );
 }
+
+export function matchingSupplierProductIdentities(
+  candidates: SupplierProduct[],
+  input: Pick<
+    SupplierProduct,
+    "ingredientId" | "supplierId" | "supplierName" | "productName"
+  >,
+  excludedId?: string,
+) {
+  return candidates.filter(
+    (candidate) =>
+      candidate.id !== excludedId &&
+      sameSupplierProductIdentity(candidate, input),
+  );
+}

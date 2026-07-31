@@ -28,6 +28,11 @@ describe('owner operation receipts',()=>{
   const item={...row,procurement_request_id:'request-id',name:'Jojoba oil',category:'raw_material'}
   expect(receiptFromPersistedRow('procurement_requested_item',workspaceId,item,{name:'Jojoba oil'},'request-id').parent).toEqual({entityType:'procurement_request',recordId:'request-id'})
  })
+ it('exports the canonical Supplier ID for Supplier Product readback',()=>{
+  const supplierProduct={...row,ingredient_id:'ingredient-id',supplier_id:'supplier-id',supplier_name:'Mystic Moments UK',product_name:'Jojoba Golden Carrier Oil',lifecycle_status:'candidate',price_state:'unknown',updated_at:row.created_at}
+  const exported=buildOwnerOperationExport(workspaceId,{supplier_product:[supplierProduct]},'2026-07-30T13:00:00.000Z')
+  expect(exported.records.supplier_product?.[0]).toMatchObject({id:row.id,supplier_id:'supplier-id',supplier_name:'Mystic Moments UK'})
+ })
  it('validates navigation receipts against entity, persisted ID, and active workspace',()=>{
   const receipt=receiptFromPersistedRow('packaging_component',workspaceId,row,{name:'Precision scale'})
   expect(isOwnerOperationReceipt(receipt,{entityType:'packaging_component',recordId:row.id,workspaceId})).toBe(true)

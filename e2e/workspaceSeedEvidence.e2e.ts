@@ -11,6 +11,18 @@ test("owner receives stable evidence for all five Seed V2 create domains", async
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   await signIn(page);
   const stamp = Date.now();
+  const supplierName = `Evidence Supplier ${stamp}`;
+
+  await page.goto("/suppliers");
+  await page.getByRole("button", { name: "New supplier" }).click();
+  const supplierCreate = page.locator("form.supplier-create");
+  await supplierCreate.getByLabel("Legal name").fill(supplierName);
+  await supplierCreate.getByRole("button", { name: "Create supplier" }).click();
+  await expect(
+    page.getByRole("button", { name: new RegExp(supplierName) }),
+  ).toHaveAttribute("aria-pressed", "true");
+  const supplierId = new URL(page.url()).searchParams.get("supplier");
+  expect(supplierId).toBeTruthy();
 
   const ingredientId = await createIngredient(
     page,
@@ -19,13 +31,31 @@ test("owner receives stable evidence for all five Seed V2 create domains", async
   );
   await page.goto(`/ingredients/${ingredientId}`);
   await page.getByRole("button", { name: "Add supplier product" }).click();
-  await page.getByLabel("Supplier", { exact: true }).fill("Evidence Supplier");
+  const canonicalSupplier = page.getByLabel("Canonical supplier");
+  await expect(
+    canonicalSupplier.locator(`option[value="${supplierId!}"]`),
+  ).toHaveCount(1);
+  const supplierOptions = await canonicalSupplier
+    .locator("option")
+    .evaluateAll((options) =>
+      options.map((option) => (option as HTMLOptionElement).value),
+    );
+  const supplierOptionIndex = supplierOptions.indexOf(supplierId!);
+  expect(supplierOptionIndex).toBeGreaterThan(0);
+  await page.getByLabel("Product name").focus();
+  await page.keyboard.press("Shift+Tab");
+  await expect(canonicalSupplier).toBeFocused();
+  await canonicalSupplier.selectOption(supplierId!);
+  await expect(canonicalSupplier).toHaveValue(supplierId!);
   await page
     .getByLabel("Product name")
     .fill(`Evidence candidate product ${stamp}`);
   await page.getByRole("button", { name: "Save Supplier Product" }).click();
   const supplierReceipt = page.getByTestId("operation-receipt");
   await expect(supplierReceipt.getByText("CREATE confirmed")).toBeVisible();
+  await expect(
+    supplierReceipt.getByText(`supplier id: ${supplierId!}`, { exact: true }),
+  ).toBeVisible();
   const supplierProductId = await receiptId(supplierReceipt);
   await page.reload();
   await expect(
@@ -97,6 +127,14 @@ test("owner receives stable evidence for all five Seed V2 create domains", async
     dialog.getByRole("button", { name: "Close operation evidence preview" }),
   ).toBeFocused();
   const json = await dialog.locator("pre").innerText();
+  const payload = JSON.parse(json);
+  const supplierProduct = payload.records.supplier_product.find(
+    (record: { id: string }) => record.id === supplierProductId,
+  );
+  expect(supplierProduct).toMatchObject({
+    supplier_id: supplierId,
+    supplier_name: supplierName,
+  });
   for (const id of [
     supplierProductId,
     equipmentId,
