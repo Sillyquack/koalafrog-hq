@@ -3,7 +3,10 @@ export type OwnerOperationEntity =
   | "equipment"
   | "packaging_component"
   | "procurement_request"
-  | "procurement_requested_item";
+  | "procurement_requested_item"
+  | "purchase_plan"
+  | "purchase_plan_basket"
+  | "purchase_plan_line";
 
 export type OwnerOperationKind = "created" | "updated" | "reused";
 
@@ -15,6 +18,7 @@ export interface OwnerOperationReceipt {
   operation: OwnerOperationKind;
   persistedAt: string;
   naturalIdentity: Record<string, string>;
+  changedFields?: Array<{field:string;before:string|null;after:string|null}>;
   parent?: {
     entityType: "procurement_request";
     recordId: string;
@@ -27,6 +31,9 @@ const ownerOperationEntities: OwnerOperationEntity[] = [
   "packaging_component",
   "procurement_request",
   "procurement_requested_item",
+  "purchase_plan",
+  "purchase_plan_basket",
+  "purchase_plan_line",
 ];
 const ownerOperationKinds: OwnerOperationKind[] = [
   "created",
@@ -59,6 +66,11 @@ export function isOwnerOperationReceipt(
     Object.values(receipt.naturalIdentity).every(
       (item) => typeof item === "string",
     ) &&
+    (!receipt.changedFields||(
+      Array.isArray(receipt.changedFields)&&receipt.changedFields.every(item=>
+        !!item&&typeof item.field==='string'&&(item.before===null||typeof item.before==='string')&&(item.after===null||typeof item.after==='string')
+      )
+    ))&&
     (!receipt.parent ||
       (receipt.parent.entityType === "procurement_request" &&
         typeof receipt.parent.recordId === "string" &&
@@ -153,6 +165,9 @@ const safeFields: Record<OwnerOperationEntity, string[]> = {
   packaging_component: ["id", "workspace_id", "name", "category", "status", "ownership_state", "stock_state", "created_at", "updated_at"],
   procurement_request: ["id", "workspace_id", "title", "category", "status", "created_at", "updated_at"],
   procurement_requested_item: ["id", "workspace_id", "procurement_request_id", "name", "category", "status", "created_at", "updated_at"],
+  purchase_plan: ["id","workspace_id","title","status","placement_state","order_authorized","target_budget","absolute_stop","credible_range_minimum","credible_range_maximum","worst_credible_range_minimum","worst_credible_range_maximum","estimated_merchandise_total","known_minimum","estimated_landed_total","commercial_checked_at","created_at","updated_at"],
+  purchase_plan_basket: ["id","workspace_id","purchase_plan_id","supplier_id","supplier_name_snapshot","currency","merchandise_subtotal","confirmed_discount","post_discount_subtotal","shipping","vat_adjustment","import_vat","customs","dangerous_goods_fee","handling","payment_fx","known_minimum","confirmed_total","commercial_checked_at","created_at"],
+  purchase_plan_line: ["id","workspace_id","purchase_plan_id","purchase_plan_basket_id","source_kind","source_record_id","packaging_component_id","supplier_product_id","supplier_product_name_snapshot","supplier_sku_snapshot","pack_size","unit","pack_count","estimated_unit_price","estimated_line_total","currency","product_url_snapshot","commercial_checked_at","commercial_evidence_snapshot","created_at"],
 };
 
 export function buildOwnerOperationExport(

@@ -13987,15 +13987,17 @@ export type Database = {
       purchase_plan_baskets: {
         Row: {
           commercial_assumption_snapshot: Json
+          commercial_checked_at: string | null
           commercial_warnings: string[]
-          confirmed_discount: number
+          confirmed_discount: number | null
           confirmed_total: number | null
           created_at: string
           currency: string
           customs: number | null
           customs_state: string
-          eligible_subtotal: number
-          estimated_discount: number
+          dangerous_goods_fee: number | null
+          eligible_subtotal: number | null
+          estimated_discount: number | null
           estimated_total: number | null
           first_order_discount_state: Json
           free_shipping_state: Json
@@ -14005,10 +14007,11 @@ export type Database = {
           id: string
           import_vat: number | null
           import_vat_state: string
-          known_minimum: number
-          merchandise_subtotal: number
+          known_minimum: number | null
+          merchandise_subtotal: number | null
           owner_id: string
-          post_discount_subtotal: number
+          payment_fx: number | null
+          post_discount_subtotal: number | null
           purchase_plan_id: string
           range_maximum: number | null
           range_minimum: number | null
@@ -14020,6 +14023,7 @@ export type Database = {
           supplier_name_snapshot: string
           supplier_url_snapshot: string | null
           vat: number | null
+          vat_adjustment: number | null
           vat_state: string
           verification_completed_count: number
           verification_required_count: number
@@ -14027,15 +14031,17 @@ export type Database = {
         }
         Insert: {
           commercial_assumption_snapshot?: Json
+          commercial_checked_at?: string | null
           commercial_warnings?: string[]
-          confirmed_discount: number
+          confirmed_discount?: number | null
           confirmed_total?: number | null
           created_at?: string
           currency: string
           customs?: number | null
           customs_state: string
-          eligible_subtotal: number
-          estimated_discount: number
+          dangerous_goods_fee?: number | null
+          eligible_subtotal?: number | null
+          estimated_discount?: number | null
           estimated_total?: number | null
           first_order_discount_state?: Json
           free_shipping_state?: Json
@@ -14045,10 +14051,11 @@ export type Database = {
           id?: string
           import_vat?: number | null
           import_vat_state: string
-          known_minimum: number
-          merchandise_subtotal: number
+          known_minimum?: number | null
+          merchandise_subtotal?: number | null
           owner_id: string
-          post_discount_subtotal: number
+          payment_fx?: number | null
+          post_discount_subtotal?: number | null
           purchase_plan_id: string
           range_maximum?: number | null
           range_minimum?: number | null
@@ -14060,6 +14067,7 @@ export type Database = {
           supplier_name_snapshot: string
           supplier_url_snapshot?: string | null
           vat?: number | null
+          vat_adjustment?: number | null
           vat_state: string
           verification_completed_count?: number
           verification_required_count?: number
@@ -14067,15 +14075,17 @@ export type Database = {
         }
         Update: {
           commercial_assumption_snapshot?: Json
+          commercial_checked_at?: string | null
           commercial_warnings?: string[]
-          confirmed_discount?: number
+          confirmed_discount?: number | null
           confirmed_total?: number | null
           created_at?: string
           currency?: string
           customs?: number | null
           customs_state?: string
-          eligible_subtotal?: number
-          estimated_discount?: number
+          dangerous_goods_fee?: number | null
+          eligible_subtotal?: number | null
+          estimated_discount?: number | null
           estimated_total?: number | null
           first_order_discount_state?: Json
           free_shipping_state?: Json
@@ -14085,10 +14095,11 @@ export type Database = {
           id?: string
           import_vat?: number | null
           import_vat_state?: string
-          known_minimum?: number
-          merchandise_subtotal?: number
+          known_minimum?: number | null
+          merchandise_subtotal?: number | null
           owner_id?: string
-          post_discount_subtotal?: number
+          payment_fx?: number | null
+          post_discount_subtotal?: number | null
           purchase_plan_id?: string
           range_maximum?: number | null
           range_minimum?: number | null
@@ -14100,6 +14111,7 @@ export type Database = {
           supplier_name_snapshot?: string
           supplier_url_snapshot?: string | null
           vat?: number | null
+          vat_adjustment?: number | null
           vat_state?: string
           verification_completed_count?: number
           verification_required_count?: number
@@ -14134,6 +14146,8 @@ export type Database = {
           allocated_discount: number | null
           allocated_shipping: number | null
           canonical_ingredient_id: string | null
+          commercial_checked_at: string | null
+          commercial_evidence_snapshot: Json
           created_at: string
           currency: string | null
           description: string
@@ -14152,6 +14166,7 @@ export type Database = {
           owner_id: string
           pack_count: number | null
           pack_size: number | null
+          packaging_component_id: string | null
           planned_quantity: number
           price_freshness: string | null
           product_url_snapshot: string | null
@@ -14163,7 +14178,9 @@ export type Database = {
           requirement_basis: Json
           requirement_reason: string | null
           snapshot_warnings: string[]
+          source_kind: string | null
           source_quote_line_id: string | null
+          source_record_id: string | null
           source_requirement_id: string | null
           source_scenario_line_id: string | null
           source_selection_revision: number | null
@@ -14171,6 +14188,7 @@ export type Database = {
           stock_freshness: string | null
           supplier_product_id: string | null
           supplier_product_name_snapshot: string | null
+          supplier_sku_snapshot: string | null
           unit: string
           updated_at: string
           workspace_id: string
@@ -14179,6 +14197,8 @@ export type Database = {
           allocated_discount?: number | null
           allocated_shipping?: number | null
           canonical_ingredient_id?: string | null
+          commercial_checked_at?: string | null
+          commercial_evidence_snapshot?: Json
           created_at?: string
           currency?: string | null
           description: string
@@ -14197,6 +14217,7 @@ export type Database = {
           owner_id: string
           pack_count?: number | null
           pack_size?: number | null
+          packaging_component_id?: string | null
           planned_quantity: number
           price_freshness?: string | null
           product_url_snapshot?: string | null
@@ -14208,7 +14229,9 @@ export type Database = {
           requirement_basis?: Json
           requirement_reason?: string | null
           snapshot_warnings?: string[]
+          source_kind?: string | null
           source_quote_line_id?: string | null
+          source_record_id?: string | null
           source_requirement_id?: string | null
           source_scenario_line_id?: string | null
           source_selection_revision?: number | null
@@ -14216,6 +14239,7 @@ export type Database = {
           stock_freshness?: string | null
           supplier_product_id?: string | null
           supplier_product_name_snapshot?: string | null
+          supplier_sku_snapshot?: string | null
           unit: string
           updated_at?: string
           workspace_id: string
@@ -14224,6 +14248,8 @@ export type Database = {
           allocated_discount?: number | null
           allocated_shipping?: number | null
           canonical_ingredient_id?: string | null
+          commercial_checked_at?: string | null
+          commercial_evidence_snapshot?: Json
           created_at?: string
           currency?: string | null
           description?: string
@@ -14242,6 +14268,7 @@ export type Database = {
           owner_id?: string
           pack_count?: number | null
           pack_size?: number | null
+          packaging_component_id?: string | null
           planned_quantity?: number
           price_freshness?: string | null
           product_url_snapshot?: string | null
@@ -14253,7 +14280,9 @@ export type Database = {
           requirement_basis?: Json
           requirement_reason?: string | null
           snapshot_warnings?: string[]
+          source_kind?: string | null
           source_quote_line_id?: string | null
+          source_record_id?: string | null
           source_requirement_id?: string | null
           source_scenario_line_id?: string | null
           source_selection_revision?: number | null
@@ -14261,6 +14290,7 @@ export type Database = {
           stock_freshness?: string | null
           supplier_product_id?: string | null
           supplier_product_name_snapshot?: string | null
+          supplier_sku_snapshot?: string | null
           unit?: string
           updated_at?: string
           workspace_id?: string
@@ -14271,6 +14301,13 @@ export type Database = {
             columns: ["workspace_id", "purchase_plan_basket_id"]
             isOneToOne: false
             referencedRelation: "purchase_plan_baskets"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "purchase_plan_lines_packaging_component_fk"
+            columns: ["workspace_id", "packaging_component_id"]
+            isOneToOne: false
+            referencedRelation: "packaging_components"
             referencedColumns: ["workspace_id", "id"]
           },
           {
@@ -14430,6 +14467,7 @@ export type Database = {
       }
       purchase_plans: {
         Row: {
+          absolute_stop: number | null
           approval_key: string | null
           approved_at: string | null
           approved_by: string | null
@@ -14439,10 +14477,15 @@ export type Database = {
           cancellation_reason: string | null
           cancelled_at: string | null
           cancelled_by: string | null
+          commercial_checked_at: string | null
           confirmed_total: number | null
           created_at: string
           creation_key: string
+          credible_range_maximum: number | null
+          credible_range_minimum: number | null
           currency: string | null
+          draft_authoring_version: string | null
+          draft_payload_fingerprint: string | null
           estimated_landed_total: number | null
           estimated_merchandise_total: number | null
           external_order_key: string | null
@@ -14451,8 +14494,10 @@ export type Database = {
           known_minimum: number | null
           line_count: number | null
           mixed_currency: boolean
+          order_authorized: boolean
           ordered_at: string | null
           owner_id: string
+          placement_state: string
           plan_version: number | null
           production_procurement_round_id: string | null
           purpose: string
@@ -14473,6 +14518,7 @@ export type Database = {
           superseded_by: string | null
           supplier_count: number | null
           supplier_id: string | null
+          target_budget: number | null
           target_date: string | null
           title: string
           unknown_component_count: number | null
@@ -14480,8 +14526,11 @@ export type Database = {
           verification_revision: number
           warning_count: number | null
           workspace_id: string
+          worst_credible_range_maximum: number | null
+          worst_credible_range_minimum: number | null
         }
         Insert: {
+          absolute_stop?: number | null
           approval_key?: string | null
           approved_at?: string | null
           approved_by?: string | null
@@ -14491,10 +14540,15 @@ export type Database = {
           cancellation_reason?: string | null
           cancelled_at?: string | null
           cancelled_by?: string | null
+          commercial_checked_at?: string | null
           confirmed_total?: number | null
           created_at?: string
           creation_key?: string
+          credible_range_maximum?: number | null
+          credible_range_minimum?: number | null
           currency?: string | null
+          draft_authoring_version?: string | null
+          draft_payload_fingerprint?: string | null
           estimated_landed_total?: number | null
           estimated_merchandise_total?: number | null
           external_order_key?: string | null
@@ -14503,8 +14557,10 @@ export type Database = {
           known_minimum?: number | null
           line_count?: number | null
           mixed_currency?: boolean
+          order_authorized?: boolean
           ordered_at?: string | null
           owner_id: string
+          placement_state?: string
           plan_version?: number | null
           production_procurement_round_id?: string | null
           purpose?: string
@@ -14525,6 +14581,7 @@ export type Database = {
           superseded_by?: string | null
           supplier_count?: number | null
           supplier_id?: string | null
+          target_budget?: number | null
           target_date?: string | null
           title: string
           unknown_component_count?: number | null
@@ -14532,8 +14589,11 @@ export type Database = {
           verification_revision?: number
           warning_count?: number | null
           workspace_id: string
+          worst_credible_range_maximum?: number | null
+          worst_credible_range_minimum?: number | null
         }
         Update: {
+          absolute_stop?: number | null
           approval_key?: string | null
           approved_at?: string | null
           approved_by?: string | null
@@ -14543,10 +14603,15 @@ export type Database = {
           cancellation_reason?: string | null
           cancelled_at?: string | null
           cancelled_by?: string | null
+          commercial_checked_at?: string | null
           confirmed_total?: number | null
           created_at?: string
           creation_key?: string
+          credible_range_maximum?: number | null
+          credible_range_minimum?: number | null
           currency?: string | null
+          draft_authoring_version?: string | null
+          draft_payload_fingerprint?: string | null
           estimated_landed_total?: number | null
           estimated_merchandise_total?: number | null
           external_order_key?: string | null
@@ -14555,8 +14620,10 @@ export type Database = {
           known_minimum?: number | null
           line_count?: number | null
           mixed_currency?: boolean
+          order_authorized?: boolean
           ordered_at?: string | null
           owner_id?: string
+          placement_state?: string
           plan_version?: number | null
           production_procurement_round_id?: string | null
           purpose?: string
@@ -14577,6 +14644,7 @@ export type Database = {
           superseded_by?: string | null
           supplier_count?: number | null
           supplier_id?: string | null
+          target_budget?: number | null
           target_date?: string | null
           title?: string
           unknown_component_count?: number | null
@@ -14584,6 +14652,8 @@ export type Database = {
           verification_revision?: number
           warning_count?: number | null
           workspace_id?: string
+          worst_credible_range_maximum?: number | null
+          worst_credible_range_minimum?: number | null
         }
         Relationships: [
           {
@@ -18128,6 +18198,15 @@ export type Database = {
         }
         Returns: Json
       }
+      create_draft_purchase_plan_v1: {
+        Args: {
+          candidate_baskets: Json
+          candidate_idempotency_key: string
+          candidate_plan: Json
+          candidate_workspace_id: string
+        }
+        Returns: Json
+      }
       create_finished_goods_lot_v1: {
         Args: {
           candidate_acknowledged: boolean
@@ -18517,6 +18596,14 @@ export type Database = {
       kf_convert_quantity: {
         Args: { from_unit: string; q: number; to_unit: string }
         Returns: number
+      }
+      kf_draft_optional_numeric_v1: {
+        Args: { candidate: Json; field_name: string }
+        Returns: number
+      }
+      kf_draft_plan_receipt_bundle_v1: {
+        Args: { candidate_operation: string; target_plan_id: string }
+        Returns: Json
       }
       kf_finished_goods_backward_trace_v1: {
         Args: {

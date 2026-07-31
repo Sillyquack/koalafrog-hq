@@ -3,9 +3,9 @@
   "generatedAt": "2026-07-29T14:00:00+02:00",
   "rcTag": "finished-goods-traceability-recall-v1-rc1",
   "rcCommit": "bd5617c70dd8ca21611f63750f2293e40a83c8b4",
-  "localMigrationHead": "20260731044225",
+  "localMigrationHead": "20260731205657",
   "hostedStateVerified": false,
-  "count": 90,
+  "count": 91,
   "provenance": {
     "invariant": "Committed evidence never stores the hash of the commit containing that evidence.",
     "stableIdentityFields": [
@@ -3458,6 +3458,41 @@
       "hostedApplicationStatus": "pending_rehearsal",
       "authorizationRequired": true,
       "sourceHash": "31d1f2f2e18595a9f4b0e09293f46cab721c7ef7b235cff9d539a8575141bd62"
+    },
+    {
+      "orderedIndex": 91,
+      "filename": "20260731205657_procurement_draft_plan_authoring_v1.sql",
+      "timestamp": "20260731205657",
+      "milestone": "procurement draft plan authoring v1",
+      "purpose": "procurement draft plan authoring v1",
+      "dependencies": [
+        "20260731044225_workspace_seed_evidence_surfaces_v1.sql"
+      ],
+      "requiredExtensions": [],
+      "expectedObjectChanges": {
+        "tables": [],
+        "functions": [
+          "create_draft_purchase_plan_v1",
+          "kf_draft_optional_numeric_v1",
+          "kf_draft_plan_receipt_bundle_v1"
+        ],
+        "policies": [],
+        "indexes": 0
+      },
+      "expectedDataChanges": 3,
+      "lockRisk": "low",
+      "tableRewriteRisk": "not_detected",
+      "destructiveBehavior": "none detected",
+      "longTransactionRisk": "low_or_unknown",
+      "durationClass": "measure_in_rehearsal",
+      "classification": "compatibility_freeze",
+      "rollbackClassification": "backup_and_forward_fix_decision_required",
+      "forwardFixStrategy": "append a reviewed migration; never rewrite immutable business history",
+      "verificationQuery": "compare migration head, authority inventory, object counts, grants, RLS, and focused domain contracts",
+      "stopCondition": "migration error, drift, timeout, or object mismatch",
+      "hostedApplicationStatus": "pending_rehearsal",
+      "authorizationRequired": true,
+      "sourceHash": "4d0ccac05c14f7adef6f25e8649bc9de0f2dedb0ff79d563fb0afc967ede286a"
     }
   ]
 }

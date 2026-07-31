@@ -57,6 +57,7 @@ import type {
   TestTemplate,
   Tester,
 } from "../../../types/domain";
+import { confirmedPackagingUpdateReceipt } from "../../packaging/domain/confirmedPackagingUpdate";
 import { matchingSupplierProductIdentities } from "../../ingredients/domain/supplierProductIdentity";
 import type { BeardStudioState } from "../../../types/beardStudio";
 import { duplicateDossier as duplicateComplianceDossierDomain } from "../../compliance/domain/complianceLogic";
@@ -213,7 +214,7 @@ interface FormulaDataValue extends FormulaState {
   updatePackagingComponent(
     id: string,
     patch: Partial<PackagingComponent>,
-  ): void;
+  ): Promise<OwnerOperationReceipt>;
   savePackagingSupplierProduct(
     input: Omit<PackagingSupplierProduct, "id" | "createdAt" | "updatedAt">,
   ): void;
@@ -1410,15 +1411,20 @@ export function FormulaDataProvider({
         if(!persisted)throw new Error("The Packaging Component was not available after persistence. Refresh and retry.")
         return {schemaVersion:1,entityType:"packaging_component",recordId:persisted.id,workspaceId,operation:"created",persistedAt:persisted.createdAt,naturalIdentity:{name:persisted.name,category:persisted.category}};
       },
-      updatePackagingComponent(id, patch) {
-        commitState("updatePackagingComponent", (c) => ({
+      async updatePackagingComponent(id, patch) {
+        const before=stateRef.current.packagingComponents.find(item=>item.id===id)
+        if(!before)throw new Error('Packaging Component is unavailable in the active workspace.')
+        const updatedAt=new Date().toISOString()
+        await commitState("updatePackagingComponent", (c) => ({
           ...c,
           packagingComponents: c.packagingComponents.map((x) =>
             x.id === id
-              ? { ...x, ...patch, id, updatedAt: new Date().toISOString() }
+              ? { ...x, ...patch, id, createdAt:x.createdAt,updatedAt }
               : x,
           ),
         }));
+        const persisted=stateRef.current.packagingComponents.find(item=>item.id===id)
+        return confirmedPackagingUpdateReceipt(workspaceId,before,patch,persisted)
       },
       savePackagingSupplierProduct(input) {
         const now = new Date().toISOString();

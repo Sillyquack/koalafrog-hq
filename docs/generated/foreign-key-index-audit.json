@@ -6268,6 +6268,19 @@
     {
       "columns": [
         "workspace_id",
+        "packaging_component_id"
+      ],
+      "constraint": "purchase_plan_lines_packaging_component_fk",
+      "estimatedRows": 0,
+      "recommendation": null,
+      "references": "packaging_components",
+      "schema": "public",
+      "status": "partially_covered",
+      "table": "purchase_plan_lines"
+    },
+    {
+      "columns": [
+        "workspace_id",
         "source_requirement_id"
       ],
       "constraint": "purchase_plan_lines_requirement_fk",
@@ -7990,7 +8003,7 @@
     "covered": 266,
     "intentionally_unindexed": 0,
     "missing": 114,
-    "partially_covered": 250
+    "partially_covered": 251
   },
   "version": "1.0.0"
 }

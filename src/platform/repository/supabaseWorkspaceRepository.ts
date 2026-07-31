@@ -1,4 +1,4 @@
-import type { FormulaState } from '../../types/domain'
+import type { FormulaState, PackagingComponent } from '../../types/domain'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Json } from '../supabase/generated/database.types'
 import { supabase } from '../supabase/client'
@@ -62,6 +62,35 @@ export function assertSupplierProductPersistenceReadback(
     )
 }
 
+const packagingNullableFields=['description','colour','material','capacity','capacityUnit','notes','reorderThreshold','intendedProductUse','neckClosureSpecification','closureType','supplierId','supplierProductId','specificationNotes','sourcingNotes','operationalNotes'] as const
+
+function packagingDatabaseRow(record:Record<string,unknown>){
+  const row=toDatabaseValue(record) as Record<string,unknown>
+  for(const field of packagingNullableFields)if(record[field]===undefined)row[snake(field)]=null
+  return row
+}
+
+const equalPersistedValue=(left:unknown,right:unknown)=>JSON.stringify(left??null)===JSON.stringify(right??null)
+
+export function assertPackagingComponentPersistenceReadback(
+  previous:Record<string,unknown>,
+  requested:Record<string,unknown>,
+  persisted:Record<string,unknown>|null|undefined,
+){
+  if(!persisted)throw new Error('Packaging Component persistence returned no owner-authorized readback.')
+  if(persisted.id!==requested.id)throw new Error('Packaging Component persistence returned a different stable ID.')
+  for(const [key,value] of Object.entries(requested)){
+    if(['createdAt'].includes(key))continue
+    const persistedKey=snake(key)
+    if(!equalPersistedValue(persisted[persistedKey],value))throw new Error(`Packaging Component persistence readback did not confirm ${key}.`)
+  }
+  for(const protectedField of ['ownershipState','stockState'] as const){
+    if(!(protectedField in requested)&&!equalPersistedValue(persisted[snake(protectedField)],previous[protectedField]))
+      throw new Error(`Packaging Component ${protectedField} changed outside the approved update.`)
+  }
+  if(typeof persisted.updated_at!=='string')throw new Error('Packaging Component persistence readback did not include its update timestamp.')
+}
+
 export function relationalMigrationPayload(state: FormulaState) {
   return Object.fromEntries(Object.entries(state).filter(([collection])=>collection!=='beardStudio').map(([collection, records]) => [collection, toDatabaseValue(records)]))
 }
@@ -100,6 +129,7 @@ export class SupabaseWorkspaceRepository implements WorkspaceRepository {
     if (workspace.error) throw workspace.error
     const client: SupabaseClient = supabase
     if (await this.commitAtomic(change, client)) return
+    let confirmedPackagingComponent:PackagingComponent|undefined
     for (const collection of changedCollections(change)) {
       if(collection==='beardStudio')continue
       const table = relationalTableByCollection[collection]
@@ -113,7 +143,7 @@ export class SupabaseWorkspaceRepository implements WorkspaceRepository {
       }
       const previousById = new Map(previous.map(record => [record.id, record]))
       for (const record of next.filter(candidate => previousById.get(candidate.id) !== candidate)) {
-        const row = toDatabaseValue(record) as Record<string, unknown>
+        const row = collection==='packagingComponents'?packagingDatabaseRow(record as Record<string,unknown>):toDatabaseValue(record) as Record<string, unknown>
         for (const key of embeddedColumns[collection] ?? []) delete row[key]
         Object.assign(row,{workspace_id:workspace.data.id,owner_id:user.id})
         const existing = previousById.get(record.id)
@@ -131,7 +161,7 @@ export class SupabaseWorkspaceRepository implements WorkspaceRepository {
         } else {
           let update = client.from(table).update(row).eq('workspace_id',workspace.data.id).eq('id',record.id)
           if (existing.updatedAt) update = update.eq('updated_at',existing.updatedAt)
-          const updated = collection === 'supplierProducts'
+          const updated = collection === 'supplierProducts'||collection==='packagingComponents'
             ? await update.select()
             : await update.select('id')
           if (updated.error) throw updated.error
@@ -141,10 +171,41 @@ export class SupabaseWorkspaceRepository implements WorkspaceRepository {
               record as Record<string, unknown>,
               updated.data[0] as unknown as Record<string, unknown>,
             )
+          if(collection==='packagingComponents')
+            assertPackagingComponentPersistenceReadback(
+              existing as unknown as Record<string,unknown>,
+              record as unknown as Record<string,unknown>,
+              updated.data[0] as unknown as Record<string,unknown>,
+            )
         }
         await this.persistEmbedded(collection, record as Record<string, unknown>, workspace.data.id, user.id, client)
+        if(collection==='packagingComponents'){
+          const readback=await client.from('packaging_components').select('*').eq('workspace_id',workspace.data.id).eq('owner_id',user.id).eq('id',record.id).single()
+          if(readback.error)throw readback.error
+          assertPackagingComponentPersistenceReadback(
+            (existing??record) as unknown as Record<string,unknown>,
+            record as unknown as Record<string,unknown>,
+            readback.data as unknown as Record<string,unknown>,
+          )
+          confirmedPackagingComponent=toDomainValue(readback.data) as PackagingComponent
+        }
       }
     }
+    if(change.action==='updatePackagingComponent'){
+      if(!confirmedPackagingComponent)throw new Error('Packaging Component persistence returned no owner-authorized readback.')
+      return{confirmedPackagingComponent}
+    }
+  }
+
+  async readPackagingComponent(workspaceId:string,id:string):Promise<PackagingComponent|undefined>{
+    if(!supabase)throw new Error('Supabase is not configured.')
+    const auth=await supabase.auth.getUser()
+    if(auth.error||!auth.data.user)throw new Error('Authenticated owner required.')
+    const workspace=await supabase.from('workspaces').select('id').eq('id',workspaceId).eq('owner_id',auth.data.user.id).eq('lifecycle_state','active').single()
+    if(workspace.error||!workspace.data)throw new Error('Active owner workspace could not be resolved.')
+    const result=await supabase.from('packaging_components').select('*').eq('workspace_id',workspaceId).eq('owner_id',auth.data.user.id).eq('id',id).single()
+    if(result.error)throw new Error(result.error.message)
+    return toDomainValue(result.data) as PackagingComponent
   }
 
   private async persistEmbedded(collection:keyof FormulaState,record:Record<string,unknown>,workspaceId:string,ownerId:string,client:SupabaseClient) {

@@ -21,8 +21,14 @@ export async function executeWorkspaceAction(repository: WorkspaceRepository,cur
   if (next === current) return
   hooks.pending(action, true)
   try {
-    await repository.commit({ action, previous: current, next })
-    hooks.committed(next)
+    const confirmation=await repository.commit({ action, previous: current, next })
+    let confirmedNext=next
+    if(action==='updatePackagingComponent'){
+      const persisted=confirmation?.confirmedPackagingComponent
+      if(!persisted)throw new Error('Packaging Component persistence did not return a definitive owner-authorized readback.')
+      confirmedNext={...next,packagingComponents:next.packagingComponents.map(item=>item.id===persisted.id?persisted:item)}
+    }
+    hooks.committed(confirmedNext)
   } catch (error) {
     const failure=persistenceError(error)
     hooks.failed(action, failure)
