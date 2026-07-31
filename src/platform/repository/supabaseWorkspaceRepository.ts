@@ -90,8 +90,9 @@ export class SupabaseWorkspaceRepository implements WorkspaceRepository {
         Object.assign(row,{workspace_id:workspace.data.id,owner_id:user.id})
         const existing = previousById.get(record.id)
         if (!existing) {
-          const inserted = await client.from(table).insert(row)
+          const inserted = await client.from(table).insert(row).select('id,workspace_id').single()
           if (inserted.error) throw inserted.error
+          if(inserted.data?.id!==record.id||inserted.data?.workspace_id!==workspace.data.id)throw new Error(`Persisted ${table} readback did not match the requested record.`)
         } else {
           let update = client.from(table).update(row).eq('workspace_id',workspace.data.id).eq('id',record.id)
           if (existing.updatedAt) update = update.eq('updated_at',existing.updatedAt)

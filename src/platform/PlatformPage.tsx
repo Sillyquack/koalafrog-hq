@@ -10,6 +10,7 @@ import { SupabaseWorkspaceRepository } from './repository/supabaseWorkspaceRepos
 import { loadDevelopmentBackup } from '../features/development/data/developmentExperimentRepository'
 import { loadProcurementBackup } from '../features/procurement/data/procurementRepository'
 import { platformVersionInfo } from './version'
+import {buildOwnerOperationExport,type OwnerOperationEntity} from './operations/ownerOperationReceipt'
 
 export function PlatformPage() {
   const data = useFormulaData()
@@ -44,6 +45,23 @@ export function PlatformPage() {
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Backup export failed.')
     }
+  }
+
+  const exportOperationEvidence = async () => {
+    try {
+      if(!supabase)throw new Error('Configure Supabase before exporting operation evidence.')
+      const evidenceClient=supabase
+      const {data:{user},error:authError}=await evidenceClient.auth.getUser()
+      if(authError||!user)throw new Error('Authenticated owner required.')
+      const workspace=await evidenceClient.from('workspaces').select('id').eq('owner_id',user.id).single()
+      if(workspace.error)throw workspace.error
+      const tables=[['supplier_product','supplier_products'],['equipment','equipment_items'],['packaging_component','packaging_components'],['procurement_request','procurement_requests'],['procurement_requested_item','procurement_requested_items']] as const satisfies readonly(readonly[OwnerOperationEntity,'supplier_products'|'equipment_items'|'packaging_components'|'procurement_requests'|'procurement_requested_items'])[]
+      const entries=await Promise.all(tables.map(async([entity,table])=>{const result=await evidenceClient.from(table).select('*').eq('workspace_id',workspace.data.id);if(result.error)throw result.error;return[entity,result.data??[]] as const}))
+      const json=JSON.stringify(buildOwnerOperationExport(workspace.data.id,Object.fromEntries(entries)),null,2)
+      const url=URL.createObjectURL(new Blob([json],{type:'application/json'})),anchor=document.createElement('a')
+      anchor.href=url;anchor.download='koalafrog-owner-operation-evidence.json';anchor.click();URL.revokeObjectURL(url)
+      setMessage('Owner-scoped operation evidence exported with internal record IDs.')
+    }catch(error){setMessage(error instanceof Error?error.message:'Operation evidence export failed.')}
   }
 
   const migrate = async () => {
@@ -88,7 +106,7 @@ export function PlatformPage() {
     <div className="compliance-notice"><ShieldCheck /><div><strong>{isSupabaseConfigured ? 'Supabase client configured' : 'Supabase setup required'}</strong><p>Browser-safe anon credentials only. Service-role secrets never belong in the frontend.</p></div></div>
     <div className="compliance-grid">
       <section className="panel"><SectionHeader title="Local v9 migration" detail="Explicit dry run before any remote write" /><button className="button ghost" onClick={() => setReport(validateV9Workspace(collections))}>Validate local workspace</button>{report && <><h3>{report.state}</h3><p>{report.recordsReady} records ready · {report.blockingErrors} blocking errors · {report.warnings} warnings</p><button className="button primary" disabled={!!report.blockingErrors || !isSupabaseConfigured} onClick={migrate}>Import to Supabase</button></>}{message && <p className="form-error">{message}</p>}</section>
-      <section className="panel"><SectionHeader title="Koalafrog Backup" detail="Data export plus explicit Storage manifest" /><button className="button ghost" onClick={exportBackup}><Download size={14} />Export Koalafrog Backup</button><label className="button ghost"><Upload size={14} />Validate Backup<input hidden type="file" accept="application/json" onChange={event => event.target.files?.[0] && inspect(event.target.files[0])} /></label>{importMeta && <p>{importMeta}</p>}<p className="empty-copy">The manifest lists private document versions and lifecycle state, but file binaries are not included. Use the documented separate authenticated Storage export.</p></section>
+      <section className="panel"><SectionHeader title="Koalafrog Backup" detail="Data export plus explicit Storage manifest" /><button className="button ghost" onClick={exportBackup}><Download size={14} />Export Koalafrog Backup</button><button className="button ghost" onClick={() => void exportOperationEvidence()}><Download size={14} />Export operation evidence</button><label className="button ghost"><Upload size={14} />Validate Backup<input hidden type="file" accept="application/json" onChange={event => event.target.files?.[0] && inspect(event.target.files[0])} /></label>{importMeta && <p>{importMeta}</p>}<p className="empty-copy">Operation evidence contains internal IDs for five explicitly supported domains. The backup manifest lists private document versions and lifecycle state, but file binaries are not included.</p></section>
     </div>
   </>
 }
