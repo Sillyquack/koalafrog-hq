@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { formulaSeed } from '../../data/formulaSeed'
-import { normalizeProductRow, relationalMigrationPayload, relationalTableByCollection, toDatabaseValue, toDomainValue } from './supabaseWorkspaceRepository'
+import { assertSupplierProductPersistenceReadback, normalizeProductRow, relationalMigrationPayload, relationalTableByCollection, toDatabaseValue, toDomainValue } from './supabaseWorkspaceRepository'
 
 describe('relational workspace mapping', () => {
   it('maps every relational collection explicitly and keeps Beard Studio as a typed aggregate gateway', () => {
@@ -33,5 +33,13 @@ describe('relational workspace mapping', () => {
     const row = toDatabaseValue({ id:'product', targetLaunchDate:undefined }) as Record<string, unknown>
     expect(row.target_launch_date).toBeUndefined()
     expect(row.target_launch_date).not.toBe('')
+  })
+
+  it('requires canonical Supplier identity to survive persistence readback', () => {
+    const requested={id:'supplier-product',ingredientId:'ingredient',supplierId:'supplier',supplierName:'Mystic Moments UK',productName:'Jojoba Golden Carrier Oil'}
+    const persisted={id:'supplier-product',ingredient_id:'ingredient',supplier_id:'supplier',supplier_name:'Mystic Moments UK',product_name:'Jojoba Golden Carrier Oil',created_at:'2026-07-31T08:00:00.000Z',updated_at:'2026-07-31T08:00:00.000Z'}
+    expect(()=>assertSupplierProductPersistenceReadback(requested,persisted)).not.toThrow()
+    expect(()=>assertSupplierProductPersistenceReadback(requested,{...persisted,supplier_id:null})).toThrow(/selected canonical Supplier/)
+    expect(()=>assertSupplierProductPersistenceReadback(requested,{...persisted,supplier_name:'Stale display text'})).toThrow(/selected canonical Supplier/)
   })
 })

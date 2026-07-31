@@ -36,6 +36,21 @@ describe("Supplier Product form persistence", () => {
     expect(onFailure).toHaveBeenCalledWith("RLS denied the insert");
   });
 
+  it("does not emit success when canonical Supplier readback mismatches", async () => {
+    const onSuccess = vi.fn();
+    const onFailure = vi.fn();
+    const mismatch =
+      "Supplier Product persistence readback did not match the selected canonical Supplier.";
+
+    await persistSupplierProductForm(
+      () => Promise.reject(new Error(mismatch)),
+      onSuccess,
+      onFailure,
+    );
+    expect(onSuccess).not.toHaveBeenCalled();
+    expect(onFailure).toHaveBeenCalledWith(mismatch);
+  });
+
   it("provides an actionable fallback for non-Error failures", () => {
     expect(persistenceErrorMessage({ code: "unexpected" })).toBe(
       "Could not save Supplier Product.",

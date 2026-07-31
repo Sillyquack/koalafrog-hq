@@ -351,6 +351,7 @@ run('relational v9 migration against local Supabase', () => {
       expect((await client.rpc('complete_v9_reconciliation',{run_id:(imported.data as {migrationRunId:string}).migrationRunId,report:compareReconciliation(snapshot,snapshot)})).error).toBeNull()
     }
     const workspaceA=await ownerA.client.from('workspaces').select('id').single()
+    const workspaceB=await ownerB.client.from('workspaces').select('id').single()
     const supplierA=await ownerA.client.from('suppliers').insert({workspace_id:workspaceA.data!.id,owner_id:ownerA.ownerId,legal_name:'Nullable Supplier AS',trading_name:'Nullable Supplier',supplier_type:'raw_material',status:'candidate',internal_notes:'',is_preferred:false}).select('id').single()
     expect(supplierA.error).toBeNull()
     expect((await supabase!.auth.signInWithPassword({email:ownerA.email,password:ownerA.password})).error).toBeNull()
@@ -372,15 +373,25 @@ run('relational v9 migration against local Supabase', () => {
     }
     const committed=await applicationAction(repository,before,'saveSupplierProduct',current=>({...current,supplierProducts:[...current.supplierProducts,candidate]}))
     expect(committed.supplierProducts).toContainEqual(candidate)
-    const row=await ownerA.client.from('supplier_products').select('id,lifecycle_status,price_state,product_status,price,currency,package_quantity,package_unit,availability_status').eq('id',candidate.id).single()
+    const row=await ownerA.client.from('supplier_products').select('id,supplier_id,supplier_name,lifecycle_status,price_state,product_status,price,currency,package_quantity,package_unit,availability_status').eq('id',candidate.id).single()
     expect(row.error).toBeNull()
-    expect(row.data).toMatchObject({id:candidate.id,lifecycle_status:'candidate',price_state:'unknown',product_status:'research',price:null,currency:null,package_quantity:null,package_unit:null})
+    expect(row.data).toMatchObject({id:candidate.id,supplier_id:supplierA.data!.id,supplier_name:'Nullable Supplier',lifecycle_status:'candidate',price_state:'unknown',product_status:'research',price:null,currency:null,package_quantity:null,package_unit:null})
     expect(row.data?.availability_status).not.toBe('in_stock')
     const reloaded=await new SupabaseWorkspaceRepository().load(ownerA.ownerId)
-    expect(reloaded.supplierProducts.find(item=>item.id===candidate.id)).toMatchObject({lifecycleStatus:'candidate',priceState:'unknown',productStatus:'research'})
+    expect(reloaded.supplierProducts.find(item=>item.id===candidate.id)).toMatchObject({supplierId:supplierA.data!.id,supplierName:'Nullable Supplier',lifecycleStatus:'candidate',priceState:'unknown',productStatus:'research'})
     expect(reloaded.inventoryLots.some(item=>item.supplierProductId===candidate.id)).toBe(false)
+    const legacyId=`legacy-supplier-product-${crypto.randomUUID()}`,legacyCreated='2026-07-30T14:00:00.000Z'
+    expect((await ownerA.client.from('supplier_products').insert({
+      workspace_id:workspaceA.data!.id,owner_id:ownerA.ownerId,id:legacyId,ingredient_id:'i1',supplier_id:null,supplier_name:'Nullable Supplier',product_name:'Legacy candidate for explicit linking',lifecycle_status:'candidate',price_state:'unknown',product_status:'research',price:null,currency:null,package_quantity:null,package_unit:null,notes:'Preserve this note',is_preferred:false,created_at:legacyCreated,updated_at:legacyCreated,
+    })).error).toBeNull()
+    const beforeLink=await repository.load(ownerA.ownerId),legacy=beforeLink.supplierProducts.find(item=>item.id===legacyId)!
+    await applicationAction(repository,beforeLink,'saveSupplierProduct',current=>({...current,supplierProducts:current.supplierProducts.map(item=>item.id===legacyId?{...item,supplierId:supplierA.data!.id,supplierName:'Nullable Supplier',updatedAt:'2026-07-30T15:01:00.000Z'}:item)}))
+    const linked=await ownerA.client.from('supplier_products').select('id,ingredient_id,supplier_id,supplier_name,product_name,lifecycle_status,price_state,price,currency,package_quantity,package_unit,notes,created_at').eq('id',legacyId).single()
+    expect(linked.error).toBeNull()
+    expect(linked.data).toMatchObject({id:legacyId,ingredient_id:legacy.ingredientId,supplier_id:supplierA.data!.id,supplier_name:'Nullable Supplier',product_name:legacy.productName,lifecycle_status:'candidate',price_state:'unknown',price:null,currency:null,package_quantity:null,package_unit:null,notes:'Preserve this note',created_at:legacyCreated})
+    expect((await new SupabaseWorkspaceRepository().load(ownerA.ownerId)).supplierProducts.find(item=>item.id===legacyId)).toMatchObject({id:legacyId,supplierId:supplierA.data!.id,supplierName:'Nullable Supplier'})
     const crossWorkspace=await ownerB.client.from('supplier_products').insert({
-      workspace_id:workspaceA.data!.id,
+      workspace_id:workspaceB.data!.id,
       owner_id:ownerB.ownerId,
       id:'supplier-product-cross-workspace',
       ingredient_id:'i1',
@@ -396,7 +407,7 @@ run('relational v9 migration against local Supabase', () => {
       updated_at:now,
     })
     expect(crossWorkspace.error).not.toBeNull()
-    expect((await ownerA.client.from('supplier_products').select('id').eq('id','supplier-product-cross-workspace')).data).toHaveLength(0)
+    expect((await ownerB.client.from('supplier_products').select('id').eq('id','supplier-product-cross-workspace')).data).toHaveLength(0)
     await supabase!.auth.signOut()
   },30_000)
 

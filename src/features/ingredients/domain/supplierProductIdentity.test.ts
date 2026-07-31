@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { sameSupplierProductIdentity } from "./supplierProductIdentity";
+import {
+  matchingSupplierProductIdentities,
+  sameSupplierProductIdentity,
+} from "./supplierProductIdentity";
 
 const candidate = {
   ingredientId: "ingredient",
@@ -32,5 +35,32 @@ describe("Supplier Product identity", () => {
         ingredientId: "another-ingredient",
       }),
     ).toBe(false);
+  });
+
+  it("keeps a legacy null-ID row compatible with its canonical identity", () => {
+    expect(
+      sameSupplierProductIdentity(
+        { ...candidate, supplierId: undefined },
+        candidate,
+      ),
+    ).toBe(true);
+  });
+
+  it("exposes ambiguous legacy matches instead of selecting one", () => {
+    const legacy = {
+      ...candidate,
+      supplierId: undefined,
+      id: "legacy-a",
+      notes: "",
+      isPreferred: false,
+      createdAt: "",
+      updatedAt: "",
+    };
+    expect(
+      matchingSupplierProductIdentities(
+        [legacy, { ...legacy, id: "legacy-b" }],
+        candidate,
+      ).map((item) => item.id),
+    ).toEqual(["legacy-a", "legacy-b"]);
   });
 });

@@ -1871,8 +1871,8 @@
         "../data/formulaRepository"
       ],
       "sizeMetrics": {
-        "bytes": 77448,
-        "lines": 2014
+        "bytes": 78119,
+        "lines": 2029
       }
     },
     {
@@ -1907,8 +1907,8 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 17996,
-        "lines": 66
+        "bytes": 19486,
+        "lines": 68
       }
     },
     {
@@ -1923,8 +1923,8 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 1305,
-        "lines": 45
+        "bytes": 1806,
+        "lines": 60
       }
     },
     {
@@ -1941,6 +1941,42 @@
       "sizeMetrics": {
         "bytes": 492,
         "lines": 21
+      }
+    },
+    {
+      "canonicalRepository": null,
+      "classification": "canonical_read_model",
+      "crossDomainDependencies": [
+        "../../procurement/domain/procurement"
+      ],
+      "domainOwner": "ingredients",
+      "legacyDependency": [],
+      "modulePath": "src/features/ingredients/domain/canonicalSupplierSelection.test.ts",
+      "objectType": "domain_module",
+      "responsibility": "domain module",
+      "riskNotes": [],
+      "serverAuthoritativePoliciesConsumed": [],
+      "sizeMetrics": {
+        "bytes": 2262,
+        "lines": 73
+      }
+    },
+    {
+      "canonicalRepository": null,
+      "classification": "canonical_read_model",
+      "crossDomainDependencies": [
+        "../../procurement/domain/procurement"
+      ],
+      "domainOwner": "ingredients",
+      "legacyDependency": [],
+      "modulePath": "src/features/ingredients/domain/canonicalSupplierSelection.ts",
+      "objectType": "domain_module",
+      "responsibility": "domain module",
+      "riskNotes": [],
+      "serverAuthoritativePoliciesConsumed": [],
+      "sizeMetrics": {
+        "bytes": 892,
+        "lines": 29
       }
     },
     {
@@ -2051,8 +2087,8 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 1050,
-        "lines": 37
+        "bytes": 1780,
+        "lines": 67
       }
     },
     {
@@ -2069,8 +2105,8 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 768,
-        "lines": 26
+        "bytes": 1132,
+        "lines": 41
       }
     },
     {
@@ -2219,8 +2255,8 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 3433,
-        "lines": 16
+        "bytes": 4357,
+        "lines": 18
       }
     },
     {
@@ -6755,8 +6791,8 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 3189,
-        "lines": 39
+        "bytes": 3766,
+        "lines": 44
       }
     },
     {
@@ -6915,8 +6951,8 @@
         "./workspaceRepository"
       ],
       "sizeMetrics": {
-        "bytes": 72563,
-        "lines": 553
+        "bytes": 74698,
+        "lines": 564
       }
     },
     {
@@ -6937,8 +6973,8 @@
         "./supabaseWorkspaceRepository"
       ],
       "sizeMetrics": {
-        "bytes": 1994,
-        "lines": 38
+        "bytes": 2925,
+        "lines": 46
       }
     },
     {
@@ -6965,8 +7001,8 @@
         "./workspaceRepository"
       ],
       "sizeMetrics": {
-        "bytes": 22937,
-        "lines": 273
+        "bytes": 24623,
+        "lines": 315
       }
     },
     {
@@ -21156,6 +21192,6 @@
   ],
   "generatedAt": "2026-07-29T12:00:00+02:00",
   "sourceCommit": "content-addressed-by-sourceHash",
-  "sourceHash": "29ecda7cd0def3d8b67676cd28ba6bf3ef99b1fd735d7784fbc989b5f2ed957b",
+  "sourceHash": "cca4e6032e1d088822b529bc4870be8f2936dcc6ce3bf7c2d836448ff91e50ce",
   "version": "1.0.0"
 }
