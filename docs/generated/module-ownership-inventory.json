@@ -189,7 +189,7 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 3684,
+        "bytes": 3941,
         "lines": 26
       }
     },
@@ -1850,6 +1850,7 @@
         "../../ingredients/domain/supplierProductIdentity",
         "../../inventory/domain/inventoryLogic",
         "../../lab/domain/labLogic",
+        "../../packaging/domain/confirmedPackagingUpdate",
         "../../packaging/domain/packagingLogic",
         "../../product-studio/domain/formulationEngine",
         "../../product-studio/domain/naturalDeodorant",
@@ -1872,8 +1873,8 @@
         "../data/formulaRepository"
       ],
       "sizeMetrics": {
-        "bytes": 78119,
-        "lines": 2029
+        "bytes": 78651,
+        "lines": 2035
       }
     },
     {
@@ -3205,6 +3206,43 @@
       ],
       "domainOwner": "packaging",
       "legacyDependency": [],
+      "modulePath": "src/features/packaging/domain/confirmedPackagingUpdate.test.ts",
+      "objectType": "domain_module",
+      "responsibility": "domain module",
+      "riskNotes": [],
+      "serverAuthoritativePoliciesConsumed": [],
+      "sizeMetrics": {
+        "bytes": 2379,
+        "lines": 83
+      }
+    },
+    {
+      "canonicalRepository": null,
+      "classification": "canonical_read_model",
+      "crossDomainDependencies": [
+        "../../../platform/operations/ownerOperationReceipt",
+        "../../../types/domain"
+      ],
+      "domainOwner": "packaging",
+      "legacyDependency": [],
+      "modulePath": "src/features/packaging/domain/confirmedPackagingUpdate.ts",
+      "objectType": "domain_module",
+      "responsibility": "domain module",
+      "riskNotes": [],
+      "serverAuthoritativePoliciesConsumed": [],
+      "sizeMetrics": {
+        "bytes": 2291,
+        "lines": 79
+      }
+    },
+    {
+      "canonicalRepository": null,
+      "classification": "canonical_read_model",
+      "crossDomainDependencies": [
+        "../../../types/domain"
+      ],
+      "domainOwner": "packaging",
+      "legacyDependency": [],
       "modulePath": "src/features/packaging/domain/packagingLogic.test.ts",
       "objectType": "domain_module",
       "responsibility": "domain module",
@@ -3252,7 +3290,7 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 8160,
+        "bytes": 8714,
         "lines": 32
       }
     },
@@ -3363,7 +3401,7 @@
         "../data/procurementRepository"
       ],
       "sizeMetrics": {
-        "bytes": 1839,
+        "bytes": 1904,
         "lines": 3
       }
     },
@@ -3519,8 +3557,8 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 12877,
-        "lines": 48
+        "bytes": 15874,
+        "lines": 78
       }
     },
     {
@@ -3631,8 +3669,8 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 27211,
-        "lines": 112
+        "bytes": 31240,
+        "lines": 121
       }
     },
     {
@@ -3732,6 +3770,123 @@
       }
     },
     {
+      "canonicalRepository": "../../../../platform/operations/ownerOperationEvidenceRepository",
+      "classification": "canonical_read_model",
+      "crossDomainDependencies": [
+        "../../../../platform/actions/workspaceActionExecutor",
+        "../../../../platform/operations/ownerOperationEvidenceRepository",
+        "../../../../platform/repository/supabaseWorkspaceRepository",
+        "../../../../platform/supabase/client",
+        "../../../packaging/domain/confirmedPackagingUpdate"
+      ],
+      "domainOwner": "procurement",
+      "legacyDependency": [],
+      "modulePath": "src/features/procurement/draft-plans/data/draftPurchasePlanRepository.integration.test.ts",
+      "objectType": "module",
+      "responsibility": "module",
+      "riskNotes": [
+        "oversized_module"
+      ],
+      "serverAuthoritativePoliciesConsumed": [
+        "../../../../platform/operations/ownerOperationEvidenceRepository",
+        "../../../../platform/repository/supabaseWorkspaceRepository",
+        "../../data/procurementRepository"
+      ],
+      "sizeMetrics": {
+        "bytes": 20622,
+        "lines": 567
+      }
+    },
+    {
+      "canonicalRepository": null,
+      "classification": "canonical_read_model",
+      "crossDomainDependencies": [],
+      "domainOwner": "procurement",
+      "legacyDependency": [],
+      "modulePath": "src/features/procurement/draft-plans/draftPlanForm.test.ts",
+      "objectType": "module",
+      "responsibility": "module",
+      "riskNotes": [],
+      "serverAuthoritativePoliciesConsumed": [],
+      "sizeMetrics": {
+        "bytes": 2008,
+        "lines": 69
+      }
+    },
+    {
+      "canonicalRepository": null,
+      "classification": "canonical_read_model",
+      "crossDomainDependencies": [],
+      "domainOwner": "procurement",
+      "legacyDependency": [],
+      "modulePath": "src/features/procurement/draft-plans/draftPlanForm.ts",
+      "objectType": "module",
+      "responsibility": "module",
+      "riskNotes": [],
+      "serverAuthoritativePoliciesConsumed": [],
+      "sizeMetrics": {
+        "bytes": 10909,
+        "lines": 335
+      }
+    },
+    {
+      "canonicalRepository": null,
+      "classification": "canonical_read_model",
+      "crossDomainDependencies": [
+        "../../../components/ui/PageHeader",
+        "../../formulas/state/FormulaDataContext",
+        "../useProcurement"
+      ],
+      "domainOwner": "procurement",
+      "legacyDependency": [],
+      "modulePath": "src/features/procurement/draft-plans/DraftPurchasePlanBuilderPage.tsx",
+      "objectType": "route_module",
+      "responsibility": "route module",
+      "riskNotes": [
+        "oversized_module"
+      ],
+      "serverAuthoritativePoliciesConsumed": [],
+      "sizeMetrics": {
+        "bytes": 27505,
+        "lines": 863
+      }
+    },
+    {
+      "canonicalRepository": null,
+      "classification": "canonical_read_model",
+      "crossDomainDependencies": [
+        "../../../components/ui/PageHeader",
+        "../useProcurement"
+      ],
+      "domainOwner": "procurement",
+      "legacyDependency": [],
+      "modulePath": "src/features/procurement/draft-plans/DraftPurchasePlanDetailPage.tsx",
+      "objectType": "route_module",
+      "responsibility": "route module",
+      "riskNotes": [],
+      "serverAuthoritativePoliciesConsumed": [],
+      "sizeMetrics": {
+        "bytes": 10471,
+        "lines": 241
+      }
+    },
+    {
+      "canonicalRepository": null,
+      "classification": "canonical_read_model",
+      "crossDomainDependencies": [],
+      "domainOwner": "procurement",
+      "legacyDependency": [],
+      "modulePath": "src/features/procurement/draft-plans/DraftPurchasePlanReceiptPanel.tsx",
+      "objectType": "module",
+      "responsibility": "module",
+      "riskNotes": [],
+      "serverAuthoritativePoliciesConsumed": [],
+      "sizeMetrics": {
+        "bytes": 3863,
+        "lines": 124
+      }
+    },
+    {
       "canonicalRepository": null,
       "classification": "canonical_read_model",
       "crossDomainDependencies": [],
@@ -3791,8 +3946,8 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 877,
-        "lines": 10
+        "bytes": 1188,
+        "lines": 12
       }
     },
     {
@@ -3827,7 +3982,7 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 11640,
+        "bytes": 11902,
         "lines": 66
       }
     },
@@ -3859,8 +4014,8 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 782,
-        "lines": 14
+        "bytes": 1000,
+        "lines": 16
       }
     },
     {
@@ -6559,8 +6714,8 @@
         "../repository/workspaceRepository"
       ],
       "sizeMetrics": {
-        "bytes": 1795,
-        "lines": 32
+        "bytes": 3378,
+        "lines": 51
       }
     },
     {
@@ -6580,8 +6735,8 @@
         "../repository/workspaceRepository"
       ],
       "sizeMetrics": {
-        "bytes": 1277,
-        "lines": 34
+        "bytes": 1697,
+        "lines": 40
       }
     },
     {
@@ -6776,8 +6931,8 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 2683,
-        "lines": 80
+        "bytes": 4330,
+        "lines": 95
       }
     },
     {
@@ -6792,8 +6947,8 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 3766,
-        "lines": 44
+        "bytes": 6054,
+        "lines": 55
       }
     },
     {
@@ -6808,8 +6963,8 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 6157,
-        "lines": 178
+        "bytes": 7771,
+        "lines": 193
       }
     },
     {
@@ -6870,7 +7025,7 @@
         "./repository/supabaseWorkspaceRepository"
       ],
       "sizeMetrics": {
-        "bytes": 14449,
+        "bytes": 14492,
         "lines": 135
       }
     },
@@ -6915,8 +7070,8 @@
         "./workspaceRepository"
       ],
       "sizeMetrics": {
-        "bytes": 555,
-        "lines": 11
+        "bytes": 1157,
+        "lines": 20
       }
     },
     {
@@ -7002,8 +7157,8 @@
         "./workspaceRepository"
       ],
       "sizeMetrics": {
-        "bytes": 24623,
-        "lines": 315
+        "bytes": 28591,
+        "lines": 376
       }
     },
     {
@@ -7021,8 +7176,8 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 513,
-        "lines": 13
+        "bytes": 824,
+        "lines": 18
       }
     },
     {
@@ -7230,8 +7385,8 @@
       ],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 664604,
-        "lines": 19496
+        "bytes": 668388,
+        "lines": 19583
       }
     },
     {

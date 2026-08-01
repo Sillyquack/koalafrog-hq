@@ -1,11 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- Phase 10A tables are accessed through this adapter until generated types refresh */
 import { supabase } from '../../../platform/supabase/client'
-import { emptyProcurementData, type ProcurementData } from '../domain/procurement'
+import { emptyProcurementData, type DraftPurchasePlanAggregate, type DraftPurchasePlanInput, type DraftPurchasePlanReceiptBundle, type ProcurementData } from '../domain/procurement'
 import type { ProcurementExport } from './procurementInterchange'
 import type { OfferCandidate } from '../domain/assistedResearch'
 import {receiptFromPersistedRow} from '../../../platform/operations/ownerOperationReceipt'
 const client=()=>{if(!supabase)throw new Error('Hosted procurement requires Supabase.');return supabase as any}
-const tableMap={suppliers:'suppliers',contacts:'supplier_contacts',candidates:'supplier_research_candidates',quotes:'supplier_quotes',quoteLines:'supplier_quote_lines',stockPolicies:'stock_policies',purchasePlans:'purchase_plans',purchasePlanLines:'purchase_plan_lines',purchaseOrders:'purchase_orders',purchaseOrderLines:'purchase_order_lines',equipment:'equipment_items',capabilities:'equipment_capabilities',equipmentPolicies:'equipment_policies',serviceEvents:'equipment_service_events',processRequirements:'process_equipment_requirements',requests:'procurement_requests',requestedItems:'procurement_requested_items',offers:'procurement_supplier_offers',recommendations:'procurement_recommendations',supplierDiscounts:'procurement_supplier_discounts',supplierShippingRules:'procurement_supplier_shipping_rules',supplierDocuments:'supplier_document_records',supplierEvents:'supplier_events',cartScenarios:'procurement_cart_scenarios',cartScenarioItems:'procurement_cart_scenario_items',researchJobs:'procurement_research_jobs',researchDiagnostics:'procurement_provider_diagnostics',offerCandidates:'procurement_offer_candidates'} as const
+const tableMap={suppliers:'suppliers',contacts:'supplier_contacts',candidates:'supplier_research_candidates',quotes:'supplier_quotes',quoteLines:'supplier_quote_lines',stockPolicies:'stock_policies',purchasePlans:'purchase_plans',purchasePlanBaskets:'purchase_plan_baskets',purchasePlanLines:'purchase_plan_lines',purchaseOrders:'purchase_orders',purchaseOrderLines:'purchase_order_lines',equipment:'equipment_items',capabilities:'equipment_capabilities',equipmentPolicies:'equipment_policies',serviceEvents:'equipment_service_events',processRequirements:'process_equipment_requirements',requests:'procurement_requests',requestedItems:'procurement_requested_items',offers:'procurement_supplier_offers',recommendations:'procurement_recommendations',supplierDiscounts:'procurement_supplier_discounts',supplierShippingRules:'procurement_supplier_shipping_rules',supplierDocuments:'supplier_document_records',supplierEvents:'supplier_events',cartScenarios:'procurement_cart_scenarios',cartScenarioItems:'procurement_cart_scenario_items',researchJobs:'procurement_research_jobs',researchDiagnostics:'procurement_provider_diagnostics',offerCandidates:'procurement_offer_candidates'} as const
 export async function loadProcurement(workspaceId:string){const entries=await Promise.all(Object.entries(tableMap).map(async([key,table])=>{const result=await client().from(table).select('*').eq('workspace_id',workspaceId).order('created_at',{ascending:false});if(result.error)throw new Error(result.error.message);return[key,result.data??[]]}));return Object.assign(emptyProcurementData(),Object.fromEntries(entries)) as ProcurementData}
 const owner=async()=>{const result=await client().auth.getUser();if(result.error||!result.data.user)throw new Error('Authenticated owner required.');return result.data.user.id}
 async function insert(table:string,workspaceId:string,values:Record<string,unknown>){const result=await client().from(table).insert({workspace_id:workspaceId,owner_id:await owner(),...values}).select().single();if(result.error)throw new Error(result.error.message);return result.data}
@@ -14,8 +14,38 @@ export const createContact=(workspaceId:string,values:Record<string,unknown>)=>i
 export const createCandidate=(workspaceId:string,values:Record<string,unknown>)=>insert('supplier_research_candidates',workspaceId,values)
 export const createQuote=(workspaceId:string,values:Record<string,unknown>)=>insert('supplier_quotes',workspaceId,values)
 export const createStockPolicy=(workspaceId:string,values:Record<string,unknown>)=>insert('stock_policies',workspaceId,values)
-export const createPurchasePlan=(workspaceId:string,values:Record<string,unknown>)=>insert('purchase_plans',workspaceId,{creation_key:crypto.randomUUID(),...values})
 export async function createProductStudioPurchasePlan(conceptId:string,lines:Record<string,unknown>[]){const result=await client().rpc('create_product_studio_purchase_plan',{concept_id:conceptId,lines});if(result.error)throw new Error(result.error.message);return result.data as string}
+
+const isDraftReceiptBundle=(value:unknown):value is DraftPurchasePlanReceiptBundle=>{
+ if(!value||typeof value!=='object')return false
+ const bundle=value as Partial<DraftPurchasePlanReceiptBundle>
+ return bundle.schemaVersion===1&&['created','reused'].includes(String(bundle.operation))&&!!bundle.plan&&bundle.plan.entityType==='purchase_plan'&&bundle.plan.status==='draft'&&bundle.plan.placementState==='unplaced'&&bundle.plan.orderAuthorized===false&&Array.isArray(bundle.baskets)&&Array.isArray(bundle.lines)
+}
+
+export async function loadDraftPurchasePlan(workspaceId:string,planId:string):Promise<DraftPurchasePlanAggregate>{
+ const userId=await owner(),workspace=await client().from('workspaces').select('id').eq('id',workspaceId).eq('owner_id',userId).eq('lifecycle_state','active').single()
+ if(workspace.error||!workspace.data)throw new Error('Active owner workspace could not be resolved.')
+ const[plan,baskets,lines]=await Promise.all([
+  client().from('purchase_plans').select('*').eq('workspace_id',workspaceId).eq('id',planId).single(),
+  client().from('purchase_plan_baskets').select('*').eq('workspace_id',workspaceId).eq('purchase_plan_id',planId).order('supplier_name_snapshot').order('currency'),
+  client().from('purchase_plan_lines').select('*').eq('workspace_id',workspaceId).eq('purchase_plan_id',planId).order('display_order'),
+ ])
+ const error=plan.error??baskets.error??lines.error
+ if(error)throw new Error(error.message)
+ if(plan.data.status!=='draft'||plan.data.placement_state!=='unplaced'||plan.data.order_authorized!==false)throw new Error('Persisted plan readback did not preserve Draft, unplaced, unauthorised semantics.')
+ return{plan:plan.data,baskets:baskets.data??[],lines:lines.data??[]} as DraftPurchasePlanAggregate
+}
+
+export async function createDraftPurchasePlan(workspaceId:string,input:DraftPurchasePlanInput):Promise<{receipt:DraftPurchasePlanReceiptBundle;aggregate:DraftPurchasePlanAggregate}>{
+ const result=await client().rpc('create_draft_purchase_plan_v1',{candidate_workspace_id:workspaceId,candidate_idempotency_key:input.idempotencyKey,candidate_plan:input.plan,candidate_baskets:input.baskets})
+ if(result.error)throw new Error(result.error.message)
+ if(!isDraftReceiptBundle(result.data))throw new Error('Draft Purchase Plan creation returned an invalid receipt bundle.')
+ const aggregate=await loadDraftPurchasePlan(workspaceId,result.data.plan.recordId)
+ const basketIds=new Set(aggregate.baskets.map(item=>item.id)),lineIds=new Set(aggregate.lines.map(item=>item.id))
+ if(aggregate.baskets.length!==result.data.baskets.length||result.data.baskets.some((item:{recordId:string})=>!basketIds.has(item.recordId)))throw new Error('Draft Purchase Plan basket readback did not match the receipt bundle.')
+ if(aggregate.lines.length!==result.data.lines.length||result.data.lines.some((item:{recordId:string})=>!lineIds.has(item.recordId)))throw new Error('Draft Purchase Plan line readback did not match the receipt bundle.')
+ return{receipt:result.data,aggregate}
+}
 export const createEquipment=async(workspaceId:string,values:Record<string,unknown>)=>receiptFromPersistedRow('equipment',workspaceId,await insert('equipment_items',workspaceId,values),{name:String(values.name??''),equipment_type:String(values.equipment_type??'')})
 export const recordService=(workspaceId:string,values:Record<string,unknown>)=>insert('equipment_service_events',workspaceId,values)
 export const createRequest=async(workspaceId:string,values:Record<string,unknown>)=>receiptFromPersistedRow('procurement_request',workspaceId,await insert('procurement_requests',workspaceId,values),{title:String(values.title??''),category:String(values.category??'')})

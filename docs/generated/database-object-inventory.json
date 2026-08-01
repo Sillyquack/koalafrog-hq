@@ -1,10 +1,10 @@
 {
   "counts": {
-    "foreignKeys": 630,
-    "functions": 209,
+    "foreignKeys": 631,
+    "functions": 212,
     "indexes": 638,
     "materializedViews": 0,
-    "policies": 187,
+    "policies": 186,
     "providers": 5,
     "repositories": 17,
     "routes": 63,
@@ -16194,6 +16194,10 @@
           "name": "purchase_plan_baskets_currency_check"
         },
         {
+          "definition": "CHECK (((dangerous_goods_fee IS NULL) OR (dangerous_goods_fee >= (0)::numeric)))",
+          "name": "purchase_plan_baskets_dangerous_goods_check"
+        },
+        {
           "definition": "CHECK ((eligible_subtotal >= (0)::numeric))",
           "name": "purchase_plan_baskets_eligible_subtotal_check"
         },
@@ -16220,6 +16224,10 @@
         {
           "definition": "CHECK ((merchandise_subtotal >= (0)::numeric))",
           "name": "purchase_plan_baskets_merchandise_subtotal_check"
+        },
+        {
+          "definition": "CHECK (((payment_fx IS NULL) OR (payment_fx >= (0)::numeric)))",
+          "name": "purchase_plan_baskets_payment_fx_check"
         },
         {
           "definition": "CHECK ((post_discount_subtotal >= (0)::numeric))",
@@ -16329,6 +16337,10 @@
           "name": "purchase_plan_lines_check"
         },
         {
+          "definition": "CHECK ((jsonb_typeof(commercial_evidence_snapshot) = 'object'::text))",
+          "name": "purchase_plan_lines_commercial_evidence_snapshot_check"
+        },
+        {
           "definition": "CHECK ((jsonb_typeof(documentation_state) = 'object'::text))",
           "name": "purchase_plan_lines_documentation_state_check"
         },
@@ -16339,6 +16351,10 @@
         {
           "definition": "CHECK ((planned_quantity > (0)::numeric))",
           "name": "purchase_plan_lines_planned_quantity_check"
+        },
+        {
+          "definition": "CHECK (((source_kind IS NULL) OR (source_kind = ANY (ARRAY['supplier_product'::text, 'packaging_supplier_product'::text, 'packaging_component'::text, 'manual'::text, 'scenario_snapshot'::text, 'legacy'::text]))))",
+          "name": "purchase_plan_lines_source_kind_check"
         },
         {
           "definition": "CHECK ((jsonb_typeof(source_snapshot) = 'object'::text))",
@@ -16354,6 +16370,14 @@
           ],
           "name": "purchase_plan_lines_basket_fk",
           "references": "purchase_plan_baskets"
+        },
+        {
+          "columns": [
+            "workspace_id",
+            "packaging_component_id"
+          ],
+          "name": "purchase_plan_lines_packaging_component_fk",
+          "references": "packaging_components"
         },
         {
           "columns": [
@@ -16389,7 +16413,7 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arDxtm/postgres",
+        "authenticated=rDxtm/postgres",
         "postgres=arwdDxtm/postgres",
         "service_role=arwdDxtm/postgres"
       ],
@@ -16590,6 +16614,26 @@
           "name": "purchase_plans_base_currency"
         },
         {
+          "definition": "CHECK ((((target_budget IS NULL) AND (absolute_stop IS NULL)) OR ((target_budget > (0)::numeric) AND (absolute_stop >= target_budget))))",
+          "name": "purchase_plans_budget_gate_check"
+        },
+        {
+          "definition": "CHECK ((((credible_range_minimum IS NULL) AND (credible_range_maximum IS NULL)) OR ((credible_range_minimum >= (0)::numeric) AND (credible_range_maximum >= credible_range_minimum))))",
+          "name": "purchase_plans_credible_range_check"
+        },
+        {
+          "definition": "CHECK (((status <> 'draft'::text) OR ((placement_state = 'unplaced'::text) AND (order_authorized = false))))",
+          "name": "purchase_plans_draft_authority_check"
+        },
+        {
+          "definition": "CHECK (((draft_payload_fingerprint IS NULL) OR (draft_payload_fingerprint ~ '^[0-9a-f]{64}$'::text)))",
+          "name": "purchase_plans_draft_fingerprint_check"
+        },
+        {
+          "definition": "CHECK (((placement_state IS NULL) OR (placement_state = 'unplaced'::text)))",
+          "name": "purchase_plans_placement_state_check"
+        },
+        {
           "definition": "CHECK ((((supplier_count IS NULL) OR (supplier_count >= 0)) AND ((line_count IS NULL) OR (line_count >= 0)) AND ((unknown_component_count IS NULL) OR (unknown_component_count >= 0)) AND ((warning_count IS NULL) OR (warning_count >= 0)) AND ((blocker_count IS NULL) OR (blocker_count >= 0))))",
           "name": "purchase_plans_snapshot_counts"
         },
@@ -16608,6 +16652,10 @@
         {
           "definition": "CHECK (((plan_version IS NULL) OR (plan_version > 0)))",
           "name": "purchase_plans_version_check"
+        },
+        {
+          "definition": "CHECK ((((worst_credible_range_minimum IS NULL) AND (worst_credible_range_maximum IS NULL)) OR ((worst_credible_range_minimum >= (0)::numeric) AND (worst_credible_range_maximum >= worst_credible_range_minimum))))",
+          "name": "purchase_plans_worst_credible_range_check"
         }
       ],
       "estimatedRows": 0,
@@ -16646,7 +16694,7 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arDxtm/postgres",
+        "authenticated=rDxtm/postgres",
         "postgres=arwdDxtm/postgres",
         "service_role=arwdDxtm/postgres"
       ],
@@ -16739,15 +16787,6 @@
       "name": "purchase_plans",
       "objectType": "table",
       "policies": [
-        {
-          "command": "a",
-          "name": "owner_insert_draft",
-          "roles": [
-            "authenticated"
-          ],
-          "using": null,
-          "withCheck": "((owner_id = ( SELECT auth.uid() AS uid)) AND (status = 'draft'::text) AND (EXISTS ( SELECT 1\n   FROM workspaces w\n  WHERE ((w.id = purchase_plans.workspace_id) AND (w.owner_id = ( SELECT auth.uid() AS uid)) AND (w.lifecycle_state = 'active'::text)))))"
-        },
         {
           "command": "r",
           "name": "owner_select",

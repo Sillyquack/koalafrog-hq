@@ -7,3 +7,5 @@ export const ProcurementPage=lazy(()=>import('./ProcurementPage').then(m=>({defa
 export const ProcurementRequestPage=lazy(()=>import('./ProcurementRequestPage').then(m=>({default:m.ProcurementRequestPage})))
 export const SuppliersPage=lazy(()=>import('./SuppliersPage').then(m=>({default:m.SuppliersPage})))
 export const ProductionReadinessPage=lazy(()=>import('./production-readiness/ProductionReadinessPage').then(m=>({default:m.ProductionReadinessPage})))
+export const DraftPurchasePlanBuilderPage=lazy(()=>import('./draft-plans/DraftPurchasePlanBuilderPage').then(m=>({default:m.DraftPurchasePlanBuilderPage})))
+export const DraftPurchasePlanDetailPage=lazy(()=>import('./draft-plans/DraftPurchasePlanDetailPage').then(m=>({default:m.DraftPurchasePlanDetailPage})))

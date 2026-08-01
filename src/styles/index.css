@@ -184,3 +184,49 @@ html{scroll-behavior:auto;scroll-padding-top:80px}
 .recall-readiness-workspace .check-row{display:flex;align-items:flex-start;gap:.7rem;min-height:44px}
 .recall-readiness-workspace .check-row input{margin-top:.25rem;min-width:18px;min-height:18px}
 @media(max-width:700px){.recall-readiness-workspace .comparison-grid{grid-template-columns:1fr}.recall-readiness-workspace article,.recall-readiness-workspace .panel{overflow-wrap:anywhere}.recall-readiness-workspace table{display:block;max-width:100%;overflow-x:auto}}
+/* Owner-authored Draft Purchase Plans */
+.draft-plan-workspace{display:grid;gap:1.2rem;min-width:0}
+.draft-plan-builder,.draft-plan-baskets,.draft-plan-lines,.draft-plan-detail-baskets{display:grid;gap:1rem;min-width:0}
+.draft-plan-form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.9rem;min-width:0}
+.draft-plan-form-grid>label,.unknown-number-field{display:grid;align-content:start;gap:.4rem;min-width:0;font-size:.84rem;font-weight:650;color:var(--muted)}
+.draft-plan-form-grid .span-2{grid-column:1/-1}
+.draft-plan-form-grid input,.draft-plan-form-grid select,.draft-plan-form-grid textarea{width:100%;min-width:0}
+.draft-plan-basket,.draft-plan-line{min-width:0;border:1px solid var(--line);border-radius:8px;padding:1rem}
+.draft-plan-basket>legend,.draft-plan-line>legend{padding:0 .45rem;font-family:'Playfair Display',serif;font-weight:700;color:var(--ink)}
+.draft-plan-line{background:#eceee7;border-style:dashed}
+.unknown-number-field{grid-template-columns:minmax(0,1fr) auto}
+.unknown-number-field>input[type="number"]{grid-column:1/-1}
+.unknown-toggle{display:inline-flex;align-items:center;gap:.35rem;font-size:.76rem;font-weight:600;white-space:nowrap}
+.unknown-toggle input{width:auto}
+.draft-plan-sticky-actions{position:sticky;bottom:1rem;z-index:4;display:flex;justify-content:flex-end;gap:.65rem;padding:.75rem;border:1px solid var(--line);border-radius:8px;background:rgba(248,248,243,.96);box-shadow:0 10px 25px #2d352418}
+.draft-plan-review dl,.draft-plan-receipt dl,.draft-plan-cost-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.65rem}
+.draft-plan-review dl>div,.draft-plan-receipt dl>div,.draft-plan-cost-grid>div{min-width:0;padding:.75rem;border:1px solid var(--line);border-radius:12px;background:#eceee7}
+.draft-plan-review dt,.draft-plan-receipt dt,.draft-plan-cost-grid dt{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.draft-plan-review dd,.draft-plan-receipt dd,.draft-plan-cost-grid dd{margin:.25rem 0 0;color:var(--ink);font-weight:700;overflow-wrap:anywhere}
+.draft-plan-cost-grid .unknown{border-style:dashed}
+.draft-plan-cost-grid .unknown dd{font-style:italic;font-weight:600}
+.draft-plan-state-strip{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.7rem}
+.draft-plan-state-strip>div{display:grid;gap:.25rem;padding:.85rem;border:1px solid var(--line);border-radius:12px;background:var(--paper)}
+.draft-plan-state-strip span{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.draft-plan-state-strip strong{color:var(--ink)}
+.draft-plan-persisted-basket,.draft-plan-persisted-lines,.draft-plan-receipt-groups{display:grid;gap:1rem;min-width:0}
+.draft-plan-persisted-basket>header{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;min-width:0}
+.draft-plan-persisted-basket>header>div{min-width:0}
+.draft-plan-persisted-lines>article{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;min-width:0;padding:1rem 0;border-top:1px solid var(--line)}
+.draft-plan-persisted-lines>article>div{min-width:0}
+.draft-plan-persisted-lines h4{margin:.2rem 0}
+.draft-plan-receipt-groups{grid-template-columns:repeat(2,minmax(0,1fr))}
+.draft-plan-receipt-groups ol{padding-left:1.25rem}
+.draft-plan-receipt-groups li{margin:.5rem 0;min-width:0}
+.draft-plan-receipt-groups li .receipt-id{display:block;margin-top:.2rem}
+.receipt-id{max-width:100%;overflow-wrap:anywhere;word-break:break-word}
+.draft-only-warning strong{display:inline}
+
+@media(max-width:700px){
+ .draft-plan-form-grid,.draft-plan-review dl,.draft-plan-receipt dl,.draft-plan-cost-grid,.draft-plan-receipt-groups,.draft-plan-state-strip{grid-template-columns:minmax(0,1fr)}
+ .draft-plan-form-grid .span-2{grid-column:auto}
+ .draft-plan-sticky-actions{bottom:.5rem;flex-wrap:wrap}
+ .draft-plan-sticky-actions .button{flex:1 1 12rem}
+ .draft-plan-persisted-basket>header,.draft-plan-persisted-lines>article{display:grid}
+ .draft-plan-workspace .page-header .action-row,.draft-plan-workspace .page-header-actions{flex-wrap:wrap}
+}

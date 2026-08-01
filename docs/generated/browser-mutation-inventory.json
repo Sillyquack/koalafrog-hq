@@ -136,11 +136,12 @@
         }
       ],
       "domainOwner": "procurement",
-      "idempotency": "not_detected",
+      "idempotency": "present",
       "modulePath": "src/features/procurement/data/procurementRepository.ts",
       "revision": "present",
       "rpcTargets": [
         "accept_procurement_offer_candidate",
+        "create_draft_purchase_plan_v1",
         "create_product_studio_purchase_plan",
         "create_purchase_order_from_plan",
         "import_procurement_purchasing_snapshot",

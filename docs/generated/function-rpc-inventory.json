@@ -601,6 +601,23 @@
       "volatility": "v"
     },
     {
+      "approximateComplexity": 140,
+      "grants": [
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
+      ],
+      "name": "create_draft_purchase_plan_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "\"\"",
+      "securityDefiner": true,
+      "signature": "candidate_workspace_id uuid, candidate_idempotency_key uuid, candidate_plan jsonb, candidate_baskets jsonb",
+      "sourceLength": 376,
+      "volatility": "v"
+    },
+    {
       "approximateComplexity": 67,
       "grants": [
         "authenticated=X/postgres",
@@ -1709,6 +1726,38 @@
       "signature": "q numeric, from_unit text, to_unit text",
       "sourceLength": 16,
       "volatility": "i"
+    },
+    {
+      "approximateComplexity": 4,
+      "grants": [
+        "postgres=X/postgres"
+      ],
+      "name": "kf_draft_optional_numeric_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "numeric",
+      "schema": "public",
+      "searchPath": "\"\"",
+      "securityDefiner": false,
+      "signature": "candidate jsonb, field_name text",
+      "sourceLength": 17,
+      "volatility": "i"
+    },
+    {
+      "approximateComplexity": 3,
+      "grants": [
+        "postgres=X/postgres"
+      ],
+      "name": "kf_draft_plan_receipt_bundle_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "\"\"",
+      "securityDefiner": false,
+      "signature": "target_plan_id uuid, candidate_operation text",
+      "sourceLength": 65,
+      "volatility": "s"
     },
     {
       "approximateComplexity": 0,

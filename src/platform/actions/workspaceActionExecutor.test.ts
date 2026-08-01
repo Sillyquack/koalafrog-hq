@@ -28,4 +28,23 @@ describe('workspace application actions', () => {
     expect(state).toBe(formulaSeed)
     expect(error).toBe('constraint failure')
   })
+
+  it('publishes a Packaging Component update only from confirmed repository readback', async()=>{
+    const before=formulaSeed.packagingComponents[0]
+    expect(before).toBeDefined()
+    const persisted={...before,notes:'Persisted note',updatedAt:'2026-07-31T12:00:00.000Z'}
+    const repository:WorkspaceRepository={kind:'supabase',load:()=>formulaSeed,commit:async()=>({confirmedPackagingComponent:persisted})}
+    let state=formulaSeed
+    await executeWorkspaceAction(repository,state,'updatePackagingComponent',current=>({...current,packagingComponents:current.packagingComponents.map(item=>item.id===before.id?{...item,notes:'Requested note'}:item)}),{committed:next=>{state=next},failed:()=>{},pending:()=>{}})
+    expect(state.packagingComponents.find(item=>item.id===before.id)).toEqual(persisted)
+  })
+
+  it('retains prior Packaging Component state when confirmed readback is missing',async()=>{
+    const before=formulaSeed.packagingComponents[0]
+    const repository:WorkspaceRepository={kind:'supabase',load:()=>formulaSeed,commit:async()=>undefined}
+    let state=formulaSeed,error=''
+    await expect(executeWorkspaceAction(repository,state,'updatePackagingComponent',current=>({...current,packagingComponents:current.packagingComponents.map(item=>item.id===before.id?{...item,notes:'Unconfirmed'}:item)}),{committed:next=>{state=next},failed:(_action,failure)=>{error=failure.message},pending:()=>{}})).rejects.toThrow(/definitive owner-authorized readback/)
+    expect(state).toBe(formulaSeed)
+    expect(error).toMatch(/definitive owner-authorized readback/)
+  })
 })

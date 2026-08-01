@@ -359,16 +359,6 @@ function buildArtifacts() {
     ["legacy-dependency-audit.json", { version: auditVersion, generatedAt, findings: legacy }],
     ["event-type-inventory.json", { version: auditVersion, generatedAt, eventTypes: events }],
     ["canonical-policy-ownership.json", { version: auditVersion, generatedAt, policies: canonicalPolicies.map(([policy, serverAuthority, domainOwner, version]) => ({ policy, serverAuthority, domainOwner, version, browserAuthoritative: false })) }],
-    ["platform-release-baseline.json", {
-      version: auditVersion, milestone: "Recall Readiness V1", generatedAt,
-      branch: execFileSync("git", ["branch", "--show-current"], { encoding: "utf8" }).trim(), sourceCommit: commit,
-      environmentClassification: "local_only", locallyValidated: true, remotelyDeployed: false, hostedMigrationApplied: false,
-      deploymentApprovalGranted: false, authorityInventoryVersion: auditVersion,
-      migrationHead: readdirSync(join(root, "supabase/migrations")).sort().at(-1)?.split("_")[0], schemaCounts: counts,
-      knownWarnings: ["Largest measured JavaScript chunk remains above 500 kB after route splitting", "PlatformPage dynamic import is ineffective because WorkspaceRuntime imports it eagerly", "two established database lint warnings", "Supabase CLI update notice", "NO_COLOR is ignored when Playwright forces colour"],
-      acceptedDebt: ["Product-wide trace aggregation threshold", "legacy compatibility retained read-only", "event envelope remains domain-specific"],
-      deploymentPrerequisites: ["hosted migration approval", "post-migration hosted advisor review", "hosted backup and restore rehearsal", "two-owner hosted proof", "production smoke approval"],
-    }],
   ])
 }
 

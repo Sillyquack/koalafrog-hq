@@ -249,6 +249,15 @@
     {
       "classification": "audit_only",
       "documented": true,
+      "domainOwner": "platform",
+      "sources": [
+        "supabase/migrations/20260731205657_procurement_draft_plan_authoring_v1.sql"
+      ],
+      "type": "owner_authored_draft_v1"
+    },
+    {
+      "classification": "audit_only",
+      "documented": true,
       "domainOwner": "packaging",
       "sources": [
         "supabase/migrations/20260729065048_batch_genealogy_traceability_v1.sql",
