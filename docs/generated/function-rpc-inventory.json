@@ -601,7 +601,7 @@
       "volatility": "v"
     },
     {
-      "approximateComplexity": 140,
+      "approximateComplexity": 241,
       "grants": [
         "authenticated=X/postgres",
         "postgres=X/postgres"
@@ -614,7 +614,7 @@
       "searchPath": "\"\"",
       "securityDefiner": true,
       "signature": "candidate_workspace_id uuid, candidate_idempotency_key uuid, candidate_plan jsonb, candidate_baskets jsonb",
-      "sourceLength": 376,
+      "sourceLength": 593,
       "volatility": "v"
     },
     {

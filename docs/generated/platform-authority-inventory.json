@@ -3792,8 +3792,8 @@
         "../../data/procurementRepository"
       ],
       "sizeMetrics": {
-        "bytes": 20622,
-        "lines": 567
+        "bytes": 22252,
+        "lines": 617
       }
     },
     {
@@ -8284,18 +8284,18 @@
     },
     {
       "browserWritable": true,
-      "classification": "compatibility_read_only",
-      "deprecationState": "compatibility_read_only",
+      "classification": "canonical_write_authority",
+      "deprecationState": "canonical_write_authority",
       "domainOwner": "procurement",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
         "authenticated=X/postgres",
         "postgres=X/postgres"
       ],
-      "historicalOrCurrent": "historical",
+      "historicalOrCurrent": "current",
       "mutationPath": "authenticated RPC or internal helper",
       "name": "create_draft_purchase_plan_v1",
-      "notes": "",
+      "notes": "Authenticated aggregate-only Draft Purchase Plan writer.",
       "objectType": "function",
       "readAuthority": "result only",
       "replacement": null,
@@ -9741,17 +9741,17 @@
     },
     {
       "browserWritable": false,
-      "classification": "compatibility_read_only",
-      "deprecationState": "compatibility_read_only",
-      "domainOwner": "platform",
+      "classification": "operational_support",
+      "deprecationState": "operational_support",
+      "domainOwner": "procurement",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
         "postgres=X/postgres"
       ],
-      "historicalOrCurrent": "historical",
+      "historicalOrCurrent": "current",
       "mutationPath": "authenticated RPC or internal helper",
       "name": "kf_draft_optional_numeric_v1",
-      "notes": "",
+      "notes": "Internal helper; browser execution is revoked.",
       "objectType": "function",
       "readAuthority": "result only",
       "replacement": null,
@@ -9762,17 +9762,17 @@
     },
     {
       "browserWritable": false,
-      "classification": "compatibility_read_only",
-      "deprecationState": "compatibility_read_only",
-      "domainOwner": "platform",
+      "classification": "operational_support",
+      "deprecationState": "operational_support",
+      "domainOwner": "procurement",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
         "postgres=X/postgres"
       ],
-      "historicalOrCurrent": "historical",
+      "historicalOrCurrent": "current",
       "mutationPath": "authenticated RPC or internal helper",
       "name": "kf_draft_plan_receipt_bundle_v1",
-      "notes": "",
+      "notes": "Internal helper; browser execution is revoked.",
       "objectType": "function",
       "readAuthority": "result only",
       "replacement": null,
@@ -19116,7 +19116,7 @@
       "domainOwner": "procurement",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=rDxtm/postgres",
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
         "service_role=arwdDxtm/postgres"
       ],
@@ -19160,7 +19160,7 @@
       "domainOwner": "procurement",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=rDxtm/postgres",
+        "authenticated=r/postgres",
         "postgres=arwdDxtm/postgres",
         "service_role=arwdDxtm/postgres"
       ],
@@ -21391,6 +21391,6 @@
   ],
   "generatedAt": "2026-07-29T12:00:00+02:00",
   "sourceCommit": "content-addressed-by-sourceHash",
-  "sourceHash": "28532e8d7dc642bce72d6e3140723bfad5c61cff73b30fa8efe9479791a1e7c7",
+  "sourceHash": "9294dadce0ad2a7a07f5d2c2e91b57ccd3cc9d3dbe01a6b262d2081776e1641d",
   "version": "1.0.0"
 }

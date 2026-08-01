@@ -3,6 +3,7 @@ import { execFileSync } from 'node:child_process'
 
 const databaseContainer='supabase_db_koalafrog-hq'
 const previousVersion='20260731044225'
+const targetVersion='20260731205657'
 const ownerId='10000000-0000-4000-8000-000000000097'
 const workspaceId='20000000-0000-4000-8000-000000000097'
 const supplierId='30000000-0000-4000-8000-000000000097'
@@ -19,6 +20,8 @@ function psql(sql){
 }
 
 supabase('db','reset','--local','--version',previousVersion,'--no-seed')
+assert.equal(psql('select count(*) from supabase_migrations.schema_migrations;'),'90')
+assert.equal(psql('select max(version) from supabase_migrations.schema_migrations;'),previousVersion)
 psql(`
   insert into auth.users(id,email,created_at,updated_at)
   values('${ownerId}','draft-plan-upgrade@example.invalid',now(),now());
@@ -68,6 +71,8 @@ psql(`
 `)
 
 supabase('migration','up','--local')
+assert.equal(psql('select count(*) from supabase_migrations.schema_migrations;'),'91')
+assert.equal(psql('select max(version) from supabase_migrations.schema_migrations;'),targetVersion)
 
 const plan=JSON.parse(psql(`
   select json_build_object(
@@ -99,4 +104,6 @@ assert.equal(psql(`select count(*) from public.purchase_plan_verifications where
 assert.equal(psql(`select has_table_privilege('authenticated','public.purchase_plan_lines','INSERT');`),'f')
 
 supabase('db','reset','--local','--no-seed')
-console.log('Procurement Draft Plan authoring exact pre-head upgrade checks passed.')
+assert.equal(psql('select count(*) from supabase_migrations.schema_migrations;'),'91')
+assert.equal(psql('select max(version) from supabase_migrations.schema_migrations;'),targetVersion)
+console.log('Procurement Draft Plan authoring exact 90 → 91 upgrade and fresh 91-migration reset checks passed.')

@@ -361,11 +361,11 @@ run("owner-authored Draft Purchase Plan against local Supabase", () => {
           postDiscountSubtotal: first ? listSubtotal - 5 : null,
           shipping: first ? 110 : null,
           vatAdjustment: null,
-          importVat: null,
-          duty: null,
-          dangerousGoodsFee: null,
-          brokerageHandling: null,
-          paymentFx: null,
+          importVat: supplierIndex === 1 ? 25 : null,
+          duty: supplierIndex === 2 ? 4 : null,
+          dangerousGoodsFee: supplierIndex === 2 ? 6 : null,
+          brokerageHandling: supplierIndex === 1 ? 3 : null,
+          paymentFx: supplierIndex === 1 ? 2 : null,
           knownMinimum: first ? listSubtotal - 5 + 110 : null,
           checkedAt: now,
           warnings: first ? [] : ["Shipping and import costs remain Unknown."],
@@ -413,19 +413,25 @@ run("owner-authored Draft Purchase Plan against local Supabase", () => {
     });
     expect(created.aggregate.baskets).toHaveLength(3);
     expect(created.aggregate.lines).toHaveLength(12);
-    const unknownBaskets = created.aggregate.baskets.filter(
-      (basket) => basket.shipping === null,
+    const basketBySupplier = new Map(
+      created.aggregate.baskets.map((basket) => [basket.supplier_id, basket]),
     );
-    expect(unknownBaskets).toHaveLength(2);
-    expect(
-      unknownBaskets.every(
-        (basket) =>
-          basket.import_vat === null &&
-          basket.customs === null &&
-          basket.handling === null &&
-          basket.payment_fx === null,
-      ),
-    ).toBe(true);
+    expect(basketBySupplier.get(suppliers.data![1].id)).toMatchObject({
+      shipping: null,
+      import_vat: 25,
+      customs: null,
+      dangerous_goods_fee: null,
+      handling: 3,
+      payment_fx: 2,
+    });
+    expect(basketBySupplier.get(suppliers.data![2].id)).toMatchObject({
+      shipping: null,
+      import_vat: null,
+      customs: 4,
+      dangerous_goods_fee: 6,
+      handling: null,
+      payment_fx: null,
+    });
 
     const reloaded = await loadDraftPurchasePlan(
       owner.workspaceId,
@@ -452,6 +458,24 @@ run("owner-authored Draft Purchase Plan against local Supabase", () => {
       /access_token|refresh_token|service_role|connection_string/i,
     );
 
+    const aggregateCounts = async () => {
+      const [plans, baskets, lines] = await Promise.all(
+        ["purchase_plans", "purchase_plan_baskets", "purchase_plan_lines"].map(
+          (table) =>
+            owner.client
+              .from(table)
+              .select("id", { count: "exact", head: true })
+              .eq("workspace_id", owner.workspaceId),
+        ),
+      );
+      return {
+        plans: plans.count,
+        baskets: baskets.count,
+        lines: lines.count,
+      };
+    };
+    const createdCounts = await aggregateCounts();
+
     const replayed = await createDraftPurchasePlan(owner.workspaceId, payload);
     expect(replayed.receipt.operation).toBe("reused");
     expect(replayed.aggregate).toEqual(created.aggregate);
@@ -461,6 +485,7 @@ run("owner-authored Draft Purchase Plan against local Supabase", () => {
     expect(replayed.receipt.lines.map((line) => line.recordId)).toEqual(
       created.receipt.lines.map((line) => line.recordId),
     );
+    expect(await aggregateCounts()).toEqual(createdCounts);
 
     await expect(
       createDraftPurchasePlan(owner.workspaceId, {
@@ -468,15 +493,9 @@ run("owner-authored Draft Purchase Plan against local Supabase", () => {
         plan: { ...payload.plan, purpose: "Changed retry payload" },
       }),
     ).rejects.toThrow(/IDEMPOTENCY_CONFLICT/);
+    expect(await aggregateCounts()).toEqual(createdCounts);
 
-    const planCount = async () =>
-      (
-        await owner.client
-          .from("purchase_plans")
-          .select("id", { count: "exact", head: true })
-          .eq("workspace_id", owner.workspaceId)
-      ).count;
-    const beforeInvalid = await planCount();
+    const beforeInvalid = await aggregateCounts();
     const invalidBasket = structuredClone(payload);
     invalidBasket.idempotencyKey = crypto.randomUUID();
     invalidBasket.plan.title = "Invalid basket rollback";
@@ -484,7 +503,7 @@ run("owner-authored Draft Purchase Plan against local Supabase", () => {
     await expect(
       createDraftPurchasePlan(owner.workspaceId, invalidBasket),
     ).rejects.toThrow(/DRAFT_BASKET_CURRENCY_INVALID/);
-    expect(await planCount()).toBe(beforeInvalid);
+    expect(await aggregateCounts()).toEqual(beforeInvalid);
 
     const invalidLine = structuredClone(payload);
     invalidLine.idempotencyKey = crypto.randomUUID();
@@ -493,7 +512,7 @@ run("owner-authored Draft Purchase Plan against local Supabase", () => {
     await expect(
       createDraftPurchasePlan(owner.workspaceId, invalidLine),
     ).rejects.toThrow(/DRAFT_LINE_QUANTITY_INVALID/);
-    expect(await planCount()).toBe(beforeInvalid);
+    expect(await aggregateCounts()).toEqual(beforeInvalid);
 
     const crossSupplier = structuredClone(payload);
     crossSupplier.idempotencyKey = crypto.randomUUID();
@@ -502,7 +521,7 @@ run("owner-authored Draft Purchase Plan against local Supabase", () => {
     await expect(
       createDraftPurchasePlan(owner.workspaceId, crossSupplier),
     ).rejects.toThrow(/DRAFT_BASKET_SUPPLIER_UNAVAILABLE/);
-    expect(await planCount()).toBe(beforeInvalid);
+    expect(await aggregateCounts()).toEqual(beforeInvalid);
 
     const crossSource = structuredClone(payload);
     crossSource.idempotencyKey = crypto.randomUUID();
@@ -511,7 +530,15 @@ run("owner-authored Draft Purchase Plan against local Supabase", () => {
     await expect(
       createDraftPurchasePlan(owner.workspaceId, crossSource),
     ).rejects.toThrow(/DRAFT_LINE_SOURCE_UNAVAILABLE/);
-    expect(await planCount()).toBe(beforeInvalid);
+    expect(await aggregateCounts()).toEqual(beforeInvalid);
+
+    const directPlan = await owner.client.from("purchase_plans").insert({
+      ...owned,
+      title: "Denied direct plan",
+      status: "draft",
+      purpose: "Denied",
+    });
+    expect(directPlan.error).not.toBeNull();
 
     const directBasket = await owner.client.from("purchase_plan_baskets").insert({
       ...owned,
@@ -530,6 +557,29 @@ run("owner-authored Draft Purchase Plan against local Supabase", () => {
       unit: "g",
     });
     expect(directLine.error).not.toBeNull();
+    for (const table of [
+      "purchase_plans",
+      "purchase_plan_baskets",
+      "purchase_plan_lines",
+    ]) {
+      expect(
+        (
+          await owner.client
+            .from(table)
+            .update({ owner_id: owner.ownerId })
+            .eq("workspace_id", owner.workspaceId)
+        ).error,
+      ).not.toBeNull();
+      expect(
+        (
+          await owner.client
+            .from(table)
+            .delete()
+            .eq("workspace_id", owner.workspaceId)
+        ).error,
+      ).not.toBeNull();
+    }
+    expect(await aggregateCounts()).toEqual(beforeInvalid);
 
     const anonymous = createClient(url!, anonKey!, {
       auth: { persistSession: false },
@@ -553,7 +603,7 @@ run("owner-authored Draft Purchase Plan against local Supabase", () => {
     expect(nonOwnerAttempt.error?.message).toContain("WORKSPACE_UNAVAILABLE");
 
     expect(await counts()).toEqual(before);
-    expect(await planCount()).toBe(1);
+    expect((await aggregateCounts()).plans).toBe(1);
     expect(
       (
         await owner.client

@@ -16,6 +16,8 @@
     "test:supabase": "node scripts/test-supabase.mjs",
     "test:supplier-price-state-upgrade": "node scripts/test-supplier-product-price-state-upgrade.mjs",
     "test:procurement-draft-plan-upgrade": "node scripts/test-procurement-draft-plan-authoring-upgrade.mjs",
+    "test:procurement-draft-plan-hardening": "node scripts/test-procurement-draft-plan-hardening.mjs",
+    "test:procurement-draft-plan-concurrency": "node scripts/test-procurement-draft-plan-title-concurrency.mjs",
     "test:packaging-run": "node scripts/test-packaging-run.mjs",
     "test:finished-goods-lots": "node scripts/test-finished-goods-lots.mjs",
     "test:finished-goods-quality": "node scripts/test-finished-goods-lots.mjs",
