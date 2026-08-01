@@ -3477,10 +3477,10 @@
           "kf_draft_plan_receipt_bundle_v1"
         ],
         "policies": [],
-        "indexes": 0
+        "indexes": 1
       },
       "expectedDataChanges": 3,
-      "lockRisk": "low",
+      "lockRisk": "requires_rehearsal_measurement",
       "tableRewriteRisk": "not_detected",
       "destructiveBehavior": "none detected",
       "longTransactionRisk": "low_or_unknown",
@@ -3492,7 +3492,7 @@
       "stopCondition": "migration error, drift, timeout, or object mismatch",
       "hostedApplicationStatus": "pending_rehearsal",
       "authorizationRequired": true,
-      "sourceHash": "4d0ccac05c14f7adef6f25e8649bc9de0f2dedb0ff79d563fb0afc967ede286a"
+      "sourceHash": "b1a101383988231173bbc5f9becb1d992fa72bb9c88b548b4581064c992ebfc8"
     }
   ]
 }

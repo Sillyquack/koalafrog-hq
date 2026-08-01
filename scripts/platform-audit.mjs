@@ -10,6 +10,7 @@ import {
   generatedAt,
   intentionallyUnindexedForeignKeys,
   legacyDatabaseObjects,
+  strictBrowserReadOnlyTables,
 } from "./platform-audit-config.mjs"
 
 const root = process.cwd()
@@ -42,10 +43,12 @@ select json_build_object(
   'relations',coalesce((select json_agg(json_build_object(
     'schema',schema_name,'objectType',object_type,'name',object_name,'rlsEnabled',rls_enabled,
     'estimatedRows',estimated_rows,'grants',grants,
-    'indexes',coalesce((select json_agg(json_build_object('name',ic.relname,'columns',
+    'indexes',coalesce((select json_agg(json_strip_nulls(json_build_object('name',ic.relname,'columns',
       (select json_agg(a.attname order by k.ordinality) from unnest(i.indkey) with ordinality k(attnum,ordinality)
        join pg_attribute a on a.attrelid=i.indrelid and a.attnum=k.attnum where k.attnum>0),
-      'unique',i.indisunique,'valid',i.indisvalid) order by ic.relname)
+      'expressions',pg_get_expr(i.indexprs,i.indrelid),
+      'predicate',pg_get_expr(i.indpred,i.indrelid),
+      'unique',i.indisunique,'valid',i.indisvalid)) order by ic.relname)
       from pg_index i join pg_class ic on ic.oid=i.indexrelid where i.indrelid=r.oid),'[]'::json),
     'policies',coalesce((select json_agg(json_build_object('name',pol.polname,'command',pol.polcmd,
       'roles',(select json_agg(rolname order by rolname) from pg_roles where oid=any(pol.polroles)),
@@ -118,6 +121,10 @@ function classifyFunction(item) {
   const key = `function:${item.schema}.${item.name}(${item.signature})`
   const explicit = legacyDatabaseObjects.get(key)
   if (explicit) return explicit
+  if (item.name === "create_draft_purchase_plan_v1")
+    return { classification: "canonical_write_authority", domain: "procurement", notes: "Authenticated aggregate-only Draft Purchase Plan writer." }
+  if (["kf_draft_optional_numeric_v1", "kf_draft_plan_receipt_bundle_v1"].includes(item.name))
+    return { classification: "operational_support", domain: "procurement", notes: "Internal helper; browser execution is revoked." }
   if (/^(get_|list_|search_|evaluate_|check_|is_|has_|kf_.*(balance|snapshot|readiness|available|eligible|trace|genealogy))/.test(item.name))
     return { classification: "canonical_read_model", domain: domainFor(item.name) }
   if (/(_pre_|_v[1-9]$|compat|legacy)/.test(item.name))
@@ -125,10 +132,25 @@ function classifyFunction(item) {
   return { classification: "canonical_write_authority", domain: domainFor(item.name) }
 }
 
+function tableAcl(grant) {
+  const value = String(grant)
+  const [grantee,privilegesAndGrantor=""] = value.split("=")
+  return {
+    role: grantee === "" ? "PUBLIC" : grantee,
+    privileges: privilegesAndGrantor.split("/")[0].replaceAll("*", ""),
+  }
+}
+
+function isBrowserTableMutationGrant(grant,strict=false) {
+  const acl = tableAcl(grant)
+  return ["PUBLIC", "anon", "authenticated"].includes(acl.role)
+    && (strict ? /[awdDxtm]/ : /[awd]/).test(acl.privileges)
+}
+
 function relationAuthority(item) {
   const metadata = classifyRelation(item)
-  const authenticated = item.grants.filter(grant => String(grant).startsWith("authenticated="))
-  const writeGrant = authenticated.some(grant => /[awd]/.test(String(grant).split("=")[1]?.split("/")[0] ?? ""))
+  const writeGrant = item.grants.some(grant =>
+    isBrowserTableMutationGrant(grant,strictBrowserReadOnlyTables.has(item.name)))
   return {
     schema: item.schema,
     objectType: item.objectType,
@@ -270,21 +292,66 @@ function legacyDependencyFindings(modules) {
   }))
 }
 
+const exactDraftPlanFunctionAcls = new Map([
+  [
+    "create_draft_purchase_plan_v1(candidate_workspace_id uuid, candidate_idempotency_key uuid, candidate_plan jsonb, candidate_baskets jsonb)",
+    ["authenticated=X/postgres", "postgres=X/postgres"],
+  ],
+  ["kf_draft_optional_numeric_v1(candidate jsonb, field_name text)", ["postgres=X/postgres"]],
+  ["kf_draft_plan_receipt_bundle_v1(target_plan_id uuid, candidate_operation text)", ["postgres=X/postgres"]],
+])
+
 function privilegeFindings(catalogue) {
   const findings = []
+  const seenDraftPlanFunctions = new Set()
   for (const fn of catalogue.functions) {
+    const functionKey = `${fn.name}(${fn.signature})`
     const publicExecute = fn.grants.some(grant => String(grant).startsWith("=X"))
     const anonExecute = fn.grants.some(grant => String(grant).startsWith("anon=") && String(grant).includes("X"))
     if (publicExecute) findings.push({ severity: "critical", type: "public_execute", object: `public.${fn.name}(${fn.signature})` })
     if (anonExecute) findings.push({ severity: "critical", type: "anon_execute", object: `public.${fn.name}(${fn.signature})` })
     if (fn.securityDefiner && fn.searchPath === "") findings.push({ severity: "critical", type: "mutable_search_path", object: `public.${fn.name}(${fn.signature})` })
+    if (exactDraftPlanFunctionAcls.has(functionKey)) {
+      seenDraftPlanFunctions.add(functionKey)
+      const expected = exactDraftPlanFunctionAcls.get(functionKey)
+      if (JSON.stringify(fn.grants) !== JSON.stringify(expected)) {
+        findings.push({
+          severity: "critical",
+          type: "draft_plan_function_acl_mismatch",
+          object: `public.${functionKey}`,
+          expected,
+          actual: fn.grants,
+        })
+      }
+    }
+  }
+  for (const [functionKey, expected] of exactDraftPlanFunctionAcls) {
+    if (!seenDraftPlanFunctions.has(functionKey)) {
+      findings.push({
+        severity: "critical",
+        type: "draft_plan_function_missing",
+        object: `public.${functionKey}`,
+        expected,
+        actual: null,
+      })
+    }
   }
   for (const relation of catalogue.relations) {
     if (relation.objectType === "table" && !relation.rlsEnabled)
       findings.push({ severity: "critical", type: "rls_disabled", object: `public.${relation.name}` })
-    const write = relation.grants.some(grant => String(grant).startsWith("authenticated=") && /[awd]/.test(String(grant).split("=")[1]?.split("/")[0] ?? ""))
-    if (criticalControlledTables.has(relation.name) && write)
-      findings.push({ severity: "critical", type: "controlled_direct_write", object: `public.${relation.name}` })
+    if (criticalControlledTables.has(relation.name)) {
+      const strict = strictBrowserReadOnlyTables.has(relation.name)
+      for (const grant of relation.grants.filter(item => isBrowserTableMutationGrant(item,strict))) {
+        const acl = tableAcl(grant)
+        findings.push({
+          severity: "critical",
+          type: "controlled_direct_write",
+          object: `public.${relation.name}`,
+          role: acl.role,
+          privileges: acl.privileges,
+        })
+      }
+    }
   }
   return findings.sort((a, b) => a.object.localeCompare(b.object) || a.type.localeCompare(b.type))
 }

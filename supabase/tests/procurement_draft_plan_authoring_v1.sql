@@ -1,5 +1,5 @@
 begin;
-select plan(49);
+select plan(74);
 
 select has_column('public','purchase_plans',column_name,format('purchase_plans has %s',column_name))
 from unnest(array[
@@ -101,6 +101,83 @@ select is(
   format('authenticated owner readback remains available on %s',table_name)
 )
 from unnest(array['purchase_plans','purchase_plan_baskets','purchase_plan_lines']) table_name;
+
+select table_privs_are(
+  'public',table_name,'authenticated',array['SELECT'],
+  format('authenticated has exactly SELECT on %s',table_name)
+)
+from unnest(array['purchase_plans','purchase_plan_baskets','purchase_plan_lines']) table_name;
+select table_privs_are(
+  'public',table_name,'anon',array[]::text[],
+  format('anonymous has no table privileges on %s',table_name)
+)
+from unnest(array['purchase_plans','purchase_plan_baskets','purchase_plan_lines']) table_name;
+select table_privs_are(
+  'public',table_name,'public',array[]::text[],
+  format('PUBLIC has no table privileges on %s',table_name)
+)
+from unnest(array['purchase_plans','purchase_plan_baskets','purchase_plan_lines']) table_name;
+
+select function_privs_are(
+  'public','create_draft_purchase_plan_v1',array['uuid','uuid','jsonb','jsonb'],
+  'authenticated',array['EXECUTE'],'authenticated has exactly RPC execution'
+);
+select function_privs_are(
+  'public','create_draft_purchase_plan_v1',array['uuid','uuid','jsonb','jsonb'],
+  'anon',array[]::text[],'anonymous has no RPC execution'
+);
+select function_privs_are(
+  'public','create_draft_purchase_plan_v1',array['uuid','uuid','jsonb','jsonb'],
+  'public',array[]::text[],'PUBLIC has no RPC execution'
+);
+select function_privs_are(
+  'public','kf_draft_optional_numeric_v1',array['jsonb','text'],
+  role_name,array[]::text[],format('%s cannot execute the numeric helper',role_name)
+)
+from unnest(array['authenticated','anon','public']) role_name;
+select function_privs_are(
+  'public','kf_draft_plan_receipt_bundle_v1',array['uuid','text'],
+  role_name,array[]::text[],format('%s cannot execute the receipt helper',role_name)
+)
+from unnest(array['authenticated','anon','public']) role_name;
+
+select has_index(
+  'public','purchase_plans','purchase_plans_active_draft_normalized_title_unique',
+  'active owner-authored Draft titles have a database uniqueness boundary'
+);
+select ok(
+  position(
+    'lower(regexp_replace(title'
+    in pg_get_indexdef('public.purchase_plans_active_draft_normalized_title_unique'::regclass)
+  )>0,
+  'Draft title identity trims surrounding whitespace and folds case'
+);
+select ok(
+  position(
+    '[[:space:]]'
+    in pg_get_indexdef('public.purchase_plans_active_draft_normalized_title_unique'::regclass)
+  )>0,
+  'Draft title identity includes non-space surrounding whitespace'
+);
+select ok(
+  position(
+    'owner_authored_draft_v1'
+    in pg_get_indexdef('public.purchase_plans_active_draft_normalized_title_unique'::regclass)
+  )>0,
+  'Draft title uniqueness is scoped to the owner-authored Draft lifecycle'
+);
+
+select ok(
+  position('num_nonnulls' in pg_get_constraintdef(oid))>0,
+  format('%s explicitly enforces null pairing',conname)
+)
+from pg_constraint
+where conname in (
+  'purchase_plans_budget_gate_check',
+  'purchase_plans_credible_range_check',
+  'purchase_plans_worst_credible_range_check'
+)
+order by conname;
 
 select * from finish();
 rollback;

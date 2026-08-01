@@ -20,20 +20,35 @@ alter table public.purchase_plans
     status <> 'draft' or (placement_state = 'unplaced' and order_authorized = false)
   ),
   add constraint purchase_plans_budget_gate_check check (
-    (target_budget is null and absolute_stop is null)
-    or (target_budget > 0 and absolute_stop >= target_budget)
+    num_nonnulls(target_budget,absolute_stop) in (0,2)
+    and (target_budget is null or (target_budget > 0 and absolute_stop >= target_budget))
   ),
   add constraint purchase_plans_credible_range_check check (
-    (credible_range_minimum is null and credible_range_maximum is null)
-    or (credible_range_minimum >= 0 and credible_range_maximum >= credible_range_minimum)
+    num_nonnulls(credible_range_minimum,credible_range_maximum) in (0,2)
+    and (credible_range_minimum is null or (
+      credible_range_minimum >= 0 and credible_range_maximum >= credible_range_minimum
+    ))
   ),
   add constraint purchase_plans_worst_credible_range_check check (
-    (worst_credible_range_minimum is null and worst_credible_range_maximum is null)
-    or (worst_credible_range_minimum >= 0 and worst_credible_range_maximum >= worst_credible_range_minimum)
+    num_nonnulls(worst_credible_range_minimum,worst_credible_range_maximum) in (0,2)
+    and (worst_credible_range_minimum is null or (
+      worst_credible_range_minimum >= 0 and worst_credible_range_maximum >= worst_credible_range_minimum
+    ))
   ),
   add constraint purchase_plans_draft_fingerprint_check check (
     draft_payload_fingerprint is null or draft_payload_fingerprint ~ '^[0-9a-f]{64}$'
   );
+
+create unique index purchase_plans_active_draft_normalized_title_unique
+  on public.purchase_plans(
+    workspace_id,
+    owner_id,
+    lower(regexp_replace(title,'^[[:space:]]+|[[:space:]]+$','','g'))
+  )
+  where status='draft' and source_type='owner_authored_draft_v1';
+
+comment on index public.purchase_plans_active_draft_normalized_title_unique is
+  'One active owner-authored Draft title per owner workspace after surrounding-whitespace trimming and case folding.';
 
 alter table public.purchase_plan_baskets
   alter column merchandise_subtotal drop not null,
@@ -83,8 +98,12 @@ comment on column public.purchase_plan_lines.commercial_evidence_snapshot is
 
 -- Draft creation is aggregate-only. Remove the legacy header-only browser insert path.
 drop policy if exists owner_insert_draft on public.purchase_plans;
-revoke insert on public.purchase_plans from authenticated;
-revoke insert on public.purchase_plan_lines from authenticated;
+revoke all privileges
+  on table public.purchase_plans,public.purchase_plan_baskets,public.purchase_plan_lines
+  from PUBLIC,anon,authenticated;
+grant select
+  on table public.purchase_plans,public.purchase_plan_baskets,public.purchase_plan_lines
+  to authenticated;
 
 create function public.kf_draft_optional_numeric_v1(candidate jsonb, field_name text)
 returns numeric
@@ -234,6 +253,7 @@ declare
   line_display_order integer;
   unknown_count integer;
   basket_line_unknown boolean;
+  violated_constraint text;
 begin
   if uid is null then raise exception 'AUTHENTICATION_REQUIRED'; end if;
   if candidate_workspace_id is null or not exists(
@@ -241,8 +261,13 @@ begin
     where w.id=candidate_workspace_id and w.owner_id=uid and w.lifecycle_state='active'
   ) then raise exception 'WORKSPACE_UNAVAILABLE'; end if;
   if candidate_idempotency_key is null then raise exception 'IDEMPOTENCY_KEY_REQUIRED'; end if;
-  if jsonb_typeof(candidate_plan) <> 'object' then raise exception 'DRAFT_PLAN_INVALID'; end if;
-  if jsonb_typeof(candidate_baskets) <> 'array' or jsonb_array_length(candidate_baskets)=0 then
+  if candidate_plan is null or jsonb_typeof(candidate_plan) is distinct from 'object' then
+    raise exception 'DRAFT_PLAN_INVALID';
+  end if;
+  if candidate_baskets is null or jsonb_typeof(candidate_baskets) is distinct from 'array' then
+    raise exception 'DRAFT_BASKETS_REQUIRED';
+  end if;
+  if jsonb_array_length(candidate_baskets)=0 then
     raise exception 'DRAFT_BASKETS_REQUIRED';
   end if;
   if candidate_plan ?| array['workspaceId','ownerId','status','placementState','orderAuthorized','externalOrderId'] then
@@ -268,14 +293,23 @@ begin
   where p.workspace_id=candidate_workspace_id and p.creation_key=candidate_idempotency_key
   for update;
   if found then
-    if existing_plan.owner_id<>uid or existing_plan.source_type<>'owner_authored_draft_v1'
-      or existing_plan.draft_payload_fingerprint<>payload_fingerprint then
+    if existing_plan.owner_id<>uid or existing_plan.source_type is distinct from 'owner_authored_draft_v1'
+      or existing_plan.draft_payload_fingerprint is distinct from payload_fingerprint then
       raise exception 'IDEMPOTENCY_CONFLICT';
     end if;
     return public.kf_draft_plan_receipt_bundle_v1(existing_plan.id,'reused');
   end if;
 
-  plan_title := nullif(trim(candidate_plan->>'title'),'');
+  if (candidate_plan ? 'title' and jsonb_typeof(candidate_plan->'title') is distinct from 'string')
+    or (candidate_plan ? 'purpose' and jsonb_typeof(candidate_plan->'purpose') is distinct from 'string')
+    or (candidate_plan ? 'baseCurrency' and jsonb_typeof(candidate_plan->'baseCurrency') is distinct from 'string')
+    or (candidate_plan ? 'notes' and jsonb_typeof(candidate_plan->'notes') is distinct from 'string')
+    or (candidate_plan ? 'checkedAt' and jsonb_typeof(candidate_plan->'checkedAt') is distinct from 'string')
+    or (candidate_plan ? 'targetDate' and candidate_plan->'targetDate'<>'null'::jsonb
+      and jsonb_typeof(candidate_plan->'targetDate') is distinct from 'string') then
+    raise exception 'DRAFT_PLAN_INVALID';
+  end if;
+  plan_title := nullif(regexp_replace(candidate_plan->>'title','^[[:space:]]+|[[:space:]]+$','','g'),'');
   plan_purpose := nullif(trim(candidate_plan->>'purpose'),'');
   plan_currency := upper(nullif(trim(candidate_plan->>'baseCurrency'),''));
   if plan_title is null then raise exception 'DRAFT_PLAN_TITLE_REQUIRED'; end if;
@@ -287,37 +321,223 @@ begin
       and p.owner_id=uid
       and p.status='draft'
       and p.source_type='owner_authored_draft_v1'
-      and lower(trim(p.title))=lower(plan_title)
+      and lower(regexp_replace(p.title,'^[[:space:]]+|[[:space:]]+$','','g'))=lower(plan_title)
   ) then raise exception 'DRAFT_PURCHASE_PLAN_IDENTITY_CONFLICT'; end if;
-  if candidate_plan ? 'evidence' and jsonb_typeof(candidate_plan->'evidence')<>'object' then
+  if candidate_plan ? 'evidence' and jsonb_typeof(candidate_plan->'evidence') is distinct from 'object' then
     raise exception 'DRAFT_PLAN_EVIDENCE_INVALID';
   end if;
 
   -- Validate aggregate shape before any INSERT so malformed nested input has a
   -- stable application error rather than a generic jsonb iterator failure.
   for basket in select value from jsonb_array_elements(candidate_baskets) loop
-    if jsonb_typeof(basket)<>'object' or basket ?| array['id','workspaceId','ownerId','purchasePlanId'] then
+    if jsonb_typeof(basket) is distinct from 'object' then
       raise exception 'DRAFT_BASKET_INVALID';
     end if;
-    if jsonb_typeof(basket->'lines')<>'array' or jsonb_array_length(basket->'lines')=0 then
+    if basket ?| array['id','workspaceId','ownerId','purchasePlanId'] then
+      raise exception 'DRAFT_BASKET_INVALID';
+    end if;
+    if not (basket ? 'lines')
+      or jsonb_typeof(basket->'lines') is distinct from 'array' then
       raise exception 'DRAFT_BASKET_LINES_REQUIRED';
     end if;
-    if basket ? 'evidence' and jsonb_typeof(basket->'evidence')<>'object' then
+    if jsonb_array_length(basket->'lines')=0 then
+      raise exception 'DRAFT_BASKET_LINES_REQUIRED';
+    end if;
+    if not (basket ? 'supplierId')
+      or jsonb_typeof(basket->'supplierId') is distinct from 'string' then
+      raise exception 'DRAFT_BASKET_SUPPLIER_INVALID';
+    end if;
+    if not (basket ? 'currency')
+      or jsonb_typeof(basket->'currency') is distinct from 'string' then
+      raise exception 'DRAFT_BASKET_CURRENCY_INVALID';
+    end if;
+    if not (basket ? 'checkedAt')
+      or jsonb_typeof(basket->'checkedAt') is distinct from 'string' then
+      raise exception 'DRAFT_BASKET_CHECKED_AT_INVALID';
+    end if;
+    if basket ? 'evidence' and jsonb_typeof(basket->'evidence') is distinct from 'object' then
       raise exception 'DRAFT_BASKET_EVIDENCE_INVALID';
     end if;
+    if basket ? 'warnings' then
+      if jsonb_typeof(basket->'warnings') is distinct from 'array' then
+        raise exception 'DRAFT_BASKET_WARNINGS_INVALID';
+      end if;
+      if exists(
+        select 1 from jsonb_array_elements(basket->'warnings') as warning(value)
+        where jsonb_typeof(warning.value) is distinct from 'string'
+      ) then raise exception 'DRAFT_BASKET_WARNINGS_INVALID'; end if;
+    end if;
+
+    begin basket_supplier_id := (basket->>'supplierId')::uuid;
+    exception when others then raise exception 'DRAFT_BASKET_SUPPLIER_INVALID'; end;
+    select * into basket_supplier from public.suppliers s
+    where s.workspace_id=candidate_workspace_id and s.id=basket_supplier_id and s.owner_id=uid;
+    if not found then raise exception 'DRAFT_BASKET_SUPPLIER_UNAVAILABLE'; end if;
+    basket_currency := upper(nullif(trim(basket->>'currency'),''));
+    if basket_currency is null or basket_currency!~'^[A-Z]{3}$' then
+      raise exception 'DRAFT_BASKET_CURRENCY_INVALID';
+    end if;
+    begin basket_checked_at := (basket->>'checkedAt')::timestamptz;
+    exception when others then raise exception 'DRAFT_BASKET_CHECKED_AT_INVALID'; end;
+    if basket_checked_at is null then raise exception 'DRAFT_BASKET_CHECKED_AT_INVALID'; end if;
+
+    basket_list := public.kf_draft_optional_numeric_v1(basket,'listSubtotal');
+    basket_discount := public.kf_draft_optional_numeric_v1(basket,'verifiedDiscount');
+    basket_post_discount := public.kf_draft_optional_numeric_v1(basket,'postDiscountSubtotal');
+    basket_shipping := public.kf_draft_optional_numeric_v1(basket,'shipping');
+    basket_vat_adjustment := public.kf_draft_optional_numeric_v1(basket,'vatAdjustment');
+    basket_import_vat := public.kf_draft_optional_numeric_v1(basket,'importVat');
+    basket_duty := public.kf_draft_optional_numeric_v1(basket,'duty');
+    basket_dangerous := public.kf_draft_optional_numeric_v1(basket,'dangerousGoodsFee');
+    basket_handling := public.kf_draft_optional_numeric_v1(basket,'brokerageHandling');
+    basket_payment_fx := public.kf_draft_optional_numeric_v1(basket,'paymentFx');
+    basket_known_minimum := public.kf_draft_optional_numeric_v1(basket,'knownMinimum');
+    if basket_list<0 or basket_discount<0 or basket_post_discount<0 or basket_shipping<0 or basket_import_vat<0
+      or basket_duty<0 or basket_dangerous<0 or basket_handling<0 or basket_payment_fx<0 or basket_known_minimum<0 then
+      raise exception 'DRAFT_BASKET_COST_INVALID';
+    end if;
+    if basket_list is not null and basket_discount is not null and basket_discount>basket_list then
+      raise exception 'DRAFT_BASKET_DISCOUNT_INVALID';
+    end if;
+    if basket_post_discount is not null and (basket_list is null or basket_discount is null
+      or abs(basket_post_discount-(basket_list-basket_discount))>0.01) then
+      raise exception 'DRAFT_BASKET_POST_DISCOUNT_INVALID';
+    end if;
+    basket_confirmed_total := null;
+    if basket_post_discount is not null and basket_shipping is not null and basket_vat_adjustment is not null
+      and basket_import_vat is not null and basket_duty is not null and basket_dangerous is not null
+      and basket_handling is not null and basket_payment_fx is not null then
+      basket_confirmed_total := basket_post_discount+basket_shipping+basket_vat_adjustment+basket_import_vat+
+        basket_duty+basket_dangerous+basket_handling+basket_payment_fx;
+      if basket_confirmed_total<0 then raise exception 'DRAFT_BASKET_TOTAL_INVALID'; end if;
+    end if;
+
+    basket_line_sum := 0;
+    basket_line_unknown := false;
     for line in select value from jsonb_array_elements(basket->'lines') loop
-      if jsonb_typeof(line)<>'object' or line ?| array['id','workspaceId','ownerId','purchasePlanId','basketId'] then
+      if jsonb_typeof(line) is distinct from 'object' then
         raise exception 'DRAFT_LINE_INVALID';
       end if;
-      if line ? 'evidence' and jsonb_typeof(line->'evidence')<>'object' then
+      if line ?| array['id','workspaceId','ownerId','purchasePlanId','basketId'] then
+        raise exception 'DRAFT_LINE_INVALID';
+      end if;
+      if line ? 'evidence' and jsonb_typeof(line->'evidence') is distinct from 'object' then
         raise exception 'DRAFT_LINE_EVIDENCE_INVALID';
       end if;
+      if not (line ? 'sourceKind')
+        or jsonb_typeof(line->'sourceKind') is distinct from 'string' then
+        raise exception 'DRAFT_LINE_SOURCE_KIND_INVALID';
+      end if;
+      if not (line ? 'sourceDomain')
+        or jsonb_typeof(line->'sourceDomain') is distinct from 'string' then
+        raise exception 'DRAFT_LINE_DOMAIN_INVALID';
+      end if;
+      if not (line ? 'productTitle')
+        or jsonb_typeof(line->'productTitle') is distinct from 'string' then
+        raise exception 'DRAFT_LINE_TITLE_REQUIRED';
+      end if;
+      if not (line ? 'packageUnit')
+        or jsonb_typeof(line->'packageUnit') is distinct from 'string' then
+        raise exception 'DRAFT_LINE_PACKAGE_INVALID';
+      end if;
+      if not (line ? 'currency')
+        or jsonb_typeof(line->'currency') is distinct from 'string' then
+        raise exception 'DRAFT_LINE_CURRENCY_INVALID';
+      end if;
+      if not (line ? 'checkedAt')
+        or jsonb_typeof(line->'checkedAt') is distinct from 'string' then
+        raise exception 'DRAFT_LINE_CHECKED_AT_INVALID';
+      end if;
+      if line ? 'sourceRecordId' and line->'sourceRecordId'<>'null'::jsonb
+        and jsonb_typeof(line->'sourceRecordId') is distinct from 'string' then
+        raise exception 'DRAFT_LINE_SOURCE_REQUIRED';
+      end if;
+      if line ? 'sku' and line->'sku'<>'null'::jsonb
+        and jsonb_typeof(line->'sku') is distinct from 'string' then
+        raise exception 'DRAFT_LINE_INVALID';
+      end if;
+      if line ? 'sourceUrl' and line->'sourceUrl'<>'null'::jsonb
+        and jsonb_typeof(line->'sourceUrl') is distinct from 'string' then
+        raise exception 'DRAFT_LINE_SOURCE_URL_INVALID';
+      end if;
+
+      line_source_kind := nullif(trim(line->>'sourceKind'),'');
+      line_source_record_id := nullif(trim(line->>'sourceRecordId'),'');
+      line_domain := nullif(trim(line->>'sourceDomain'),'');
+      line_title := nullif(trim(line->>'productTitle'),'');
+      line_currency := upper(nullif(trim(line->>'currency'),''));
+      line_url := nullif(trim(line->>'sourceUrl'),'');
+      if line_source_kind is null or line_source_kind not in ('supplier_product','packaging_supplier_product','packaging_component','manual') then
+        raise exception 'DRAFT_LINE_SOURCE_KIND_INVALID';
+      end if;
+      if line_source_kind<>'manual' and line_source_record_id is null then
+        raise exception 'DRAFT_LINE_SOURCE_REQUIRED';
+      end if;
+      if line_source_kind='manual' and line_source_record_id is not null then
+        raise exception 'DRAFT_LINE_MANUAL_SOURCE_ID_FORBIDDEN';
+      end if;
+      if line_domain not in ('raw_material','packaging','equipment') then
+        raise exception 'DRAFT_LINE_DOMAIN_INVALID';
+      end if;
+      if (line_source_kind='supplier_product' and line_domain<>'raw_material')
+        or (line_source_kind in ('packaging_supplier_product','packaging_component') and line_domain<>'packaging') then
+        raise exception 'DRAFT_LINE_SOURCE_DOMAIN_MISMATCH';
+      end if;
+      if line_title is null then raise exception 'DRAFT_LINE_TITLE_REQUIRED'; end if;
+      if line_currency is null or line_currency!~'^[A-Z]{3}$' or line_currency<>basket_currency then
+        raise exception 'DRAFT_LINE_CURRENCY_INVALID';
+      end if;
+      if line_url is not null and line_url!~'^https?://' then
+        raise exception 'DRAFT_LINE_SOURCE_URL_INVALID';
+      end if;
+
+      line_package_quantity := public.kf_draft_optional_numeric_v1(line,'packageQuantity');
+      line_purchase_quantity := public.kf_draft_optional_numeric_v1(line,'purchaseQuantity');
+      line_unit_price := public.kf_draft_optional_numeric_v1(line,'unitPrice');
+      line_total := public.kf_draft_optional_numeric_v1(line,'lineTotal');
+      if line_package_quantity is null or line_package_quantity<=0
+        or nullif(trim(line->>'packageUnit'),'') is null then
+        raise exception 'DRAFT_LINE_PACKAGE_INVALID';
+      end if;
+      if line_purchase_quantity is null or line_purchase_quantity<=0 then
+        raise exception 'DRAFT_LINE_QUANTITY_INVALID';
+      end if;
+      if line_unit_price<0 or line_total<0 then raise exception 'DRAFT_LINE_PRICE_INVALID'; end if;
+      if (line_unit_price is null)<>(line_total is null)
+        or (line_total is not null and abs(line_total-(line_unit_price*line_purchase_quantity))>0.01) then
+        raise exception 'DRAFT_LINE_TOTAL_INVALID';
+      end if;
+      begin line_checked_at := (line->>'checkedAt')::timestamptz;
+      exception when others then raise exception 'DRAFT_LINE_CHECKED_AT_INVALID'; end;
+      if line_checked_at is null then raise exception 'DRAFT_LINE_CHECKED_AT_INVALID'; end if;
+
+      if line_source_kind='supplier_product' and not exists(
+        select 1 from public.supplier_products sp
+        where sp.workspace_id=candidate_workspace_id and sp.id=line_source_record_id and sp.owner_id=uid
+          and sp.supplier_id=basket_supplier_id
+      ) then raise exception 'DRAFT_LINE_SOURCE_UNAVAILABLE'; end if;
+      if line_source_kind='packaging_supplier_product' and not exists(
+        select 1 from public.packaging_supplier_products sp
+        where sp.workspace_id=candidate_workspace_id and sp.id=line_source_record_id and sp.owner_id=uid
+          and sp.supplier_id=basket_supplier_id
+      ) then raise exception 'DRAFT_LINE_SOURCE_UNAVAILABLE'; end if;
+      if line_source_kind='packaging_component' and not exists(
+        select 1 from public.packaging_components pc
+        where pc.workspace_id=candidate_workspace_id and pc.id=line_source_record_id and pc.owner_id=uid
+          and (pc.supplier_id is null or pc.supplier_id=basket_supplier_id)
+      ) then raise exception 'DRAFT_LINE_SOURCE_UNAVAILABLE'; end if;
+
+      if line_total is null then basket_line_unknown := true; end if;
+      basket_line_sum := basket_line_sum+coalesce(line_total,0);
     end loop;
+    if basket_list is not null and (basket_line_unknown or abs(basket_list-basket_line_sum)>0.01) then
+      raise exception 'DRAFT_BASKET_LINE_TOTAL_MISMATCH';
+    end if;
   end loop;
   if exists(
     select 1
     from jsonb_array_elements(candidate_baskets) b
-    group by lower(trim(b->>'supplierId')),upper(trim(b->>'currency'))
+    group by (b->>'supplierId')::uuid,upper(trim(b->>'currency'))
     having count(*)>1
   ) then raise exception 'DRAFT_BASKET_IDENTITY_CONFLICT'; end if;
 
@@ -356,7 +576,10 @@ begin
 
   select count(*)::integer into unknown_count
   from jsonb_array_elements(candidate_baskets) b
-  cross join unnest(array['shipping','vatAdjustment','importVat','duty','dangerousGoodsFee','brokerageHandling','paymentFx']) field_name
+  cross join unnest(array[
+    'postDiscountSubtotal','shipping','vatAdjustment','importVat','duty',
+    'dangerousGoodsFee','brokerageHandling','paymentFx'
+  ]) field_name
   where not (b ? field_name) or b->field_name='null'::jsonb;
   unknown_count := unknown_count + (
     select count(*)::integer
@@ -369,28 +592,37 @@ begin
     raise exception 'DRAFT_PLAN_LANDED_TOTAL_REQUIRES_COMPLETE_COSTS';
   end if;
 
-  insert into public.purchase_plans(
-    workspace_id,owner_id,title,status,purpose,target_date,supplier_id,currency,source_type,source_id,internal_notes,
-    estimated_merchandise_total,estimated_landed_total,revision,creation_key,production_procurement_round_id,source_scenario_id,
-    plan_version,strategy,strategy_explanation,base_currency,mixed_currency,supplier_count,line_count,known_minimum,confirmed_total,
-    range_minimum,range_maximum,unknown_component_count,warning_count,blocker_count,verification_revision,snapshot_version,source_snapshot,
-    placement_state,order_authorized,target_budget,absolute_stop,credible_range_minimum,credible_range_maximum,
-    worst_credible_range_minimum,worst_credible_range_maximum,commercial_checked_at,draft_payload_fingerprint,draft_authoring_version
-  ) values(
-    candidate_workspace_id,uid,plan_title,'draft',plan_purpose,plan_target_date,null,plan_currency,'owner_authored_draft_v1',null,
-    coalesce(candidate_plan->>'notes',''),plan_merchandise,plan_landed_total,1,candidate_idempotency_key,null,null,
-    1,'owner_authored_draft',array['Internal Draft only; no order is authorised.'],plan_currency,
-    (select count(distinct upper(b->>'currency'))>1 from jsonb_array_elements(candidate_baskets)b),
-    jsonb_array_length(candidate_baskets),
-    (select count(*) from jsonb_array_elements(candidate_baskets)b cross join lateral jsonb_array_elements(b->'lines')),
-    plan_known_minimum,null,plan_credible_min,plan_credible_max,unknown_count,0,0,1,'draft-authoring-v1',
-    jsonb_build_object('evidence',coalesce(candidate_plan->'evidence','{}'::jsonb),'checkedAt',plan_checked_at),
-    'unplaced',false,plan_target_budget,plan_absolute_stop,plan_credible_min,plan_credible_max,
-    plan_worst_min,plan_worst_max,plan_checked_at,payload_fingerprint,'1.0.0'
-  ) returning id into plan_id;
+  begin
+    insert into public.purchase_plans(
+      workspace_id,owner_id,title,status,purpose,target_date,supplier_id,currency,source_type,source_id,internal_notes,
+      estimated_merchandise_total,estimated_landed_total,revision,creation_key,production_procurement_round_id,source_scenario_id,
+      plan_version,strategy,strategy_explanation,base_currency,mixed_currency,supplier_count,line_count,known_minimum,confirmed_total,
+      range_minimum,range_maximum,unknown_component_count,warning_count,blocker_count,verification_revision,snapshot_version,source_snapshot,
+      placement_state,order_authorized,target_budget,absolute_stop,credible_range_minimum,credible_range_maximum,
+      worst_credible_range_minimum,worst_credible_range_maximum,commercial_checked_at,draft_payload_fingerprint,draft_authoring_version
+    ) values(
+      candidate_workspace_id,uid,plan_title,'draft',plan_purpose,plan_target_date,null,plan_currency,'owner_authored_draft_v1',null,
+      coalesce(candidate_plan->>'notes',''),plan_merchandise,plan_landed_total,1,candidate_idempotency_key,null,null,
+      1,'owner_authored_draft',array['Internal Draft only; no order is authorised.'],plan_currency,
+      (select count(distinct upper(trim(b->>'currency')))>1 from jsonb_array_elements(candidate_baskets)b),
+      jsonb_array_length(candidate_baskets),
+      (select count(*) from jsonb_array_elements(candidate_baskets)b cross join lateral jsonb_array_elements(b->'lines')),
+      plan_known_minimum,null,plan_credible_min,plan_credible_max,unknown_count,0,0,1,'draft-authoring-v1',
+      jsonb_build_object('evidence',coalesce(candidate_plan->'evidence','{}'::jsonb),'checkedAt',plan_checked_at),
+      'unplaced',false,plan_target_budget,plan_absolute_stop,plan_credible_min,plan_credible_max,
+      plan_worst_min,plan_worst_max,plan_checked_at,payload_fingerprint,'1.0.0'
+    ) returning id into plan_id;
+  exception when unique_violation then
+    get stacked diagnostics violated_constraint = CONSTRAINT_NAME;
+    if violated_constraint='purchase_plans_active_draft_normalized_title_unique' then
+      raise exception 'DRAFT_PURCHASE_PLAN_IDENTITY_CONFLICT';
+    end if;
+    raise;
+  end;
 
   for basket in select value from jsonb_array_elements(candidate_baskets) loop
-    if jsonb_typeof(basket)<>'object' or basket ?| array['id','workspaceId','ownerId','purchasePlanId'] then
+    if jsonb_typeof(basket) is distinct from 'object'
+      or basket ?| array['id','workspaceId','ownerId','purchasePlanId'] then
       raise exception 'DRAFT_BASKET_INVALID';
     end if;
     begin basket_supplier_id := (basket->>'supplierId')::uuid;
@@ -400,7 +632,10 @@ begin
     if not found then raise exception 'DRAFT_BASKET_SUPPLIER_UNAVAILABLE'; end if;
     basket_currency := upper(nullif(trim(basket->>'currency'),''));
     if basket_currency is null or basket_currency!~'^[A-Z]{3}$' then raise exception 'DRAFT_BASKET_CURRENCY_INVALID'; end if;
-    if jsonb_typeof(basket->'lines')<>'array' or jsonb_array_length(basket->'lines')=0 then
+    if jsonb_typeof(basket->'lines') is distinct from 'array' then
+      raise exception 'DRAFT_BASKET_LINES_REQUIRED';
+    end if;
+    if jsonb_array_length(basket->'lines')=0 then
       raise exception 'DRAFT_BASKET_LINES_REQUIRED';
     end if;
     begin basket_checked_at := (basket->>'checkedAt')::timestamptz;
@@ -464,7 +699,8 @@ begin
     basket_line_unknown := false;
     line_display_order := 0;
     for line in select value from jsonb_array_elements(basket->'lines') loop
-      if jsonb_typeof(line)<>'object' or line ?| array['id','workspaceId','ownerId','purchasePlanId','basketId'] then
+      if jsonb_typeof(line) is distinct from 'object'
+        or line ?| array['id','workspaceId','ownerId','purchasePlanId','basketId'] then
         raise exception 'DRAFT_LINE_INVALID';
       end if;
       line_source_kind := nullif(trim(line->>'sourceKind'),'');

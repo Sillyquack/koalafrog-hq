@@ -141,6 +141,9 @@ export const canonicalPolicies = [
 ]
 
 export const criticalControlledTables = new Set([
+  "purchase_plans",
+  "purchase_plan_baskets",
+  "purchase_plan_lines",
   "inventory_movements",
   "batch_material_consumptions",
   "batch_material_waste_records",
@@ -161,4 +164,10 @@ export const criticalControlledTables = new Set([
   "recall_readiness_reviews",
   "recall_readiness_approvals",
   "recall_readiness_events",
+])
+
+export const strictBrowserReadOnlyTables = new Set([
+  "purchase_plans",
+  "purchase_plan_baskets",
+  "purchase_plan_lines",
 ])

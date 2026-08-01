@@ -32,7 +32,7 @@ One additive versioned migration is required: `20260731205657_procurement_draft_
 - makes the previously mandatory scenario calculation fields nullable where owner-authored Draft facts may be Unknown;
 - preserves existing rows with deterministic defaults only for the two explicit semantic flags (`unplaced`, `false`);
 - leaves newly introduced historical commercial facts null rather than inventing values;
-- removes the obsolete header-only Draft insert policy and authenticated direct INSERT privileges on plan headers and lines;
+- removes the obsolete header-only Draft insert policy and reduces authenticated plan, basket, and line table privileges to owner-readable SELECT only;
 - retains read RLS and aggregate-only basket/line writes;
 - adds the authenticated atomic RPC `create_draft_purchase_plan_v1`.
 
@@ -82,7 +82,7 @@ Security and validation properties:
 - every Supplier and source record is checked in the same owner workspace;
 - source kind and domain must agree;
 - numeric values, ranges, totals, currencies, timestamps, URLs, and evidence objects are validated;
-- direct plan/basket/line INSERT is unavailable to authenticated browser callers;
+- direct plan/basket/line mutation is unavailable to authenticated browser callers;
 - the function is `SECURITY DEFINER` with an empty fixed `search_path`;
 - PUBLIC and `anon` execution are revoked;
 - only `authenticated` receives explicit execution;
@@ -97,7 +97,12 @@ The idempotency key is serialized with a transaction-scoped advisory lock. The c
 - First valid request: `CREATE`.
 - Exact repeat with the same key and fingerprint: `REUSE` with the same IDs.
 - Same key with another payload: `IDEMPOTENCY_CONFLICT`.
-- Another active owner-authored Draft with the same normalized title: `DRAFT_PURCHASE_PLAN_IDENTITY_CONFLICT`.
+- Another active owner-authored Draft with the same POSIX-whitespace-trimmed, case-folded title: `DRAFT_PURCHASE_PLAN_IDENTITY_CONFLICT`.
+
+The normalized title identity is enforced by a partial unique database index,
+not only by an application pre-check. Concurrent creates with different
+idempotency keys therefore resolve to one create and one deterministic identity
+conflict.
 
 The typed bundle contains one auditable plan receipt, one receipt per Supplier basket, and evidence for each dependent line ID. Lines remain dependent snapshots and do not inflate the owner-level manifest count.
 
