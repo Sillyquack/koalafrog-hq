@@ -17,5 +17,13 @@ export function parseProcurementJson(text:string):ProcurementExport{
  return value as ProcurementExport
 }
 const escape=(value:unknown)=>{const text=Array.isArray(value)?value.join('|'):value==null?'':String(value);return `"${text.replaceAll('"','""')}"`}
-export function offersToCsv(offers:SupplierOffer[]){const keys=['requested_item_id','supplier_id','product_title','product_url','country_code','package_quantity','package_unit','item_price','currency','moq','shipping_cost','tax_duty_estimate','delivery_estimate_days','stock_status','coa_availability','sds_availability','technical_document_availability','certification_claims','first_order_discount','notes','date_checked','confidence'] as const;return[keys.join(','),...offers.map(offer=>keys.map(key=>escape(offer[key])).join(','))].join('\n')}
+export function offersToCsv(offers:SupplierOffer[]){const keys=['requested_item_id','supplier_id','source_supplier_product_domain','source_supplier_product_id','product_title','product_url','country_code','package_quantity','package_unit','item_price','currency','moq','shipping_cost','tax_duty_estimate','delivery_estimate_days','stock_status','coa_availability','sds_availability','technical_document_availability','certification_claims','first_order_discount','notes','date_checked','confidence'] as const;return[keys.join(','),...offers.map(offer=>keys.map(key=>escape(offer[key])).join(','))].join('\n')}
 export function parseCsv(text:string){const rows:string[][]=[];let row:string[]=[],cell='',quoted=false;for(let i=0;i<text.length;i++){const char=text[i];if(char==='"'&&quoted&&text[i+1]==='"'){cell+='"';i++}else if(char==='"')quoted=!quoted;else if(char===','&&!quoted){row.push(cell);cell=''}else if((char==='\n'||char==='\r')&&!quoted){if(char==='\r'&&text[i+1]==='\n')i++;row.push(cell);if(row.some(Boolean))rows.push(row);row=[];cell=''}else cell+=char}row.push(cell);if(row.some(Boolean))rows.push(row);if(rows.length<2)return[];const headers=rows[0];return rows.slice(1).map(values=>Object.fromEntries(headers.map((key,index)=>[key,values[index]??''])))}
+
+export function sourceLinkFromCsvRow(row:Record<string,string>){
+ const domain=(row.source_supplier_product_domain??'').trim(),id=(row.source_supplier_product_id??'').trim()
+ if(Boolean(domain)!==Boolean(id))throw new Error('CSV Supplier Product source domain and ID must be provided together.')
+ if(!domain)return{source_supplier_product_domain:null,source_supplier_product_id:null} as const
+ if(domain!=='raw_material'&&domain!=='packaging')throw new Error(`CSV contains unsupported Supplier Product source domain "${domain}".`)
+ return{source_supplier_product_domain:domain,source_supplier_product_id:id} as const
+}

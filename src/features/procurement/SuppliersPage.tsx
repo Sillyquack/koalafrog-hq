@@ -2,7 +2,9 @@ import { useMemo, useState } from 'react'
 import { Plus, Search, Truck } from 'lucide-react'
 import { useSearchParams } from 'react-router-dom'
 import { PageHeader } from '../../components/ui/PageHeader'
-import { procurementActions } from './actions/procurementActions'
+import { OperationReceiptPanel } from '../../components/ui/OperationReceiptPanel'
+import type { OwnerOperationReceipt } from '../../platform/operations/ownerOperationReceipt'
+import { SupplierCreateForm } from './components/SupplierCreateForm'
 import { SupplierIntelligencePanel } from './SupplierIntelligencePanel'
 import { PurchasingIntelligencePanel } from './PurchasingIntelligencePanel'
 import { SupplierDocumentationPanel } from './SupplierDocumentationPanel'
@@ -14,7 +16,7 @@ export function SuppliersPage() {
   const [params, setParams] = useSearchParams()
   const [search, setSearch] = useState('')
   const [creating, setCreating] = useState(false)
-  const [message, setMessage] = useState('')
+  const [receipt, setReceipt] = useState<OwnerOperationReceipt>()
 
   const suppliers = useMemo(
     () => data?.suppliers.filter((supplier) => !supplier.archived_at) ?? [],
@@ -44,43 +46,17 @@ export function SuppliersPage() {
     return <section className="panel procurement-state" aria-busy="true"><p>Loading hosted suppliers…</p></section>
   }
 
-  const createSupplier = async (form: HTMLFormElement) => {
-    if (!workspace) return
-    const values = new FormData(form)
-    try {
-      const supplier = await procurementActions.createSupplier(workspace.workspaceId, {
-        legal_name: String(values.get('name') ?? '').trim(),
-        supplier_type: String(values.get('type') ?? 'raw_material'),
-        status: 'research',
-        internal_notes: '',
-        is_preferred: false,
-      })
-      await refresh()
-      setParams({ supplier: supplier.id })
-      setCreating(false)
-      setMessage('Supplier created.')
-    } catch (cause) {
-      setMessage(cause instanceof Error ? cause.message : 'Could not create supplier.')
-    }
-  }
-
   return (
     <div className="suppliers-workspace">
       <PageHeader
         eyebrow="Supplier knowledge / private workshop"
         title="Suppliers"
         description="The canonical home for supplier identity, operating context and internal Supplier Intelligence."
-        action={<button className="button primary" onClick={() => setCreating((value) => !value)}><Plus size={14} />New supplier</button>}
+        action={<button className="button primary" aria-expanded={creating} aria-controls="supplier-create-form" onClick={() => { setReceipt(undefined); setCreating((value) => !value) }}><Plus size={14} />New supplier</button>}
       />
 
-      {creating && (
-        <form className="panel compact-create supplier-create" onSubmit={(event) => { event.preventDefault(); void createSupplier(event.currentTarget) }}>
-          <label>Legal name<input name="name" required /></label>
-          <label>Type<select name="type"><option value="raw_material">Raw material</option><option value="packaging">Packaging</option><option value="equipment">Equipment</option><option value="mixed">Mixed</option></select></label>
-          <button className="button primary">Create supplier</button>
-        </form>
-      )}
-      {message && <p className="form-message" role="status">{message}</p>}
+      {creating && workspace ? <SupplierCreateForm workspaceId={workspace.workspaceId} onCancel={() => setCreating(false)} onConfirmed={async ({ supplier, receipt: confirmedReceipt }) => { await refresh(); setParams({ supplier: supplier.id }); setReceipt(confirmedReceipt); setCreating(false) }} /> : null}
+      {receipt ? <OperationReceiptPanel result={{ state: 'confirmed', receipt }} onDismiss={() => setReceipt(undefined)} /> : null}
 
       {!suppliers.length ? (
         <section className="panel procurement-empty suppliers-empty">

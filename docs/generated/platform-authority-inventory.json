@@ -172,8 +172,8 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 2127,
-        "lines": 61
+        "bytes": 3181,
+        "lines": 79
       }
     },
     {
@@ -188,7 +188,7 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 3941,
+        "bytes": 4515,
         "lines": 26
       }
     },
@@ -3490,14 +3490,129 @@
       "crossDomainDependencies": [],
       "domainOwner": "procurement",
       "legacyDependency": [],
+      "modulePath": "src/features/procurement/components/SupplierCreateForm.test.tsx",
+      "objectType": "module",
+      "responsibility": "module",
+      "riskNotes": [],
+      "serverAuthoritativePoliciesConsumed": [],
+      "sizeMetrics": {
+        "bytes": 2778,
+        "lines": 56
+      }
+    },
+    {
+      "canonicalRepository": null,
+      "classification": "canonical_read_model",
+      "crossDomainDependencies": [
+        "../../../components/ui/OperationReceiptPanel",
+        "../../../platform/operations/ownerOperationReceipt"
+      ],
+      "domainOwner": "procurement",
+      "legacyDependency": [],
+      "modulePath": "src/features/procurement/components/SupplierCreateForm.tsx",
+      "objectType": "module",
+      "responsibility": "module",
+      "riskNotes": [],
+      "serverAuthoritativePoliciesConsumed": [],
+      "sizeMetrics": {
+        "bytes": 7822,
+        "lines": 135
+      }
+    },
+    {
+      "canonicalRepository": null,
+      "classification": "canonical_read_model",
+      "crossDomainDependencies": [],
+      "domainOwner": "procurement",
+      "legacyDependency": [],
+      "modulePath": "src/features/procurement/components/supplierCreateFormState.ts",
+      "objectType": "module",
+      "responsibility": "module",
+      "riskNotes": [],
+      "serverAuthoritativePoliciesConsumed": [],
+      "sizeMetrics": {
+        "bytes": 2159,
+        "lines": 62
+      }
+    },
+    {
+      "canonicalRepository": null,
+      "classification": "canonical_read_model",
+      "crossDomainDependencies": [],
+      "domainOwner": "procurement",
+      "legacyDependency": [],
+      "modulePath": "src/features/procurement/components/SupplierOfferForm.test.tsx",
+      "objectType": "module",
+      "responsibility": "module",
+      "riskNotes": [],
+      "serverAuthoritativePoliciesConsumed": [],
+      "sizeMetrics": {
+        "bytes": 4086,
+        "lines": 22
+      }
+    },
+    {
+      "canonicalRepository": null,
+      "classification": "canonical_read_model",
+      "crossDomainDependencies": [],
+      "domainOwner": "procurement",
+      "legacyDependency": [],
+      "modulePath": "src/features/procurement/components/SupplierOfferForm.tsx",
+      "objectType": "module",
+      "responsibility": "module",
+      "riskNotes": [],
+      "serverAuthoritativePoliciesConsumed": [],
+      "sizeMetrics": {
+        "bytes": 10173,
+        "lines": 78
+      }
+    },
+    {
+      "canonicalRepository": null,
+      "classification": "canonical_read_model",
+      "crossDomainDependencies": [],
+      "domainOwner": "procurement",
+      "legacyDependency": [],
+      "modulePath": "src/features/procurement/components/supplierOfferFormState.ts",
+      "objectType": "module",
+      "responsibility": "module",
+      "riskNotes": [],
+      "serverAuthoritativePoliciesConsumed": [],
+      "sizeMetrics": {
+        "bytes": 5070,
+        "lines": 50
+      }
+    },
+    {
+      "canonicalRepository": null,
+      "classification": "canonical_read_model",
+      "crossDomainDependencies": [],
+      "domainOwner": "procurement",
+      "legacyDependency": [],
+      "modulePath": "src/features/procurement/data/commercialProvenanceRepository.integration.test.ts",
+      "objectType": "module",
+      "responsibility": "module",
+      "riskNotes": [],
+      "serverAuthoritativePoliciesConsumed": [],
+      "sizeMetrics": {
+        "bytes": 18325,
+        "lines": 176
+      }
+    },
+    {
+      "canonicalRepository": null,
+      "classification": "canonical_read_model",
+      "crossDomainDependencies": [],
+      "domainOwner": "procurement",
+      "legacyDependency": [],
       "modulePath": "src/features/procurement/data/procurementInterchange.test.ts",
       "objectType": "module",
       "responsibility": "module",
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 1781,
-        "lines": 11
+        "bytes": 3467,
+        "lines": 14
       }
     },
     {
@@ -3512,8 +3627,8 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 4741,
-        "lines": 22
+        "bytes": 5423,
+        "lines": 30
       }
     },
     {
@@ -3546,7 +3661,8 @@
       "crossDomainDependencies": [
         "../../../platform/operations/ownerOperationReceipt",
         "../../../platform/supabase/client",
-        "../domain/assistedResearch"
+        "../domain/assistedResearch",
+        "../domain/commercialProvenance"
       ],
       "domainOwner": "procurement",
       "legacyDependency": [],
@@ -3556,8 +3672,8 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 15874,
-        "lines": 78
+        "bytes": 23732,
+        "lines": 155
       }
     },
     {
@@ -3606,6 +3722,38 @@
       "sizeMetrics": {
         "bytes": 6313,
         "lines": 20
+      }
+    },
+    {
+      "canonicalRepository": null,
+      "classification": "canonical_read_model",
+      "crossDomainDependencies": [],
+      "domainOwner": "procurement",
+      "legacyDependency": [],
+      "modulePath": "src/features/procurement/domain/commercialProvenance.test.ts",
+      "objectType": "domain_module",
+      "responsibility": "domain module",
+      "riskNotes": [],
+      "serverAuthoritativePoliciesConsumed": [],
+      "sizeMetrics": {
+        "bytes": 6061,
+        "lines": 76
+      }
+    },
+    {
+      "canonicalRepository": null,
+      "classification": "canonical_read_model",
+      "crossDomainDependencies": [],
+      "domainOwner": "procurement",
+      "legacyDependency": [],
+      "modulePath": "src/features/procurement/domain/commercialProvenance.ts",
+      "objectType": "domain_module",
+      "responsibility": "domain module",
+      "riskNotes": [],
+      "serverAuthoritativePoliciesConsumed": [],
+      "sizeMetrics": {
+        "bytes": 10932,
+        "lines": 191
       }
     },
     {
@@ -3668,8 +3816,8 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 31240,
-        "lines": 121
+        "bytes": 32908,
+        "lines": 131
       }
     },
     {
@@ -3939,6 +4087,22 @@
       "crossDomainDependencies": [],
       "domainOwner": "procurement",
       "legacyDependency": [],
+      "modulePath": "src/features/procurement/ProcurementCommercialProvenanceMigration.test.ts",
+      "objectType": "module",
+      "responsibility": "module",
+      "riskNotes": [],
+      "serverAuthoritativePoliciesConsumed": [],
+      "sizeMetrics": {
+        "bytes": 3209,
+        "lines": 50
+      }
+    },
+    {
+      "canonicalRepository": null,
+      "classification": "canonical_read_model",
+      "crossDomainDependencies": [],
+      "domainOwner": "procurement",
+      "legacyDependency": [],
       "modulePath": "src/features/procurement/ProcurementLazyPages.tsx",
       "objectType": "module",
       "responsibility": "module",
@@ -3997,8 +4161,8 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 19095,
-        "lines": 53
+        "bytes": 16768,
+        "lines": 50
       }
     },
     {
@@ -4671,7 +4835,9 @@
       "canonicalRepository": null,
       "classification": "canonical_read_model",
       "crossDomainDependencies": [
-        "../../components/ui/PageHeader"
+        "../../components/ui/OperationReceiptPanel",
+        "../../components/ui/PageHeader",
+        "../../platform/operations/ownerOperationReceipt"
       ],
       "domainOwner": "procurement",
       "legacyDependency": [],
@@ -4681,8 +4847,8 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 6306,
-        "lines": 138
+        "bytes": 5692,
+        "lines": 114
       }
     },
     {
@@ -6946,8 +7112,8 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 6054,
-        "lines": 55
+        "bytes": 8425,
+        "lines": 72
       }
     },
     {
@@ -6962,8 +7128,8 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 7771,
-        "lines": 193
+        "bytes": 10452,
+        "lines": 237
       }
     },
     {
@@ -7384,8 +7550,8 @@
       ],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 668388,
-        "lines": 19583
+        "bytes": 670155,
+        "lines": 19627
       }
     },
     {
@@ -12086,6 +12252,27 @@
     },
     {
       "browserWritable": false,
+      "classification": "compatibility_read_only",
+      "deprecationState": "compatibility_read_only",
+      "domainOwner": "procurement",
+      "evidenceSource": "local PostgreSQL catalogue and migration source",
+      "expectedGrants": [
+        "postgres=X/postgres"
+      ],
+      "historicalOrCurrent": "historical",
+      "mutationPath": "authenticated RPC or internal helper",
+      "name": "validate_procurement_offer_source_usability_v1",
+      "notes": "",
+      "objectType": "function",
+      "readAuthority": "result only",
+      "replacement": null,
+      "rlsEnabled": null,
+      "schema": "public",
+      "signature": "",
+      "writeAuthority": "public.validate_procurement_offer_source_usability_v1"
+    },
+    {
+      "browserWritable": false,
       "classification": "canonical_write_authority",
       "deprecationState": "canonical_write_authority",
       "domainOwner": "platform",
@@ -14051,11 +14238,13 @@
       "deprecationState": "operational_support",
       "domainOwner": "packaging",
       "evidenceSource": "local PostgreSQL catalogue",
-      "expectedGrants": null,
+      "expectedGrants": [
+        "authenticated"
+      ],
       "historicalOrCurrent": "current",
       "mutationPath": "RLS",
       "name": "packaging_supplier_products.owner_all",
-      "notes": "*: (owner_id = auth.uid()) (owner_id = auth.uid())",
+      "notes": "*: ((owner_id = ( SELECT auth.uid() AS uid)) AND (EXISTS ( SELECT 1\n   FROM workspaces workspace\n  WHERE ((workspace.id = packaging_supplier_products.workspace_id) AND (workspace.owner_id = ( SELECT auth.uid() AS uid)))))) ((owner_id = ( SELECT auth.uid() AS uid)) AND (EXISTS ( SELECT 1\n   FROM workspaces workspace\n  WHERE ((workspace.id = packaging_supplier_products.workspace_id) AND (workspace.owner_id = ( SELECT auth.uid() AS uid)) AND (workspace.lifecycle_state = 'active'::text)))))",
       "objectType": "rls_policy",
       "readAuthority": "database policy",
       "replacement": null,
@@ -21122,6 +21311,24 @@
       "browserWritable": false,
       "classification": "operational_support",
       "deprecationState": "operational_support",
+      "domainOwner": "procurement",
+      "evidenceSource": "local PostgreSQL catalogue",
+      "expectedGrants": [],
+      "historicalOrCurrent": "current",
+      "mutationPath": "database trigger",
+      "name": "procurement_supplier_offers.validate_procurement_offer_source_usability",
+      "notes": "CREATE TRIGGER validate_procurement_offer_source_usability BEFORE INSERT OR UPDATE OF workspace_id, owner_id, supplier_id, source_supplier_product_domain, source_supplier_product_id ON public.procurement_supplier_offers FOR EACH ROW EXECUTE FUNCTION validate_procurement_offer_source_usability_v1()",
+      "objectType": "trigger",
+      "readAuthority": "none",
+      "replacement": null,
+      "rlsEnabled": null,
+      "schema": "public",
+      "writeAuthority": "validate_procurement_offer_source_usability_v1()"
+    },
+    {
+      "browserWritable": false,
+      "classification": "operational_support",
+      "deprecationState": "operational_support",
       "domainOwner": "production",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [],
@@ -21391,6 +21598,6 @@
   ],
   "generatedAt": "2026-07-29T12:00:00+02:00",
   "sourceCommit": "content-addressed-by-sourceHash",
-  "sourceHash": "9294dadce0ad2a7a07f5d2c2e91b57ccd3cc9d3dbe01a6b262d2081776e1641d",
+  "sourceHash": "ff30cc2dd95ca792662b0a85f22742c23f18f4603b1e2c01d151ca4d0d24fb60",
   "version": "1.0.0"
 }

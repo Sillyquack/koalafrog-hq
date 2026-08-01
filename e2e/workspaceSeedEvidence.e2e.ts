@@ -115,7 +115,7 @@ test("owner receives stable evidence for all five Seed V2 create domains", async
   await page.goto("/platform");
   const status = page.locator(".migration-status-card");
   await expect(status.getByRole("heading", { name: "Match" })).toBeVisible();
-  await expect(status.getByText("20260731205657", { exact: true })).toHaveCount(
+  await expect(status.getByText("20260801085016", { exact: true })).toHaveCount(
     2,
   );
   await page.getByRole("button", { name: "Preview JSON" }).click();

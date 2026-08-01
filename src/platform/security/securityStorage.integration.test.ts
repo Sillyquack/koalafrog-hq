@@ -744,8 +744,8 @@ run("local Supabase Auth, RLS, RPC, Storage, and cutover security", () => {
     const ownerStatus = await userA.rpc("get_platform_migration_status_v1");
     expect(ownerStatus.error).toBeNull();
     expect(ownerStatus.data).toMatchObject({
-      migration_count: 91,
-      current_migration_version: "20260731205657",
+      migration_count: 92,
+      current_migration_version: "20260801085016",
     });
     expect(Object.keys(ownerStatus.data as Record<string, unknown>).sort()).toEqual([
       "current_migration_version",

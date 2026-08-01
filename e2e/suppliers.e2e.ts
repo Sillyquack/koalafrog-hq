@@ -1,5 +1,16 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Locator } from '@playwright/test'
 import { signIn } from './ingredientKnowledge.helpers'
+
+async function fillPrintingSupplier(form: Locator, supplierName: string) {
+  await form.getByLabel('Legal name').fill(supplierName)
+  await form.getByLabel('Supplier type').selectOption('printing')
+  await form.getByLabel('Website').fill('https://www.avery.no')
+  await form.getByLabel('Country').fill('NO')
+  await form.getByLabel('Default currency').fill('NOK')
+  await expect(form.getByLabel('Status')).toHaveValue('research')
+  await expect(form.getByLabel('Verification state')).toHaveValue('unknown')
+  await expect(form.getByLabel('Preferred Supplier')).not.toBeChecked()
+}
 
 test('Suppliers owns the single supplier selection and profile edit flow', async ({ page }) => {
   await signIn(page)
@@ -11,15 +22,42 @@ test('Suppliers owns the single supplier selection and profile edit flow', async
   const supplierName = `Shell supplier ${Date.now()}`
   await page.getByRole('button', { name: 'New supplier' }).click()
   const createForm = page.locator('form.supplier-create')
-  await createForm.getByLabel('Legal name').fill(supplierName)
-  await createForm.getByLabel('Type').selectOption('raw_material')
+  await fillPrintingSupplier(createForm, supplierName)
+  await expect(createForm.getByRole('heading', { name: 'Review before creating' })).toBeVisible()
+  const review = createForm.locator('.supplier-create-review')
+  await expect(review.getByText(supplierName, { exact: true })).toBeVisible()
+  await expect(review.getByText('printing', { exact: true })).toBeVisible()
+  await expect(review.getByText('NO', { exact: true })).toBeVisible()
+  await expect(review.getByText('NOK', { exact: true })).toBeVisible()
+  await expect(review.getByText('No', { exact: true })).toBeVisible()
   await createForm.getByRole('button', { name: 'Create supplier' }).click()
 
+  const receipt = page.getByTestId('operation-receipt')
+  await expect(receipt.getByText(/CREATE confirmed for supplier/i)).toBeVisible()
+  const supplierId = await receipt.locator('dd').first().innerText()
+  expect(supplierId).toBeTruthy()
+  await expect(page.getByRole('button', { name: new RegExp(supplierName) })).toHaveAttribute('aria-pressed', 'true')
+  expect(new URL(page.url()).searchParams.get('supplier')).toBe(supplierId)
+  await page.reload()
+  await expect(page.getByTestId('operation-receipt')).toHaveCount(0)
   await expect(page.getByRole('button', { name: new RegExp(supplierName) })).toHaveAttribute('aria-pressed', 'true')
   await expect(page.getByRole('heading', { name: 'Supplier intelligence' })).toBeVisible()
   await expect(page.locator('.supplier-intelligence').getByText(supplierName, { exact: true })).toBeVisible()
-  await expect(page.locator('.supplier-intelligence').getByText('Country unknown', { exact: false })).toBeVisible()
+  await expect(page.locator('.supplier-intelligence').getByText(/NO · printing · NOK/)).toBeVisible()
   await expect(page.locator('.supplier-intelligence').getByText('Unknown', { exact: true }).first()).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Open supplier website' })).toHaveAttribute('href', 'https://www.avery.no')
+
+  await page.getByRole('button', { name: 'New supplier' }).click()
+  const duplicateForm = page.locator('form.supplier-create')
+  await fillPrintingSupplier(duplicateForm, supplierName)
+  await duplicateForm.getByRole('button', { name: 'Create supplier' }).click()
+  const duplicateReceipt = duplicateForm.getByTestId('operation-receipt')
+  await expect(duplicateReceipt.getByRole('alert')).toContainText(/duplicate|already exists|conflict/i)
+  await expect(duplicateForm.getByLabel('Legal name')).toHaveValue(supplierName)
+  await expect(duplicateForm.getByLabel('Supplier type')).toHaveValue('printing')
+  await expect(duplicateForm.getByLabel('Website')).toHaveValue('https://www.avery.no')
+  await duplicateForm.getByRole('button', { name: 'Cancel' }).click()
+
   await expect(page.getByRole('heading', { name: 'Commercial Terms & Shipping' })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Commercial terms', exact: true })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Shipping rules' })).toBeVisible()

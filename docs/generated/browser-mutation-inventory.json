@@ -108,6 +108,14 @@
       "directTableWrites": [
         {
           "operation": "insert",
+          "table": "suppliers"
+        },
+        {
+          "operation": "insert",
+          "table": "procurement_supplier_offers"
+        },
+        {
+          "operation": "insert",
           "table": "procurement_offer_candidates"
         },
         {

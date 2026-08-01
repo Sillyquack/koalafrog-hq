@@ -173,8 +173,8 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 2127,
-        "lines": 61
+        "bytes": 3181,
+        "lines": 79
       }
     },
     {
@@ -189,7 +189,7 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 3941,
+        "bytes": 4515,
         "lines": 26
       }
     },
@@ -3491,14 +3491,129 @@
       "crossDomainDependencies": [],
       "domainOwner": "procurement",
       "legacyDependency": [],
+      "modulePath": "src/features/procurement/components/SupplierCreateForm.test.tsx",
+      "objectType": "module",
+      "responsibility": "module",
+      "riskNotes": [],
+      "serverAuthoritativePoliciesConsumed": [],
+      "sizeMetrics": {
+        "bytes": 2778,
+        "lines": 56
+      }
+    },
+    {
+      "canonicalRepository": null,
+      "classification": "canonical_read_model",
+      "crossDomainDependencies": [
+        "../../../components/ui/OperationReceiptPanel",
+        "../../../platform/operations/ownerOperationReceipt"
+      ],
+      "domainOwner": "procurement",
+      "legacyDependency": [],
+      "modulePath": "src/features/procurement/components/SupplierCreateForm.tsx",
+      "objectType": "module",
+      "responsibility": "module",
+      "riskNotes": [],
+      "serverAuthoritativePoliciesConsumed": [],
+      "sizeMetrics": {
+        "bytes": 7822,
+        "lines": 135
+      }
+    },
+    {
+      "canonicalRepository": null,
+      "classification": "canonical_read_model",
+      "crossDomainDependencies": [],
+      "domainOwner": "procurement",
+      "legacyDependency": [],
+      "modulePath": "src/features/procurement/components/supplierCreateFormState.ts",
+      "objectType": "module",
+      "responsibility": "module",
+      "riskNotes": [],
+      "serverAuthoritativePoliciesConsumed": [],
+      "sizeMetrics": {
+        "bytes": 2159,
+        "lines": 62
+      }
+    },
+    {
+      "canonicalRepository": null,
+      "classification": "canonical_read_model",
+      "crossDomainDependencies": [],
+      "domainOwner": "procurement",
+      "legacyDependency": [],
+      "modulePath": "src/features/procurement/components/SupplierOfferForm.test.tsx",
+      "objectType": "module",
+      "responsibility": "module",
+      "riskNotes": [],
+      "serverAuthoritativePoliciesConsumed": [],
+      "sizeMetrics": {
+        "bytes": 4086,
+        "lines": 22
+      }
+    },
+    {
+      "canonicalRepository": null,
+      "classification": "canonical_read_model",
+      "crossDomainDependencies": [],
+      "domainOwner": "procurement",
+      "legacyDependency": [],
+      "modulePath": "src/features/procurement/components/SupplierOfferForm.tsx",
+      "objectType": "module",
+      "responsibility": "module",
+      "riskNotes": [],
+      "serverAuthoritativePoliciesConsumed": [],
+      "sizeMetrics": {
+        "bytes": 10173,
+        "lines": 78
+      }
+    },
+    {
+      "canonicalRepository": null,
+      "classification": "canonical_read_model",
+      "crossDomainDependencies": [],
+      "domainOwner": "procurement",
+      "legacyDependency": [],
+      "modulePath": "src/features/procurement/components/supplierOfferFormState.ts",
+      "objectType": "module",
+      "responsibility": "module",
+      "riskNotes": [],
+      "serverAuthoritativePoliciesConsumed": [],
+      "sizeMetrics": {
+        "bytes": 5070,
+        "lines": 50
+      }
+    },
+    {
+      "canonicalRepository": null,
+      "classification": "canonical_read_model",
+      "crossDomainDependencies": [],
+      "domainOwner": "procurement",
+      "legacyDependency": [],
+      "modulePath": "src/features/procurement/data/commercialProvenanceRepository.integration.test.ts",
+      "objectType": "module",
+      "responsibility": "module",
+      "riskNotes": [],
+      "serverAuthoritativePoliciesConsumed": [],
+      "sizeMetrics": {
+        "bytes": 18325,
+        "lines": 176
+      }
+    },
+    {
+      "canonicalRepository": null,
+      "classification": "canonical_read_model",
+      "crossDomainDependencies": [],
+      "domainOwner": "procurement",
+      "legacyDependency": [],
       "modulePath": "src/features/procurement/data/procurementInterchange.test.ts",
       "objectType": "module",
       "responsibility": "module",
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 1781,
-        "lines": 11
+        "bytes": 3467,
+        "lines": 14
       }
     },
     {
@@ -3513,8 +3628,8 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 4741,
-        "lines": 22
+        "bytes": 5423,
+        "lines": 30
       }
     },
     {
@@ -3547,7 +3662,8 @@
       "crossDomainDependencies": [
         "../../../platform/operations/ownerOperationReceipt",
         "../../../platform/supabase/client",
-        "../domain/assistedResearch"
+        "../domain/assistedResearch",
+        "../domain/commercialProvenance"
       ],
       "domainOwner": "procurement",
       "legacyDependency": [],
@@ -3557,8 +3673,8 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 15874,
-        "lines": 78
+        "bytes": 23732,
+        "lines": 155
       }
     },
     {
@@ -3607,6 +3723,38 @@
       "sizeMetrics": {
         "bytes": 6313,
         "lines": 20
+      }
+    },
+    {
+      "canonicalRepository": null,
+      "classification": "canonical_read_model",
+      "crossDomainDependencies": [],
+      "domainOwner": "procurement",
+      "legacyDependency": [],
+      "modulePath": "src/features/procurement/domain/commercialProvenance.test.ts",
+      "objectType": "domain_module",
+      "responsibility": "domain module",
+      "riskNotes": [],
+      "serverAuthoritativePoliciesConsumed": [],
+      "sizeMetrics": {
+        "bytes": 6061,
+        "lines": 76
+      }
+    },
+    {
+      "canonicalRepository": null,
+      "classification": "canonical_read_model",
+      "crossDomainDependencies": [],
+      "domainOwner": "procurement",
+      "legacyDependency": [],
+      "modulePath": "src/features/procurement/domain/commercialProvenance.ts",
+      "objectType": "domain_module",
+      "responsibility": "domain module",
+      "riskNotes": [],
+      "serverAuthoritativePoliciesConsumed": [],
+      "sizeMetrics": {
+        "bytes": 10932,
+        "lines": 191
       }
     },
     {
@@ -3669,8 +3817,8 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 31240,
-        "lines": 121
+        "bytes": 32908,
+        "lines": 131
       }
     },
     {
@@ -3940,6 +4088,22 @@
       "crossDomainDependencies": [],
       "domainOwner": "procurement",
       "legacyDependency": [],
+      "modulePath": "src/features/procurement/ProcurementCommercialProvenanceMigration.test.ts",
+      "objectType": "module",
+      "responsibility": "module",
+      "riskNotes": [],
+      "serverAuthoritativePoliciesConsumed": [],
+      "sizeMetrics": {
+        "bytes": 3209,
+        "lines": 50
+      }
+    },
+    {
+      "canonicalRepository": null,
+      "classification": "canonical_read_model",
+      "crossDomainDependencies": [],
+      "domainOwner": "procurement",
+      "legacyDependency": [],
       "modulePath": "src/features/procurement/ProcurementLazyPages.tsx",
       "objectType": "module",
       "responsibility": "module",
@@ -3998,8 +4162,8 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 19095,
-        "lines": 53
+        "bytes": 16768,
+        "lines": 50
       }
     },
     {
@@ -4672,7 +4836,9 @@
       "canonicalRepository": null,
       "classification": "canonical_read_model",
       "crossDomainDependencies": [
-        "../../components/ui/PageHeader"
+        "../../components/ui/OperationReceiptPanel",
+        "../../components/ui/PageHeader",
+        "../../platform/operations/ownerOperationReceipt"
       ],
       "domainOwner": "procurement",
       "legacyDependency": [],
@@ -4682,8 +4848,8 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 6306,
-        "lines": 138
+        "bytes": 5692,
+        "lines": 114
       }
     },
     {
@@ -6947,8 +7113,8 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 6054,
-        "lines": 55
+        "bytes": 8425,
+        "lines": 72
       }
     },
     {
@@ -6963,8 +7129,8 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 7771,
-        "lines": 193
+        "bytes": 10452,
+        "lines": 237
       }
     },
     {
@@ -7385,8 +7551,8 @@
       ],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 668388,
-        "lines": 19583
+        "bytes": 670155,
+        "lines": 19627
       }
     },
     {

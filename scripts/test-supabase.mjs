@@ -9,6 +9,7 @@ const defaultTests=[
   'src/platform/security/securityStorage.integration.test.ts',
   'src/platform/security/beardPhotoStorage.integration.test.ts',
   'src/features/procurement/data/procurementRepository.integration.test.ts',
+  'src/features/procurement/data/commercialProvenanceRepository.integration.test.ts',
   'src/features/procurement/draft-plans/data/draftPurchasePlanRepository.integration.test.ts',
   'src/features/procurement/production-readiness/data/productionReadinessRepository.integration.test.ts',
   'src/features/beard-studio/data/beardStudioRepository.integration.test.ts',

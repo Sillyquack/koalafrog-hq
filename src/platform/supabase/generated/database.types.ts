@@ -8695,6 +8695,13 @@ export type Database = {
             referencedRelation: "packaging_components"
             referencedColumns: ["workspace_id", "id"]
           },
+          {
+            foreignKeyName: "packaging_supplier_products_workspace_owner_fk"
+            columns: ["workspace_id", "owner_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id", "owner_id"]
+          },
         ]
       }
       pif_evidence_sections: {
@@ -9885,6 +9892,8 @@ export type Database = {
           requested_item_id: string
           sds_availability: string
           shipping_cost: number | null
+          source_packaging_product_id: string | null
+          source_raw_material_product_id: string | null
           source_supplier_product_domain: string | null
           source_supplier_product_id: string | null
           stock_status: string
@@ -9916,6 +9925,8 @@ export type Database = {
           requested_item_id: string
           sds_availability?: string
           shipping_cost?: number | null
+          source_packaging_product_id?: string | null
+          source_raw_material_product_id?: string | null
           source_supplier_product_domain?: string | null
           source_supplier_product_id?: string | null
           stock_status?: string
@@ -9947,6 +9958,8 @@ export type Database = {
           requested_item_id?: string
           sds_availability?: string
           shipping_cost?: number | null
+          source_packaging_product_id?: string | null
+          source_raw_material_product_id?: string | null
           source_supplier_product_domain?: string | null
           source_supplier_product_id?: string | null
           stock_status?: string
@@ -9957,6 +9970,30 @@ export type Database = {
           workspace_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "procurement_supplier_offers_packaging_source_fk"
+            columns: [
+              "workspace_id",
+              "owner_id",
+              "source_packaging_product_id",
+              "supplier_id",
+            ]
+            isOneToOne: false
+            referencedRelation: "packaging_supplier_products"
+            referencedColumns: ["workspace_id", "owner_id", "id", "supplier_id"]
+          },
+          {
+            foreignKeyName: "procurement_supplier_offers_raw_material_source_fk"
+            columns: [
+              "workspace_id",
+              "owner_id",
+              "source_raw_material_product_id",
+              "supplier_id",
+            ]
+            isOneToOne: false
+            referencedRelation: "supplier_products"
+            referencedColumns: ["workspace_id", "owner_id", "id", "supplier_id"]
+          },
           {
             foreignKeyName: "procurement_supplier_offers_workspace_id_requested_item_id_fkey"
             columns: ["workspace_id", "requested_item_id"]
@@ -9970,6 +10007,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "suppliers"
             referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "procurement_supplier_offers_workspace_owner_fk"
+            columns: ["workspace_id", "owner_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id", "owner_id"]
           },
         ]
       }
