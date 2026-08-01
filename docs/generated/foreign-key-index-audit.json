@@ -4296,6 +4296,19 @@
     {
       "columns": [
         "workspace_id",
+        "owner_id"
+      ],
+      "constraint": "packaging_supplier_products_workspace_owner_fk",
+      "estimatedRows": 0,
+      "recommendation": null,
+      "references": "workspaces",
+      "schema": "public",
+      "status": "covered",
+      "table": "packaging_supplier_products"
+    },
+    {
+      "columns": [
+        "workspace_id",
         "compliance_dossier_id"
       ],
       "constraint": "pif_evidence_sections_workspace_id_compliance_dossier_id_fkey",
@@ -4697,6 +4710,36 @@
     {
       "columns": [
         "workspace_id",
+        "owner_id",
+        "source_packaging_product_id",
+        "supplier_id"
+      ],
+      "constraint": "procurement_supplier_offers_packaging_source_fk",
+      "estimatedRows": 0,
+      "recommendation": null,
+      "references": "packaging_supplier_products",
+      "schema": "public",
+      "status": "partially_covered",
+      "table": "procurement_supplier_offers"
+    },
+    {
+      "columns": [
+        "workspace_id",
+        "owner_id",
+        "source_raw_material_product_id",
+        "supplier_id"
+      ],
+      "constraint": "procurement_supplier_offers_raw_material_source_fk",
+      "estimatedRows": 0,
+      "recommendation": null,
+      "references": "supplier_products",
+      "schema": "public",
+      "status": "partially_covered",
+      "table": "procurement_supplier_offers"
+    },
+    {
+      "columns": [
+        "workspace_id",
         "requested_item_id"
       ],
       "constraint": "procurement_supplier_offers_workspace_id_requested_item_id_fkey",
@@ -4718,6 +4761,19 @@
       "references": "suppliers",
       "schema": "public",
       "status": "partially_covered",
+      "table": "procurement_supplier_offers"
+    },
+    {
+      "columns": [
+        "workspace_id",
+        "owner_id"
+      ],
+      "constraint": "procurement_supplier_offers_workspace_owner_fk",
+      "estimatedRows": 0,
+      "recommendation": null,
+      "references": "workspaces",
+      "schema": "public",
+      "status": "covered",
       "table": "procurement_supplier_offers"
     },
     {
@@ -7543,7 +7599,7 @@
       "recommendation": null,
       "references": "workspaces",
       "schema": "public",
-      "status": "partially_covered",
+      "status": "covered",
       "table": "supplier_products"
     },
     {
@@ -8000,10 +8056,10 @@
   ],
   "generatedAt": "2026-07-29T12:00:00+02:00",
   "summary": {
-    "covered": 266,
+    "covered": 269,
     "intentionally_unindexed": 0,
     "missing": 114,
-    "partially_covered": 251
+    "partially_covered": 252
   },
   "version": "1.0.0"
 }

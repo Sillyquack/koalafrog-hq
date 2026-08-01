@@ -1,9 +1,11 @@
 export type OwnerOperationEntity =
+  | "supplier"
   | "supplier_product"
   | "equipment"
   | "packaging_component"
   | "procurement_request"
   | "procurement_requested_item"
+  | "procurement_supplier_offer"
   | "purchase_plan"
   | "purchase_plan_basket"
   | "purchase_plan_line";
@@ -20,17 +22,37 @@ export interface OwnerOperationReceipt {
   naturalIdentity: Record<string, string>;
   changedFields?: Array<{field:string;before:string|null;after:string|null}>;
   parent?: {
-    entityType: "procurement_request";
+    entityType: "procurement_request" | "procurement_requested_item";
     recordId: string;
   };
+  supplierId?: string;
+  sourceSupplierProductDomain?: "raw_material" | "packaging" | null;
+  sourceSupplierProductId?: string | null;
+}
+
+export interface SupplierOperationReceipt extends OwnerOperationReceipt {
+  entityType: "supplier";
+  operation: "created";
+}
+
+export interface ProcurementSupplierOfferOperationReceipt
+  extends OwnerOperationReceipt {
+  entityType: "procurement_supplier_offer";
+  operation: "created";
+  parent: { entityType: "procurement_requested_item"; recordId: string };
+  supplierId: string;
+  sourceSupplierProductDomain: "raw_material" | "packaging" | null;
+  sourceSupplierProductId: string | null;
 }
 
 const ownerOperationEntities: OwnerOperationEntity[] = [
+  "supplier",
   "supplier_product",
   "equipment",
   "packaging_component",
   "procurement_request",
   "procurement_requested_item",
+  "procurement_supplier_offer",
   "purchase_plan",
   "purchase_plan_basket",
   "purchase_plan_line",
@@ -72,9 +94,29 @@ export function isOwnerOperationReceipt(
       )
     ))&&
     (!receipt.parent ||
-      (receipt.parent.entityType === "procurement_request" &&
+      (["procurement_request", "procurement_requested_item"].includes(receipt.parent.entityType) &&
         typeof receipt.parent.recordId === "string" &&
         !!receipt.parent.recordId)) &&
+    (receipt.supplierId === undefined ||
+      (typeof receipt.supplierId === "string" && !!receipt.supplierId)) &&
+    (receipt.sourceSupplierProductDomain === undefined ||
+      receipt.sourceSupplierProductDomain === null ||
+      receipt.sourceSupplierProductDomain === "raw_material" ||
+      receipt.sourceSupplierProductDomain === "packaging") &&
+    (receipt.sourceSupplierProductId === undefined ||
+      receipt.sourceSupplierProductId === null ||
+      (typeof receipt.sourceSupplierProductId === "string" && !!receipt.sourceSupplierProductId)) &&
+    ((receipt.sourceSupplierProductDomain === undefined && receipt.sourceSupplierProductId === undefined) ||
+      (receipt.sourceSupplierProductDomain === null && receipt.sourceSupplierProductId === null) ||
+      ((receipt.sourceSupplierProductDomain === "raw_material" || receipt.sourceSupplierProductDomain === "packaging") &&
+        typeof receipt.sourceSupplierProductId === "string" && !!receipt.sourceSupplierProductId)) &&
+    (receipt.entityType !== "procurement_supplier_offer" ||
+      (receipt.operation === "created" &&
+        receipt.parent?.entityType === "procurement_requested_item" &&
+        typeof receipt.supplierId === "string" &&
+        !!receipt.supplierId &&
+        receipt.sourceSupplierProductDomain !== undefined &&
+        receipt.sourceSupplierProductId !== undefined)) &&
     (!expected.entityType || receipt.entityType === expected.entityType) &&
     (!expected.recordId || receipt.recordId === expected.recordId) &&
     (!expected.workspaceId || receipt.workspaceId === expected.workspaceId)
@@ -160,11 +202,13 @@ export interface OwnerOperationExport {
 }
 
 const safeFields: Record<OwnerOperationEntity, string[]> = {
+  supplier: ["id", "workspace_id", "legal_name", "trading_name", "supplier_type", "status", "website_url", "country_code", "default_currency", "verification_state", "internal_notes", "is_preferred", "created_at", "updated_at"],
   supplier_product: ["id", "workspace_id", "ingredient_id", "supplier_id", "supplier_name", "product_name", "lifecycle_status", "price_state", "created_at", "updated_at"],
   equipment: ["id", "workspace_id", "name", "equipment_type", "status", "ownership_state", "availability_state", "created_at", "updated_at"],
   packaging_component: ["id", "workspace_id", "name", "category", "status", "ownership_state", "stock_state", "created_at", "updated_at"],
   procurement_request: ["id", "workspace_id", "title", "category", "status", "created_at", "updated_at"],
   procurement_requested_item: ["id", "workspace_id", "procurement_request_id", "name", "category", "status", "created_at", "updated_at"],
+  procurement_supplier_offer: ["id", "workspace_id", "requested_item_id", "supplier_id", "source_supplier_product_domain", "source_supplier_product_id", "product_title", "package_quantity", "package_unit", "item_price", "currency", "product_url", "date_checked", "created_at", "updated_at"],
   purchase_plan: ["id","workspace_id","title","status","placement_state","order_authorized","target_budget","absolute_stop","credible_range_minimum","credible_range_maximum","worst_credible_range_minimum","worst_credible_range_maximum","estimated_merchandise_total","known_minimum","estimated_landed_total","commercial_checked_at","created_at","updated_at"],
   purchase_plan_basket: ["id","workspace_id","purchase_plan_id","supplier_id","supplier_name_snapshot","currency","merchandise_subtotal","confirmed_discount","post_discount_subtotal","shipping","vat_adjustment","import_vat","customs","dangerous_goods_fee","handling","payment_fx","known_minimum","confirmed_total","commercial_checked_at","created_at"],
   purchase_plan_line: ["id","workspace_id","purchase_plan_id","purchase_plan_basket_id","source_kind","source_record_id","packaging_component_id","supplier_product_id","supplier_product_name_snapshot","supplier_sku_snapshot","pack_size","unit","pack_count","estimated_unit_price","estimated_line_total","currency","product_url_snapshot","commercial_checked_at","commercial_evidence_snapshot","created_at"],

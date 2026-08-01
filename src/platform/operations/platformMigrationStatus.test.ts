@@ -5,9 +5,9 @@ describe("platform migration compatibility", () => {
   it("matches actual local state to generated repository evidence", () => {
     expect(
       comparePlatformMigrationStatus({
-        migrationCount: 91,
-        currentMigrationVersion: "20260731205657",
-        evaluatedAt: "2026-07-31T05:00:00.000Z",
+        migrationCount: 92,
+        currentMigrationVersion: "20260801085016",
+        evaluatedAt: "2026-08-01T05:00:00.000Z",
       }).state,
     ).toBe("match");
   });

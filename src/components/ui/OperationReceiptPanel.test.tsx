@@ -57,4 +57,22 @@ describe("OperationReceiptPanel", () => {
     expect(ambiguous).toContain("candidate-a");
     expect(ambiguous).not.toContain("confirmed for");
   });
+
+  it("renders the requested-item, Supplier, and canonical source IDs for a linked Offer",()=>{
+    const offerReceipt={
+      schemaVersion:1 as const,entityType:'procurement_supplier_offer' as const,
+      recordId:'offer-id-that-must-wrap',workspaceId:receipt.workspaceId,
+      operation:'created' as const,persistedAt:receipt.persistedAt,
+      naturalIdentity:{product_title:'Printed labels',package_quantity:'100',package_unit:'pcs',date_checked:'2026-08-01'},
+      parent:{entityType:'procurement_requested_item' as const,recordId:'requested-item-id'},
+      supplierId:'supplier-id',sourceSupplierProductDomain:'packaging' as const,
+      sourceSupplierProductId:'packaging-source-id',
+    }
+    const html=renderToStaticMarkup(<OperationReceiptPanel result={{state:'confirmed',receipt:offerReceipt}}/>)
+    expect(html).toContain('Parent requested-item ID')
+    expect(html).toContain('requested-item-id')
+    expect(html).toContain('supplier-id')
+    expect(html).toContain('packaging-source-id')
+    expect(html).toContain('packaging')
+  })
 });

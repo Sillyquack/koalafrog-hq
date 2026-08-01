@@ -6,11 +6,32 @@ test('Suppliers list and selected profile remain usable at 390px', async ({ page
   await page.goto('/suppliers')
 
   await expect(page.getByRole('heading', { name: 'Suppliers', exact: true })).toBeVisible()
-  if (await page.locator('.supplier-picker').count() === 0) {
-    await page.getByRole('button', { name: 'New supplier' }).click()
-    await page.locator('form.supplier-create').getByLabel('Legal name').fill(`Mobile supplier ${Date.now()}`)
-    await page.getByRole('button', { name: 'Create supplier' }).click()
-  }
+  const supplierName = `Mobile printing supplier ${Date.now()}`
+  await page.getByRole('button', { name: 'New supplier' }).click()
+  const createForm = page.locator('form.supplier-create')
+  await expect(createForm).toBeVisible()
+  expect(await createForm.evaluate((element) => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(1)
+  const legalName = createForm.getByLabel('Legal name')
+  await expect(legalName).toBeFocused()
+  await legalName.fill(supplierName)
+  await page.keyboard.press('Tab')
+  await expect(createForm.getByLabel('Trading name')).toBeFocused()
+  await createForm.getByLabel('Supplier type').selectOption('printing')
+  await createForm.getByLabel('Website').fill('https://www.avery.no')
+  await createForm.getByLabel('Country').fill('NO')
+  await createForm.getByLabel('Default currency').fill('NOK')
+  await expect(createForm.getByRole('heading', { name: 'Review before creating' })).toBeVisible()
+  await createForm.getByRole('button', { name: 'Create supplier' }).click()
+
+  const receipt = page.getByTestId('operation-receipt')
+  await expect(receipt.getByText(/CREATE confirmed for supplier/i)).toBeVisible()
+  expect(await receipt.evaluate((element) => element.scrollWidth - element.clientWidth)).toBeLessThanOrEqual(1)
+  const supplierId = await receipt.locator('dd').first().innerText()
+  expect(new URL(page.url()).searchParams.get('supplier')).toBe(supplierId)
+  await page.reload()
+  await expect(page.getByRole('button', { name: new RegExp(supplierName) })).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.locator('.supplier-intelligence').getByText(/NO · printing · NOK/)).toBeVisible()
+
   await expect(page.locator('.supplier-picker')).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Supplier intelligence' })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Commercial Terms & Shipping' })).toBeVisible()

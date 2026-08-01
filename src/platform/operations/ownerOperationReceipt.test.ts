@@ -40,6 +40,23 @@ describe('owner operation receipts',()=>{
   expect(isOwnerOperationReceipt({...receipt,operation:'invented'})).toBe(false)
   expect(isOwnerOperationReceipt({entityType:'packaging_component',recordId:row.id})).toBe(false)
  })
+ it('validates Supplier and linked Offer receipt relationships without accepting one-sided source evidence',()=>{
+  const supplierReceipt={schemaVersion:1 as const,entityType:'supplier' as const,recordId:'supplier-id',workspaceId,operation:'created' as const,persistedAt:row.created_at,naturalIdentity:{legal_name:'Avery Norway',supplier_type:'printing',country_code:'NO'}}
+  const offerReceipt={schemaVersion:1 as const,entityType:'procurement_supplier_offer' as const,recordId:'offer-id',workspaceId,operation:'created' as const,persistedAt:row.created_at,naturalIdentity:{product_title:'Labels',package_quantity:'100',package_unit:'pcs',date_checked:'2026-08-01'},parent:{entityType:'procurement_requested_item' as const,recordId:'item-id'},supplierId:'supplier-id',sourceSupplierProductDomain:'packaging' as const,sourceSupplierProductId:'packaging-product-id'}
+  expect(isOwnerOperationReceipt(supplierReceipt,{entityType:'supplier'})).toBe(true)
+  expect(isOwnerOperationReceipt(offerReceipt,{entityType:'procurement_supplier_offer'})).toBe(true)
+  expect(isOwnerOperationReceipt({...offerReceipt,sourceSupplierProductId:null})).toBe(false)
+  expect(isOwnerOperationReceipt({...offerReceipt,parent:{entityType:'procurement_request',recordId:'request-id'}})).toBe(false)
+ })
+ it('exports allowlisted Supplier and Offer provenance without owner credentials',()=>{
+  const exported=buildOwnerOperationExport(workspaceId,{
+   supplier:[{...row,legal_name:'Avery Norway',trading_name:null,supplier_type:'printing',status:'research',website_url:'https://www.avery.no',country_code:'NO',default_currency:'NOK',verification_state:'unknown',internal_notes:'',is_preferred:false}],
+   procurement_supplier_offer:[{...row,requested_item_id:'item-id',supplier_id:'supplier-id',source_supplier_product_domain:'packaging',source_supplier_product_id:'pack-source',product_title:'Printed labels',package_quantity:100,package_unit:'pcs',item_price:250,currency:'NOK',product_url:'https://example.test/labels',date_checked:'2026-08-01'}],
+  })
+  expect(exported.records.supplier?.[0]).toMatchObject({legal_name:'Avery Norway',supplier_type:'printing',country_code:'NO'})
+  expect(exported.records.procurement_supplier_offer?.[0]).toMatchObject({supplier_id:'supplier-id',source_supplier_product_id:'pack-source'})
+  expect(JSON.stringify(exported)).not.toContain('secret-owner')
+ })
  it('exports Draft plans, baskets, and lines with stable relations, ordering, and null Unknowns',()=>{
   const plan={id:'plan-id',workspace_id:workspaceId,title:'Internal Draft',status:'draft',placement_state:'unplaced',order_authorized:false,target_budget:3500,absolute_stop:4000,estimated_landed_total:null,created_at:row.created_at,updated_at:row.created_at,owner_id:'secret'}
   const baskets=[{id:'basket-z',workspace_id:workspaceId,purchase_plan_id:'plan-id',supplier_id:'supplier-z',supplier_name_snapshot:'Z',currency:'GBP',shipping:null,import_vat:null,created_at:row.created_at},{id:'basket-a',workspace_id:workspaceId,purchase_plan_id:'plan-id',supplier_id:'supplier-a',supplier_name_snapshot:'A',currency:'NOK',shipping:110,import_vat:null,created_at:row.created_at},{id:'other-basket',workspace_id:'other-workspace',purchase_plan_id:'other-plan',supplier_id:'other',supplier_name_snapshot:'Other',currency:'NOK',shipping:0,created_at:row.created_at}]

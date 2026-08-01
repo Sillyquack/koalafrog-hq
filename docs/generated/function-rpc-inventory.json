@@ -3528,6 +3528,22 @@
       "volatility": "v"
     },
     {
+      "approximateComplexity": 10,
+      "grants": [
+        "postgres=X/postgres"
+      ],
+      "name": "validate_procurement_offer_source_usability_v1",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "trigger",
+      "schema": "public",
+      "searchPath": "\"\"",
+      "securityDefiner": false,
+      "signature": "",
+      "sourceLength": 50,
+      "volatility": "v"
+    },
+    {
       "approximateComplexity": 17,
       "grants": [
         "postgres=X/postgres"
