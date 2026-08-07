@@ -36,7 +36,7 @@ export function SupplierProductForm({ingredientId,product,onClose}:{ingredientId
  <label>Package size <small>Optional</small><input name="packageQuantity" type="number" min="0.000001" step="any" defaultValue={product?.packageQuantity}/></label>
  <label>Package unit <small>Required with size</small><select name="packageUnit" defaultValue={product?.packageUnit??''}><option value="">Unknown</option>{units.map(x=><option key={x}>{x}</option>)}</select></label>
  <label>Package description<input name="packageDescription" defaultValue={product?.packageDescription} placeholder="For example: supplier pack not yet confirmed"/></label>
- <label>Price <small>Optional</small><input name="price" type="number" min="0.000001" step="0.01" defaultValue={product?.price}/></label>
+ <label>Price <small>Optional</small><input name="price" type="number" min="0.000001" step="any" defaultValue={product?.price}/></label>
  <label>Currency <small>Required with price</small><input name="currency" value={currency} onChange={event=>setCurrency(event.target.value)} placeholder="Unknown"/></label>
  <label>Price state<select name="priceState" defaultValue={product?.priceState??'unknown'}><option value="unknown">Price unknown</option><option value="quote_required">Quote required</option><option value="recorded">Price recorded</option></select></label>
  <label>Lifecycle status<select name="lifecycleStatus" defaultValue={product?.lifecycleStatus??'candidate'}>{['candidate','evaluated','shortlisted','planned','quote_requested','available','unavailable','discontinued','rejected'].map(x=><option key={x} value={x}>{labelFor(x)}</option>)}</select></label>
