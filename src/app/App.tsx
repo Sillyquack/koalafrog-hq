@@ -52,6 +52,7 @@ const ProductStudioPage=lazy(()=>import('../features/product-studio/ProductStudi
 const BeardOilStudioPage=lazy(()=>import('../features/product-studio/BeardOilStudioPage').then(m=>({default:m.BeardOilStudioPage})))
 const BeardButterStudioPage=lazy(()=>import('../features/product-studio/BeardButterStudioPage').then(m=>({default:m.BeardButterStudioPage})))
 const NaturalDeodorantStudioPage=lazy(()=>import('../features/product-studio/NaturalDeodorantStudioPage').then(m=>({default:m.NaturalDeodorantStudioPage})))
+const FragranceStudioPage=lazy(()=>import('../features/product-studio/FragranceStudioPage').then(m=>({default:m.FragranceStudioPage})))
 const BenchmarkLabPage=lazy(()=>import('../features/product-studio/BenchmarkLabPage').then(m=>({default:m.BenchmarkLabPage})))
 const BeardStudioShell=lazy(()=>import('../features/beard-studio/components/BeardStudioShell').then(m=>({default:m.BeardStudioShell})))
 const BeardLogPage=lazy(()=>import('../features/beard-studio/pages/BeardLogPage').then(m=>({default:m.BeardLogPage})))
@@ -71,6 +72,7 @@ export function App() {
         <Route path="product-studio/beard-oil" element={<BeardOilStudioPage />} />
         <Route path="product-studio/beard-butter" element={<BeardButterStudioPage />} />
         <Route path="product-studio/natural-deodorant" element={<NaturalDeodorantStudioPage />} />
+        <Route path="product-studio/fragrance" element={<FragranceStudioPage />} />
         <Route path="product-studio/benchmark-lab/new" element={<BenchmarkLabPage />} />
         <Route path="product-studio/benchmark-lab/:conceptId" element={<BenchmarkLabPage />} />
         <Route path="grooming/beard-studio" element={<BeardStudioShell />}>
