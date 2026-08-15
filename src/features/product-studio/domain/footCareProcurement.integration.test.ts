@@ -63,4 +63,34 @@ run('Foot Care Procurement handoff against local Supabase',()=>{
     expect((await client.rpc('create_foot_care_procurement_handoff',{...base,candidate_groups:[{id:'blocked',label:'Blocked',targets:[blocked]}]})).error?.message).toContain('FOOT_CARE_HANDOFF_TARGET_BLOCKED_OR_INVALID')
     expect((await client.from('procurement_requests').select('*',{count:'exact',head:true}).eq('source_id',conceptId)).count).toBe(0)
   })
+
+  it('rejects all registry and provenance tampering before creating or modifying Procurement rows',async()=>{
+    const{client,ownerId,workspaceId}=await owner('tamper'),conceptId=`foot-care-${crypto.randomUUID()}`,concept=createFootCareConceptInput('daily_dry_foot_care')
+    const procurementSnapshot=async()=>{
+      const requests=await client.from('procurement_requests').select('*').eq('workspace_id',workspaceId).order('id')
+      if(requests.error)throw requests.error
+      const requestedItems=await client.from('procurement_requested_items').select('*').eq('workspace_id',workspaceId).order('id')
+      if(requestedItems.error)throw requestedItems.error
+      return{requests:requests.data,requestedItems:requestedItems.data}
+    }
+    expect((await client.from('product_studio_concepts').insert({id:conceptId,workspace_id:workspaceId,owner_id:ownerId,name:concept.name,product_type:concept.productType,intent_mode:concept.intentMode,desired_properties:concept.desiredProperties,selected_ingredients:concept.selectedIngredients,scent_directions:concept.scentDirections,candidate_substitutes:concept.candidateSubstitutes,notes:concept.notes,analysis:concept.analysis})).error).toBeNull()
+    const canonical=buildFootCareProcurementGroups('daily_dry_foot_care'),dailyTargets=canonical[0].targets
+    const otherProjectTarget=buildFootCareProcurementGroups('sweat_control').flatMap(group=>group.targets).find(target=>target.id==='aluminum-chlorohydrate')!
+    const forgedProvenance={...dailyTargets[0],benchmarkIds:['forged-benchmark'],benchmarkIngredientIncis:['Forged INCI'],functions:['forged function']}
+    const aloe=dailyTargets.find(target=>target.id==='aloe-vera-powder')!,forgedHint={...aloe,preferredSupplierHint:'Forged Supplier'}
+    const base={candidate_workspace_id:workspaceId,candidate_concept_id:conceptId,candidate_registry_version:FOOT_CARE_REGISTRY_VERSION}
+    const baseline=await procurementSnapshot()
+    expect(baseline).toEqual({requests:[],requestedItems:[]})
+    const attempts=[
+      {label:'wrong registry version',expected:'FOOT_CARE_HANDOFF_REGISTRY_VERSION_MISMATCH',args:{...base,candidate_registry_version:'foot-care-forged-v2',candidate_groups:canonical}},
+      {label:'target from another project kind',expected:'FOOT_CARE_HANDOFF_TARGET_PROJECT_MISMATCH',args:{...base,candidate_groups:[{...canonical[0],targets:[dailyTargets[0],otherProjectTarget]}]}},
+      {label:'forged benchmark, INCI and function provenance',expected:'FOOT_CARE_HANDOFF_PROVENANCE_MISMATCH',args:{...base,candidate_groups:[{...canonical[0],targets:[forgedProvenance]}]}},
+      {label:'forged preferred supplier hint',expected:'FOOT_CARE_HANDOFF_PREFERRED_SUPPLIER_HINT_MISMATCH',args:{...base,candidate_groups:[{...canonical[0],targets:[dailyTargets[0],forgedHint]}]}},
+    ]
+    for(const attempt of attempts){
+      const result=await client.rpc('create_foot_care_procurement_handoff',attempt.args)
+      expect(result.error?.message,attempt.label).toContain(attempt.expected)
+      expect(await procurementSnapshot(),attempt.label).toEqual(baseline)
+    }
+  })
 })
