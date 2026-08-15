@@ -46,7 +46,7 @@ export const footCareBenchmarks:readonly FootCareBenchmark[]=[
       {inci:'Methylpropanediol',functions:['humectant / solvent'],sourcingPriority:'supporting'},
       {inci:'Urea',functions:['humectant','dry-skin care'],sourcingPriority:'core'},
       {inci:'Aloe Barbadensis Leaf Juice Powder',functions:['skin conditioning'],sourcingPriority:'core'},
-      fragrance:'Rosmarinus Officinalis (Rosemary) Leaf Oil'),
+      fragrance('Rosmarinus Officinalis (Rosemary) Leaf Oil'),
       fragrance('Pinus Mugo (Pine) Leaf Oil'),
       fragrance('Lavandula Angustifolia (Lavender) Oil'),
       fragrance('Lavandula Hybrida (Lavandin) Oil'),
