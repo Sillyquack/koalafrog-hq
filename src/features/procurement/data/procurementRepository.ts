@@ -53,6 +53,28 @@ export const createQuote=(workspaceId:string,values:Record<string,unknown>)=>ins
 export const createStockPolicy=(workspaceId:string,values:Record<string,unknown>)=>insert('stock_policies',workspaceId,values)
 export async function createProductStudioPurchasePlan(conceptId:string,lines:Record<string,unknown>[]){const result=await client().rpc('create_product_studio_purchase_plan',{concept_id:conceptId,lines});if(result.error)throw new Error(result.error.message);return result.data as string}
 
+export interface FootCareProcurementHandoffReceipt {
+  schemaVersion:1
+  conceptId:string
+  registryVersion:string
+  groups:Array<{groupId:string;requestId:string;operation:'created'|'reused';createdItemCount:number;itemIds:string[]}>
+  researchStarted:false
+  candidateAccepted:false
+  orderCreated:false
+}
+
+const isFootCareHandoffReceipt=(value:unknown):value is FootCareProcurementHandoffReceipt=>{
+ const receipt=value as Partial<FootCareProcurementHandoffReceipt>|null
+ return Boolean(receipt&&receipt.schemaVersion===1&&receipt.conceptId&&receipt.registryVersion&&Array.isArray(receipt.groups)&&receipt.groups.every(group=>group&&typeof group.requestId==='string'&&['created','reused'].includes(group.operation)&&Array.isArray(group.itemIds)&&group.itemIds.length<=10)&&receipt.researchStarted===false&&receipt.candidateAccepted===false&&receipt.orderCreated===false)
+}
+
+export async function createFootCareProcurementHandoff(workspaceId:string,conceptId:string,registryVersion:string,groups:unknown[]):Promise<FootCareProcurementHandoffReceipt>{
+ const result=await client().rpc('create_foot_care_procurement_handoff',{candidate_workspace_id:workspaceId,candidate_concept_id:conceptId,candidate_registry_version:registryVersion,candidate_groups:groups})
+ if(result.error)throw new Error(result.error.message)
+ if(!isFootCareHandoffReceipt(result.data))throw new Error('Foot Care Procurement handoff returned an invalid safety receipt.')
+ return result.data
+}
+
 const isDraftReceiptBundle=(value:unknown):value is DraftPurchasePlanReceiptBundle=>{
  if(!value||typeof value!=='object')return false
  const bundle=value as Partial<DraftPurchasePlanReceiptBundle>

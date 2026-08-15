@@ -43,4 +43,14 @@ describe('assisted research terminal safety',()=>{
   expect(actions.publishResearchResults).not.toHaveBeenCalled()
   expect(actions.failResearchJob).not.toHaveBeenCalled()
  })
+
+ it('rejects requests above the 10-item provider contract before creating a research job',async()=>{
+  const oversized={...data,requestedItems:Array.from({length:11},(_,index)=>({id:`item-${index}`,procurement_request_id:'request-1'}))}as unknown as ProcurementData
+  const provider={id:'openai-web-search-v1'}as unknown as ProcurementResearchProvider
+
+  await expect(runResearch('workspace-1',request,oversized,provider)).rejects.toThrow('at most 10 requested items')
+
+  expect(actions.createResearchJob).not.toHaveBeenCalled()
+  expect(actions.publishResearchResults).not.toHaveBeenCalled()
+ })
 })

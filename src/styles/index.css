@@ -267,3 +267,63 @@ html{scroll-behavior:auto;scroll-padding-top:80px}
  .supplier-create-actions,.offer-entry>footer{display:grid;grid-template-columns:minmax(0,1fr)}
  .supplier-create-actions .button,.offer-entry>footer .button{width:100%;justify-content:center;min-height:44px}
 }
+
+/* Foot Care Product Studio */
+.foot-care-studio{display:grid;gap:22px;max-width:1240px;margin:0 auto;min-width:0}
+.foot-care-hero small{font:8px 'DM Mono';color:var(--muted)}
+.foot-care-project-grid,.foot-care-capability-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.foot-care-project-grid>article,.foot-care-capability-grid>article{display:grid;align-content:start;gap:10px;min-width:0}
+.foot-care-project-grid>article.active{border-color:var(--green);box-shadow:inset 0 0 0 1px var(--green)}
+.foot-care-project-grid h3,.foot-care-project-grid p,.foot-care-capability-grid p{margin:0}
+.foot-care-project-grid .button{align-self:end;margin-top:auto}
+.foot-care-system-list{display:flex;flex-wrap:wrap;gap:6px}
+.foot-care-system-list span{padding:5px 7px;border:1px solid var(--line);border-radius:999px;font:7px 'DM Mono';text-transform:uppercase}
+.studio-warning{display:flex;align-items:flex-start;gap:7px;padding:10px;border-left:3px solid var(--amber);background:#f2efe5;font-size:9px}
+.studio-warning svg{flex:0 0 auto}
+.foot-care-project-workspace{display:grid;grid-template-columns:minmax(220px,.8fr) minmax(0,1.2fr);gap:18px;align-items:start}
+.foot-care-project-workspace label{display:grid;gap:6px;font:8px 'DM Mono';text-transform:uppercase}
+.foot-care-project-workspace textarea{width:100%;min-width:0;box-sizing:border-box;text-transform:none}
+.foot-care-project-actions{grid-column:2;display:flex;align-items:center;flex-wrap:wrap;gap:10px}
+.foot-care-project-actions .form-message{margin:0}
+.foot-care-benchmark-grid{display:grid;gap:14px}
+.foot-care-benchmark{display:grid;gap:14px;min-width:0}
+.foot-care-benchmark>header{display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap}
+.foot-care-benchmark>header>div{min-width:240px;flex:1}
+.foot-care-benchmark>header h3{margin:7px 0 4px}
+.foot-care-benchmark>header p,.benchmark-source-note{margin:0;color:var(--muted)}
+.foot-care-benchmark>header a{display:inline-flex;align-items:center;gap:4px}
+.foot-care-benchmark details{min-width:0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding-block:10px}
+.foot-care-benchmark summary{cursor:pointer;font-weight:700}
+.foot-care-inci-table-wrap{max-width:100%;overflow:auto;margin-top:10px}
+.foot-care-inci-table-wrap table{width:100%;border-collapse:collapse;font-size:9px}
+.foot-care-inci-table-wrap th,.foot-care-inci-table-wrap td{min-width:180px;padding:9px;text-align:left;vertical-align:top;border-bottom:1px solid var(--line)}
+.foot-care-inci-table-wrap th small{display:block;margin-top:5px;color:var(--muted);font-weight:400}
+.foot-care-learning-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.foot-care-learning-grid>div{padding:13px;background:#eceee7;border-radius:7px;min-width:0}
+.foot-care-learning-grid h4{margin:0}
+.foot-care-learning-grid ul{margin:9px 0 0;padding-left:18px}
+.foot-care-learning-grid li{margin:6px 0;font-size:9px}
+.foot-care-procurement{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:12px;border-left:4px solid var(--green)}
+.foot-care-procurement>div{grid-row:span 4}
+.foot-care-procurement h2{margin:5px 0}
+.foot-care-procurement p{max-width:760px}
+.foot-care-procurement>.studio-warning{grid-column:2;max-width:360px}
+.foot-care-request-source{display:block;margin-top:8px;overflow-wrap:anywhere;font:8px 'DM Mono';color:var(--muted)}
+.foot-care-item-provenance{grid-column:1/-1;border-left:3px solid var(--green);padding-left:10px;overflow-wrap:anywhere}
+.foot-care-item-provenance small{color:var(--muted)}
+
+@media(max-width:800px){
+ .foot-care-project-grid,.foot-care-capability-grid{grid-template-columns:1fr}
+ .foot-care-project-workspace,.foot-care-procurement{grid-template-columns:1fr}
+ .foot-care-project-actions,.foot-care-procurement>.studio-warning{grid-column:auto}
+ .foot-care-procurement>div{grid-row:auto}
+ .foot-care-learning-grid{grid-template-columns:1fr}
+}
+
+@media(max-width:480px){
+ .foot-care-studio{gap:16px}
+ .foot-care-project-grid>article,.foot-care-benchmark,.foot-care-project-workspace,.foot-care-procurement{padding:14px;overflow-wrap:anywhere}
+ .foot-care-project-actions,.foot-care-procurement{align-items:stretch}
+ .foot-care-project-actions .button,.foot-care-procurement>.button{width:100%;justify-content:center;min-height:44px}
+ .foot-care-benchmark>header{display:grid}
+}

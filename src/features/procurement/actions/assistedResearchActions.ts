@@ -5,11 +5,12 @@ import{DeterministicMockResearchProvider,mapFinding,type ProcurementResearchProv
 const defaultConstraints:ResearchConstraints={deliveryCountry:'NO',documentationRequirements:[],preferredSuppliers:[],excludedSuppliers:[]}
 export async function runResearch(workspaceId:string,request:ProcurementRequest,data:ProcurementData,provider:ProcurementResearchProvider=new DeterministicMockResearchProvider(),retryOf?:string,constraints:ResearchConstraints=defaultConstraints){
  if(data.researchJobs.some(job=>job.procurement_request_id===request.id&&job.provider===provider.id&&activeResearchStatuses.includes(job.status)))throw new Error('A research job for this request and provider is already active.')
+ const items=data.requestedItems.filter(item=>item.procurement_request_id===request.id)
+ if(items.length>10)throw new Error('Live research supports at most 10 requested items per request/job. Split the sourcing request before starting research.')
  const job=await procurementActions.createResearchJob(workspaceId,{procurement_request_id:request.id,provider:provider.id,status:'queued',retry_of_job_id:retryOf??null}) as ResearchJob
  provider.prepareJob?.(job.id,workspaceId)
  try{
   await procurementActions.updateResearchJob(job.id,{status:'running',started_at:new Date().toISOString(),error_code:null,error_details:null,attempt_count:1})
-  const items=data.requestedItems.filter(item=>item.procurement_request_id===request.id)
   const result=await provider.discoverOffers({request,items,offers:data.offers.filter(offer=>items.some(item=>item.id===offer.requested_item_id)),constraints})
   if(result.asyncAccepted)return job.id
   const candidates=result.findings.map(finding=>({...mapFinding(finding,items.find(item=>item.id===finding.requestedItemId)!),research_job_id:job.id,procurement_request_id:request.id}))
