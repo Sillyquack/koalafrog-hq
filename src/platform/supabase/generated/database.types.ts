@@ -9525,6 +9525,11 @@ export type Database = {
           requested_quantity: number | null
           required_specifications: string[]
           requirement_type: string
+          preferred_supplier_hint: string | null
+          source_benchmark_ids: string[]
+          source_benchmark_ingredient_incis: string[]
+          source_functions: string[]
+          source_target_id: string | null
           sourcing_notes: string | null
           status: string
           target_supplier_id: string | null
@@ -9554,6 +9559,11 @@ export type Database = {
           requested_quantity?: number | null
           required_specifications?: string[]
           requirement_type?: string
+          preferred_supplier_hint?: string | null
+          source_benchmark_ids?: string[]
+          source_benchmark_ingredient_incis?: string[]
+          source_functions?: string[]
+          source_target_id?: string | null
           sourcing_notes?: string | null
           status?: string
           target_supplier_id?: string | null
@@ -9583,6 +9593,11 @@ export type Database = {
           requested_quantity?: number | null
           required_specifications?: string[]
           requirement_type?: string
+          preferred_supplier_hint?: string | null
+          source_benchmark_ids?: string[]
+          source_benchmark_ingredient_incis?: string[]
+          source_functions?: string[]
+          source_target_id?: string | null
           sourcing_notes?: string | null
           status?: string
           target_supplier_id?: string | null
@@ -9619,6 +9634,10 @@ export type Database = {
           owner_id: string
           priority: string
           revision: number
+          source_group: string | null
+          source_id: string | null
+          source_registry_version: string | null
+          source_type: string | null
           status: string
           title: string
           updated_at: string
@@ -9633,6 +9652,10 @@ export type Database = {
           owner_id: string
           priority?: string
           revision?: number
+          source_group?: string | null
+          source_id?: string | null
+          source_registry_version?: string | null
+          source_type?: string | null
           status?: string
           title: string
           updated_at?: string
@@ -9647,6 +9670,10 @@ export type Database = {
           owner_id?: string
           priority?: string
           revision?: number
+          source_group?: string | null
+          source_id?: string | null
+          source_registry_version?: string | null
+          source_type?: string | null
           status?: string
           title?: string
           updated_at?: string
@@ -18320,6 +18347,15 @@ export type Database = {
           formula_lines: Json
           formula_version: Json
           product: Json
+        }
+        Returns: Json
+      }
+      create_foot_care_procurement_handoff: {
+        Args: {
+          candidate_concept_id: string
+          candidate_groups: Json
+          candidate_registry_version: string
+          candidate_workspace_id: string
         }
         Returns: Json
       }

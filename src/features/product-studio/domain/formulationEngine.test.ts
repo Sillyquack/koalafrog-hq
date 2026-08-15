@@ -7,12 +7,13 @@ describe('Core Formulation Engine registry',()=>{
     expect(resolveTemplateArchetype('beard_oil')).toMatchObject({ok:true,value:{archetype:{id:'simple_liquid',maturity:'operational'}}})
     expect(resolveTemplateArchetype('beard_butter')).toMatchObject({ok:true,value:{archetype:{id:'anhydrous_multiphase',maturity:'operational'}}})
     expect(resolveTemplateArchetype('natural_deodorant')).toMatchObject({ok:true,value:{archetype:{id:'solid_or_stick',maturity:'operational'}}})
+    expect(resolveTemplateArchetype('foot_care')).toMatchObject({ok:true,value:{archetype:{id:'emulsion',maturity:'planned'}}})
   })
 
   it('registers future archetypes as planned capabilities without operational templates',()=>{
     expect(Object.keys(formulationArchetypes)).toEqual(['simple_liquid','anhydrous_multiphase','solid_or_stick','emulsion','water_based','alcohol_based','gel','powder'])
     expect(Object.values(formulationArchetypes).filter(item=>item.maturity==='operational').map(item=>item.id)).toEqual(['simple_liquid','anhydrous_multiphase','solid_or_stick'])
-    expect(Object.values(productTemplates).map(item=>item.archetypeId)).toEqual(['simple_liquid','anhydrous_multiphase','solid_or_stick'])
+    expect(Object.values(productTemplates).map(item=>item.archetypeId)).toEqual(['simple_liquid','anhydrous_multiphase','solid_or_stick','emulsion'])
   })
 
   it('fails visibly for unknown archetypes and templates',()=>{

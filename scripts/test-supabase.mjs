@@ -12,6 +12,7 @@ const defaultTests=[
   'src/features/procurement/data/commercialProvenanceRepository.integration.test.ts',
   'src/features/procurement/draft-plans/data/draftPurchasePlanRepository.integration.test.ts',
   'src/features/procurement/production-readiness/data/productionReadinessRepository.integration.test.ts',
+  'src/features/product-studio/domain/footCareProcurement.integration.test.ts',
   'src/features/beard-studio/data/beardStudioRepository.integration.test.ts',
   'src/features/production/data/productionInventoryControl.integration.test.ts',
   'src/features/production/data/productionOutput.integration.test.ts',
