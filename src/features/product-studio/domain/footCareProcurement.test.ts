@@ -5,6 +5,7 @@ import{buildFootCareProcurementGroups,LIVE_RESEARCH_MAX_ITEMS,splitFootCareSourc
 
 const migration=readFileSync(new URL('../../../../supabase/migrations/20260815200000_foot_care_procurement_handoff.sql',import.meta.url),'utf8')
 const hardeningMigration=readFileSync(new URL('../../../../supabase/migrations/20260815210000_harden_foot_care_procurement_handoff.sql',import.meta.url),'utf8')
+const analysisShapeMigration=readFileSync(new URL('../../../../supabase/migrations/20260815220000_fix_foot_care_handoff_analysis_shape.sql',import.meta.url),'utf8')
 
 describe('Foot Care Procurement handoff',()=>{
   it('caps every research group at the live provider contract and splits larger registries',()=>{
@@ -43,8 +44,10 @@ describe('Foot Care Procurement handoff',()=>{
 
   it('keeps the immutable database registry snapshot aligned with the application registry',()=>{
     const encoded=hardeningMigration.match(/\$registry\$\s*(\[[\s\S]*?\])\s*\$registry\$/)?.[1]
+    const fixedEncoded=analysisShapeMigration.match(/\$registry\$\s*(\[[\s\S]*?\])\s*\$registry\$/)?.[1]
     expect(encoded).toBeTruthy()
-    expect(JSON.parse(encoded!)).toEqual(footCareSourcingTargets.map(target=>({
+    expect(fixedEncoded).toBeTruthy()
+    const expected=footCareSourcingTargets.map(target=>({
       id:target.id,
       name:target.name,
       projectKinds:[...target.projectKinds],
@@ -54,17 +57,26 @@ describe('Foot Care Procurement handoff',()=>{
       requiredSpecifications:[...target.requiredSpecifications],
       acceptableSubstitutes:[...target.acceptableSubstitutes],
       ...(target.preferredSupplierHint?{preferredSupplierHint:target.preferredSupplierHint}:{}),
-    })))
+    }))
+    expect(JSON.parse(encoded!)).toEqual(expected)
+    expect(JSON.parse(fixedEncoded!)).toEqual(expected)
   })
 
   it('preflights saved-concept identity and canonical provenance before the first Procurement write',()=>{
-    expect(hardeningMigration).toContain("concept.analysis->'footCare'->>'registryVersion'")
-    expect(hardeningMigration).toContain("concept.analysis->'footCare'->>'projectKind'")
-    expect(hardeningMigration).toContain('FOOT_CARE_HANDOFF_REGISTRY_VERSION_MISMATCH')
-    expect(hardeningMigration).toContain('FOOT_CARE_HANDOFF_TARGET_PROJECT_MISMATCH')
-    expect(hardeningMigration).toContain('FOOT_CARE_HANDOFF_PROVENANCE_MISMATCH')
-    expect(hardeningMigration).toContain('FOOT_CARE_HANDOFF_PREFERRED_SUPPLIER_HINT_MISMATCH')
-    expect(hardeningMigration.indexOf('Preflight the complete payload')).toBeLessThan(hardeningMigration.indexOf('insert into public.procurement_requests'))
-    expect(hardeningMigration).not.toMatch(/insert into public\.(procurement_research_jobs|procurement_offer_candidates|procurement_supplier_offers|purchase_orders)/)
+    expect(analysisShapeMigration).toContain("concept.analysis->'foot_care'->>'registry_version'")
+    expect(analysisShapeMigration).toContain("concept.analysis->'foot_care'->>'project_kind'")
+    expect(analysisShapeMigration).not.toContain("concept.analysis->'footCare'")
+    expect(analysisShapeMigration).not.toContain("->>'registryVersion'")
+    expect(analysisShapeMigration).not.toContain("->>'projectKind'")
+    expect(analysisShapeMigration).toContain('FOOT_CARE_HANDOFF_REGISTRY_VERSION_MISMATCH')
+    expect(analysisShapeMigration).toContain('FOOT_CARE_HANDOFF_TARGET_PROJECT_MISMATCH')
+    expect(analysisShapeMigration).toContain('FOOT_CARE_HANDOFF_PROVENANCE_MISMATCH')
+    expect(analysisShapeMigration).toContain('FOOT_CARE_HANDOFF_PREFERRED_SUPPLIER_HINT_MISMATCH')
+    expect(analysisShapeMigration).toContain('security invoker')
+    expect(analysisShapeMigration).toContain('pg_advisory_xact_lock')
+    expect(analysisShapeMigration).toContain("jsonb_array_length(group_value->'targets') > 10")
+    expect(analysisShapeMigration).toContain("target_text like '%octenidine%'")
+    expect(analysisShapeMigration.indexOf('Preflight the complete payload')).toBeLessThan(analysisShapeMigration.indexOf('insert into public.procurement_requests'))
+    expect(analysisShapeMigration).not.toMatch(/insert into public\.(procurement_research_jobs|procurement_offer_candidates|procurement_supplier_offers|purchase_orders)/)
   })
 })

@@ -1,5 +1,9 @@
 import{createClient}from'@supabase/supabase-js'
 import{afterAll,beforeAll,describe,expect,it}from'vitest'
+import type{FormulaState}from'../../../types/domain'
+import{executeWorkspaceAction}from'../../../platform/actions/workspaceActionExecutor'
+import{SupabaseWorkspaceRepository,toDatabaseValue}from'../../../platform/repository/supabaseWorkspaceRepository'
+import{supabase}from'../../../platform/supabase/client'
 import{FOOT_CARE_REGISTRY_VERSION,footCareProjectTemplates}from'./footCareBenchmarks'
 import{buildFootCareProcurementGroups}from'./footCareProcurement'
 import{createFootCareConceptInput}from'./footCareProjects'
@@ -14,7 +18,7 @@ run('Foot Care Procurement handoff against local Supabase',()=>{
   let admin:ReturnType<typeof createClient>
 
   beforeAll(()=>{admin=createClient(url!,serviceKey!,{auth:{persistSession:false}})})
-  afterAll(async()=>{for(const id of createdUsers)await admin.auth.admin.deleteUser(id)})
+  afterAll(async()=>{await supabase?.auth.signOut();for(const id of createdUsers)await admin.auth.admin.deleteUser(id)})
 
   async function owner(label:string){
     const email=`foot-care-${label}-${crypto.randomUUID()}@example.test`,password=`Local-${crypto.randomUUID()}-9a!`
@@ -26,13 +30,41 @@ run('Foot Care Procurement handoff against local Supabase',()=>{
     if(signedIn.error)throw signedIn.error
     const workspace=await client.rpc('create_clean_workspace')
     if(workspace.error)throw workspace.error
-    return{client,ownerId:created.data.user.id,workspaceId:String(workspace.data)}
+    return{client,ownerId:created.data.user.id,workspaceId:String(workspace.data),email,password}
+  }
+
+  async function insertRepositorySerializedConcept(
+    ownerContext:Awaited<ReturnType<typeof owner>>,
+    conceptId:string,
+    concept:ReturnType<typeof createFootCareConceptInput>,
+  ){
+    const row=toDatabaseValue({id:conceptId,...concept})as Record<string,unknown>
+    const inserted=await ownerContext.client.from('product_studio_concepts').insert({
+      ...row,
+      workspace_id:ownerContext.workspaceId,
+      owner_id:ownerContext.ownerId,
+    })
+    expect(inserted.error).toBeNull()
   }
 
   it('creates requests/items once, repairs by reuse, preserves provenance and produces no downstream side effects',async()=>{
     const primary=await owner('primary'),other=await owner('other'),conceptId=`foot-care-${crypto.randomUUID()}`,concept=createFootCareConceptInput('daily_dry_foot_care')
-    const inserted=await primary.client.from('product_studio_concepts').insert({id:conceptId,workspace_id:primary.workspaceId,owner_id:primary.ownerId,name:concept.name,product_type:concept.productType,intent_mode:concept.intentMode,desired_properties:concept.desiredProperties,selected_ingredients:concept.selectedIngredients,scent_directions:concept.scentDirections,candidate_substitutes:concept.candidateSubstitutes,notes:concept.notes,analysis:concept.analysis})
-    expect(inserted.error).toBeNull()
+    expect(supabase).toBeTruthy()
+    expect((await supabase!.auth.signInWithPassword({email:primary.email,password:primary.password})).error).toBeNull()
+    const repository=new SupabaseWorkspaceRepository(),before=await repository.load(primary.ownerId),now='2026-08-15T20:00:00.000Z'
+    const persistedConcept={...concept,id:conceptId,createdAt:now,updatedAt:now}
+    let committed:FormulaState=before
+    await executeWorkspaceAction(repository,before,'saveProductStudioConcept',current=>({...current,productStudioConcepts:[...current.productStudioConcepts,persistedConcept]}),{
+      committed:next=>{committed=next},
+      failed:()=>{},
+      pending:()=>{},
+    })
+    expect(committed.productStudioConcepts).toContainEqual(persistedConcept)
+    const persisted=await primary.client.from('product_studio_concepts').select('analysis').eq('id',conceptId).single()
+    expect(persisted.error).toBeNull()
+    expect(persisted.data?.analysis).toMatchObject({foot_care:{registry_version:FOOT_CARE_REGISTRY_VERSION,project_kind:'daily_dry_foot_care'}})
+    expect(JSON.stringify(persisted.data?.analysis)).not.toContain('footCare')
+    await supabase!.auth.signOut()
     const groups=buildFootCareProcurementGroups('daily_dry_foot_care'),args={candidate_workspace_id:primary.workspaceId,candidate_concept_id:conceptId,candidate_registry_version:FOOT_CARE_REGISTRY_VERSION,candidate_groups:groups}
     const first=await primary.client.rpc('create_foot_care_procurement_handoff',args)
     expect(first.error).toBeNull()
@@ -54,8 +86,8 @@ run('Foot Care Procurement handoff against local Supabase',()=>{
   })
 
   it('rejects oversized groups and blocked ordinary sourcing targets atomically',async()=>{
-    const{client,ownerId,workspaceId}=await owner('guards'),conceptId=`foot-care-${crypto.randomUUID()}`,concept=createFootCareConceptInput('foot_shoe_deodorizer')
-    expect((await client.from('product_studio_concepts').insert({id:conceptId,workspace_id:workspaceId,owner_id:ownerId,name:concept.name,product_type:concept.productType,intent_mode:concept.intentMode,desired_properties:concept.desiredProperties,selected_ingredients:concept.selectedIngredients,scent_directions:concept.scentDirections,candidate_substitutes:concept.candidateSubstitutes,notes:concept.notes,analysis:concept.analysis})).error).toBeNull()
+    const ownerContext=await owner('guards'),{client,workspaceId}=ownerContext,conceptId=`foot-care-${crypto.randomUUID()}`,concept=createFootCareConceptInput('foot_shoe_deodorizer')
+    await insertRepositorySerializedConcept(ownerContext,conceptId,concept)
     const allTargets=footCareProjectTemplates.flatMap(project=>buildFootCareProcurementGroups(project.kind).flatMap(group=>group.targets))
     const base={candidate_workspace_id:workspaceId,candidate_concept_id:conceptId,candidate_registry_version:FOOT_CARE_REGISTRY_VERSION}
     expect((await client.rpc('create_foot_care_procurement_handoff',{...base,candidate_groups:[{id:'oversized',label:'Oversized',targets:allTargets.slice(0,11)}]})).error?.message).toContain('FOOT_CARE_HANDOFF_GROUP_INVALID')
@@ -65,7 +97,7 @@ run('Foot Care Procurement handoff against local Supabase',()=>{
   })
 
   it('rejects all registry and provenance tampering before creating or modifying Procurement rows',async()=>{
-    const{client,ownerId,workspaceId}=await owner('tamper'),conceptId=`foot-care-${crypto.randomUUID()}`,concept=createFootCareConceptInput('daily_dry_foot_care')
+    const ownerContext=await owner('tamper'),{client,workspaceId}=ownerContext,conceptId=`foot-care-${crypto.randomUUID()}`,concept=createFootCareConceptInput('daily_dry_foot_care')
     const procurementSnapshot=async()=>{
       const requests=await client.from('procurement_requests').select('*').eq('workspace_id',workspaceId).order('id')
       if(requests.error)throw requests.error
@@ -73,7 +105,7 @@ run('Foot Care Procurement handoff against local Supabase',()=>{
       if(requestedItems.error)throw requestedItems.error
       return{requests:requests.data,requestedItems:requestedItems.data}
     }
-    expect((await client.from('product_studio_concepts').insert({id:conceptId,workspace_id:workspaceId,owner_id:ownerId,name:concept.name,product_type:concept.productType,intent_mode:concept.intentMode,desired_properties:concept.desiredProperties,selected_ingredients:concept.selectedIngredients,scent_directions:concept.scentDirections,candidate_substitutes:concept.candidateSubstitutes,notes:concept.notes,analysis:concept.analysis})).error).toBeNull()
+    await insertRepositorySerializedConcept(ownerContext,conceptId,concept)
     const canonical=buildFootCareProcurementGroups('daily_dry_foot_care'),dailyTargets=canonical[0].targets
     const otherProjectTarget=buildFootCareProcurementGroups('sweat_control').flatMap(group=>group.targets).find(target=>target.id==='aluminum-chlorohydrate')!
     const forgedProvenance={...dailyTargets[0],benchmarkIds:['forged-benchmark'],benchmarkIngredientIncis:['Forged INCI'],functions:['forged function']}
@@ -92,5 +124,33 @@ run('Foot Care Procurement handoff against local Supabase',()=>{
       expect(result.error?.message,attempt.label).toContain(attempt.expected)
       expect(await procurementSnapshot(),attempt.label).toEqual(baseline)
     }
+  })
+
+  it('rejects a camelCase-only saved analysis without creating Procurement rows',async()=>{
+    const ownerContext=await owner('camel-analysis'),{client,ownerId,workspaceId}=ownerContext,conceptId=`foot-care-${crypto.randomUUID()}`,concept=createFootCareConceptInput('daily_dry_foot_care')
+    const inserted=await client.from('product_studio_concepts').insert({
+      id:conceptId,
+      workspace_id:workspaceId,
+      owner_id:ownerId,
+      name:concept.name,
+      product_type:concept.productType,
+      intent_mode:concept.intentMode,
+      desired_properties:concept.desiredProperties,
+      selected_ingredients:concept.selectedIngredients,
+      scent_directions:concept.scentDirections,
+      candidate_substitutes:concept.candidateSubstitutes,
+      notes:concept.notes,
+      analysis:concept.analysis,
+    })
+    expect(inserted.error).toBeNull()
+    const result=await client.rpc('create_foot_care_procurement_handoff',{
+      candidate_workspace_id:workspaceId,
+      candidate_concept_id:conceptId,
+      candidate_registry_version:FOOT_CARE_REGISTRY_VERSION,
+      candidate_groups:buildFootCareProcurementGroups('daily_dry_foot_care'),
+    })
+    expect(result.error?.message).toContain('FOOT_CARE_HANDOFF_CONCEPT_ANALYSIS_INVALID')
+    expect((await client.from('procurement_requests').select('*',{count:'exact',head:true}).eq('source_id',conceptId)).count).toBe(0)
+    expect((await client.from('procurement_requested_items').select('*',{count:'exact',head:true}).eq('workspace_id',workspaceId)).count).toBe(0)
   })
 })
