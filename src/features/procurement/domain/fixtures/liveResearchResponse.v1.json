@@ -3,6 +3,7 @@
   "partial": true,
   "candidates": [{
     "requestedItemId": "item-1",
+    "priorCandidateId": null,
     "supplierName": "Established Oils AS",
     "supplierType": "distributor",
     "productTitle": "Refined jojoba oil 1 kg",
@@ -13,6 +14,7 @@
     "currency": "nok",
     "moq": 1,
     "shippingCost": null,
+    "taxDutyEstimate": null,
     "deliveryEstimateDays": 4,
     "stockStatus": "in_stock",
     "coaAvailability": "available",

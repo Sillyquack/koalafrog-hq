@@ -2,7 +2,7 @@
 import { supabase } from '../../../platform/supabase/client'
 import { emptyProcurementData, type DraftPurchasePlanAggregate, type DraftPurchasePlanInput, type DraftPurchasePlanReceiptBundle, type ProcurementData, type Supplier, type SupplierCreateInput, type SupplierOffer, type SupplierOfferCreateInput, type SupplierProductSource } from '../domain/procurement'
 import type { ProcurementExport } from './procurementInterchange'
-import type { OfferCandidate } from '../domain/assistedResearch'
+import type { OfferCandidate, ResearchJob } from '../domain/assistedResearch'
 import {receiptFromPersistedRow,type ProcurementSupplierOfferOperationReceipt,type SupplierOperationReceipt} from '../../../platform/operations/ownerOperationReceipt'
 import {assertOfferReadback,assertSupplierReadback,classifySupplierIdentity,normalizeSupplierCreateInput,normalizeSupplierOfferCreateInput,supplierProductSourceTable,supplierProductSourceUsable} from '../domain/commercialProvenance'
 const client=()=>{if(!supabase)throw new Error('Hosted procurement requires Supabase.');return supabase as any}
@@ -151,6 +151,21 @@ export const createSupplierEvent=(workspaceId:string,values:Record<string,unknow
 export const createCartScenario=(workspaceId:string,values:Record<string,unknown>)=>insert('procurement_cart_scenarios',workspaceId,values)
 export const createCartScenarioItem=(workspaceId:string,values:Record<string,unknown>)=>insert('procurement_cart_scenario_items',workspaceId,values)
 export const createResearchJob=(workspaceId:string,values:Record<string,unknown>)=>insert('procurement_research_jobs',workspaceId,values)
+export async function createFollowUpResearchJob(workspaceId:string,input:{procurementRequestId:string;priorJobId:string;instructions:string;deliveryCountry:string;liveResearchConsent:boolean}):Promise<ResearchJob>{
+ const ownerId=await activeOwnerWorkspace(workspaceId)
+ const result=await client().rpc('create_procurement_follow_up_research_job',{
+  candidate_workspace_id:workspaceId,
+  candidate_procurement_request_id:input.procurementRequestId,
+  candidate_prior_job_id:input.priorJobId,
+  candidate_instructions:input.instructions,
+  candidate_delivery_country:input.deliveryCountry,
+  candidate_live_research_consent:input.liveResearchConsent,
+ })
+ if(result.error||!result.data)throw new Error(result.error?.message??'Follow-up research job was not created.')
+ const readback=await client().from('procurement_research_jobs').select('*').eq('id',result.data).eq('workspace_id',workspaceId).eq('owner_id',ownerId).single()
+ if(readback.error||!readback.data)throw new Error(readback.error?.message??'Follow-up research job readback failed.')
+ return readback.data as ResearchJob
+}
 export const createOfferCandidates=async(workspaceId:string,values:Record<string,unknown>[])=>{const ownerId=await owner(),result=await client().from('procurement_offer_candidates').insert(values.map(value=>({workspace_id:workspaceId,owner_id:ownerId,...value}))).select();if(result.error)throw new Error(result.error.message);return result.data}
 export async function updateResearchJob(id:string,values:Record<string,unknown>){const result=await client().from('procurement_research_jobs').update({...values,updated_at:new Date().toISOString()}).eq('id',id).select().single();if(result.error)throw new Error(result.error.message);return result.data}
 export async function failResearchJob(id:string,values:Record<string,unknown>){const result=await client().from('procurement_research_jobs').update({...values,status:'failed',completed_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq('id',id).eq('status','running').select().maybeSingle();if(result.error)throw new Error(result.error.message);return result.data}

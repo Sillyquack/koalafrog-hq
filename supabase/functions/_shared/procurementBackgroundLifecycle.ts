@@ -40,25 +40,30 @@ export const outputText=(payload:unknown)=>{
 export function normalizedCandidateRows(
  payload:unknown,
  items:Array<{id:string;required_specifications:string[]}>,
+ priorCandidateIds:string[]=[],
 ){
- const validated=validateLiveResearchResponse(payload,items.map(item=>item.id))
+ const validated=validateLiveResearchResponse(payload,items.map(item=>item.id),new Date(),priorCandidateIds)
  const candidates=validated.candidates.map(candidate=>{
   const evidenceSnippets=candidate.evidence.flatMap(evidence=>evidence.snippet?[evidence.snippet]:[])
   const unresolved=[
    ['source_url',candidate.sourceUrl],['package_quantity',candidate.packageQuantity],
    ['package_unit',candidate.packageUnit],['item_price',candidate.itemPrice],
    ['currency',candidate.currency],['shipping_cost',candidate.shippingCost],
+   ['tax_duty_estimate',candidate.taxDutyEstimate],
    ['delivery_estimate_days',candidate.deliveryEstimateDays],
   ].filter(([,value])=>value==null||value==='').map(([field])=>field as string)
   if((items.find(item=>item.id===candidate.requestedItemId)?.required_specifications.length??0)>0&&!evidenceSnippets.length){
    unresolved.push('required_specification_evidence')
   }
   return{
-   requested_item_id:candidate.requestedItemId,supplier_name:candidate.supplierName,
+   requested_item_id:candidate.requestedItemId,
+   follow_up_to_candidate_id:candidate.priorCandidateId,
+   supplier_name:candidate.supplierName,
    product_title:candidate.productTitle,source_url:candidate.sourceUrl,
    package_quantity:candidate.packageQuantity,package_unit:candidate.packageUnit,
    item_price:candidate.itemPrice,currency:candidate.currency,moq:candidate.moq,
-   shipping_cost:candidate.shippingCost,delivery_estimate_days:candidate.deliveryEstimateDays,
+   shipping_cost:candidate.shippingCost,tax_duty_estimate:candidate.taxDutyEstimate,
+   delivery_estimate_days:candidate.deliveryEstimateDays,
    stock_status:candidate.stockStatus,coa_availability:candidate.coaAvailability,
    sds_availability:candidate.sdsAvailability,
    technical_document_availability:candidate.technicalDocumentAvailability,

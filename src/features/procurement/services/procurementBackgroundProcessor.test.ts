@@ -25,13 +25,13 @@ function database(){
  }
 }
 
-function completedDatabase(){
+function completedDatabase(followUpContext:unknown=null){
  const db=database()
  db.from=vi.fn((table:string)=>{
   if(table==='procurement_research_jobs'){
    const query={
     select:vi.fn(()=>query),eq:vi.fn(()=>query),
-    single:vi.fn(async()=>({data:{procurement_request_id:'request-1'},error:null})),
+    single:vi.fn(async()=>({data:{procurement_request_id:'request-1',follow_up_context:followUpContext},error:null})),
    }
    return query
   }
@@ -111,10 +111,43 @@ describe('background terminal processor',()=>{
    })),
   })
   expect(result).toEqual({kind:'finalized',candidateCount:1})
-  expect(db.calls.find(call=>call.name==='finalize_procurement_background_operation')?.args)
+ expect(db.calls.find(call=>call.name==='finalize_procurement_background_operation')?.args)
    .toEqual(expect.objectContaining({
     candidate_provider_status:'completed',candidate_terminal_source:'reconciler',
    }))
+  const published=db.calls.find(call=>call.name==='finalize_procurement_background_operation')?.args.candidate_candidates as Array<Record<string,unknown>>
+  expect(published[0]).toMatchObject({tax_duty_estimate:null,unresolved_fields:expect.arrayContaining(['tax_duty_estimate'])})
+ })
+
+ it('publishes evidence-backed tax and duty from a background follow-up',async()=>{
+  const db=completedDatabase({priorCandidates:[{id:'candidate-prior'}]})
+  const taxEvidence={field:'taxDutyEstimate',state:'verified',sourceUrl:'https://supplier.test/import-cost',snippet:'Combined tax and duty estimate: NOK 62.'}
+  const linkedFixture={...fixture,candidates:fixture.candidates.map(candidate=>({...candidate,priorCandidateId:'candidate-prior',taxDutyEstimate:62,evidence:[...candidate.evidence,taxEvidence]}))}
+  await processProcurementBackgroundOperation({
+   database:db,providerKey:'secret',operation,source:'reconciler',
+   fetcher:vi.fn(async()=>Response.json({
+    id:'resp_test',status:'completed',
+    output:[{content:[{type:'output_text',text:JSON.stringify(linkedFixture)}]}],
+   })),
+  })
+  const published=db.calls.find(call=>call.name==='finalize_procurement_background_operation')?.args.candidate_candidates as Array<Record<string,unknown>>
+  expect(published[0]).toMatchObject({follow_up_to_candidate_id:'candidate-prior',tax_duty_estimate:62})
+  expect(published[0].unresolved_fields).not.toContain('tax_duty_estimate')
+  expect(published[0].field_evidence).toMatchObject({taxDutyEstimate:{state:'verified',sourceUrl:'https://supplier.test/import-cost'}})
+ })
+
+ it('preserves a validated prior-candidate link when publishing follow-up findings',async()=>{
+  const db=completedDatabase({priorCandidates:[{id:'candidate-prior'}]})
+  const linkedFixture={...fixture,candidates:fixture.candidates.map(candidate=>({...candidate,priorCandidateId:'candidate-prior'}))}
+  await processProcurementBackgroundOperation({
+   database:db,providerKey:'secret',operation,source:'reconciler',
+   fetcher:vi.fn(async()=>Response.json({
+    id:'resp_test',status:'completed',
+    output:[{content:[{type:'output_text',text:JSON.stringify(linkedFixture)}]}],
+   })),
+  })
+  const published=db.calls.find(call=>call.name==='finalize_procurement_background_operation')?.args.candidate_candidates as Array<Record<string,unknown>>
+  expect(published[0].follow_up_to_candidate_id).toBe('candidate-prior')
  })
 
  it('resets consecutive retrieval failures after a successful running poll',async()=>{
