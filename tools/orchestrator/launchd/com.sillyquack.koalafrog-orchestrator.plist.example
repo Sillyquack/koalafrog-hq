@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.sillyquack.koalafrog-orchestrator</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/absolute/path/to/node</string>
+    <string>/absolute/path/to/koalafrog-hq/tools/orchestrator/bin/orchestrator.mjs</string>
+    <string>watch</string>
+    <string>--checkout</string>
+    <string>/absolute/path/to/koalafrog-hq</string>
+    <string>--codex-bin</string>
+    <string>/Applications/ChatGPT.app/Contents/Resources/codex</string>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>ProcessType</key>
+  <string>Background</string>
+  <key>StandardOutPath</key>
+  <string>/tmp/koalafrog-orchestrator.stdout.log</string>
+  <key>StandardErrorPath</key>
+  <string>/tmp/koalafrog-orchestrator.stderr.log</string>
+</dict>
+</plist>

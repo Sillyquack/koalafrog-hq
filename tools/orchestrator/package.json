@@ -1,0 +1,16 @@
+{
+  "name": "@koalafrog/local-orchestrator",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/*.node.mjs",
+    "start": "node bin/orchestrator.mjs once",
+    "watch": "node bin/orchestrator.mjs watch",
+    "schema:json": "codex app-server generate-json-schema --out .generated-schema/json",
+    "schema:ts": "codex app-server generate-ts --out .generated-schema/ts"
+  },
+  "engines": {
+    "node": ">=22.16.0"
+  }
+}
