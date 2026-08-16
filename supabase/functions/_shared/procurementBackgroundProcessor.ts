@@ -160,11 +160,16 @@ export async function processProcurementBackgroundOperation(options:{
  }
 
  let items:Array<{id:string;required_specifications:string[]}>
+ let priorCandidateIds:string[]
  try{
   const job=await database.from('procurement_research_jobs')
-   .select('procurement_request_id').eq('id',operation.job_id)
+   .select('procurement_request_id,follow_up_context').eq('id',operation.job_id)
    .eq('workspace_id',operation.workspace_id).single()
   if(job.error||!job.data)throw new Error('JOB_LOOKUP_FAILED')
+  const context=job.data.follow_up_context as{priorCandidates?:Array<{id?:unknown}>}|null
+  priorCandidateIds=(context?.priorCandidates??[])
+   .map(candidate=>candidate.id)
+   .filter((id):id is string=>typeof id==='string')
   const itemResult=await database.from('procurement_requested_items')
    .select('id,required_specifications').eq('workspace_id',operation.workspace_id)
    .eq('procurement_request_id',job.data.procurement_request_id)
@@ -177,7 +182,7 @@ export async function processProcurementBackgroundOperation(options:{
  try{
   const text=outputText(providerResponse)
   if(!text)throw new Error('EMPTY_PROVIDER_OUTPUT')
-  normalized=normalizedCandidateRows(JSON.parse(text),items)
+  normalized=normalizedCandidateRows(JSON.parse(text),items,priorCandidateIds)
  }catch{
   return finalize(database,operation,workerId,eventId,'failed',source,[],false,
    'PROVIDER_INVALID_RESPONSE','Background research completed without a safe, valid result.')

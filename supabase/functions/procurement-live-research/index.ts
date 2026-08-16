@@ -1,12 +1,12 @@
 import{createClient}from'npm:@supabase/supabase-js@2'
 import{corsHeaders}from'npm:@supabase/supabase-js@^2/cors'
-import{buildLiveResearchPrompt,liveResearchResponseJsonSchema,type LiveResearchRequest}from'../_shared/procurementLiveResearchContract.ts'
+import{buildLiveResearchPrompt,liveResearchResponseJsonSchema,type LiveFollowUpResearchContext,type LiveResearchRequest}from'../_shared/procurementLiveResearchContract.ts'
 import{authenticatedUserClientOptions}from'../_shared/authenticatedUserClient.ts'
 import{ProcurementProviderRuntimeError,invokeProcurementProvider,procurementProviderTraceLog}from'../_shared/procurementProviderRuntime.ts'
 import{persistProcurementProviderDiagnostic}from'../_shared/procurementProviderDiagnostics.ts'
 const jsonHeaders={...corsHeaders,'content-type':'application/json'}
 const safeError=(code:string,message:string,status=400)=>new Response(JSON.stringify({error:{code,message}}),{status,headers:jsonHeaders})
-function validBody(value:unknown):value is LiveResearchRequest{const v=value as LiveResearchRequest;return!!v&&v.schemaVersion===1&&typeof v.workspaceId==='string'&&typeof v.jobId==='string'&&typeof v.requestId==='string'&&Array.isArray(v.items)&&v.items.length>0&&v.items.length<=10}
+function validBody(value:unknown):value is LiveResearchRequest{const v=value as LiveResearchRequest;return!!v&&v.schemaVersion===1&&typeof v.workspaceId==='string'&&typeof v.jobId==='string'&&typeof v.requestId==='string'&&Array.isArray(v.items)&&v.items.length>0&&v.items.length<=10&&(!v.followUp||(typeof v.followUp.priorJobId==='string'&&typeof v.followUp.instructions==='string'&&v.followUp.instructions.trim().length>0&&Array.isArray(v.followUp.priorCandidates)&&Array.isArray(v.followUp.unresolvedFields)&&Array.isArray(v.followUp.itemsWithoutPracticalCandidate)))}
 async function callOpenAI(body:LiveResearchRequest,key:string,model:string,clientRequestId:string,timeoutMs:number,callerSignal:AbortSignal){
  return invokeProcurementProvider({
   timeoutMs,
@@ -38,6 +38,24 @@ Deno.serve(async request=>{
  let body:unknown
  try{body=await request.json()}catch{return safeError('INVALID_INPUT','Invalid JSON.')}
  if(!validBody(body))return safeError('INVALID_INPUT','Invalid live research request.')
+ const persistedJob=await supabase.from('procurement_research_jobs')
+  .select('follow_up_of_job_id,follow_up_instructions,follow_up_context,delivery_country,live_research_consent_at')
+  .eq('id',body.jobId).eq('workspace_id',body.workspaceId).eq('owner_id',user.data.user.id).maybeSingle()
+ if(persistedJob.error||!persistedJob.data)return safeError('LIVE_JOB_UNAVAILABLE','Research job unavailable.',404)
+ let providerBody=body
+ if(persistedJob.data.follow_up_of_job_id){
+  if(!body.followUp||body.followUp.priorJobId!==persistedJob.data.follow_up_of_job_id
+    ||!persistedJob.data.follow_up_instructions||!persistedJob.data.delivery_country
+    ||!persistedJob.data.live_research_consent_at||!persistedJob.data.follow_up_context
+  )return safeError('LIVE_FOLLOW_UP_CONTEXT_MISMATCH','Follow-up research provenance is incomplete or does not match the saved job.',409)
+  providerBody={...body,deliveryCountry:persistedJob.data.delivery_country,followUp:{
+   ...(persistedJob.data.follow_up_context as unknown as LiveFollowUpResearchContext),
+   priorJobId:persistedJob.data.follow_up_of_job_id,
+   instructions:persistedJob.data.follow_up_instructions,
+  }}
+ }else if(body.followUp){
+  return safeError('LIVE_FOLLOW_UP_CONTEXT_MISMATCH','Initial research jobs cannot submit follow-up context.',409)
+ }
  const key=Deno.env.get('OPENAI_API_KEY'),model=Deno.env.get('OPENAI_PROCUREMENT_MODEL')??'gpt-5.6'
  const max=Number(Deno.env.get('PROCUREMENT_LIVE_DAILY_LIMIT')??5)
  if(!key)return safeError('PROVIDER_NOT_CONFIGURED','Live provider is not configured.',503)
@@ -84,7 +102,7 @@ Deno.serve(async request=>{
   if(!started.data){
    return new Response(JSON.stringify({accepted:true,status:'running',reconciling:true}),{status:202,headers:jsonHeaders})
   }
-  const output=await callOpenAI(body,key,model,intent.client_request_id,30_000,request.signal)
+  const output=await callOpenAI(providerBody,key,model,intent.client_request_id,30_000,request.signal)
   let attached=false
   for(let attempt=0;attempt<3&&!attached;attempt++){
    const attachment=await diagnosticClient.rpc('attach_procurement_background_operation',{

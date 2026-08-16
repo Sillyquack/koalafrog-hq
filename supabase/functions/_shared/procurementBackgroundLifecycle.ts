@@ -40,8 +40,9 @@ export const outputText=(payload:unknown)=>{
 export function normalizedCandidateRows(
  payload:unknown,
  items:Array<{id:string;required_specifications:string[]}>,
+ priorCandidateIds:string[]=[],
 ){
- const validated=validateLiveResearchResponse(payload,items.map(item=>item.id))
+ const validated=validateLiveResearchResponse(payload,items.map(item=>item.id),new Date(),priorCandidateIds)
  const candidates=validated.candidates.map(candidate=>{
   const evidenceSnippets=candidate.evidence.flatMap(evidence=>evidence.snippet?[evidence.snippet]:[])
   const unresolved=[
@@ -54,7 +55,9 @@ export function normalizedCandidateRows(
    unresolved.push('required_specification_evidence')
   }
   return{
-   requested_item_id:candidate.requestedItemId,supplier_name:candidate.supplierName,
+   requested_item_id:candidate.requestedItemId,
+   follow_up_to_candidate_id:candidate.priorCandidateId,
+   supplier_name:candidate.supplierName,
    product_title:candidate.productTitle,source_url:candidate.sourceUrl,
    package_quantity:candidate.packageQuantity,package_unit:candidate.packageUnit,
    item_price:candidate.itemPrice,currency:candidate.currency,moq:candidate.moq,

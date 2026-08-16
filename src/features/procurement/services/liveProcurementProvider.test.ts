@@ -42,6 +42,23 @@ describe('live procurement provider authentication',()=>{
   }))
  })
 
+ it('passes owner-directed follow-up instructions and prior-candidate context to the provider boundary',async()=>{
+  const provider=new OpenAIWebResearchProvider()
+  provider.prepareJob('job-follow-up','workspace-1')
+  const followUp={
+   priorJobId:'job-prior',instructions:'Resolve shipping and current delivery evidence.',schemaVersion:1 as const,
+   unresolvedFields:['shipping_cost','delivery_estimate_days'],
+   priorCandidates:[{id:'candidate-prior',requestedItemId:'item-1',supplierName:'Earlier Supplier',productTitle:'Jojoba 1 kg',sourceUrl:'https://supplier.test/jojoba',packageQuantity:1,packageUnit:'kg',itemPrice:249,currency:'NOK',shippingCost:null,deliveryEstimateDays:null,coaAvailability:'available',sdsAvailability:'available',technicalDocumentAvailability:'unknown',evidenceSnippets:['Product page checked.'],fieldEvidence:{},unresolvedFields:['shipping_cost','delivery_estimate_days'],reviewStatus:'pending'}],
+   itemsWithoutPracticalCandidate:[{requestedItemId:'item-1',name:'Jojoba oil'}],
+  }
+
+  await provider.discoverOffers({...snapshot,followUp,constraints:{...snapshot.constraints,deliveryCountry:'SE'}})
+
+  expect(client.functions.invoke).toHaveBeenCalledWith('procurement-live-research',expect.objectContaining({
+   body:expect.objectContaining({deliveryCountry:'SE',followUp}),
+  }))
+ })
+
  it('returns only a durable background acknowledgement and exposes no provider operation id',async()=>{
   client.functions.invoke.mockResolvedValue({data:{accepted:true,status:'running',providerOperationId:'resp_must_not_escape'},error:null})
   const provider=new OpenAIWebResearchProvider()

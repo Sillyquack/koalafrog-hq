@@ -1,12 +1,24 @@
 begin;
 -- Run with Supabase CLI test harness. Synthetic JWT claims must be supplied by the harness.
-select plan(284);
+select plan(296);
 select has_table('public','workspaces','workspaces exists');
 select has_table('public','workspace_records','record store exists');
 select has_table('public','procurement_research_jobs','Procurement jobs exist');
 select has_table('public','procurement_offer_candidates','Procurement candidates exist');
 select has_function('public','accept_procurement_offer_candidate',array['uuid','uuid','uuid','boolean'],'transactional candidate acceptance exists');
 select has_function('public','publish_procurement_research_results',array['uuid','uuid','jsonb','text','text'],'guarded research publication exists');
+select has_function('public','create_procurement_follow_up_research_job',array['uuid','uuid','uuid','text','text','boolean'],'atomic owner-directed follow-up job creation exists');
+select is(has_function_privilege('authenticated','public.create_procurement_follow_up_research_job(uuid,uuid,uuid,text,text,boolean)','EXECUTE'),true,'authenticated owner may create a consented follow-up job');
+select is(has_function_privilege('anon','public.create_procurement_follow_up_research_job(uuid,uuid,uuid,text,text,boolean)','EXECUTE'),false,'anonymous cannot create follow-up research');
+select is((select prosecdef from pg_proc where oid='public.create_procurement_follow_up_research_job(uuid,uuid,uuid,text,text,boolean)'::regprocedure),false,'follow-up creation respects owner RLS as security invoker');
+select has_column('public','procurement_research_jobs','follow_up_of_job_id','follow-up jobs preserve prior-job lineage');
+select has_column('public','procurement_research_jobs','follow_up_instructions','follow-up jobs preserve owner instructions');
+select has_column('public','procurement_research_jobs','follow_up_context','follow-up jobs preserve canonical prior-candidate context');
+select has_column('public','procurement_research_jobs','delivery_country','follow-up jobs preserve delivery country');
+select has_column('public','procurement_research_jobs','live_research_consent_at','follow-up jobs preserve explicit consent time');
+select has_column('public','procurement_offer_candidates','follow_up_to_candidate_id','follow-up candidates preserve candidate lineage');
+select has_trigger('public','procurement_research_jobs','guard_procurement_follow_up_job_lineage','follow-up job lineage is immutable');
+select has_trigger('public','procurement_offer_candidates','guard_procurement_follow_up_candidate_lineage','follow-up candidate lineage is validated');
 select has_column('public','procurement_research_jobs','live_invocation_started_at','live invocation time exists');
 select has_column('public','procurement_research_jobs','provider_invocation_count','bounded invocation count exists');
 select has_function('public','begin_procurement_live_invocation',array['uuid','uuid','integer'],'atomic live invocation gate exists');
