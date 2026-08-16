@@ -9183,6 +9183,7 @@ export type Database = {
           field_evidence: Json
           field_states: Json
           first_order_discount: number | null
+          follow_up_to_candidate_id: string | null
           freshness: string
           id: string
           is_marketplace_listing: boolean
@@ -9207,6 +9208,7 @@ export type Database = {
           source_url: string
           stock_status: string
           supplier_name: string
+          tax_duty_estimate: number | null
           technical_document_availability: string
           unresolved_fields: string[]
           updated_at: string
@@ -9224,6 +9226,7 @@ export type Database = {
           field_evidence?: Json
           field_states?: Json
           first_order_discount?: number | null
+          follow_up_to_candidate_id?: string | null
           freshness?: string
           id?: string
           is_marketplace_listing?: boolean
@@ -9248,6 +9251,7 @@ export type Database = {
           source_url: string
           stock_status?: string
           supplier_name: string
+          tax_duty_estimate?: number | null
           technical_document_availability?: string
           unresolved_fields?: string[]
           updated_at?: string
@@ -9265,6 +9269,7 @@ export type Database = {
           field_evidence?: Json
           field_states?: Json
           first_order_discount?: number | null
+          follow_up_to_candidate_id?: string | null
           freshness?: string
           id?: string
           is_marketplace_listing?: boolean
@@ -9289,6 +9294,7 @@ export type Database = {
           source_url?: string
           stock_status?: string
           supplier_name?: string
+          tax_duty_estimate?: number | null
           technical_document_availability?: string
           unresolved_fields?: string[]
           updated_at?: string
@@ -9298,6 +9304,13 @@ export type Database = {
           {
             foreignKeyName: "procurement_offer_candidates_duplicate_workspace_fkey"
             columns: ["workspace_id", "duplicate_of_candidate_id"]
+            isOneToOne: false
+            referencedRelation: "procurement_offer_candidates"
+            referencedColumns: ["workspace_id", "id"]
+          },
+          {
+            foreignKeyName: "procurement_offer_candidates_follow_up_workspace_fkey"
+            columns: ["workspace_id", "follow_up_to_candidate_id"]
             isOneToOne: false
             referencedRelation: "procurement_offer_candidates"
             referencedColumns: ["workspace_id", "id"]
@@ -9519,13 +9532,13 @@ export type Database = {
           notes: string
           owner_id: string
           package_preference: string | null
+          preferred_supplier_hint: string | null
           priority: string
           procurement_request_id: string
           reason: string | null
           requested_quantity: number | null
           required_specifications: string[]
           requirement_type: string
-          preferred_supplier_hint: string | null
           source_benchmark_ids: string[]
           source_benchmark_ingredient_incis: string[]
           source_functions: string[]
@@ -9553,13 +9566,13 @@ export type Database = {
           notes?: string
           owner_id: string
           package_preference?: string | null
+          preferred_supplier_hint?: string | null
           priority?: string
           procurement_request_id: string
           reason?: string | null
           requested_quantity?: number | null
           required_specifications?: string[]
           requirement_type?: string
-          preferred_supplier_hint?: string | null
           source_benchmark_ids?: string[]
           source_benchmark_ingredient_incis?: string[]
           source_functions?: string[]
@@ -9587,13 +9600,13 @@ export type Database = {
           notes?: string
           owner_id?: string
           package_preference?: string | null
+          preferred_supplier_hint?: string | null
           priority?: string
           procurement_request_id?: string
           reason?: string | null
           requested_quantity?: number | null
           required_specifications?: string[]
           requirement_type?: string
-          preferred_supplier_hint?: string | null
           source_benchmark_ids?: string[]
           source_benchmark_ingredient_incis?: string[]
           source_functions?: string[]
@@ -9698,10 +9711,15 @@ export type Database = {
           completed_at: string | null
           correlation_id: string
           created_at: string
+          delivery_country: string | null
           error_code: string | null
           error_details: string | null
+          follow_up_context: Json | null
+          follow_up_instructions: string | null
+          follow_up_of_job_id: string | null
           id: string
           live_invocation_started_at: string | null
+          live_research_consent_at: string | null
           owner_id: string
           procurement_request_id: string
           provider: string
@@ -9724,10 +9742,15 @@ export type Database = {
           completed_at?: string | null
           correlation_id?: string
           created_at?: string
+          delivery_country?: string | null
           error_code?: string | null
           error_details?: string | null
+          follow_up_context?: Json | null
+          follow_up_instructions?: string | null
+          follow_up_of_job_id?: string | null
           id?: string
           live_invocation_started_at?: string | null
+          live_research_consent_at?: string | null
           owner_id: string
           procurement_request_id: string
           provider: string
@@ -9750,10 +9773,15 @@ export type Database = {
           completed_at?: string | null
           correlation_id?: string
           created_at?: string
+          delivery_country?: string | null
           error_code?: string | null
           error_details?: string | null
+          follow_up_context?: Json | null
+          follow_up_instructions?: string | null
+          follow_up_of_job_id?: string | null
           id?: string
           live_invocation_started_at?: string | null
+          live_research_consent_at?: string | null
           owner_id?: string
           procurement_request_id?: string
           provider?: string
@@ -9769,6 +9797,13 @@ export type Database = {
           workspace_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "procurement_research_jobs_follow_up_workspace_fkey"
+            columns: ["workspace_id", "follow_up_of_job_id"]
+            isOneToOne: false
+            referencedRelation: "procurement_research_jobs"
+            referencedColumns: ["workspace_id", "id"]
+          },
           {
             foreignKeyName: "procurement_research_jobs_retry_workspace_fkey"
             columns: ["workspace_id", "retry_of_job_id"]
@@ -18306,6 +18341,15 @@ export type Database = {
         }
         Returns: Json
       }
+      create_foot_care_procurement_handoff: {
+        Args: {
+          candidate_concept_id: string
+          candidate_groups: Json
+          candidate_registry_version: string
+          candidate_workspace_id: string
+        }
+        Returns: Json
+      }
       create_formula_branch_from_experiment: {
         Args: {
           idempotency: string
@@ -18340,6 +18384,17 @@ export type Database = {
         }
         Returns: Json
       }
+      create_procurement_follow_up_research_job: {
+        Args: {
+          candidate_delivery_country: string
+          candidate_instructions: string
+          candidate_live_research_consent: boolean
+          candidate_prior_job_id: string
+          candidate_procurement_request_id: string
+          candidate_workspace_id: string
+        }
+        Returns: string
+      }
       create_product_studio_formula_handoff: {
         Args: {
           concept_id: string
@@ -18347,15 +18402,6 @@ export type Database = {
           formula_lines: Json
           formula_version: Json
           product: Json
-        }
-        Returns: Json
-      }
-      create_foot_care_procurement_handoff: {
-        Args: {
-          candidate_concept_id: string
-          candidate_groups: Json
-          candidate_registry_version: string
-          candidate_workspace_id: string
         }
         Returns: Json
       }

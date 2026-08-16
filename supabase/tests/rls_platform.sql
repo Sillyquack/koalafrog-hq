@@ -1,6 +1,6 @@
 begin;
 -- Run with Supabase CLI test harness. Synthetic JWT claims must be supplied by the harness.
-select plan(296);
+select plan(297);
 select has_table('public','workspaces','workspaces exists');
 select has_table('public','workspace_records','record store exists');
 select has_table('public','procurement_research_jobs','Procurement jobs exist');
@@ -17,6 +17,7 @@ select has_column('public','procurement_research_jobs','follow_up_context','foll
 select has_column('public','procurement_research_jobs','delivery_country','follow-up jobs preserve delivery country');
 select has_column('public','procurement_research_jobs','live_research_consent_at','follow-up jobs preserve explicit consent time');
 select has_column('public','procurement_offer_candidates','follow_up_to_candidate_id','follow-up candidates preserve candidate lineage');
+select has_column('public','procurement_offer_candidates','tax_duty_estimate','research candidates preserve structured tax/duty estimates');
 select has_trigger('public','procurement_research_jobs','guard_procurement_follow_up_job_lineage','follow-up job lineage is immutable');
 select has_trigger('public','procurement_offer_candidates','guard_procurement_follow_up_candidate_lineage','follow-up candidate lineage is validated');
 select has_column('public','procurement_research_jobs','live_invocation_started_at','live invocation time exists');

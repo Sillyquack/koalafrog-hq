@@ -47,8 +47,8 @@ describe('live procurement provider authentication',()=>{
   provider.prepareJob('job-follow-up','workspace-1')
   const followUp={
    priorJobId:'job-prior',instructions:'Resolve shipping and current delivery evidence.',schemaVersion:1 as const,
-   unresolvedFields:['shipping_cost','delivery_estimate_days'],
-   priorCandidates:[{id:'candidate-prior',requestedItemId:'item-1',supplierName:'Earlier Supplier',productTitle:'Jojoba 1 kg',sourceUrl:'https://supplier.test/jojoba',packageQuantity:1,packageUnit:'kg',itemPrice:249,currency:'NOK',shippingCost:null,deliveryEstimateDays:null,coaAvailability:'available',sdsAvailability:'available',technicalDocumentAvailability:'unknown',evidenceSnippets:['Product page checked.'],fieldEvidence:{},unresolvedFields:['shipping_cost','delivery_estimate_days'],reviewStatus:'pending'}],
+   unresolvedFields:['shipping_cost','tax_duty_estimate','delivery_estimate_days'],
+   priorCandidates:[{id:'candidate-prior',requestedItemId:'item-1',supplierName:'Earlier Supplier',productTitle:'Jojoba 1 kg',sourceUrl:'https://supplier.test/jojoba',packageQuantity:1,packageUnit:'kg',itemPrice:249,currency:'NOK',shippingCost:null,taxDutyEstimate:null,deliveryEstimateDays:null,coaAvailability:'available',sdsAvailability:'available',technicalDocumentAvailability:'unknown',evidenceSnippets:['Product page checked.'],fieldEvidence:{},unresolvedFields:['shipping_cost','tax_duty_estimate','delivery_estimate_days'],reviewStatus:'pending'}],
    itemsWithoutPracticalCandidate:[{requestedItemId:'item-1',name:'Jojoba oil'}],
   }
 

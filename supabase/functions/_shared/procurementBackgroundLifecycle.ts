@@ -49,6 +49,7 @@ export function normalizedCandidateRows(
    ['source_url',candidate.sourceUrl],['package_quantity',candidate.packageQuantity],
    ['package_unit',candidate.packageUnit],['item_price',candidate.itemPrice],
    ['currency',candidate.currency],['shipping_cost',candidate.shippingCost],
+   ['tax_duty_estimate',candidate.taxDutyEstimate],
    ['delivery_estimate_days',candidate.deliveryEstimateDays],
   ].filter(([,value])=>value==null||value==='').map(([field])=>field as string)
   if((items.find(item=>item.id===candidate.requestedItemId)?.required_specifications.length??0)>0&&!evidenceSnippets.length){
@@ -61,7 +62,8 @@ export function normalizedCandidateRows(
    product_title:candidate.productTitle,source_url:candidate.sourceUrl,
    package_quantity:candidate.packageQuantity,package_unit:candidate.packageUnit,
    item_price:candidate.itemPrice,currency:candidate.currency,moq:candidate.moq,
-   shipping_cost:candidate.shippingCost,delivery_estimate_days:candidate.deliveryEstimateDays,
+   shipping_cost:candidate.shippingCost,tax_duty_estimate:candidate.taxDutyEstimate,
+   delivery_estimate_days:candidate.deliveryEstimateDays,
    stock_status:candidate.stockStatus,coa_availability:candidate.coaAvailability,
    sds_availability:candidate.sdsAvailability,
    technical_document_availability:candidate.technicalDocumentAvailability,

@@ -3,6 +3,8 @@ import type{ProcurementRequest,RequestedItem}from'./procurement'
 
 const fieldLabels:Record<string,string>={
  shipping_cost:'shipping cost',
+ tax_duty_estimate:'tax/duty estimate',
+ taxDutyEstimate:'tax/duty estimate',
  delivery_estimate_days:'delivery estimate',
  required_specification_evidence:'required specification evidence',
  item_price:'item price',
@@ -15,6 +17,8 @@ const fieldLabels:Record<string,string>={
  technical_document_availability:'technical-document verification',
  stock_status:'availability',
 }
+
+export const researchFieldLabel=(field:string)=>fieldLabels[field]??field.replaceAll('_',' ')
 
 export const candidatesForResearchJob=(jobId:string,candidates:OfferCandidate[])=>
  candidates.filter(candidate=>candidate.research_job_id===jobId)
@@ -49,7 +53,7 @@ export function buildFollowUpInstructionDraft(input:{
 }){
  const unresolved=unresolvedFieldsForCandidates(input.priorCandidates)
  const unresolvedText=unresolved.length
-  ?unresolved.map(field=>fieldLabels[field]??field.replaceAll('_',' ')).join(', ')
+  ?unresolved.map(researchFieldLabel).join(', ')
   :'remaining supplier and commercial evidence gaps'
  const unmatched=requestedItemsWithoutPracticalCandidate(input.items,input.priorCandidates)
  const unmatchedText=unmatched.length
@@ -59,7 +63,7 @@ export function buildFollowUpInstructionDraft(input:{
  const preferredText=preferred.length
   ?` Recheck relevant preferred-supplier hints (${preferred.join(', ')}) without treating them as mandatory suppliers.`
   :''
- return`Resolve unresolved fields from the previous research job for “${input.request.title}”: ${unresolvedText}.${unmatchedText} Confirm evidence-based availability, documentation, shipping and delivery for ${countryName(input.deliveryCountry)}.${preferredText} Prefer manufacturers, established distributors and specialist cosmetic/raw-material suppliers over marketplaces. Find better practical candidates where earlier matches are unsuitable, but do not replace strong existing candidates merely to create more results. Avoid duplicate candidates and keep every value unknown when it cannot be verified.`
+ return`Resolve unresolved fields from the previous research job for “${input.request.title}”: ${unresolvedText}.${unmatchedText} Confirm evidence-based availability, documentation, shipping, tax/duty and delivery for ${countryName(input.deliveryCountry)}. Do not infer destination tax or duty without current evidence.${preferredText} Prefer manufacturers, established distributors and specialist cosmetic/raw-material suppliers over marketplaces. Find better practical candidates where earlier matches are unsuitable, but do not replace strong existing candidates merely to create more results. Avoid duplicate candidates and keep every value unknown when it cannot be verified.`
 }
 
 export function fieldsResolvedByFollowUp(candidate:OfferCandidate,prior:OfferCandidate|undefined){
