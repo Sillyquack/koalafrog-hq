@@ -56,4 +56,21 @@ describe("OpenAI Structured Outputs schema compatibility", () => {
         },
       }),
     ).toEqual([]));
+  it("validates every anyOf alternative recursively", () => {
+    expect(structuredOutputSchemaErrors({
+      anyOf: [
+        { type: "string" },
+        { type: "null" },
+        {
+          type: "object",
+          additionalProperties: false,
+          required: ["value"],
+          properties: { value: { type: "string" } },
+        },
+      ],
+    })).toEqual([]);
+    expect(structuredOutputSchemaErrors({ anyOf: [] }).join(" ")).toContain(
+      "no alternatives",
+    );
+  });
 });

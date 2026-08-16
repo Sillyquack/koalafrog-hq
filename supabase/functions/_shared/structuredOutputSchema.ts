@@ -1,9 +1,10 @@
 type SchemaNode = {
-  type?: string | string[];
+  type?: string | readonly string[];
+  anyOf?: readonly SchemaNode[];
   const?: unknown;
-  enum?: unknown[];
+  enum?: readonly unknown[];
   properties?: Record<string, SchemaNode>;
-  required?: string[];
+  required?: readonly string[];
   additionalProperties?: boolean;
   items?: SchemaNode;
 };
@@ -12,6 +13,18 @@ export function structuredOutputSchemaErrors(
   path = "$",
 ): string[] {
   const errors: string[] = [];
+  if (schema.anyOf) {
+    if (schema.anyOf.length < 1) errors.push(`${path} has no alternatives.`);
+    else {
+      schema.anyOf.forEach((alternative, index) =>
+        errors.push(...structuredOutputSchemaErrors(
+          alternative,
+          `${path}.anyOf[${index}]`,
+        ))
+      );
+    }
+    return [...new Set(errors)];
+  }
   if (!schema.type) errors.push(`${path} has no type.`);
   const types = Array.isArray(schema.type) ? schema.type : [schema.type];
   if (types.includes("object")) {

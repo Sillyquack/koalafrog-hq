@@ -1,6 +1,7 @@
 import type {
   BeardPhotoAnalysisResult,
   BeardPhotoRecommendation,
+  BeardTrimOverlay,
 } from "./beardPhotoAnalysisContract.ts";
 
 export const BEARD_GUARD_NORMALIZER_VERSION =
@@ -23,6 +24,29 @@ export interface StructuredBeardGuardStrategy {
   uncertainty: "starting_point" | "adjust_after_each_pass";
   freeformTechnique: "shorten_gradually" | null;
 }
+export type BeardPhotoProviderRecommendation = Omit<
+  BeardPhotoRecommendation,
+  "proposedGuardStrategy"
+> & {
+  proposedGuardStrategy: StructuredBeardGuardStrategy | string | null;
+};
+export type BeardPhotoProviderResult = Omit<
+  BeardPhotoAnalysisResult,
+  "recommendations" | "trimOverlay"
+> & {
+  recommendations: BeardPhotoProviderRecommendation[];
+  trimOverlay: BeardTrimOverlay | null;
+};
+type BeardGuardNormalizableResult = Omit<
+  BeardPhotoAnalysisResult,
+  "recommendations"
+> & {
+  recommendations: Array<
+    Omit<BeardPhotoRecommendation, "proposedGuardStrategy"> & {
+      proposedGuardStrategy: StructuredBeardGuardStrategy | string | null;
+    }
+  >;
+};
 export interface BeardGuardNormalizationMetadata {
   recommendationIndex: number;
   guardStrategySource: BeardGuardStrategySource;
@@ -33,10 +57,20 @@ export type BeardGuardNormalizationResult =
   | { success: true; result: BeardPhotoAnalysisResult; metadata: BeardGuardNormalizationMetadata[] }
   | { success: false; recommendationIndex: number };
 
-const regions = ["cheeks", "sides", "chin", "moustache", "neckline", "overall"] as const;
-const strategyTypes = ["guard_setting", "guard_range", "relative_guard", "longest_first", "no_numeric_setting"] as const;
-const relativeInstructions = ["longer_than_sides", "shorter_than_chin", "longest_first", "reduce_gradually"] as const;
-const uncertainties = ["starting_point", "adjust_after_each_pass"] as const;
+export const beardGuardRegions = [
+  "cheeks", "sides", "chin", "moustache", "neckline", "overall",
+] as const;
+export const beardGuardStrategyTypes = [
+  "guard_setting", "guard_range", "relative_guard", "longest_first",
+  "no_numeric_setting",
+] as const;
+export const beardGuardRelativeInstructions = [
+  "longer_than_sides", "shorter_than_chin", "longest_first",
+  "reduce_gradually",
+] as const;
+export const beardGuardUncertainties = [
+  "starting_point", "adjust_after_each_pass",
+] as const;
 const exactKeys = (value: Record<string, unknown>, expected: string[]) =>
   Object.keys(value).length === expected.length &&
   expected.every((key) => Object.hasOwn(value, key));
@@ -49,11 +83,12 @@ export function isStructuredBeardGuardStrategy(value: unknown): value is Structu
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
   const item = value as Record<string, unknown>;
   if (!exactKeys(item, ["strategyType", "region", "guardMm", "guardRangeMm", "relativeInstruction", "uncertainty", "freeformTechnique"]) ||
-    !oneOf(item.strategyType, strategyTypes) ||
-    !(item.region === null || oneOf(item.region, regions)) ||
+    !oneOf(item.strategyType, beardGuardStrategyTypes) ||
+    !(item.region === null || oneOf(item.region, beardGuardRegions)) ||
     !(item.guardMm === null || safeMillimetres(item.guardMm)) ||
-    !(item.relativeInstruction === null || oneOf(item.relativeInstruction, relativeInstructions)) ||
-    !oneOf(item.uncertainty, uncertainties) ||
+    !(item.relativeInstruction === null ||
+      oneOf(item.relativeInstruction, beardGuardRelativeInstructions)) ||
+    !oneOf(item.uncertainty, beardGuardUncertainties) ||
     !(item.freeformTechnique === null || item.freeformTechnique === "shorten_gradually")) return false;
   if (item.guardRangeMm !== null) {
     if (typeof item.guardRangeMm !== "object" || Array.isArray(item.guardRangeMm) ||
@@ -108,7 +143,7 @@ export function renderCanonicalBeardGuardStrategy(strategy: StructuredBeardGuard
 const unsafeLegacy =
   /\b(?:beard|cheeks?|chin|sides?|moustache|neckline)\b.{0,45}\b(?:is|are|measures?|currently|length)\b.{0,25}\d+(?:\.\d+)?\s*mm\b|\b(?:photo|image|photograph)\b.{0,80}\b(?:objectively|correct|proves?|shows?|measures?)\b|\b(?:guarantee|exactly|final length|will leave)\b.{0,60}\d+(?:\.\d+)?\s*mm\b|\b\d+(?:\.\d+)?\s*mm\b.{0,35}\b(?:longer|shorter)\b/i;
 const parseRegion = (value: string): BeardGuardRegion =>
-  regions.find((region) => region !== "overall" &&
+  beardGuardRegions.find((region) => region !== "overall" &&
     new RegExp(`\\b${region}\\b`, "i").test(value)) ?? "overall";
 const base = (overrides: Partial<StructuredBeardGuardStrategy>): StructuredBeardGuardStrategy => ({
   strategyType: "no_numeric_setting", region: "overall", guardMm: null,
@@ -143,13 +178,15 @@ export function parseLegacyBeardGuardStrategy(clause: string): StructuredBeardGu
   return undefined;
 }
 
-export function normalizeBeardGuardStrategies(value: BeardPhotoAnalysisResult): BeardGuardNormalizationResult {
+export function normalizeBeardGuardStrategies(
+  value: BeardGuardNormalizableResult,
+): BeardGuardNormalizationResult {
   const metadata: BeardGuardNormalizationMetadata[] = [];
   const recommendations: BeardPhotoRecommendation[] = [];
   for (const [recommendationIndex, recommendation] of value.recommendations.entries()) {
     const raw = recommendation.proposedGuardStrategy as unknown;
     if (raw === null) {
-      recommendations.push(recommendation);
+      recommendations.push({ ...recommendation, proposedGuardStrategy: null });
       continue;
     }
     const structured = isStructuredBeardGuardStrategy(raw);

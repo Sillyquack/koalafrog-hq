@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { readFileSync } from 'node:fs'
 
 const edge = readFileSync('supabase/functions/analyze-beard-photos/index.ts', 'utf8')
+const providerSchema = readFileSync('supabase/functions/_shared/beardPhotoProviderSchema.ts', 'utf8')
+const overlayContract = readFileSync('supabase/functions/_shared/beardTrimOverlayContract.ts', 'utf8')
 const client = readFileSync('src/intelligence/Vision/beardPhotoClient.ts', 'utf8')
 const prompt = readFileSync('supabase/functions/_shared/beardPhotoPrompt.ts', 'utf8')
 const migration = readFileSync('supabase/migrations/20260721140000_beard_photo_analysis.sql', 'utf8')
@@ -99,21 +101,35 @@ describe('beard photo intelligence boundaries', () => {
     expect(prompt).toMatch(/toolConstraints limited to non-numeric compatibility/i)
     expect(prompt).toMatch(/select structured values instead of composing the final sentence/i)
     expect(prompt).toMatch(/server renders the final guard-setting sentence/i)
+    expect(prompt).toMatch(/trimOverlay is advisory geometry only/i)
+    expect(prompt).toMatch(/normalized 0-to-1 coordinates/i)
+    expect(prompt).toMatch(/Use null for trimOverlay.*do not guess coordinates/i)
   })
 
-  it('normalizes structured or legacy guard intent before canonical and semantic validation', () => {
-    expect(edge).toContain('normalizeBeardGuardStrategies(providerTyped)')
-    expect(edge.indexOf('normalizeBeardGuardStrategies(providerTyped)')).toBeLessThan(
+  it('normalizes the provider guard object before canonical and semantic validation', () => {
+    expect(edge).toContain('normalizeBeardGuardStrategies(')
+    expect(edge).toContain('parsed as BeardPhotoProviderResult')
+    expect(edge.indexOf('normalizeBeardGuardStrategies(')).toBeLessThan(
       edge.indexOf('validateBeardPhotoContract(typed)'),
     )
     expect(edge.indexOf('validateBeardPhotoContract(typed)')).toBeLessThan(
       edge.indexOf('validateBeardPhotoSemantics(typed)'),
     )
-    expect(edge).toContain('"guard_setting", "guard_range", "relative_guard"')
-    expect(edge).toContain('"starting_point", "adjust_after_each_pass"')
+    expect(providerSchema).toContain('proposedGuardStrategy: structuredGuardStrategy')
+    expect(providerSchema).toContain('anyOf: [')
+    expect(providerSchema).toContain('structuredGuardStrategyObject')
+    expect(providerSchema).toContain('trimOverlay: beardTrimOverlayProviderSchema')
     expect(guardStrategyV6Migration).toContain("'beard-photo-analysis-v6'")
     expect(guardStrategyV6Migration).toContain('candidate_recommendations')
     expect(guardStrategyV6Migration).toContain('lookup_beard_analysis_support_diagnostic_v25')
+  })
+
+  it('keeps trim overlays normalized, advisory, and free of image payload fields', () => {
+    expect(overlayContract).toContain('BEARD_TRIM_OVERLAY_VERSION')
+    expect(overlayContract).toContain('normalizedCoordinate')
+    expect(overlayContract).toContain('lineGuidance')
+    expect(overlayContract).toContain('keep_do_not_cross')
+    expect(overlayContract).not.toMatch(/objectPath|dataUrl|base64|signedUrl|imageBytes/)
   })
 
   it('persists only server-owned allowlisted failure metadata', () => {
@@ -165,6 +181,7 @@ describe('beard photo intelligence boundaries', () => {
     expect(edge.indexOf('() => validateBeardPhotoSemantics(typed)')).toBeLessThan(edge.indexOf('persist_beard_analysis_result'))
     expect(edge.indexOf('toDurableBeardFailureDiagnostic')).toBeLessThan(edge.indexOf('const removed = await client.storage'))
     expect(edge.indexOf('result = undefined')).toBeLessThan(edge.indexOf('const removed = await client.storage'))
+    expect(edge.indexOf('() => validateBeardPhotoSemantics(typed)')).toBeLessThan(edge.indexOf('usage: raw.usage'))
   })
 
   it('persists results atomically with metadata-only database diagnostics', () => {
