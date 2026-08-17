@@ -92,6 +92,13 @@ test("owner gate stops affirmative production actions but ignores prohibitions",
     }),
     null,
   )
+  assert.equal(
+    ownerGateReason({
+      ...control,
+      prompt: "No merge to main is requested. No deployment to production is requested. No force-push is requested.",
+    }),
+    null,
+  )
 })
 
 test("completion packet is machine-readable and discoverable idempotently", () => {
