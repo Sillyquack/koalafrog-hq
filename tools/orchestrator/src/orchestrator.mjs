@@ -42,9 +42,34 @@ function promptForInstruction(instruction, allowedPaths) {
 
 function compactOwnerQuestion(request) {
   if (!request) return null
-  return redactForLog(
-    String(request.reason ?? `Codex requested ${request.method}`).slice(0, 500),
-  )
+  const lines = [
+    String(request.reason ?? `Codex requested ${request.method}`),
+    `Method: ${request.method ?? "unknown"}`,
+  ]
+  if (request.serverName) lines.push(`Server: ${request.serverName}`)
+  if (request.toolName) lines.push(`Tool: ${request.toolName}`)
+  if (request.arguments !== null && request.arguments !== undefined) {
+    lines.push(`Arguments: ${JSON.stringify(request.arguments)}`)
+  }
+  if (request.details && Object.keys(request.details).length) {
+    lines.push(`Request details: ${JSON.stringify(request.details)}`)
+  }
+  return String(redactForLog(lines.join("\n"))).slice(0, 8_000)
+}
+
+function compactOwnerRequest(request) {
+  if (!request) return null
+  return redactForLog({
+    method: request.method ?? null,
+    serverName: request.serverName ?? null,
+    toolName: request.toolName ?? null,
+    arguments: request.arguments ?? null,
+    details: request.details ?? null,
+    reason: String(request.reason ?? `Codex requested ${request.method}`).slice(
+      0,
+      2_000,
+    ),
+  })
 }
 
 function checks(tests) {
@@ -59,6 +84,7 @@ function checks(tests) {
 export function beginInstruction(state, instruction, selectedAt = new Date()) {
   normalizeTurnAccounting(state)
   const priorTurnCount = instructionTurnCount(state, instruction.instructionId)
+  state.pendingOwnerRequest = null
   state.activeInstruction = {
     ...instruction,
     phase: "selected",
@@ -67,6 +93,53 @@ export function beginInstruction(state, instruction, selectedAt = new Date()) {
     selectedAt: selectedAt.toISOString(),
   }
   return state.activeInstruction
+}
+
+export function supersedeOwnerStoppedInstruction(
+  state,
+  latestInstruction,
+  selectedAt = new Date(),
+) {
+  const active = state.activeInstruction
+  if (
+    !active ||
+    !latestInstruction ||
+    active.instructionId === latestInstruction.instructionId ||
+    !state.pendingOwnerRequest ||
+    active.phase !== "owner_stopped"
+  ) {
+    return null
+  }
+
+  normalizeTurnAccounting(state)
+  state.runs ??= []
+  const ownerRequest = state.pendingOwnerRequest
+  if (
+    !(state.runs ?? []).some(
+      (run) =>
+        run.instructionId === active.instructionId && run.status === "needs_owner",
+    )
+  ) {
+    state.runs.push({
+      instructionId: active.instructionId,
+      status: "needs_owner",
+      threadId: state.threadId,
+      branch: state.branch,
+      commits: [],
+      turnCount: instructionTurnCount(state, active.instructionId),
+      ownerRequest,
+      completedAt: selectedAt.toISOString(),
+    })
+  }
+  state.lastConsumedInstructionId = active.instructionId
+  const supersededInstructionId = active.instructionId
+  beginInstruction(state, latestInstruction, selectedAt)
+  state.status = latestInstruction.taskState
+  return {
+    supersededInstructionId,
+    instructionId: latestInstruction.instructionId,
+    ownerRequest,
+  }
 }
 
 export async function ensureTaskThread({
@@ -161,9 +234,8 @@ export class Orchestrator {
 
     state.lastConsumedInstructionId = packet.instructionId
     state.status = packet.status
-    state.pendingOwnerRequest = packet.ownerQuestion
-      ? { reason: packet.ownerQuestion }
-      : null
+    state.pendingOwnerRequest = packet.ownerRequest ??
+      (packet.ownerQuestion ? { reason: packet.ownerQuestion } : null)
     state.runs.push({
       instructionId: packet.instructionId,
       status: packet.status,
@@ -171,6 +243,7 @@ export class Orchestrator {
       branch: packet.branch,
       commits: packet.commits,
       turnCount: instructionTurnCount(state, packet.instructionId),
+      ownerRequest: packet.ownerRequest ?? null,
       completedAt: new Date().toISOString(),
     })
     state.activeInstruction = null
@@ -201,6 +274,7 @@ export class Orchestrator {
       this.config.baseRef,
     )
     const ownerRequest = turnResult.pendingOwnerRequest
+    const structuredOwnerRequest = compactOwnerRequest(ownerRequest)
     const completed = turnResult.status === "completed" && validation.pass
     const status = ownerRequest
       ? "needs_owner"
@@ -215,9 +289,12 @@ export class Orchestrator {
       commits: workspace.commits,
       changedFiles: workspace.changedFiles,
       checks: checks(validation.pass ? "pass" : "fail"),
-      ownerQuestion: compactOwnerQuestion(ownerRequest),
+      ownerQuestion: compactOwnerQuestion(structuredOwnerRequest),
+      ownerRequest: structuredOwnerRequest,
       detail: validation.pass
-        ? "The local worktree passed `git diff --check`. Awaiting review; no deployment or production operation was performed."
+        ? ownerRequest
+          ? "The Codex turn stopped for owner input after the MCP request was cancelled. The local worktree passed `git diff --check`; no deployment or production operation was performed."
+          : "The local worktree passed `git diff --check`. Awaiting review; no deployment or production operation was performed."
         : `Local validation failed: ${validation.detail || turnResult.turn?.error?.message || "unknown error"}`,
     }
   }
@@ -262,7 +339,21 @@ export class Orchestrator {
         onTurnStarted: async (turnId) => {
           recordInstructionTurnStarted(state, { turnId, attempt })
           state.retryCount = attempt
-          state.status = "running"
+          if (state.activeInstruction.ownerRequest) {
+            state.activeInstruction.phase = "owner_stopped"
+            state.pendingOwnerRequest = state.activeInstruction.ownerRequest
+            state.status = "needs_owner"
+          } else {
+            state.status = "running"
+          }
+          await this.#save(state)
+        },
+        onOwnerStop: async (ownerRequest) => {
+          const structuredOwnerRequest = compactOwnerRequest(ownerRequest)
+          state.activeInstruction.phase = "owner_stopped"
+          state.activeInstruction.ownerRequest = structuredOwnerRequest
+          state.pendingOwnerRequest = structuredOwnerRequest
+          state.status = "needs_owner"
           await this.#save(state)
         },
       })
@@ -294,12 +385,46 @@ export class Orchestrator {
 
     if (state.activeInstruction?.phase === "result_pending") {
       const pendingId = state.activeInstruction.instructionId
+      const pendingPacket = state.activeInstruction.packet
       await this.#completeInstruction(
         state,
-        state.activeInstruction.packet,
+        pendingPacket,
         task.comments,
       )
-      return { status: state.status, instructionId: pendingId }
+      if (
+        pendingPacket.status !== "needs_owner" ||
+        !latestInstruction ||
+        latestInstruction.instructionId === pendingId ||
+        !shouldConsumeInstruction(state, latestInstruction)
+      ) {
+        return {
+          status: state.status,
+          instructionId: pendingId,
+          ownerRequest: state.pendingOwnerRequest,
+        }
+      }
+      await this.store.appendEvent({
+        type: "instruction_takeover_after_owner_stop",
+        supersededInstructionId: pendingId,
+        instructionId: latestInstruction.instructionId,
+      })
+    }
+
+    const takeover = supersedeOwnerStoppedInstruction(state, latestInstruction)
+    if (takeover) {
+      await this.#save(state)
+      await this.store.appendEvent({
+        type: "instruction_takeover_after_owner_stop",
+        ...takeover,
+      })
+    }
+
+    if (state.activeInstruction?.phase === "owner_stopped") {
+      return {
+        status: "needs_owner",
+        instructionId: state.activeInstruction.instructionId,
+        ownerRequest: state.pendingOwnerRequest,
+      }
     }
 
     const instruction = state.activeInstruction ?? latestInstruction
@@ -348,10 +473,18 @@ export class Orchestrator {
         changedFiles: [],
         checks: checks("not_run"),
         ownerQuestion: gate,
+        ownerRequest: compactOwnerRequest({
+          method: "control-plane/ownerGate",
+          reason: gate,
+        }),
         detail: "No Codex turn was started because the owner gate stopped the instruction.",
       }
       await this.#completeInstruction(state, packet, task.comments)
-      return { status: "needs_owner", instructionId: instruction.instructionId }
+      return {
+        status: "needs_owner",
+        instructionId: instruction.instructionId,
+        ownerRequest: state.pendingOwnerRequest,
+      }
     }
 
     const workspace = await ensureWorkspace({
@@ -413,11 +546,16 @@ export class Orchestrator {
         changedFiles: workspaceState.changedFiles,
         checks: checks("fail"),
         ownerQuestion: null,
+        ownerRequest: null,
         detail: error.message,
       }
     }
     await this.#completeInstruction(state, packet, task.comments)
-    return { status: packet.status, instructionId: instruction.instructionId }
+    return {
+      status: packet.status,
+      instructionId: instruction.instructionId,
+      ownerRequest: packet.ownerRequest ?? null,
+    }
   }
 
   async watch({ signal } = {}) {

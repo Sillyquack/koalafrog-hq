@@ -1,6 +1,7 @@
 import { spawn } from "node:child_process"
 import { EventEmitter } from "node:events"
 import readline from "node:readline"
+import { redactForLog } from "./state-store.mjs"
 
 function deferred() {
   let resolve
@@ -37,7 +38,44 @@ function compactProtocolMessage(message) {
   return compact
 }
 
-export function classifyServerRequest(message) {
+function requestSummary(params = {}) {
+  return (
+    params.reason ??
+    params.message ??
+    params.request?.message ??
+    params.questions?.map((question) => question.question).join("; ") ??
+    null
+  )
+}
+
+function toolNameFromSummary(summary) {
+  return String(summary ?? "").match(/\btool\s+["'`]([^"'`]+)["'`]/i)?.[1] ?? null
+}
+
+function matchingMcpToolCall(message, toolCalls) {
+  const calls = [...toolCalls.values()]
+  if (!calls.length) return null
+
+  const itemId = message.params?.itemId
+  if (itemId && toolCalls.has(itemId)) return toolCalls.get(itemId)
+
+  const summary = String(requestSummary(message.params) ?? "").toLowerCase()
+  const toolMatches = calls.filter((item) =>
+    [item.tool, `${item.server}.${item.tool}`]
+      .filter(Boolean)
+      .some((name) => summary.includes(String(name).toLowerCase())),
+  )
+  if (toolMatches.length === 1) return toolMatches[0]
+
+  const serverName = String(message.params?.serverName ?? "").toLowerCase()
+  const serverMatches = calls.filter(
+    (item) => serverName && String(item.server).toLowerCase() === serverName,
+  )
+  if (serverMatches.length === 1) return serverMatches[0]
+  return calls.length === 1 ? calls[0] : null
+}
+
+export function classifyServerRequest(message, mcpToolCall = null) {
   const ownerMethods = new Set([
     "item/commandExecution/requestApproval",
     "item/fileChange/requestApproval",
@@ -48,21 +86,51 @@ export function classifyServerRequest(message) {
     "applyPatchApproval",
     "execCommandApproval",
   ])
-  if (!message?.id || !message.method) return null
+  if (message?.id === undefined || !message.method) return null
 
+  const params = message.params ?? {}
+  const summary = requestSummary(params)
   const reason =
-    message.params?.reason ??
-    message.params?.message ??
-    message.params?.request?.message ??
-    message.params?.questions?.map((question) => question.question).join("; ") ??
+    summary ??
     `${ownerMethods.has(message.method) ? "Codex requires owner input" : "The orchestrator cannot safely answer the server request"} for ${message.method}.`
+  const {
+    threadId: _threadId,
+    turnId: _turnId,
+    itemId: _itemId,
+    ...requestDetails
+  } = params
+  const serverName = params.serverName ?? mcpToolCall?.server ?? null
+  const toolName =
+    params.toolName ??
+    params.tool ??
+    params.request?.toolName ??
+    params.request?.tool ??
+    toolNameFromSummary(summary) ??
+    mcpToolCall?.tool ??
+    null
+  const toolArguments =
+    params.arguments ??
+    params.toolArguments ??
+    params.request?.arguments ??
+    params.request?.params?.arguments ??
+    mcpToolCall?.arguments ??
+    null
   return {
     requestId: message.id,
     method: message.method,
-    threadId: message.params?.threadId ?? null,
-    turnId: message.params?.turnId ?? null,
-    itemId: message.params?.itemId ?? null,
-    reason,
+    threadId: params.threadId ?? null,
+    turnId: params.turnId ?? null,
+    itemId: params.itemId ?? mcpToolCall?.id ?? null,
+    serverName,
+    toolName,
+    arguments: redactForLog(toolArguments),
+    details: redactForLog({
+      ...requestDetails,
+      ...(mcpToolCall?.appContext
+        ? { appContext: mcpToolCall.appContext }
+        : {}),
+    }),
+    reason: redactForLog(String(reason)),
   }
 }
 
@@ -328,22 +396,51 @@ export class AppServerClient extends EventEmitter {
     cwd,
     timeoutMs,
     onTurnStarted = () => {},
+    onOwnerStop = () => {},
   }) {
     let turnId = null
     let pendingOwnerRequest = null
+    let ownerStopPersistence = Promise.resolve()
+    let ownerStopTimer = null
     let agentMessage = ""
     let settled = false
+    const mcpToolCalls = new Map()
     const terminal = deferred()
 
     const complete = (result) => {
       if (settled) return
       settled = true
       cleanup()
-      terminal.resolve(result)
+      ownerStopPersistence.then(
+        () => terminal.resolve(result),
+        (error) => terminal.reject(error),
+      )
+    }
+    const scheduleOwnerStopFallback = () => {
+      clearTimeout(ownerStopTimer)
+      ownerStopTimer = setTimeout(
+        () =>
+          complete({
+            status: "needs_owner",
+            turn: { id: turnId, status: "interrupted", items: [] },
+            pendingOwnerRequest,
+            agentMessage,
+          }),
+        5_000,
+      )
+    }
+    const onItemStarted = (params) => {
+      if (params?.threadId !== threadId) return
+      if (turnId && params?.turnId !== turnId) return
+      if (params.item?.type === "mcpToolCall") {
+        mcpToolCalls.set(params.item.id, params.item)
+      }
     }
     const onItemCompleted = (params) => {
-      if (params?.threadId !== threadId || params?.turnId !== turnId) return
+      if (params?.threadId !== threadId) return
+      if (turnId && params?.turnId !== turnId) return
       if (params.item?.type === "agentMessage") agentMessage = params.item.text ?? ""
+      if (params.item?.type === "mcpToolCall") mcpToolCalls.delete(params.item.id)
     }
     const onTurnCompleted = (params) => {
       if (params?.threadId !== threadId || params?.turn?.id !== turnId) return
@@ -372,27 +469,50 @@ export class AppServerClient extends EventEmitter {
             ...classifyServerRequest(message),
             reason: `Failed to resolve approved server request: ${error.message}`,
           }
+          ownerStopPersistence = ownerStopPersistence.then(() =>
+            onOwnerStop(pendingOwnerRequest),
+          )
+          if (turnId) {
+            void this.request("turn/interrupt", { threadId, turnId }).catch(() => {})
+          }
+          scheduleOwnerStopFallback()
         }
         return
       }
 
-      const ownerRequest = classifyServerRequest(message)
+      const ownerRequest = classifyServerRequest(
+        message,
+        message.method === "mcpServer/elicitation/request"
+          ? matchingMcpToolCall(message, mcpToolCalls)
+          : null,
+      )
       if (!ownerRequest || ownerRequest.threadId !== threadId) return
       if (turnId && ownerRequest.turnId && ownerRequest.turnId !== turnId) return
+      if (!turnId && ownerRequest.turnId) turnId = ownerRequest.turnId
       pendingOwnerRequest = ownerRequest
+      if (message.method === "mcpServer/elicitation/request") {
+        try {
+          this.respond(message.id, { action: "cancel", content: null })
+          Promise.resolve(
+            this.eventSink({
+              type: "server_request_owner_stopped",
+              message: compactProtocolMessage(message),
+            }),
+          ).catch(() => {})
+        } catch (error) {
+          pendingOwnerRequest = {
+            ...ownerRequest,
+            reason: `Failed to cancel owner-gated MCP request: ${error.message}`,
+          }
+        }
+      }
+      ownerStopPersistence = ownerStopPersistence.then(() =>
+        onOwnerStop(pendingOwnerRequest),
+      )
       if (turnId) {
         void this.request("turn/interrupt", { threadId, turnId }).catch(() => {})
       }
-      setTimeout(
-        () =>
-          complete({
-            status: "needs_owner",
-            turn: { id: turnId, status: "interrupted", items: [] },
-            pendingOwnerRequest,
-            agentMessage,
-          }),
-        5_000,
-      )
+      scheduleOwnerStopFallback()
     }
     const timeout = setTimeout(() => {
       if (turnId) {
@@ -412,11 +532,14 @@ export class AppServerClient extends EventEmitter {
     }, timeoutMs)
     const cleanup = () => {
       clearTimeout(timeout)
+      clearTimeout(ownerStopTimer)
+      this.off("item/started", onItemStarted)
       this.off("item/completed", onItemCompleted)
       this.off("turn/completed", onTurnCompleted)
       this.off("server_request", onServerRequest)
     }
 
+    this.on("item/started", onItemStarted)
     this.on("item/completed", onItemCompleted)
     this.on("turn/completed", onTurnCompleted)
     this.on("server_request", onServerRequest)

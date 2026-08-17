@@ -1,6 +1,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import {
+  AppServerClient,
   autoResponseForBoundedCommandApproval,
   autoResponseForBoundedElicitation,
   classifyServerRequest,
@@ -71,6 +72,13 @@ test("bounded approval does not cover unrelated or dangerous GitHub actions", ()
     ),
     null,
   )
+  assert.equal(
+    autoResponseForBoundedElicitation(
+      elicitation('Allow Supabase to run tool "supabase.execute_sql"?'),
+      approvedPrompt,
+    ),
+    null,
+  )
 })
 
 test("bounded audited orchestrator command is accepted only after matching owner approval", () => {
@@ -124,4 +132,123 @@ test("nested elicitation messages remain visible to owner classification", () =>
     classifyServerRequest(request).reason,
     "Allow GitHub to create a Git tree?",
   )
+})
+
+test("MCP elicitation captures redacted tool details from the active MCP item", () => {
+  const request = classifyServerRequest(
+    {
+      id: 0,
+      method: "mcpServer/elicitation/request",
+      params: {
+        threadId: "thread-1",
+        turnId: "turn-1",
+        serverName: "Supabase",
+        mode: "form",
+        message: 'Allow Supabase to run tool "supabase.execute_sql"?',
+        requestedSchema: { type: "object" },
+      },
+    },
+    {
+      id: "mcp-1",
+      type: "mcpToolCall",
+      server: "supabase",
+      tool: "execute_sql",
+      arguments: {
+        query: "select id from public.workspaces limit 1",
+        password: "do-not-expose",
+      },
+    },
+  )
+
+  assert.equal(request.requestId, 0)
+  assert.equal(request.method, "mcpServer/elicitation/request")
+  assert.equal(request.serverName, "Supabase")
+  assert.equal(request.toolName, "supabase.execute_sql")
+  assert.equal(request.arguments.query, "select id from public.workspaces limit 1")
+  assert.equal(request.arguments.password, "[redacted]")
+  assert.deepEqual(request.details.requestedSchema, { type: "object" })
+})
+
+test("issue #56 waiting MCP approval is cancelled and returned as needs_owner", async () => {
+  const client = new AppServerClient({ cwd: "/tmp" })
+  const responses = []
+  const ownerStops = []
+  let startedTurns = 0
+
+  client.respond = (requestId, result) => responses.push({ requestId, result })
+  client.request = async (method) => {
+    if (method === "turn/start") {
+      client.emit("item/started", {
+        threadId: "thread-56",
+        turnId: "turn-56",
+        item: {
+          id: "mcp-56",
+          type: "mcpToolCall",
+          server: "supabase",
+          tool: "execute_sql",
+          status: "inProgress",
+          arguments: {
+            query: "select id from public.workspaces limit 1",
+            authorization: "Bearer visible-token",
+          },
+        },
+      })
+      client.emit("server_request", {
+        id: 56,
+        method: "mcpServer/elicitation/request",
+        params: {
+          threadId: "thread-56",
+          turnId: "turn-56",
+          serverName: "Supabase",
+          mode: "form",
+          message: 'Allow Supabase to run tool "supabase.execute_sql"?',
+          requestedSchema: { type: "object" },
+        },
+      })
+      client.emit("thread/status/changed", {
+        threadId: "thread-56",
+        status: { type: "active", activeFlags: ["waitingOnApproval"] },
+      })
+      return { turn: { id: "turn-56" } }
+    }
+    if (method === "turn/interrupt") {
+      setTimeout(
+        () =>
+          client.emit("turn/completed", {
+            threadId: "thread-56",
+            turn: { id: "turn-56", status: "interrupted", items: [] },
+          }),
+        0,
+      )
+      return {}
+    }
+    throw new Error(`Unexpected request: ${method}`)
+  }
+
+  const result = await client.runTurn({
+    threadId: "thread-56",
+    prompt: "Diagnose issue #56 without production writes.",
+    cwd: "/tmp",
+    timeoutMs: 1_000,
+    onTurnStarted: async () => {
+      startedTurns += 1
+    },
+    onOwnerStop: async (request) => {
+      ownerStops.push(request)
+    },
+  })
+
+  assert.equal(startedTurns, 1)
+  assert.equal(result.status, "needs_owner")
+  assert.deepEqual(responses, [
+    { requestId: 56, result: { action: "cancel", content: null } },
+  ])
+  assert.equal(ownerStops.length, 1)
+  assert.equal(result.pendingOwnerRequest.method, "mcpServer/elicitation/request")
+  assert.equal(result.pendingOwnerRequest.toolName, "supabase.execute_sql")
+  assert.equal(
+    result.pendingOwnerRequest.arguments.query,
+    "select id from public.workspaces limit 1",
+  )
+  assert.equal(result.pendingOwnerRequest.arguments.authorization, "[redacted]")
 })

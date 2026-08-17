@@ -179,6 +179,14 @@ export function formatCompletionPacket(packet) {
     ? `\nChanged files:\n${packet.changedFiles.map((file) => `- \`${file}\``).join("\n")}`
     : "\nChanged files: none"
   const detail = packet.detail ? `\n\n${packet.detail}` : ""
+  const ownerRequest = packet.ownerRequest
+    ? `  owner_request:
+    method: ${yamlScalar(packet.ownerRequest.method)}
+    server: ${yamlScalar(packet.ownerRequest.serverName)}
+    tool: ${yamlScalar(packet.ownerRequest.toolName)}
+    arguments: ${yamlScalar(packet.ownerRequest.arguments === null ? null : JSON.stringify(packet.ownerRequest.arguments))}
+    details: ${yamlScalar(packet.ownerRequest.details === null ? null : JSON.stringify(packet.ownerRequest.details))}`
+    : "  owner_request: null"
 
   return `\`\`\`yaml
 agent_result:
@@ -193,5 +201,6 @@ ${commits}
     tests: ${packet.checks.tests}
     build: ${packet.checks.build}
   owner_question: ${yamlScalar(packet.ownerQuestion)}
+${ownerRequest}
 \`\`\`${files}${detail}`
 }
