@@ -1,5 +1,30 @@
 # Beard trim overlay v1
 
+## VAL-0011 production trace
+
+The safe diagnostic for support ID
+`ab4588c9-f3bb-4cdd-9478-e6522d98ff2d` recorded a completed OpenAI response
+that passed JSON parsing and provider schema validation, then failed
+`ContractValidation` at `$.trimOverlay` with VAL-0011. Both the expected and
+received categories were `object`, and no rejected result payload was stored.
+The private annotation values therefore cannot and should not be reconstructed.
+
+The internal mismatch was structural. The provider schema treated
+`guidanceType`, `geometry.type`, `guardMm`, and `trimDirection` as independent
+fields and allowed two points for every geometry. The v1 contract instead
+treats them as a discriminated shape: line guidance requires a polyline with at
+least two distinct points and no tool metadata; trim/blend regions require a
+polygon with at least three distinct, non-collinear points; and do-not-cross
+regions also prohibit tool metadata. A schema-admitted object could therefore
+be rejected as an object by the stricter contract validator.
+
+The provider schema now encodes the line, trim/blend, and do-not-cross variants
+separately and applies the correct minimum point count. The in-process schema
+validator enforces array cardinality as well. Geometry properties that JSON
+Schema cannot prove, including distinct points, non-zero polygon area, and
+unique source views, remain fail-closed in the v1 contract validator. Rejected
+results are still never persisted.
+
 ## VAL-0030 production trace
 
 The 2026-08-16 failure at

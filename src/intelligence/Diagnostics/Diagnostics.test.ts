@@ -164,6 +164,24 @@ describe("shared intelligence diagnostics", () => {
       JSON.stringify(validateStructuredValue("private", { anyOf: [] })),
     ).not.toContain("private");
   });
+  it.each([
+    ["too few", [], { minItems: 1 }],
+    ["too many", [1, 2, 3], { maxItems: 2 }],
+  ])("rejects arrays with %s items", (_name, value, bounds) => {
+    expect(validateStructuredValue(value, {
+      type: "array",
+      items: { type: "number" },
+      ...bounds,
+    })).toMatchObject({
+      success: false,
+      ruleCode: "VAL-0017",
+      jsonPath: "$",
+      expected: "array",
+      received: "array",
+      validator: "json-schema",
+      stage: "SchemaValidation",
+    });
+  });
   it("classifies cleanup acknowledgement and verification independently", () => {
     expect(
       verifyCleanup({

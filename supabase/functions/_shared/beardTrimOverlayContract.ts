@@ -143,6 +143,74 @@ const pointSchema = {
   },
 } as const;
 
+const nullableGuardSchema = {
+  type: ["number", "null"],
+  minimum: 0.1,
+  maximum: 40,
+} as const;
+
+const nullableDirectionSchema = {
+  type: ["string", "null"],
+  enum: [...beardTrimOverlayDirections, null],
+} as const;
+
+const nullSchema = { type: "null" } as const;
+
+const annotationSchema = (
+  guidanceTypes: readonly string[],
+  geometryType: "polyline" | "polygon",
+  minimumPoints: number,
+  allowToolMetadata: boolean,
+) => ({
+  type: "object",
+  additionalProperties: false,
+  required: [
+    "guidanceType",
+    "geometry",
+    "zoneReference",
+    "guardMm",
+    "trimDirection",
+    "confidence",
+  ],
+  properties: {
+    guidanceType: { type: "string", enum: guidanceTypes },
+    geometry: {
+      type: "object",
+      additionalProperties: false,
+      required: ["type", "points"],
+      properties: {
+        type: { type: "string", const: geometryType },
+        points: {
+          type: "array",
+          minItems: minimumPoints,
+          maxItems: 64,
+          items: pointSchema,
+        },
+      },
+    },
+    zoneReference: {
+      type: ["string", "null"],
+      enum: [...beardTrimOverlayZoneReferences, null],
+    },
+    guardMm: allowToolMetadata ? nullableGuardSchema : nullSchema,
+    trimDirection: allowToolMetadata ? nullableDirectionSchema : nullSchema,
+    confidence: { type: "number", minimum: 0, maximum: 1 },
+  },
+}) as const;
+
+const overlayAnnotationProviderSchema = {
+  anyOf: [
+    annotationSchema(["neckline", "cheek_line"], "polyline", 2, false),
+    annotationSchema(
+      ["trim_remove", "blend_transition"],
+      "polygon",
+      3,
+      true,
+    ),
+    annotationSchema(["keep_do_not_cross"], "polygon", 3, false),
+  ],
+} as const;
+
 export const beardTrimOverlayProviderSchema = {
   type: ["object", "null"],
   additionalProperties: false,
@@ -177,55 +245,7 @@ export const beardTrimOverlayProviderSchema = {
             type: "array",
             minItems: 1,
             maxItems: 24,
-            items: {
-              type: "object",
-              additionalProperties: false,
-              required: [
-                "guidanceType",
-                "geometry",
-                "zoneReference",
-                "guardMm",
-                "trimDirection",
-                "confidence",
-              ],
-              properties: {
-                guidanceType: {
-                  type: "string",
-                  enum: beardTrimOverlayGuidanceTypes,
-                },
-                geometry: {
-                  type: "object",
-                  additionalProperties: false,
-                  required: ["type", "points"],
-                  properties: {
-                    type: {
-                      type: "string",
-                      enum: ["polyline", "polygon"],
-                    },
-                    points: {
-                      type: "array",
-                      minItems: 2,
-                      maxItems: 64,
-                      items: pointSchema,
-                    },
-                  },
-                },
-                zoneReference: {
-                  type: ["string", "null"],
-                  enum: [...beardTrimOverlayZoneReferences, null],
-                },
-                guardMm: {
-                  type: ["number", "null"],
-                  minimum: 0.1,
-                  maximum: 40,
-                },
-                trimDirection: {
-                  type: ["string", "null"],
-                  enum: [...beardTrimOverlayDirections, null],
-                },
-                confidence: { type: "number", minimum: 0, maximum: 1 },
-              },
-            },
+            items: overlayAnnotationProviderSchema,
           },
         },
       },

@@ -13,6 +13,8 @@ export interface StructuredSchemaNode {
   enum?: readonly unknown[];
   minimum?: number;
   maximum?: number;
+  minItems?: number;
+  maxItems?: number;
   properties?: Readonly<Record<string, StructuredSchemaNode>>;
   required?: readonly string[];
   additionalProperties?: boolean;
@@ -153,6 +155,19 @@ export function validateStructuredValue(
     }
   }
   if (Array.isArray(value) && schema.items) {
+    if (
+      (schema.minItems != null && value.length < schema.minItems) ||
+      (schema.maxItems != null && value.length > schema.maxItems)
+    ) {
+      return validationFailure({
+        ruleCode: intelligenceRuleCodes.rangeViolation,
+        jsonPath: path,
+        expected: "array",
+        received: "array",
+        validator: "json-schema",
+        stage: "SchemaValidation",
+      });
+    }
     for (const [index, item] of value.entries()) {
       const result = validateStructuredValue(
         item,

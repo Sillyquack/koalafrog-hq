@@ -186,6 +186,67 @@ describe("beard trim overlay v1 contract", () => {
     );
   });
 
+  it("rejects the production object/object failure class at the provider boundary", () => {
+    const result = analysis();
+    const region = result.trimOverlay!.views[0].annotations[1];
+    region.geometry.points = region.geometry.points.slice(0, 2);
+
+    expect(validateBeardPhotoContract(result)).toMatchObject({
+      success: false,
+      ruleCode: "VAL-0011",
+      jsonPath: "$.trimOverlay",
+      expected: "object",
+      received: "object",
+      validator: "beard-contract",
+      stage: "ContractValidation",
+    });
+    expect(validateStructuredValue(result, providerSchema())).toMatchObject({
+      success: false,
+      ruleCode: "VAL-0017",
+      jsonPath: "$.trimOverlay.views[0].annotations[1].geometry.points",
+      expected: "array",
+      received: "array",
+      validator: "json-schema",
+      stage: "SchemaValidation",
+    });
+    expect(validateBeardPhotoAnalysisResult(result)).toBe(false);
+  });
+
+  it.each([
+    ["polygon line guidance", (value: BeardTrimOverlay) => {
+      value.views[0].annotations[0].geometry.type = "polygon";
+    }, "$.trimOverlay.views[0].annotations[0].geometry.type"],
+    ["polyline region guidance", (value: BeardTrimOverlay) => {
+      value.views[0].annotations[1].geometry.type = "polyline";
+    }, "$.trimOverlay.views[0].annotations[1].geometry.type"],
+    ["guard metadata on line guidance", (value: BeardTrimOverlay) => {
+      value.views[0].annotations[0].guardMm = 4;
+    }, undefined],
+    ["direction metadata on do-not-cross guidance", (value: BeardTrimOverlay) => {
+      value.views[0].annotations[3].trimDirection = "against growth";
+    }, "$.trimOverlay.views[0].annotations[3].trimDirection"],
+  ])("rejects malformed %s before contract validation", (_name, mutate, path) => {
+    const result = analysis();
+    mutate(result.trimOverlay!);
+
+    expect(validateStructuredValue(result, providerSchema())).toMatchObject({
+      success: false,
+      ...(path ? { jsonPath: path } : {}),
+      validator: "json-schema",
+      stage: "SchemaValidation",
+    });
+    expect(validateBeardPhotoContract(result)).toMatchObject({
+      success: false,
+      ruleCode: "VAL-0011",
+      jsonPath: "$.trimOverlay",
+      expected: "object",
+      received: "object",
+      validator: "beard-contract",
+      stage: "ContractValidation",
+    });
+    expect(validateBeardPhotoAnalysisResult(result)).toBe(false);
+  });
+
   it.each([
     ["out-of-range coordinate", (value: BeardTrimOverlay) => {
       value.views[0].annotations[0].geometry.points[0].x = 1.01;
