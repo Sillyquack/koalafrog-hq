@@ -101,10 +101,12 @@ test("event redaction removes credential-shaped values", () => {
     authorization: "Bearer visible-token",
     nested: {
       password: "secret",
+      apiKey: "also-secret",
       message: "Bearer another-token ghp_123456789012345678901234567890123456",
     },
   })
   assert.equal(redacted.authorization, "[redacted]")
   assert.equal(redacted.nested.password, "[redacted]")
+  assert.equal(redacted.nested.apiKey, "[redacted]")
   assert.equal(redacted.nested.message, "Bearer [redacted] [redacted]")
 })

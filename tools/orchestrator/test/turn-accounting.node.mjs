@@ -3,7 +3,10 @@ import { mkdtemp, rm } from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
 import test from "node:test"
-import { beginInstruction } from "../src/orchestrator.mjs"
+import {
+  beginInstruction,
+  supersedeOwnerStoppedInstruction,
+} from "../src/orchestrator.mjs"
 import { StateStore } from "../src/state-store.mjs"
 import {
   canStartInstructionTurn,
@@ -150,4 +153,87 @@ test("legacy active state infers its consumed instruction turns", async (t) => {
   const reloaded = await restarted.load()
   assert.equal(reloaded.turnCount, 7)
   assert.equal(reloaded.activeInstruction.turnCount, 3)
+})
+
+test("issue #56 owner stop lets instruction 002 take over without double-counting", () => {
+  const selectedAt = new Date("2026-08-17T08:25:55.000Z")
+  const state = {
+    status: "needs_owner",
+    threadId: "thread-56",
+    branch: "agent/issue-56",
+    turnCount: 1,
+    retryCount: 0,
+    lastConsumedInstructionId: null,
+    pendingOwnerRequest: {
+      method: "mcpServer/elicitation/request",
+      serverName: "Supabase",
+      toolName: "supabase.execute_sql",
+      arguments: { query: "select id from public.workspaces limit 1" },
+      reason: 'Allow Supabase to run tool "supabase.execute_sql"?',
+    },
+    activeInstruction: {
+      action: "start",
+      instructionId: "beard-analysis-client-reachability-001",
+      maxTurns: 12,
+      phase: "owner_stopped",
+      attempts: 0,
+      turnCount: 1,
+      turnId: "turn-56",
+    },
+    runs: [],
+  }
+  const newerInstruction = {
+    action: "continue",
+    taskState: "ready",
+    instructionId: "beard-analysis-client-reachability-002",
+    maxTurns: 12,
+    ownerApprovalRequired: false,
+    prompt: "Continue without invoking supabase.execute_sql.",
+  }
+
+  const takeover = supersedeOwnerStoppedInstruction(
+    state,
+    newerInstruction,
+    selectedAt,
+  )
+
+  assert.deepEqual(takeover, {
+    supersededInstructionId: "beard-analysis-client-reachability-001",
+    instructionId: "beard-analysis-client-reachability-002",
+    ownerRequest: {
+      method: "mcpServer/elicitation/request",
+      serverName: "Supabase",
+      toolName: "supabase.execute_sql",
+      arguments: { query: "select id from public.workspaces limit 1" },
+      reason: 'Allow Supabase to run tool "supabase.execute_sql"?',
+    },
+  })
+  assert.equal(state.lastConsumedInstructionId, "beard-analysis-client-reachability-001")
+  assert.equal(state.runs.length, 1)
+  assert.equal(state.runs[0].status, "needs_owner")
+  assert.equal(state.runs[0].turnCount, 1)
+  assert.equal(
+    state.activeInstruction.instructionId,
+    "beard-analysis-client-reachability-002",
+  )
+  assert.equal(state.activeInstruction.phase, "selected")
+  assert.equal(state.activeInstruction.turnCount, 0)
+  assert.equal(state.pendingOwnerRequest, null)
+  assert.equal(state.status, "ready")
+  assert.equal(state.turnCount, 1)
+
+  assert.equal(
+    supersedeOwnerStoppedInstruction(state, newerInstruction, selectedAt),
+    null,
+  )
+  assert.equal(
+    recordInstructionTurnStarted(state, { turnId: "turn-57", attempt: 0 }),
+    true,
+  )
+  assert.equal(
+    recordInstructionTurnStarted(state, { turnId: "turn-57", attempt: 0 }),
+    false,
+  )
+  assert.equal(state.turnCount, 2)
+  assert.equal(state.activeInstruction.turnCount, 1)
 })

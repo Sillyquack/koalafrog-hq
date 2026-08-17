@@ -6,16 +6,24 @@ function redactString(value) {
   return value
     .replace(/Bearer\s+[A-Za-z0-9._~+/=-]+/gi, "Bearer [redacted]")
     .replace(
+      /\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/g,
+      "[redacted]",
+    )
+    .replace(
       /\b(?:gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|sk-[A-Za-z0-9_-]{12,})\b/g,
       "[redacted]",
     )
     .replace(
-      /([?&](?:sig|token|key|secret|password)=)[^&\s]+/gi,
+      /([?&](?:access[_-]?key|api[_-]?key|sig|token|key|secret|password)=)[^&\s]+/gi,
       "$1[redacted]",
     )
     .replace(
       /\b([A-Z0-9_]*(?:TOKEN|KEY|SECRET|PASSWORD))=\S+/g,
       "$1=[redacted]",
+    )
+    .replace(
+      /(["']?(?:access[_-]?token|api[_-]?key|authorization|credential|password|secret|service[_-]?role[_-]?key|token)["']?\s*(?::|=>|=)\s*)(?:"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|[^,}\s;]+)/gi,
+      "$1[redacted]",
     )
 }
 
@@ -29,7 +37,11 @@ export function redactForLog(value, seen = new WeakSet()) {
 
   const redacted = {}
   for (const [key, item] of Object.entries(value)) {
-    if (/token|password|secret|authorization|credential/i.test(key)) {
+    if (
+      /token|password|secret|authorization|credential|api[_-]?key|private[_-]?key|service[_-]?role/i.test(
+        key,
+      )
+    ) {
       redacted[key] = "[redacted]"
     } else {
       redacted[key] = redactForLog(item, seen)

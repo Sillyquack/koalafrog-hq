@@ -140,3 +140,35 @@ test("empty commits use the exact inline array shape", () => {
   })
   assert.match(body, /^  commits: \[\]$/m)
 })
+
+test("needs_owner packet exposes structured MCP request details", () => {
+  const body = formatCompletionPacket({
+    instructionId: "beard-analysis-client-reachability-001",
+    codexThreadId: "thread-56",
+    status: "needs_owner",
+    branch: "agent/issue-56",
+    commits: [],
+    changedFiles: [],
+    checks: {
+      typecheck: "not_run",
+      lint: "not_run",
+      tests: "pass",
+      build: "not_run",
+    },
+    ownerQuestion: 'Allow Supabase to run tool "supabase.execute_sql"?',
+    ownerRequest: {
+      method: "mcpServer/elicitation/request",
+      serverName: "Supabase",
+      toolName: "supabase.execute_sql",
+      arguments: { query: "select id from public.workspaces limit 1" },
+      details: { mode: "form" },
+    },
+  })
+
+  assert.match(body, /status: needs_owner/)
+  assert.match(body, /owner_request:/)
+  assert.match(body, /method: "mcpServer\/elicitation\/request"/)
+  assert.match(body, /server: "Supabase"/)
+  assert.match(body, /tool: "supabase.execute_sql"/)
+  assert.match(body, /select id from public\.workspaces limit 1/)
+})
