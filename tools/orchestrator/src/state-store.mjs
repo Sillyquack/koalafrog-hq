@@ -1,5 +1,6 @@
 import { appendFile, chmod, mkdir, readFile, rename, writeFile } from "node:fs/promises"
 import path from "node:path"
+import { normalizeTurnAccounting } from "./turn-accounting.mjs"
 
 function redactString(value) {
   return value
@@ -78,7 +79,7 @@ export class StateStore {
       if (parsed.schemaVersion !== 1) {
         throw new Error(`Unsupported state schema: ${parsed.schemaVersion}`)
       }
-      return parsed
+      return normalizeTurnAccounting(parsed)
     } catch (error) {
       if (error.code !== "ENOENT") throw error
       const state = initialState({

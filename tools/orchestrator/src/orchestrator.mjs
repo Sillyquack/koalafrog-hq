@@ -11,6 +11,12 @@ import {
 import { GithubControlPlane } from "./github-control-plane.mjs"
 import { redactForLog, StateStore } from "./state-store.mjs"
 import {
+  canStartInstructionTurn,
+  instructionTurnCount,
+  normalizeTurnAccounting,
+  recordInstructionTurnStarted,
+} from "./turn-accounting.mjs"
+import {
   assertAllowedChanges,
   commitWorkspaceChanges,
   ensureWorkspace,
@@ -48,6 +54,19 @@ function checks(tests) {
     tests,
     build: "not_run",
   }
+}
+
+export function beginInstruction(state, instruction, selectedAt = new Date()) {
+  normalizeTurnAccounting(state)
+  const priorTurnCount = instructionTurnCount(state, instruction.instructionId)
+  state.activeInstruction = {
+    ...instruction,
+    phase: "selected",
+    attempts: 0,
+    turnCount: priorTurnCount,
+    selectedAt: selectedAt.toISOString(),
+  }
+  return state.activeInstruction
 }
 
 export async function ensureTaskThread({
@@ -151,6 +170,7 @@ export class Orchestrator {
       threadId: packet.codexThreadId,
       branch: packet.branch,
       commits: packet.commits,
+      turnCount: instructionTurnCount(state, packet.instructionId),
       completedAt: new Date().toISOString(),
     })
     state.activeInstruction = null
@@ -220,7 +240,7 @@ export class Orchestrator {
       attempt <= this.config.maxRetries;
       attempt += 1
     ) {
-      if (state.turnCount >= maxTurns) {
+      if (!canStartInstructionTurn(state, maxTurns)) {
         return {
           status: "failed",
           turn: {
@@ -240,12 +260,9 @@ export class Orchestrator {
         timeoutMs: this.config.turnTimeoutMs,
         prompt: `${retryPrefix}${promptForInstruction(instruction, this.config.allowedPaths)}`,
         onTurnStarted: async (turnId) => {
-          state.turnCount += 1
+          recordInstructionTurnStarted(state, { turnId, attempt })
           state.retryCount = attempt
           state.status = "running"
-          state.activeInstruction.phase = "turn_started"
-          state.activeInstruction.turnId = turnId
-          state.activeInstruction.attempts = attempt
           await this.#save(state)
         },
       })
@@ -308,12 +325,7 @@ export class Orchestrator {
     }
 
     if (!state.activeInstruction) {
-      state.activeInstruction = {
-        ...instruction,
-        phase: "selected",
-        attempts: 0,
-        selectedAt: new Date().toISOString(),
-      }
+      beginInstruction(state, instruction)
       await this.#save(state)
     }
 
