@@ -20,8 +20,8 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 12390,
-        "lines": 138
+        "bytes": 12826,
+        "lines": 142
       }
     },
     {
@@ -1909,8 +1909,24 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 19486,
+        "bytes": 19485,
         "lines": 68
+      }
+    },
+    {
+      "canonicalRepository": null,
+      "classification": "canonical_read_model",
+      "crossDomainDependencies": [],
+      "domainOwner": "ingredients",
+      "legacyDependency": [],
+      "modulePath": "src/features/ingredients/components/SupplierProductPriceInput.test.ts",
+      "objectType": "module",
+      "responsibility": "module",
+      "riskNotes": [],
+      "serverAuthoritativePoliciesConsumed": [],
+      "sizeMetrics": {
+        "bytes": 499,
+        "lines": 12
       }
     },
     {
@@ -3367,8 +3383,8 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 2426,
-        "lines": 47
+        "bytes": 6671,
+        "lines": 99
       }
     },
     {
@@ -3383,8 +3399,8 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 2493,
-        "lines": 25
+        "bytes": 5808,
+        "lines": 54
       }
     },
     {
@@ -3401,8 +3417,40 @@
         "../data/procurementRepository"
       ],
       "sizeMetrics": {
-        "bytes": 1904,
+        "bytes": 2044,
         "lines": 3
+      }
+    },
+    {
+      "canonicalRepository": null,
+      "classification": "canonical_read_model",
+      "crossDomainDependencies": [],
+      "domainOwner": "procurement",
+      "legacyDependency": [],
+      "modulePath": "src/features/procurement/components/FollowUpResearchForm.tsx",
+      "objectType": "module",
+      "responsibility": "module",
+      "riskNotes": [],
+      "serverAuthoritativePoliciesConsumed": [],
+      "sizeMetrics": {
+        "bytes": 4187,
+        "lines": 44
+      }
+    },
+    {
+      "canonicalRepository": null,
+      "classification": "canonical_read_model",
+      "crossDomainDependencies": [],
+      "domainOwner": "procurement",
+      "legacyDependency": [],
+      "modulePath": "src/features/procurement/components/followUpResearchUi.test.ts",
+      "objectType": "module",
+      "responsibility": "module",
+      "riskNotes": [],
+      "serverAuthoritativePoliciesConsumed": [],
+      "sizeMetrics": {
+        "bytes": 1620,
+        "lines": 33
       }
     },
     {
@@ -3449,8 +3497,8 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 9625,
-        "lines": 25
+        "bytes": 12366,
+        "lines": 76
       }
     },
     {
@@ -3606,13 +3654,29 @@
       "crossDomainDependencies": [],
       "domainOwner": "procurement",
       "legacyDependency": [],
+      "modulePath": "src/features/procurement/data/followUpResearch.integration.test.ts",
+      "objectType": "module",
+      "responsibility": "module",
+      "riskNotes": [],
+      "serverAuthoritativePoliciesConsumed": [],
+      "sizeMetrics": {
+        "bytes": 15495,
+        "lines": 138
+      }
+    },
+    {
+      "canonicalRepository": null,
+      "classification": "canonical_read_model",
+      "crossDomainDependencies": [],
+      "domainOwner": "procurement",
+      "legacyDependency": [],
       "modulePath": "src/features/procurement/data/procurementInterchange.test.ts",
       "objectType": "module",
       "responsibility": "module",
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 3467,
+        "bytes": 3605,
         "lines": 14
       }
     },
@@ -3673,8 +3737,8 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 23732,
-        "lines": 155
+        "bytes": 26299,
+        "lines": 192
       }
     },
     {
@@ -3705,7 +3769,7 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 2258,
+        "bytes": 3062,
         "lines": 5
       }
     },
@@ -3721,8 +3785,8 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 6313,
-        "lines": 20
+        "bytes": 7368,
+        "lines": 23
       }
     },
     {
@@ -3763,14 +3827,46 @@
       "crossDomainDependencies": [],
       "domainOwner": "procurement",
       "legacyDependency": [],
+      "modulePath": "src/features/procurement/domain/followUpResearch.test.ts",
+      "objectType": "domain_module",
+      "responsibility": "domain module",
+      "riskNotes": [],
+      "serverAuthoritativePoliciesConsumed": [],
+      "sizeMetrics": {
+        "bytes": 3968,
+        "lines": 37
+      }
+    },
+    {
+      "canonicalRepository": null,
+      "classification": "canonical_read_model",
+      "crossDomainDependencies": [],
+      "domainOwner": "procurement",
+      "legacyDependency": [],
+      "modulePath": "src/features/procurement/domain/followUpResearch.ts",
+      "objectType": "domain_module",
+      "responsibility": "domain module",
+      "riskNotes": [],
+      "serverAuthoritativePoliciesConsumed": [],
+      "sizeMetrics": {
+        "bytes": 4033,
+        "lines": 80
+      }
+    },
+    {
+      "canonicalRepository": null,
+      "classification": "canonical_read_model",
+      "crossDomainDependencies": [],
+      "domainOwner": "procurement",
+      "legacyDependency": [],
       "modulePath": "src/features/procurement/domain/liveResearchContract.test.ts",
       "objectType": "domain_module",
       "responsibility": "domain module",
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 3560,
-        "lines": 14
+        "bytes": 6506,
+        "lines": 18
       }
     },
     {
@@ -3817,7 +3913,7 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 32908,
+        "bytes": 33188,
         "lines": 131
       }
     },
@@ -3833,7 +3929,7 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 2193,
+        "bytes": 2227,
         "lines": 13
       }
     },
@@ -4162,7 +4258,7 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 16768,
+        "bytes": 17452,
         "lines": 50
       }
     },
@@ -4649,8 +4745,8 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 4960,
-        "lines": 108
+        "bytes": 6342,
+        "lines": 125
       }
     },
     {
@@ -4665,7 +4761,7 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 3946,
+        "bytes": 4001,
         "lines": 49
       }
     },
@@ -4713,8 +4809,8 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 6832,
-        "lines": 158
+        "bytes": 9281,
+        "lines": 191
       }
     },
     {
@@ -4745,7 +4841,7 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 1416,
+        "bytes": 2320,
         "lines": 5
       }
     },
@@ -4761,8 +4857,8 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 7959,
-        "lines": 13
+        "bytes": 8748,
+        "lines": 15
       }
     },
     {
@@ -5351,6 +5447,102 @@
     {
       "canonicalRepository": null,
       "classification": "canonical_read_model",
+      "crossDomainDependencies": [],
+      "domainOwner": "product-studio",
+      "legacyDependency": [],
+      "modulePath": "src/features/product-studio/domain/footCareBenchmarks.test.ts",
+      "objectType": "domain_module",
+      "responsibility": "domain module",
+      "riskNotes": [],
+      "serverAuthoritativePoliciesConsumed": [],
+      "sizeMetrics": {
+        "bytes": 2683,
+        "lines": 49
+      }
+    },
+    {
+      "canonicalRepository": null,
+      "classification": "canonical_read_model",
+      "crossDomainDependencies": [],
+      "domainOwner": "product-studio",
+      "legacyDependency": [],
+      "modulePath": "src/features/product-studio/domain/footCareBenchmarks.ts",
+      "objectType": "domain_module",
+      "responsibility": "domain module",
+      "riskNotes": [],
+      "serverAuthoritativePoliciesConsumed": [],
+      "sizeMetrics": {
+        "bytes": 18111,
+        "lines": 239
+      }
+    },
+    {
+      "canonicalRepository": null,
+      "classification": "canonical_read_model",
+      "crossDomainDependencies": [],
+      "domainOwner": "product-studio",
+      "legacyDependency": [],
+      "modulePath": "src/features/product-studio/domain/footCareProcurement.integration.test.ts",
+      "objectType": "domain_module",
+      "responsibility": "domain module",
+      "riskNotes": [],
+      "serverAuthoritativePoliciesConsumed": [],
+      "sizeMetrics": {
+        "bytes": 11870,
+        "lines": 157
+      }
+    },
+    {
+      "canonicalRepository": null,
+      "classification": "canonical_read_model",
+      "crossDomainDependencies": [],
+      "domainOwner": "product-studio",
+      "legacyDependency": [],
+      "modulePath": "src/features/product-studio/domain/footCareProcurement.test.ts",
+      "objectType": "domain_module",
+      "responsibility": "domain module",
+      "riskNotes": [],
+      "serverAuthoritativePoliciesConsumed": [],
+      "sizeMetrics": {
+        "bytes": 5706,
+        "lines": 83
+      }
+    },
+    {
+      "canonicalRepository": null,
+      "classification": "canonical_read_model",
+      "crossDomainDependencies": [],
+      "domainOwner": "product-studio",
+      "legacyDependency": [],
+      "modulePath": "src/features/product-studio/domain/footCareProcurement.ts",
+      "objectType": "domain_module",
+      "responsibility": "domain module",
+      "riskNotes": [],
+      "serverAuthoritativePoliciesConsumed": [],
+      "sizeMetrics": {
+        "bytes": 3193,
+        "lines": 73
+      }
+    },
+    {
+      "canonicalRepository": null,
+      "classification": "canonical_read_model",
+      "crossDomainDependencies": [],
+      "domainOwner": "product-studio",
+      "legacyDependency": [],
+      "modulePath": "src/features/product-studio/domain/footCareProjects.ts",
+      "objectType": "domain_module",
+      "responsibility": "domain module",
+      "riskNotes": [],
+      "serverAuthoritativePoliciesConsumed": [],
+      "sizeMetrics": {
+        "bytes": 2065,
+        "lines": 50
+      }
+    },
+    {
+      "canonicalRepository": null,
+      "classification": "canonical_read_model",
       "crossDomainDependencies": [
         "../../formulas/domain/multiPhaseLogic"
       ],
@@ -5362,8 +5554,8 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 4732,
-        "lines": 51
+        "bytes": 4871,
+        "lines": 52
       }
     },
     {
@@ -5380,8 +5572,40 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 18842,
-        "lines": 159
+        "bytes": 19747,
+        "lines": 160
+      }
+    },
+    {
+      "canonicalRepository": null,
+      "classification": "canonical_read_model",
+      "crossDomainDependencies": [],
+      "domainOwner": "product-studio",
+      "legacyDependency": [],
+      "modulePath": "src/features/product-studio/domain/fragrance.test.ts",
+      "objectType": "domain_module",
+      "responsibility": "domain module",
+      "riskNotes": [],
+      "serverAuthoritativePoliciesConsumed": [],
+      "sizeMetrics": {
+        "bytes": 2176,
+        "lines": 37
+      }
+    },
+    {
+      "canonicalRepository": null,
+      "classification": "canonical_read_model",
+      "crossDomainDependencies": [],
+      "domainOwner": "product-studio",
+      "legacyDependency": [],
+      "modulePath": "src/features/product-studio/domain/fragrance.ts",
+      "objectType": "domain_module",
+      "responsibility": "domain module",
+      "riskNotes": [],
+      "serverAuthoritativePoliciesConsumed": [],
+      "sizeMetrics": {
+        "bytes": 4037,
+        "lines": 44
       }
     },
     {
@@ -5454,6 +5678,54 @@
       "crossDomainDependencies": [],
       "domainOwner": "product-studio",
       "legacyDependency": [],
+      "modulePath": "src/features/product-studio/FootCareStudioPage.tsx",
+      "objectType": "route_module",
+      "responsibility": "route module",
+      "riskNotes": [],
+      "serverAuthoritativePoliciesConsumed": [],
+      "sizeMetrics": {
+        "bytes": 12276,
+        "lines": 107
+      }
+    },
+    {
+      "canonicalRepository": null,
+      "classification": "canonical_read_model",
+      "crossDomainDependencies": [],
+      "domainOwner": "product-studio",
+      "legacyDependency": [],
+      "modulePath": "src/features/product-studio/footCareUi.test.ts",
+      "objectType": "module",
+      "responsibility": "module",
+      "riskNotes": [],
+      "serverAuthoritativePoliciesConsumed": [],
+      "sizeMetrics": {
+        "bytes": 2929,
+        "lines": 55
+      }
+    },
+    {
+      "canonicalRepository": null,
+      "classification": "canonical_read_model",
+      "crossDomainDependencies": [],
+      "domainOwner": "product-studio",
+      "legacyDependency": [],
+      "modulePath": "src/features/product-studio/FragranceStudioPage.tsx",
+      "objectType": "route_module",
+      "responsibility": "route module",
+      "riskNotes": [],
+      "serverAuthoritativePoliciesConsumed": [],
+      "sizeMetrics": {
+        "bytes": 14692,
+        "lines": 46
+      }
+    },
+    {
+      "canonicalRepository": null,
+      "classification": "canonical_read_model",
+      "crossDomainDependencies": [],
+      "domainOwner": "product-studio",
+      "legacyDependency": [],
       "modulePath": "src/features/product-studio/NaturalDeodorantStudioPage.tsx",
       "objectType": "route_module",
       "responsibility": "route module",
@@ -5476,8 +5748,8 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 6725,
-        "lines": 27
+        "bytes": 7946,
+        "lines": 29
       }
     },
     {
@@ -6349,8 +6621,8 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 5869,
-        "lines": 203
+        "bytes": 7167,
+        "lines": 245
       }
     },
     {
@@ -6419,8 +6691,8 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 4296,
-        "lines": 144
+        "bytes": 5135,
+        "lines": 169
       }
     },
     {
@@ -6781,6 +7053,22 @@
     {
       "canonicalRepository": null,
       "classification": "canonical_read_model",
+      "crossDomainDependencies": [],
+      "domainOwner": "application",
+      "legacyDependency": [],
+      "modulePath": "src/intelligence/Vision/beardPhotoClient.test.ts",
+      "objectType": "module",
+      "responsibility": "module",
+      "riskNotes": [],
+      "serverAuthoritativePoliciesConsumed": [],
+      "sizeMetrics": {
+        "bytes": 4110,
+        "lines": 119
+      }
+    },
+    {
+      "canonicalRepository": null,
+      "classification": "canonical_read_model",
       "crossDomainDependencies": [
         "../../features/beard-studio/domain/beardPhotoIntelligenceV2",
         "../../platform/supabase/client"
@@ -6793,8 +7081,8 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 14659,
-        "lines": 361
+        "bytes": 16059,
+        "lines": 408
       }
     },
     {
@@ -7201,7 +7489,9 @@
       "crossDomainDependencies": [
         "../../data/formulaSeed",
         "../../features/formulas/data/formulaRepository",
-        "../../features/product-studio/domain/benchmarkLab"
+        "../../features/product-studio/domain/benchmarkLab",
+        "../../features/product-studio/domain/footCareBenchmarks",
+        "../../features/product-studio/domain/footCareProjects"
       ],
       "domainOwner": "platform",
       "legacyDependency": [],
@@ -7214,8 +7504,8 @@
         "./localWorkspaceRepository"
       ],
       "sizeMetrics": {
-        "bytes": 4919,
-        "lines": 25
+        "bytes": 6118,
+        "lines": 28
       }
     },
     {
@@ -7551,8 +7841,8 @@
       ],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 670155,
-        "lines": 19627
+        "bytes": 673566,
+        "lines": 19709
       }
     },
     {
@@ -7614,13 +7904,29 @@
       "crossDomainDependencies": [],
       "domainOwner": "shared-domain",
       "legacyDependency": [],
+      "modulePath": "src/types/beardTrimOverlay.ts",
+      "objectType": "domain_module",
+      "responsibility": "domain module",
+      "riskNotes": [],
+      "serverAuthoritativePoliciesConsumed": [],
+      "sizeMetrics": {
+        "bytes": 2085,
+        "lines": 82
+      }
+    },
+    {
+      "canonicalRepository": null,
+      "classification": "canonical_read_model",
+      "crossDomainDependencies": [],
+      "domainOwner": "shared-domain",
+      "legacyDependency": [],
       "modulePath": "src/types/domain.ts",
       "objectType": "domain_module",
       "responsibility": "domain module",
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 28553,
+        "bytes": 28565,
         "lines": 304
       }
     },

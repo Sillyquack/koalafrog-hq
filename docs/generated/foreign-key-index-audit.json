@@ -2442,6 +2442,32 @@
     {
       "columns": [
         "workspace_id",
+        "ingredient_id"
+      ],
+      "constraint": "ingredient_identity_aliases_workspace_id_ingredient_id_fkey",
+      "estimatedRows": 0,
+      "recommendation": null,
+      "references": "ingredients",
+      "schema": "public",
+      "status": "covered",
+      "table": "ingredient_identity_aliases"
+    },
+    {
+      "columns": [
+        "workspace_id",
+        "owner_id"
+      ],
+      "constraint": "ingredient_identity_aliases_workspace_id_owner_id_fkey",
+      "estimatedRows": 0,
+      "recommendation": null,
+      "references": "workspaces",
+      "schema": "public",
+      "status": "partially_covered",
+      "table": "ingredient_identity_aliases"
+    },
+    {
+      "columns": [
+        "workspace_id",
         "ingredient_knowledge_profile_id"
       ],
       "constraint": "ingredient_knowledge_compatib_workspace_id_ingredient_know_fkey",
@@ -3429,6 +3455,279 @@
       "schema": "public",
       "status": "partially_covered",
       "table": "launch_plans"
+    },
+    {
+      "columns": [
+        "workspace_id",
+        "ingredient_id"
+      ],
+      "constraint": "material_applicabilities_workspace_id_ingredient_id_fkey",
+      "estimatedRows": 0,
+      "recommendation": null,
+      "references": "ingredients",
+      "schema": "public",
+      "status": "covered",
+      "table": "material_applicabilities"
+    },
+    {
+      "columns": [
+        "workspace_id",
+        "owner_id"
+      ],
+      "constraint": "material_applicabilities_workspace_id_owner_id_fkey",
+      "estimatedRows": 0,
+      "recommendation": null,
+      "references": "workspaces",
+      "schema": "public",
+      "status": "partially_covered",
+      "table": "material_applicabilities"
+    },
+    {
+      "columns": [
+        "workspace_id",
+        "applicability_id"
+      ],
+      "constraint": "material_applicability_events_workspace_id_applicability_i_fkey",
+      "estimatedRows": 0,
+      "recommendation": null,
+      "references": "material_applicabilities",
+      "schema": "public",
+      "status": "covered",
+      "table": "material_applicability_events"
+    },
+    {
+      "columns": [
+        "workspace_id",
+        "owner_id"
+      ],
+      "constraint": "material_applicability_events_workspace_id_owner_id_fkey",
+      "estimatedRows": 0,
+      "recommendation": null,
+      "references": "workspaces",
+      "schema": "public",
+      "status": "partially_covered",
+      "table": "material_applicability_events"
+    },
+    {
+      "columns": [
+        "workspace_id",
+        "first_seen_run_id"
+      ],
+      "constraint": "material_demand_contributions_workspace_id_first_seen_run__fkey",
+      "estimatedRows": 0,
+      "recommendation": null,
+      "references": "material_reconciliation_runs",
+      "schema": "public",
+      "status": "partially_covered",
+      "table": "material_demand_contributions"
+    },
+    {
+      "columns": [
+        "workspace_id",
+        "ingredient_id"
+      ],
+      "constraint": "material_demand_contributions_workspace_id_ingredient_id_fkey",
+      "estimatedRows": 0,
+      "recommendation": null,
+      "references": "ingredients",
+      "schema": "public",
+      "status": "covered",
+      "table": "material_demand_contributions"
+    },
+    {
+      "columns": [
+        "workspace_id",
+        "last_seen_run_id"
+      ],
+      "constraint": "material_demand_contributions_workspace_id_last_seen_run_i_fkey",
+      "estimatedRows": 0,
+      "recommendation": null,
+      "references": "material_reconciliation_runs",
+      "schema": "public",
+      "status": "partially_covered",
+      "table": "material_demand_contributions"
+    },
+    {
+      "columns": [
+        "workspace_id",
+        "origin_id"
+      ],
+      "constraint": "material_demand_contributions_workspace_id_origin_id_fkey",
+      "estimatedRows": 0,
+      "recommendation": null,
+      "references": "material_demand_origins",
+      "schema": "public",
+      "status": "covered",
+      "table": "material_demand_contributions"
+    },
+    {
+      "columns": [
+        "workspace_id",
+        "owner_id"
+      ],
+      "constraint": "material_demand_contributions_workspace_id_owner_id_fkey",
+      "estimatedRows": 0,
+      "recommendation": null,
+      "references": "workspaces",
+      "schema": "public",
+      "status": "partially_covered",
+      "table": "material_demand_contributions"
+    },
+    {
+      "columns": [
+        "workspace_id",
+        "first_seen_run_id"
+      ],
+      "constraint": "material_demand_origins_workspace_id_first_seen_run_id_fkey",
+      "estimatedRows": 0,
+      "recommendation": null,
+      "references": "material_reconciliation_runs",
+      "schema": "public",
+      "status": "partially_covered",
+      "table": "material_demand_origins"
+    },
+    {
+      "columns": [
+        "workspace_id",
+        "ingredient_id"
+      ],
+      "constraint": "material_demand_origins_workspace_id_ingredient_id_fkey",
+      "estimatedRows": 0,
+      "recommendation": null,
+      "references": "ingredients",
+      "schema": "public",
+      "status": "covered",
+      "table": "material_demand_origins"
+    },
+    {
+      "columns": [
+        "workspace_id",
+        "last_seen_run_id"
+      ],
+      "constraint": "material_demand_origins_workspace_id_last_seen_run_id_fkey",
+      "estimatedRows": 0,
+      "recommendation": null,
+      "references": "material_reconciliation_runs",
+      "schema": "public",
+      "status": "partially_covered",
+      "table": "material_demand_origins"
+    },
+    {
+      "columns": [
+        "workspace_id",
+        "owner_id"
+      ],
+      "constraint": "material_demand_origins_workspace_id_owner_id_fkey",
+      "estimatedRows": 0,
+      "recommendation": null,
+      "references": "workspaces",
+      "schema": "public",
+      "status": "partially_covered",
+      "table": "material_demand_origins"
+    },
+    {
+      "columns": [
+        "workspace_id",
+        "parent_origin_id"
+      ],
+      "constraint": "material_demand_origins_workspace_id_parent_origin_id_fkey",
+      "estimatedRows": 0,
+      "recommendation": null,
+      "references": "material_demand_origins",
+      "schema": "public",
+      "status": "partially_covered",
+      "table": "material_demand_origins"
+    },
+    {
+      "columns": [
+        "workspace_id",
+        "owner_id"
+      ],
+      "constraint": "material_reconciliation_findings_workspace_id_owner_id_fkey",
+      "estimatedRows": 0,
+      "recommendation": null,
+      "references": "workspaces",
+      "schema": "public",
+      "status": "partially_covered",
+      "table": "material_reconciliation_findings"
+    },
+    {
+      "columns": [
+        "workspace_id",
+        "run_id"
+      ],
+      "constraint": "material_reconciliation_findings_workspace_id_run_id_fkey",
+      "estimatedRows": 0,
+      "recommendation": null,
+      "references": "material_reconciliation_runs",
+      "schema": "public",
+      "status": "covered",
+      "table": "material_reconciliation_findings"
+    },
+    {
+      "columns": [
+        "workspace_id",
+        "owner_id"
+      ],
+      "constraint": "material_reconciliation_runs_workspace_id_owner_id_fkey",
+      "estimatedRows": 0,
+      "recommendation": null,
+      "references": "workspaces",
+      "schema": "public",
+      "status": "partially_covered",
+      "table": "material_reconciliation_runs"
+    },
+    {
+      "columns": [
+        "workspace_id",
+        "preview_run_id"
+      ],
+      "constraint": "material_reconciliation_runs_workspace_id_preview_run_id_fkey",
+      "estimatedRows": 0,
+      "recommendation": null,
+      "references": "material_reconciliation_runs",
+      "schema": "public",
+      "status": "partially_covered",
+      "table": "material_reconciliation_runs"
+    },
+    {
+      "columns": [
+        "workspace_id",
+        "ingredient_id"
+      ],
+      "constraint": "material_target_resolutions_workspace_id_ingredient_id_fkey",
+      "estimatedRows": 0,
+      "recommendation": null,
+      "references": "ingredients",
+      "schema": "public",
+      "status": "partially_covered",
+      "table": "material_target_resolutions"
+    },
+    {
+      "columns": [
+        "workspace_id",
+        "owner_id"
+      ],
+      "constraint": "material_target_resolutions_workspace_id_owner_id_fkey",
+      "estimatedRows": 0,
+      "recommendation": null,
+      "references": "workspaces",
+      "schema": "public",
+      "status": "partially_covered",
+      "table": "material_target_resolutions"
+    },
+    {
+      "columns": [
+        "workspace_id",
+        "reconciliation_run_id"
+      ],
+      "constraint": "material_target_resolutions_workspace_id_reconciliation_ru_fkey",
+      "estimatedRows": 0,
+      "recommendation": null,
+      "references": "material_reconciliation_runs",
+      "schema": "public",
+      "status": "partially_covered",
+      "table": "material_target_resolutions"
     },
     {
       "columns": [
@@ -4488,6 +4787,19 @@
     {
       "columns": [
         "workspace_id",
+        "follow_up_to_candidate_id"
+      ],
+      "constraint": "procurement_offer_candidates_follow_up_workspace_fkey",
+      "estimatedRows": 0,
+      "recommendation": null,
+      "references": "procurement_offer_candidates",
+      "schema": "public",
+      "status": "covered",
+      "table": "procurement_offer_candidates"
+    },
+    {
+      "columns": [
+        "workspace_id",
         "accepted_offer_id"
       ],
       "constraint": "procurement_offer_candidates_workspace_id_accepted_offer_i_fkey",
@@ -4655,6 +4967,19 @@
       "schema": "public",
       "status": "covered",
       "table": "procurement_requests"
+    },
+    {
+      "columns": [
+        "workspace_id",
+        "follow_up_of_job_id"
+      ],
+      "constraint": "procurement_research_jobs_follow_up_workspace_fkey",
+      "estimatedRows": 0,
+      "recommendation": null,
+      "references": "procurement_research_jobs",
+      "schema": "public",
+      "status": "covered",
+      "table": "procurement_research_jobs"
     },
     {
       "columns": [
@@ -8056,10 +8381,10 @@
   ],
   "generatedAt": "2026-07-29T12:00:00+02:00",
   "summary": {
-    "covered": 269,
+    "covered": 278,
     "intentionally_unindexed": 0,
     "missing": 114,
-    "partially_covered": 252
+    "partially_covered": 268
   },
   "version": "1.0.0"
 }

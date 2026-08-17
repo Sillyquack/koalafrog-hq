@@ -188,6 +188,17 @@
       "documented": true,
       "domainOwner": "platform",
       "sources": [
+        "supabase/migrations/20260815200000_foot_care_procurement_handoff.sql",
+        "supabase/migrations/20260815210000_harden_foot_care_procurement_handoff.sql",
+        "supabase/migrations/20260815220000_fix_foot_care_handoff_analysis_shape.sql"
+      ],
+      "type": "foot_care"
+    },
+    {
+      "classification": "audit_only",
+      "documented": true,
+      "domainOwner": "platform",
+      "sources": [
         "supabase/migrations/20260729054425_active_finished_goods_inventory_controls_v1.sql"
       ],
       "type": "held"
@@ -312,6 +323,17 @@
         "supabase/migrations/20260728160000_production_inventory_control_contracts_v1.sql"
       ],
       "type": "present"
+    },
+    {
+      "classification": "audit_only",
+      "documented": true,
+      "domainOwner": "platform",
+      "sources": [
+        "supabase/migrations/20260815200000_foot_care_procurement_handoff.sql",
+        "supabase/migrations/20260815210000_harden_foot_care_procurement_handoff.sql",
+        "supabase/migrations/20260815220000_fix_foot_care_handoff_analysis_shape.sql"
+      ],
+      "type": "product_studio_concept"
     },
     {
       "classification": "audit_only",
