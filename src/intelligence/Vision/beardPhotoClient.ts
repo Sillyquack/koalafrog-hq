@@ -79,67 +79,103 @@ const validationFailures = new Set<BeardPhotoErrorCode>([
   "SEMANTIC_VALIDATOR_INTERNAL_ERROR",
   "UNKNOWN_VALIDATION_FAILURE",
 ]);
+const errorMessages: Partial<Record<BeardPhotoErrorCode, string>> = {
+  NOT_SIGNED_IN: "Sign in again to analyze photos.",
+  MISSING_WORKSPACE: "The active hosted workspace is unavailable.",
+  NO_BEARD_PROFILE: "Create or activate a Beard Studio profile first.",
+  MISSING_REQUIRED_VIEWS:
+    "Front, left profile and right profile photos are required.",
+  UNSUPPORTED_IMAGE: "Use a JPEG, PNG or WebP image.",
+  FILE_TOO_LARGE: "One or more images exceed the upload limit.",
+  INVALID_IMAGE: "One or more images could not be read.",
+  UPLOAD_FAILED: "Photos could not be uploaded privately.",
+  STORAGE_AUTHORIZATION_FAILED:
+    "Private image access could not be verified.",
+  PROVIDER_NOT_CONFIGURED: "Beard photo analysis is not configured.",
+  PROVIDER_TIMEOUT:
+    "The analysis took too long, so no result was stored. You may start a new analysis.",
+  PROVIDER_RATE_LIMIT: "The analysis limit was reached. Try again later.",
+  PROVIDER_RATE_LIMIT_REQUESTS:
+    "The provider request rate limit was reached. Wait and try again later.",
+  PROVIDER_RATE_LIMIT_TOKENS:
+    "The provider token rate limit was reached. Wait and try again later.",
+  PROVIDER_RATE_LIMIT_UNKNOWN:
+    "The provider returned an unidentified rate limit. Check provider diagnostics before trying again.",
+  PROVIDER_QUOTA_EXHAUSTED:
+    "The OpenAI project quota is exhausted. Correct API billing or project quota before trying again.",
+  PROVIDER_BILLING_LIMIT:
+    "The OpenAI project billing limit was reached. Correct the project billing limit before trying again.",
+  PROVIDER_MODEL_LIMIT:
+    "The selected OpenAI model is not available within the project limit. Correct model access or limits before trying again.",
+  PROVIDER_RESPONSE_ENVELOPE_INVALID:
+    "The provider returned an invalid response envelope.",
+  PROVIDER_STRUCTURED_OUTPUT_MISSING:
+    "The provider response did not contain the required structured result.",
+  PROVIDER_STRUCTURED_OUTPUT_AMBIGUOUS:
+    "The provider returned conflicting structured results.",
+  PROVIDER_OUTPUT_TEXT_MISSING:
+    "The provider response did not contain the expected output text.",
+  PROVIDER_OUTPUT_JSON_INVALID:
+    "The provider output was not valid structured JSON.",
+  PROVIDER_OUTPUT_REFUSAL: "The provider declined to analyze these photos.",
+  PROVIDER_OUTPUT_SCHEMA_MISMATCH:
+    "The provider result did not match the Beard Photo Analysis schema.",
+  PROVIDER_RESPONSE_PARSE_INTERNAL_ERROR:
+    "The provider response could not be processed safely.",
+  PROVIDER_REFUSAL: "The provider could not complete this analysis.",
+  ANALYSIS_CANCELLED: "Analysis was cancelled before provider execution.",
+  CLEANUP_FAILURE: "Temporary image cleanup requires attention.",
+  CLEANUP_VERIFICATION_FAILED: "Temporary image cleanup requires attention.",
+  NETWORK_FAILURE: "The analysis service could not be reached.",
+  ANALYSIS_IN_PROGRESS: "Another photo analysis is already active.",
+  ATTEMPT_PROVENANCE_FAILED:
+    "The provider attempt could not be recorded, so no analysis was sent.",
+  SNAPSHOT_TARGET_MISMATCH:
+    "The review snapshots do not match the analysis target.",
+  UNEXPECTED_ERROR: "Beard photo analysis could not be completed.",
+};
+const isBeardPhotoErrorCode = (value: unknown): value is BeardPhotoErrorCode =>
+  typeof value === "string" &&
+  (validationFailures.has(value as BeardPhotoErrorCode) ||
+    Object.hasOwn(errorMessages, value));
 const messageFor = (code: BeardPhotoErrorCode) =>
   validationFailures.has(code)
     ? "The provider response failed safety validation."
-    : ({
-      NOT_SIGNED_IN: "Sign in again to analyze photos.",
-      MISSING_WORKSPACE: "The active hosted workspace is unavailable.",
-      NO_BEARD_PROFILE: "Create or activate a Beard Studio profile first.",
-      MISSING_REQUIRED_VIEWS:
-        "Front, left profile and right profile photos are required.",
-      UNSUPPORTED_IMAGE: "Use a JPEG, PNG or WebP image.",
-      FILE_TOO_LARGE: "One or more images exceed the upload limit.",
-      INVALID_IMAGE: "One or more images could not be read.",
-      UPLOAD_FAILED: "Photos could not be uploaded privately.",
-      STORAGE_AUTHORIZATION_FAILED:
-        "Private image access could not be verified.",
-      PROVIDER_NOT_CONFIGURED: "Beard photo analysis is not configured.",
-      PROVIDER_TIMEOUT:
-        "The analysis took too long, so no result was stored. You may start a new analysis.",
-      PROVIDER_RATE_LIMIT: "The analysis limit was reached. Try again later.",
-      PROVIDER_RATE_LIMIT_REQUESTS:
-        "The provider request rate limit was reached. Wait and try again later.",
-      PROVIDER_RATE_LIMIT_TOKENS:
-        "The provider token rate limit was reached. Wait and try again later.",
-      PROVIDER_RATE_LIMIT_UNKNOWN:
-        "The provider returned an unidentified rate limit. Check provider diagnostics before trying again.",
-      PROVIDER_QUOTA_EXHAUSTED:
-        "The OpenAI project quota is exhausted. Correct API billing or project quota before trying again.",
-      PROVIDER_BILLING_LIMIT:
-        "The OpenAI project billing limit was reached. Correct the project billing limit before trying again.",
-      PROVIDER_MODEL_LIMIT:
-        "The selected OpenAI model is not available within the project limit. Correct model access or limits before trying again.",
-      PROVIDER_RESPONSE_ENVELOPE_INVALID:
-        "The provider returned an invalid response envelope.",
-      PROVIDER_STRUCTURED_OUTPUT_MISSING:
-        "The provider response did not contain the required structured result.",
-      PROVIDER_STRUCTURED_OUTPUT_AMBIGUOUS:
-        "The provider returned conflicting structured results.",
-      PROVIDER_OUTPUT_TEXT_MISSING:
-        "The provider response did not contain the expected output text.",
-      PROVIDER_OUTPUT_JSON_INVALID:
-        "The provider output was not valid structured JSON.",
-      PROVIDER_OUTPUT_REFUSAL:
-        "The provider declined to analyze these photos.",
-      PROVIDER_OUTPUT_SCHEMA_MISMATCH:
-        "The provider result did not match the Beard Photo Analysis schema.",
-      PROVIDER_RESPONSE_PARSE_INTERNAL_ERROR:
-        "The provider response could not be processed safely.",
-      PROVIDER_REFUSAL: "The provider could not complete this analysis.",
-      ANALYSIS_CANCELLED: "Analysis was cancelled before provider execution.",
-      CLEANUP_FAILURE: "Temporary image cleanup requires attention.",
-      CLEANUP_VERIFICATION_FAILED:
-        "Temporary image cleanup requires attention.",
-      NETWORK_FAILURE: "The analysis service could not be reached.",
-      ANALYSIS_IN_PROGRESS: "Another photo analysis is already active.",
-      ATTEMPT_PROVENANCE_FAILED:
-        "The provider attempt could not be recorded, so no analysis was sent.",
-      SNAPSHOT_TARGET_MISMATCH:
-        "The review snapshots do not match the analysis target.",
-      UNEXPECTED_ERROR: "Beard photo analysis could not be completed.",
-    } as Partial<Record<BeardPhotoErrorCode, string>>)[code] ??
+    : errorMessages[code] ??
       "Beard photo analysis could not be completed.";
+
+async function reconcileFailedInvocation(
+  workspaceId: string,
+  analysisId: string,
+): Promise<BeardPhotoAnalysisError | undefined> {
+  if (!supabase) return undefined;
+  try {
+    const response = await supabase.rpc("reopen_beard_analysis", {
+      candidate_workspace_id: workspaceId,
+      candidate_analysis_id: analysisId,
+    });
+    const failure = response.data as {
+      analysisId?: unknown;
+      supportId?: unknown;
+      status?: unknown;
+      errorCode?: unknown;
+    } | null;
+    if (
+      response.error || !failure || failure.status !== "failed" ||
+      failure.analysisId !== analysisId ||
+      typeof failure.supportId !== "string"
+    ) return undefined;
+    const code = isBeardPhotoErrorCode(failure.errorCode)
+      ? failure.errorCode
+      : "UNEXPECTED_ERROR";
+    const message = code === "NETWORK_FAILURE"
+      ? "The analysis provider connection ended before completion."
+      : messageFor(code);
+    return new BeardPhotoAnalysisError(code, message, failure.supportId);
+  } catch {
+    return undefined;
+  }
+}
 
 export async function runBeardPhotoAnalysis(
   input: {
@@ -258,11 +294,22 @@ export async function runBeardPhotoAnalysis(
           correlationId?: string;
         };
       } | undefined)?.error;
-      const code = controlled?.code ?? "NETWORK_FAILURE";
+      if (controlled && isBeardPhotoErrorCode(controlled.code)) {
+        throw new BeardPhotoAnalysisError(
+          controlled.code,
+          controlled.message ?? messageFor(controlled.code),
+          controlled.correlationId,
+        );
+      }
+      const reconciled = await reconcileFailedInvocation(
+        input.workspaceId,
+        input.analysisId,
+      );
+      if (reconciled) throw reconciled;
+      const code = "NETWORK_FAILURE";
       throw new BeardPhotoAnalysisError(
         code,
-        controlled?.message ?? messageFor(code),
-        controlled?.correlationId,
+        messageFor(code),
       );
     }
     input.onStage?.("Validating response");
