@@ -1,6 +1,7 @@
 # Koalafrog Agent Orchestration Bridge
 
-Status: bootstrap specification
+Status: persistent runtime implemented; LaunchAgent activation pending separate
+owner approval
 
 ## Goal
 

@@ -4,7 +4,8 @@ GitHub Issues are the bootstrap durable control plane for local Codex orchestrat
 
 ## Machine-readable instruction block
 
-The local orchestrator should consume only the latest fenced block with this shape from the task issue body/comments:
+The local orchestrator consumes fenced blocks with this shape from the task
+issue body/comments:
 
 ```yaml
 agent_control:
@@ -17,7 +18,16 @@ agent_control:
     <instruction sent to Codex>
 ```
 
-The orchestrator must persist the last consumed `instruction_id` and never execute the same instruction twice.
+The orchestrator selects the newest unconsumed instruction, using both durable
+run history and existing `agent_result` comments. This also allows an older
+pending instruction to run when a newer one was already consumed. An
+`instruction_id` executes at most once unless an audited local retry marker
+explicitly reopens it.
+
+`action: start` creates a fresh instruction-specific worktree and Codex thread.
+`action: continue` reuses the persisted worktree and thread, including after a
+restart or a `needs_owner` result. Result states do not stop repository polling;
+the owner resumes work by adding a fresh uniquely identified control block.
 
 ## Completion packet
 
