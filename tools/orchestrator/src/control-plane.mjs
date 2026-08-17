@@ -147,7 +147,7 @@ const gatedPatterns = [
 ]
 
 const prohibitionPattern =
-  /\b(?:do not|don't|does not|doesn't|never|must not|without|not authorized?|not permitted|not allowed)\b/i
+  /^(?:\s*no\b)|\b(?:do not|don't|does not|doesn't|never|must not|without|not authorized?|not permitted|not allowed)\b/i
 
 export function ownerGateReason(instruction) {
   if (instruction.ownerApprovalRequired) {
