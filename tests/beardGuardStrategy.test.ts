@@ -4,6 +4,7 @@ import {
   normalizeBeardGuardStrategies,
   parseLegacyBeardGuardStrategy,
   renderCanonicalBeardGuardStrategy,
+  type BeardPhotoProviderResult,
   type StructuredBeardGuardStrategy,
 } from "../supabase/functions/_shared/beardGuardStrategy";
 import {
@@ -13,6 +14,9 @@ import {
   type BeardPhotoAnalysisResult,
 } from "../supabase/functions/_shared/beardPhotoAnalysisContract";
 import { extractBeardResponsesResult } from "../supabase/functions/_shared/beardResponsesExtraction";
+import { beardPhotoProviderResultSchema } from "../supabase/functions/_shared/beardPhotoProviderSchema";
+import { structuredOutputSchemaErrors } from "../supabase/functions/_shared/structuredOutputSchema";
+import { validateStructuredValue } from "../src/intelligence/Diagnostics";
 
 const structured = (
   value: Partial<StructuredBeardGuardStrategy>,
@@ -82,6 +86,186 @@ const fixture = (strategy: unknown): BeardPhotoAnalysisResult => ({
 });
 
 describe("deterministic beard guard strategy boundary", () => {
+  it("reproduces the production object-at-recommendation-3 validator exception safely", () => {
+    const escaped = fixture(null);
+    escaped.recommendations = Array.from({ length: 4 }, (_, index) => ({
+      ...escaped.recommendations[0],
+      id: `a2257a3${index}-3d8b-42d0-ad07-cf81e83e2b4${index}`,
+      proposedGuardStrategy: index === 3
+        ? structured({}) as unknown as string
+        : null,
+    }));
+
+    expect(() => validateBeardPhotoSemantics(escaped)).not.toThrow();
+    expect(validateBeardPhotoSemantics(escaped)).toMatchObject({
+      success: false,
+      ruleCode: "VAL-0030",
+      jsonPath: "$.recommendations[3].proposedGuardStrategy",
+      expected: "string",
+      received: "object",
+      validator: "beard-semantic-safety-v4",
+    });
+  });
+
+  it("normalizes the exact provider object shape before canonical semantic validation", () => {
+    const provider = {
+      ...fixture(null),
+      trimOverlay: null,
+      recommendations: Array.from({ length: 4 }, (_, index) => ({
+        ...fixture(null).recommendations[0],
+        id: `provider-recommendation-${index}`,
+        proposedGuardStrategy: index === 3 ? structured({}) : null,
+      })),
+    } as BeardPhotoProviderResult;
+    const schema = beardPhotoProviderResultSchema({
+      analysisId: provider.analysisId,
+      provider: provider.provider,
+      model: provider.model,
+      correlationId: provider.correlationId,
+    });
+
+    expect(structuredOutputSchemaErrors(schema)).toEqual([]);
+    expect(validateStructuredValue(provider, schema).success).toBe(true);
+    const normalized = normalizeBeardGuardStrategies(provider);
+    expect(normalized.success).toBe(true);
+    if (!normalized.success) return;
+    expect(normalized.result.recommendations[3].proposedGuardStrategy).toBe(
+      "Try a 7 mm guard on the cheeks as a starting point.",
+    );
+    expect(validateBeardPhotoSemantics(normalized.result).success).toBe(true);
+  });
+
+  it("preserves the successful legacy provider string path", () => {
+    const provider = {
+      ...fixture(null),
+      trimOverlay: null,
+      recommendations: [{
+        ...fixture(null).recommendations[0],
+        proposedGuardStrategy: "Use a 7 mm guard on the cheeks.",
+      }],
+    } as BeardPhotoProviderResult;
+    expect(validateStructuredValue(
+      provider,
+      beardPhotoProviderResultSchema({
+        analysisId: provider.analysisId,
+        provider: provider.provider,
+        model: provider.model,
+        correlationId: provider.correlationId,
+      }),
+    ).success).toBe(true);
+    const normalized = normalizeBeardGuardStrategies(provider);
+    expect(normalized.success).toBe(true);
+    if (!normalized.success) return;
+    expect(normalized.result.recommendations[0].proposedGuardStrategy).toBe(
+      "Try a 7 mm guard on the cheeks as a starting point.",
+    );
+  });
+
+  it.each([
+    {
+      name: "array value",
+      value: [],
+      ruleCode: "VAL-0011",
+      suffix: "",
+    },
+    {
+      name: "missing structured property",
+      value: {
+        strategyType: "guard_setting",
+        region: "cheeks",
+        guardMm: 7,
+        guardRangeMm: null,
+        relativeInstruction: null,
+        freeformTechnique: null,
+      },
+      ruleCode: "VAL-0010",
+      suffix: ".uncertainty",
+    },
+    {
+      name: "fractional guard",
+      value: structured({ guardMm: 7.5 }),
+      ruleCode: "VAL-0011",
+      suffix: ".guardMm",
+    },
+  ])("rejects $name at the provider schema boundary", ({ value, ruleCode, suffix }) => {
+    const provider = {
+      ...fixture(null),
+      trimOverlay: null,
+      recommendations: Array.from({ length: 4 }, (_, index) => ({
+        ...fixture(null).recommendations[0],
+        id: `provider-recommendation-${index}`,
+        proposedGuardStrategy: index === 3 ? value : null,
+      })),
+    } as unknown as BeardPhotoProviderResult;
+    const validation = validateStructuredValue(
+      provider,
+      beardPhotoProviderResultSchema({
+        analysisId: provider.analysisId,
+        provider: provider.provider,
+        model: provider.model,
+        correlationId: provider.correlationId,
+      }),
+    );
+    expect(validation).toMatchObject({
+      success: false,
+      ruleCode,
+      jsonPath: `$.recommendations[3].proposedGuardStrategy${suffix}`,
+      validator: "json-schema",
+      stage: "SchemaValidation",
+    });
+  });
+
+  it.each([
+    [
+      "guard setting without a setting",
+      structured({ guardMm: null }),
+    ],
+    [
+      "descending guard range",
+      structured({
+        strategyType: "guard_range",
+        region: "sides",
+        guardMm: null,
+        guardRangeMm: { min: 9, max: 7 },
+      }),
+    ],
+    [
+      "relative guard without an instruction",
+      structured({
+        strategyType: "relative_guard",
+        guardMm: null,
+        relativeInstruction: null,
+      }),
+    ],
+  ])(
+    "fails closed while normalizing semantically malformed %s",
+    (_name, value) => {
+      const provider = {
+        ...fixture(null),
+        trimOverlay: null,
+        recommendations: Array.from({ length: 4 }, (_, index) => ({
+          ...fixture(null).recommendations[0],
+          id: `provider-recommendation-${index}`,
+          proposedGuardStrategy: index === 3 ? value : null,
+        })),
+      } as BeardPhotoProviderResult;
+      const schema = beardPhotoProviderResultSchema({
+        analysisId: provider.analysisId,
+        provider: provider.provider,
+        model: provider.model,
+        correlationId: provider.correlationId,
+      });
+
+      // The provider schema owns transport shape; the normalizer owns the
+      // strategy's cross-field semantics before the canonical string boundary.
+      expect(validateStructuredValue(provider, schema).success).toBe(true);
+      expect(normalizeBeardGuardStrategies(provider)).toEqual({
+        success: false,
+        recommendationIndex: 3,
+      });
+    },
+  );
+
   it.each([
     ["Use a 7 mm guard on the cheeks.", "Try a 7 mm guard on the cheeks as a starting point."],
     ["Try 7–9 mm on the sides.", "Try a 7–9 mm guard range on the sides and check the result after each pass."],

@@ -17,6 +17,7 @@ import { beardPhotoSystemPrompt } from "../_shared/beardPhotoPrompt.ts";
 import {
   BEARD_GUARD_NORMALIZER_VERSION,
   normalizeBeardGuardStrategies,
+  type BeardPhotoProviderResult,
 } from "../_shared/beardGuardStrategy.ts";
 import {
   BEARD_OBSERVATION_KEY_NORMALIZER_VERSION,
@@ -41,6 +42,7 @@ import {
   ProviderInvocationError,
   type ProviderInvocationTrace,
 } from "../_shared/beardPhotoRuntime.ts";
+import { beardPhotoProviderResultSchema } from "../_shared/beardPhotoProviderSchema.ts";
 import {
   executeValidation,
   intelligenceRuleCodes,
@@ -108,227 +110,6 @@ function validBody(value: unknown): value is Body {
 const safeError = (code: string, message: string, correlationId: string) => ({
   error: { code, message, correlationId },
 });
-const outputItem = {
-  type: "object",
-  additionalProperties: false,
-  required: [
-    "observationKey",
-    "category",
-    "statement",
-    "confidence",
-    "supportingViews",
-    "evidenceDescription",
-    "limitations",
-    "relatedBeardZones",
-    "provenance",
-  ],
-  properties: {
-    observationKey: {
-      type: "string",
-      minLength: 3,
-      maxLength: 64,
-      pattern: "^[a-z][a-z0-9_]{2,63}$",
-    },
-    category: { type: "string" },
-    statement: { type: "string" },
-    confidence: { type: "number", minimum: 0, maximum: 1 },
-    supportingViews: {
-      type: "array",
-      items: { type: "string", enum: beardPhotoViews },
-    },
-    evidenceDescription: { type: "string" },
-    limitations: { type: "array", items: { type: "string" } },
-    relatedBeardZones: { type: "array", items: { type: "string" } },
-    provenance: { type: "string", const: "ai" },
-  },
-};
-export const beardPhotoProviderResultSchema = (
-  meta: {
-    analysisId: string;
-    provider: string;
-    model: string;
-    correlationId: string;
-  },
-) => ({
-  type: "object",
-  additionalProperties: false,
-  required: [
-    "analysisId",
-    "schemaVersion",
-    "contractVersion",
-    "promptVersion",
-    "provider",
-    "model",
-    "createdAt",
-    "provenance",
-    "status",
-    "photoQuality",
-    "observations",
-    "symmetry",
-    "densityDistribution",
-    "lineAssessment",
-    "recommendations",
-    "limitations",
-    "unknowns",
-    "safetyFlags",
-    "correlationId",
-  ],
-  properties: {
-    analysisId: { type: "string", const: meta.analysisId },
-    schemaVersion: { type: "integer", const: 2 },
-    contractVersion: {
-      type: "string",
-      const: BEARD_PHOTO_CONTRACT_VERSION,
-    },
-    promptVersion: { type: "string", const: BEARD_PHOTO_PROMPT_VERSION },
-    provider: { type: "string", const: meta.provider },
-    model: { type: "string", const: meta.model },
-    createdAt: { type: "string" },
-    provenance: { type: "string", const: "ai" },
-    status: { type: "string", const: "completed" },
-    photoQuality: {
-      type: "object",
-      additionalProperties: false,
-      required: ["overall", "perView", "issues", "retakeRecommended"],
-      properties: {
-        overall: {
-          type: "string",
-          enum: ["suitable", "limited", "unsuitable"],
-        },
-        perView: {
-          type: "array",
-          items: {
-            type: "object",
-            additionalProperties: false,
-            required: ["view", "quality", "issues"],
-            properties: {
-              view: { type: "string", enum: beardPhotoViews },
-              quality: {
-                type: "string",
-                enum: ["suitable", "limited", "unsuitable"],
-              },
-              issues: { type: "array", items: { type: "string" } },
-            },
-          },
-        },
-        issues: { type: "array", items: { type: "string" } },
-        retakeRecommended: { type: "boolean" },
-      },
-    },
-    observations: { type: "array", items: outputItem },
-    symmetry: { type: "array", items: outputItem },
-    densityDistribution: { type: "array", items: outputItem },
-    lineAssessment: { type: "array", items: outputItem },
-    recommendations: {
-      type: "array",
-      items: {
-        type: "object",
-        additionalProperties: false,
-        required: [
-          "id",
-          "title",
-          "reason",
-          "confidence",
-          "priority",
-          "expectedBenefit",
-          "supportingObservationKeys",
-          "affectedZones",
-          "toolConstraints",
-          "proposedGuardStrategy",
-          "status",
-          "provenance",
-        ],
-        properties: {
-          id: { type: "string" },
-          title: { type: "string" },
-          reason: { type: "string" },
-          confidence: { type: "number", minimum: 0, maximum: 1 },
-          priority: { type: "string", enum: ["low", "medium", "high"] },
-          expectedBenefit: { type: "string" },
-          supportingObservationKeys: {
-            type: "array",
-            minItems: 1,
-            items: {
-              type: "string",
-              minLength: 3,
-              maxLength: 64,
-              pattern: "^[a-z][a-z0-9_]{2,63}$",
-            },
-          },
-          affectedZones: { type: "array", items: { type: "string" } },
-          toolConstraints: { type: "array", items: { type: "string" } },
-          proposedGuardStrategy: {
-            anyOf: [
-              { type: "string" },
-              { type: "null" },
-              {
-                type: "object",
-                additionalProperties: false,
-                required: [
-                  "strategyType", "region", "guardMm", "guardRangeMm",
-                  "relativeInstruction", "uncertainty", "freeformTechnique",
-                ],
-                properties: {
-                  strategyType: {
-                    type: "string",
-                    enum: [
-                      "guard_setting", "guard_range", "relative_guard",
-                      "longest_first", "no_numeric_setting",
-                    ],
-                  },
-                  region: {
-                    type: ["string", "null"],
-                    enum: [
-                      "cheeks", "sides", "chin", "moustache", "neckline",
-                      "overall", null,
-                    ],
-                  },
-                  guardMm: { type: ["number", "null"] },
-                  guardRangeMm: {
-                    anyOf: [
-                      { type: "null" },
-                      {
-                        type: "object",
-                        additionalProperties: false,
-                        required: ["min", "max"],
-                        properties: {
-                          min: { type: "number" },
-                          max: { type: "number" },
-                        },
-                      },
-                    ],
-                  },
-                  relativeInstruction: {
-                    type: ["string", "null"],
-                    enum: [
-                      "longer_than_sides", "shorter_than_chin",
-                      "longest_first", "reduce_gradually", null,
-                    ],
-                  },
-                  uncertainty: {
-                    type: "string",
-                    enum: ["starting_point", "adjust_after_each_pass"],
-                  },
-                  freeformTechnique: {
-                    type: ["string", "null"],
-                    enum: ["shorten_gradually", null],
-                  },
-                },
-              },
-            ],
-          },
-          status: { type: "string", const: "undecided" },
-          provenance: { type: "string", const: "ai" },
-        },
-      },
-    },
-    limitations: { type: "array", items: { type: "string" } },
-    unknowns: { type: "array", items: { type: "string" } },
-    safetyFlags: { type: "array", items: { type: "string" } },
-    correlationId: { type: "string", const: meta.correlationId },
-  },
-});
-
 interface VisionAnalysisProvider {
   id: string;
   model: string;
@@ -691,10 +472,9 @@ class OpenAIBeardVisionProvider implements VisionAnalysisProvider {
       provider: this.id,
       model: this.model,
     });
-    const providerTyped = normalizeBeardPhotoRecommendationIds(
-      parsed as BeardPhotoAnalysisResult,
+    const normalizedGuards = normalizeBeardGuardStrategies(
+      parsed as BeardPhotoProviderResult,
     );
-    const normalizedGuards = normalizeBeardGuardStrategies(providerTyped);
     if (!normalizedGuards.success) {
       throw new ProviderError("SEMANTIC_VALIDATION_FAILED", {
         success: false,
@@ -707,9 +487,10 @@ class OpenAIBeardVisionProvider implements VisionAnalysisProvider {
         stage: "SemanticValidation",
       }, providerTrace, extractionDiagnostic);
     }
-    const normalizedObservationKeys = normalizeBeardObservationKeys(
+    const providerTyped = normalizeBeardPhotoRecommendationIds(
       normalizedGuards.result,
     );
+    const normalizedObservationKeys = normalizeBeardObservationKeys(providerTyped);
     if (!normalizedObservationKeys.success) {
       const { collision } = normalizedObservationKeys;
       console.info(beardObservationKeyCollisionLog(collision));

@@ -8,6 +8,7 @@ import {
 
 export interface StructuredSchemaNode {
   type?: string | readonly string[];
+  anyOf?: readonly StructuredSchemaNode[];
   const?: unknown;
   enum?: readonly unknown[];
   minimum?: number;
@@ -39,6 +40,30 @@ export function validateStructuredValue(
   schema: StructuredSchemaNode,
   path = "$",
 ): ValidationTrace {
+  if (schema.anyOf) {
+    if (schema.anyOf.length === 0) {
+      return validationFailure({
+        ruleCode: intelligenceRuleCodes.unexpectedValidatorException,
+        jsonPath: path,
+        expected: "object",
+        received: safeRuntimeType(value),
+        validator: "json-schema",
+        stage: "SchemaValidation",
+      });
+    }
+    let mostSpecificFailure: ValidationTrace | undefined;
+    for (const candidate of schema.anyOf) {
+      const result = validateStructuredValue(value, candidate, path);
+      if (result.success) return result;
+      if (
+        !mostSpecificFailure || mostSpecificFailure.success ||
+        result.jsonPath.length > mostSpecificFailure.jsonPath.length
+      ) {
+        mostSpecificFailure = result;
+      }
+    }
+    return mostSpecificFailure!;
+  }
   const types = (Array.isArray(schema.type) ? schema.type : [schema.type])
     .filter((x): x is string => Boolean(x));
   if (types.length && !types.some((type) => matches(value, type))) {

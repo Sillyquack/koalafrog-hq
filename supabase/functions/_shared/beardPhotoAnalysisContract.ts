@@ -4,6 +4,17 @@ import {
   validationSuccess,
   type ValidationTrace,
 } from "../../../src/intelligence/Diagnostics/ValidationTrace.ts";
+import { safeRuntimeType } from "../../../src/intelligence/Diagnostics/SafeDiagnostics.ts";
+import type { BeardTrimOverlay } from "../../../src/types/beardTrimOverlay.ts";
+import { validateBeardTrimOverlay } from "./beardTrimOverlayContract.ts";
+
+export type {
+  BeardTrimOverlay,
+  BeardTrimOverlayAnnotation,
+  BeardTrimOverlayGeometry,
+  BeardTrimOverlayPoint,
+  BeardTrimOverlayView,
+} from "../../../src/types/beardTrimOverlay.ts";
 
 export const BEARD_PHOTO_SCHEMA_VERSION = 2 as const;
 export const BEARD_PHOTO_CONTRACT_VERSION =
@@ -77,6 +88,7 @@ export interface BeardPhotoAnalysisResult {
   densityDistribution: BeardPhotoItem[];
   lineAssessment: BeardPhotoItem[];
   recommendations: BeardPhotoRecommendation[];
+  trimOverlay?: BeardTrimOverlay | null;
   limitations: string[];
   unknowns: string[];
   safetyFlags: string[];
@@ -184,6 +196,7 @@ export function validateBeardPhotoAnalysisResult(
       "densityDistribution",
       "lineAssessment",
       "recommendations",
+      "trimOverlay",
       "limitations",
       "unknowns",
       "safetyFlags",
@@ -225,6 +238,8 @@ export function validateBeardPhotoAnalysisResult(
   const structurallyValid = ids.size === allItems.length &&
     Array.isArray(v.recommendations) &&
     v.recommendations.every((x) => validRecommendation(x, ids)) &&
+    (v.trimOverlay === undefined || v.trimOverlay === null ||
+      validateBeardTrimOverlay(v.trimOverlay)) &&
     strings(v.limitations) && strings(v.unknowns) && strings(v.safetyFlags);
   return structurallyValid &&
     validateBeardPhotoSemantics(v as unknown as BeardPhotoAnalysisResult)
@@ -258,6 +273,17 @@ export function validateReadableHistoricalBeardPhotoResult(value: unknown) {
 export function validateBeardPhotoContract(
   value: BeardPhotoAnalysisResult,
 ): ValidationTrace<BeardPhotoAnalysisResult> {
+  if (value.trimOverlay !== undefined && value.trimOverlay !== null &&
+    !validateBeardTrimOverlay(value.trimOverlay)) {
+    return validationFailure({
+      ruleCode: intelligenceRuleCodes.wrongType,
+      jsonPath: "$.trimOverlay",
+      expected: "object",
+      received: safeRuntimeType(value.trimOverlay),
+      validator: "beard-contract",
+      stage: "ContractValidation",
+    });
+  }
   const groups = [
     ["observations", value.observations],
     ["symmetry", value.symmetry],
@@ -536,6 +562,14 @@ function validateBeardPhotoSemanticsVersion(
       if (failure) return failure;
     }
     if (item.proposedGuardStrategy !== null) {
+      if (typeof item.proposedGuardStrategy !== "string") {
+        return fail(
+          intelligenceRuleCodes.unexpectedValidatorException,
+          `$.recommendations[${index}].proposedGuardStrategy`,
+          "string",
+          safeRuntimeType(item.proposedGuardStrategy),
+        );
+      }
       const failure = check(
         item.proposedGuardStrategy,
         `$.recommendations[${index}].proposedGuardStrategy`,
