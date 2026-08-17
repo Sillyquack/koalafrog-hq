@@ -8,6 +8,7 @@ import {
   beardTrimOverlayProviderSchema,
   validateBeardTrimOverlay,
 } from "../supabase/functions/_shared/beardTrimOverlayContract";
+import { beardPhotoProviderResultSchema } from "../supabase/functions/_shared/beardPhotoProviderSchema";
 import { validateStructuredValue } from "../src/intelligence/Diagnostics";
 import type { BeardTrimOverlay } from "../src/types/beardTrimOverlay";
 
@@ -99,6 +100,15 @@ const analysis = (): BeardPhotoAnalysisResult => ({
   safetyFlags: [],
   correlationId: "overlay-support",
 });
+const providerSchema = () => {
+  const value = analysis();
+  return beardPhotoProviderResultSchema({
+    analysisId: value.analysisId,
+    provider: value.provider,
+    model: value.model,
+    correlationId: value.correlationId,
+  });
+};
 
 describe("beard trim overlay v1 contract", () => {
   it("accepts every required guidance kind with normalized geometry", () => {
@@ -141,9 +151,51 @@ describe("beard trim overlay v1 contract", () => {
     expect(validateBeardPhotoAnalysisResult(historical)).toBe(true);
   });
 
+  it("requires current provider output to contain a complete overlay or null", () => {
+    const complete = analysis();
+    expect(validateStructuredValue(complete, providerSchema()).success).toBe(
+      true,
+    );
+
+    const unavailable = analysis();
+    unavailable.trimOverlay = null;
+    expect(
+      validateStructuredValue(unavailable, providerSchema()).success,
+    ).toBe(true);
+
+    const absent = analysis() as
+      & BeardPhotoAnalysisResult
+      & Record<string, unknown>;
+    delete absent.trimOverlay;
+    expect(validateStructuredValue(absent, providerSchema())).toMatchObject({
+      success: false,
+      ruleCode: "VAL-0010",
+      jsonPath: "$.trimOverlay",
+    });
+
+    const incomplete = analysis();
+    incomplete.trimOverlay = {
+      version: "beard-trim-overlay-v1",
+    } as BeardTrimOverlay;
+    expect(validateStructuredValue(incomplete, providerSchema())).toMatchObject(
+      {
+        success: false,
+        ruleCode: "VAL-0010",
+        jsonPath: "$.trimOverlay.coordinateSpace",
+      },
+    );
+  });
+
   it.each([
     ["out-of-range coordinate", (value: BeardTrimOverlay) => {
       value.views[0].annotations[0].geometry.points[0].x = 1.01;
+    }],
+    ["non-finite x coordinate", (value: BeardTrimOverlay) => {
+      value.views[0].annotations[0].geometry.points[0].x = Number.NaN;
+    }],
+    ["non-finite y coordinate", (value: BeardTrimOverlay) => {
+      value.views[0].annotations[0].geometry.points[0].y =
+        Number.POSITIVE_INFINITY;
     }],
     ["polygon used for line guidance", (value: BeardTrimOverlay) => {
       value.views[0].annotations[0].geometry.type = "polygon";
@@ -151,8 +203,17 @@ describe("beard trim overlay v1 contract", () => {
     ["polyline used for region guidance", (value: BeardTrimOverlay) => {
       value.views[0].annotations[1].geometry.type = "polyline";
     }],
+    ["guard on line guidance", (value: BeardTrimOverlay) => {
+      value.views[0].annotations[0].guardMm = 4;
+    }],
+    ["direction on line guidance", (value: BeardTrimOverlay) => {
+      value.views[0].annotations[0].trimDirection = "with growth";
+    }],
     ["guard on a do-not-cross region", (value: BeardTrimOverlay) => {
       value.views[0].annotations[3].guardMm = 4;
+    }],
+    ["direction on a do-not-cross region", (value: BeardTrimOverlay) => {
+      value.views[0].annotations[3].trimDirection = "against growth";
     }],
     ["duplicate source view", (value: BeardTrimOverlay) => {
       value.views[1].sourceView = "front";

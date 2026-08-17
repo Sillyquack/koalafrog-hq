@@ -216,6 +216,57 @@ describe("deterministic beard guard strategy boundary", () => {
   });
 
   it.each([
+    [
+      "guard setting without a setting",
+      structured({ guardMm: null }),
+    ],
+    [
+      "descending guard range",
+      structured({
+        strategyType: "guard_range",
+        region: "sides",
+        guardMm: null,
+        guardRangeMm: { min: 9, max: 7 },
+      }),
+    ],
+    [
+      "relative guard without an instruction",
+      structured({
+        strategyType: "relative_guard",
+        guardMm: null,
+        relativeInstruction: null,
+      }),
+    ],
+  ])(
+    "fails closed while normalizing semantically malformed %s",
+    (_name, value) => {
+      const provider = {
+        ...fixture(null),
+        trimOverlay: null,
+        recommendations: Array.from({ length: 4 }, (_, index) => ({
+          ...fixture(null).recommendations[0],
+          id: `provider-recommendation-${index}`,
+          proposedGuardStrategy: index === 3 ? value : null,
+        })),
+      } as BeardPhotoProviderResult;
+      const schema = beardPhotoProviderResultSchema({
+        analysisId: provider.analysisId,
+        provider: provider.provider,
+        model: provider.model,
+        correlationId: provider.correlationId,
+      });
+
+      // The provider schema owns transport shape; the normalizer owns the
+      // strategy's cross-field semantics before the canonical string boundary.
+      expect(validateStructuredValue(provider, schema).success).toBe(true);
+      expect(normalizeBeardGuardStrategies(provider)).toEqual({
+        success: false,
+        recommendationIndex: 3,
+      });
+    },
+  );
+
+  it.each([
     ["Use a 7 mm guard on the cheeks.", "Try a 7 mm guard on the cheeks as a starting point."],
     ["Try 7–9 mm on the sides.", "Try a 7–9 mm guard range on the sides and check the result after each pass."],
     ["Keep the chin one setting longer than the sides.", "Keep the chin one guard setting longer than the sides."],

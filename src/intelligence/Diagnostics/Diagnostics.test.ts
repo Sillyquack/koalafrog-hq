@@ -122,6 +122,48 @@ describe("shared intelligence diagnostics", () => {
       ),
     ).not.toContain("private");
   });
+  it("treats anyOf as a short-circuiting union wrapper", () => {
+    const schema = {
+      anyOf: [
+        { type: "string" },
+        {
+          type: "object",
+          additionalProperties: false,
+          required: ["value"],
+          properties: { value: { type: "number" } },
+        },
+      ],
+      // Deliberately incompatible wrapper siblings must not be applied after
+      // an anyOf alternative succeeds.
+      type: "object",
+      additionalProperties: false,
+      required: ["wrapperOnly"],
+      properties: { wrapperOnly: { type: "boolean" } },
+    } as const;
+
+    expect(validateStructuredValue("legacy guard", schema)).toEqual({
+      success: true,
+      value: "legacy guard",
+    });
+    expect(validateStructuredValue({ value: 7 }, schema)).toEqual({
+      success: true,
+      value: { value: 7 },
+    });
+  });
+  it("fails closed for an empty anyOf union", () => {
+    expect(validateStructuredValue("private", { anyOf: [] })).toMatchObject({
+      success: false,
+      ruleCode: "VAL-0030",
+      jsonPath: "$",
+      expected: "object",
+      received: "string",
+      validator: "json-schema",
+      stage: "SchemaValidation",
+    });
+    expect(
+      JSON.stringify(validateStructuredValue("private", { anyOf: [] })),
+    ).not.toContain("private");
+  });
   it("classifies cleanup acknowledgement and verification independently", () => {
     expect(
       verifyCleanup({
