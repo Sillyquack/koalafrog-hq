@@ -75,6 +75,13 @@ const boundedGitHubApprovalMessages = [
   /^Allow GitHub to push .*branch.*\?$/i,
 ]
 
+const boundedOrchestratorCommandApprovalMessages = [
+  /^Allow (?:me to )?(?:apply|carry|copy) the (?:explicitly owner-approved )?(?:already-)?audited (?:Issue #53 )?(?:local )?orchestrator (?:implementation )?(?:commit )?stack (?:to|onto) this isolated (?:fix|diagnostic) branch(?: so I can .*?)?\?$/i,
+  /^Allow the explicitly authorized audited orchestrator commits to be copied onto this isolated diagnostic branch for the repository-discovery fix\?$/i,
+  /^Owner-approved: copy only the audited local orchestrator commits onto this isolated diagnostic branch\.?$/i,
+  /^Apply the explicitly owner-approved audited Issue #53 orchestrator implementation stack to this isolated fix branch\?$/i,
+]
+
 export function autoResponseForBoundedElicitation(message, prompt = "") {
   if (message?.method !== "mcpServer/elicitation/request") return null
 
@@ -98,6 +105,31 @@ export function autoResponseForBoundedElicitation(message, prompt = "") {
   }
 
   return { action: "accept", content: {} }
+}
+
+export function autoResponseForBoundedCommandApproval(message, prompt = "") {
+  if (message?.method !== "item/commandExecution/requestApproval") return null
+
+  const normalizedPrompt = String(prompt)
+  const hasExplicitOwnerApproval =
+    /Owner approval(?:\s+is)?\s+(?:explicitly\s+)?granted/i.test(
+      normalizedPrompt,
+    ) &&
+    /audited Issue #53 orchestrator implementation stack/i.test(normalizedPrompt) &&
+    /isolated (?:fix )?branch/i.test(normalizedPrompt)
+
+  if (!hasExplicitOwnerApproval) return null
+
+  const reason = String(message.params?.reason ?? "").trim()
+  if (
+    !boundedOrchestratorCommandApprovalMessages.some((pattern) =>
+      pattern.test(reason),
+    )
+  ) {
+    return null
+  }
+
+  return { decision: "accept" }
 }
 
 export class AppServerClient extends EventEmitter {
@@ -323,7 +355,9 @@ export class AppServerClient extends EventEmitter {
       })
     }
     const onServerRequest = (message) => {
-      const autoResponse = autoResponseForBoundedElicitation(message, prompt)
+      const autoResponse =
+        autoResponseForBoundedElicitation(message, prompt) ??
+        autoResponseForBoundedCommandApproval(message, prompt)
       if (autoResponse) {
         try {
           this.respond(message.id, autoResponse)
