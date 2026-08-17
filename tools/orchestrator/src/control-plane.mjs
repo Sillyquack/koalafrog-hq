@@ -146,6 +146,9 @@ const gatedPatterns = [
   /\b(?:purchase|payment|buy|new external account)\b/i,
 ]
 
+const prohibitionPattern =
+  /\b(?:do not|don't|does not|doesn't|never|must not|without|not authorized?|not permitted|not allowed)\b/i
+
 export function ownerGateReason(instruction) {
   if (instruction.ownerApprovalRequired) {
     return "The control-plane instruction explicitly requires owner approval."
@@ -153,7 +156,7 @@ export function ownerGateReason(instruction) {
 
   const clauses = instruction.prompt.split(/(?<=[.!?])\s+|\n+/)
   for (const clause of clauses) {
-    if (/\b(?:do not|don't|never|must not|without)\b/i.test(clause)) continue
+    if (prohibitionPattern.test(clause)) continue
     if (gatedPatterns.some((pattern) => pattern.test(clause))) {
       return `The instruction requests an owner-gated action: ${clause.trim()}`
     }
