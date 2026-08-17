@@ -78,6 +78,20 @@ test("owner gate stops affirmative production actions but ignores prohibitions",
     }),
     /owner-gated action/,
   )
+  assert.equal(
+    ownerGateReason({
+      ...control,
+      prompt: "It does not authorize merge to main, deployment to production, force-push, secrets exposure, or purchases.",
+    }),
+    null,
+  )
+  assert.equal(
+    ownerGateReason({
+      ...control,
+      prompt: "Merge to main is not authorized.",
+    }),
+    null,
+  )
 })
 
 test("completion packet is machine-readable and discoverable idempotently", () => {
