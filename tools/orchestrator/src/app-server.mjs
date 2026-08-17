@@ -28,6 +28,9 @@ function compactProtocolMessage(message) {
   if (params.name !== undefined) compact.name = params.name
   if (params.reason !== undefined) compact.reason = String(params.reason).slice(0, 500)
   if (params.message !== undefined) compact.summary = String(params.message).slice(0, 500)
+  if (params.request?.message !== undefined) {
+    compact.summary = String(params.request.message).slice(0, 500)
+  }
   if (Array.isArray(params.data)) compact.itemCount = params.data.length
   if (typeof params.diff === "string") compact.diffBytes = Buffer.byteLength(params.diff)
   if (typeof params.delta === "string") compact.deltaBytes = Buffer.byteLength(params.delta)
@@ -50,6 +53,7 @@ export function classifyServerRequest(message) {
   const reason =
     message.params?.reason ??
     message.params?.message ??
+    message.params?.request?.message ??
     message.params?.questions?.map((question) => question.question).join("; ") ??
     `${ownerMethods.has(message.method) ? "Codex requires owner input" : "The orchestrator cannot safely answer the server request"} for ${message.method}.`
   return {
@@ -60,6 +64,40 @@ export function classifyServerRequest(message) {
     itemId: message.params?.itemId ?? null,
     reason,
   }
+}
+
+const boundedGitHubApprovalMessages = [
+  /^Allow GitHub to create a Git tree\?$/i,
+  /^Allow GitHub to create a commit\?$/i,
+  /^Allow GitHub to (?:create|update) a Git (?:reference|ref)\?$/i,
+  /^Allow GitHub to update (?:a|the) Git (?:reference|ref)\?$/i,
+  /^Allow GitHub to update .*branch.*\?$/i,
+  /^Allow GitHub to push .*branch.*\?$/i,
+]
+
+export function autoResponseForBoundedElicitation(message, prompt = "") {
+  if (message?.method !== "mcpServer/elicitation/request") return null
+
+  const normalizedPrompt = String(prompt)
+  const hasExplicitOwnerApproval =
+    /Owner approval(?:\s+remains)?\s+(?:is\s+)?(?:explicitly\s+)?granted/i.test(
+      normalizedPrompt,
+    ) &&
+    /create the Git tree\/commit/i.test(normalizedPrompt) &&
+    /push(?: that commit| the existing review branch| the existing branch)?/i.test(
+      normalizedPrompt,
+    )
+
+  if (!hasExplicitOwnerApproval) return null
+
+  const summary = String(
+    message.params?.message ?? message.params?.request?.message ?? "",
+  ).trim()
+  if (!boundedGitHubApprovalMessages.some((pattern) => pattern.test(summary))) {
+    return null
+  }
+
+  return { action: "accept", content: {} }
 }
 
 export class AppServerClient extends EventEmitter {
@@ -186,6 +224,13 @@ export class AppServerClient extends EventEmitter {
     return pending.promise
   }
 
+  respond(requestId, result) {
+    if (!this.process?.stdin?.writable) {
+      throw new Error("Codex App Server is not running")
+    }
+    this.process.stdin.write(`${JSON.stringify({ id: requestId, result })}\n`)
+  }
+
   notify(method, params) {
     if (!this.process?.stdin?.writable) {
       throw new Error("Codex App Server is not running")
@@ -278,6 +323,25 @@ export class AppServerClient extends EventEmitter {
       })
     }
     const onServerRequest = (message) => {
+      const autoResponse = autoResponseForBoundedElicitation(message, prompt)
+      if (autoResponse) {
+        try {
+          this.respond(message.id, autoResponse)
+          Promise.resolve(
+            this.eventSink({
+              type: "server_request_auto_resolved",
+              message: compactProtocolMessage(message),
+            }),
+          ).catch(() => {})
+        } catch (error) {
+          pendingOwnerRequest = {
+            ...classifyServerRequest(message),
+            reason: `Failed to resolve approved server request: ${error.message}`,
+          }
+        }
+        return
+      }
+
       const ownerRequest = classifyServerRequest(message)
       if (!ownerRequest || ownerRequest.threadId !== threadId) return
       if (turnId && ownerRequest.turnId && ownerRequest.turnId !== turnId) return
