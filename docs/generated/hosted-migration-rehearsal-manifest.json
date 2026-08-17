@@ -3,9 +3,9 @@
   "generatedAt": "2026-07-29T14:00:00+02:00",
   "rcTag": "finished-goods-traceability-recall-v1-rc1",
   "rcCommit": "bd5617c70dd8ca21611f63750f2293e40a83c8b4",
-  "localMigrationHead": "20260801085016",
+  "localMigrationHead": "20260816044500",
   "hostedStateVerified": false,
-  "count": 92,
+  "count": 99,
   "provenance": {
     "invariant": "Committed evidence never stores the hash of the commit containing that evidence.",
     "stableIdentityFields": [
@@ -3528,6 +3528,240 @@
       "hostedApplicationStatus": "pending_rehearsal",
       "authorizationRequired": true,
       "sourceHash": "f6217b080703bdd6f9d3ef26c044474e7e595c762c6f92dd2b2af4aaa180d5e7"
+    },
+    {
+      "orderedIndex": 93,
+      "filename": "20260815190000_foot_care_product_studio.sql",
+      "timestamp": "20260815190000",
+      "milestone": "foot care product studio",
+      "purpose": "foot care product studio",
+      "dependencies": [
+        "20260801085016_procurement_commercial_provenance_authoring_v1.sql"
+      ],
+      "requiredExtensions": [],
+      "expectedObjectChanges": {
+        "tables": [],
+        "functions": [],
+        "policies": [],
+        "indexes": 0
+      },
+      "expectedDataChanges": 0,
+      "lockRisk": "low",
+      "tableRewriteRisk": "not_detected",
+      "destructiveBehavior": "none detected",
+      "longTransactionRisk": "low_or_unknown",
+      "durationClass": "short_expected",
+      "classification": "additive_safe",
+      "rollbackClassification": "code_rollback_or_forward_fix",
+      "forwardFixStrategy": "append a reviewed migration; never rewrite immutable business history",
+      "verificationQuery": "compare migration head, authority inventory, object counts, grants, RLS, and focused domain contracts",
+      "stopCondition": "migration error, drift, timeout, or object mismatch",
+      "hostedApplicationStatus": "pending_rehearsal",
+      "authorizationRequired": true,
+      "sourceHash": "cdd1823a876794fedef2d435131d6d2489d2c542fb1610b416bf8897cfcef33d"
+    },
+    {
+      "orderedIndex": 94,
+      "filename": "20260815200000_foot_care_procurement_handoff.sql",
+      "timestamp": "20260815200000",
+      "milestone": "foot care procurement handoff",
+      "purpose": "foot care procurement handoff",
+      "dependencies": [
+        "20260815190000_foot_care_product_studio.sql"
+      ],
+      "requiredExtensions": [],
+      "expectedObjectChanges": {
+        "tables": [],
+        "functions": [
+          "create_foot_care_procurement_handoff"
+        ],
+        "policies": [],
+        "indexes": 2
+      },
+      "expectedDataChanges": 2,
+      "lockRisk": "requires_rehearsal_measurement",
+      "tableRewriteRisk": "not_detected",
+      "destructiveBehavior": "none detected",
+      "longTransactionRisk": "low_or_unknown",
+      "durationClass": "measure_in_rehearsal",
+      "classification": "authority_change",
+      "rollbackClassification": "backup_and_forward_fix_decision_required",
+      "forwardFixStrategy": "append a reviewed migration; never rewrite immutable business history",
+      "verificationQuery": "compare migration head, authority inventory, object counts, grants, RLS, and focused domain contracts",
+      "stopCondition": "migration error, drift, timeout, or object mismatch",
+      "hostedApplicationStatus": "pending_rehearsal",
+      "authorizationRequired": true,
+      "sourceHash": "15ec335c7a8ab9a2563645a7913f739fb7b601b126bb99bc54ca27f80c66d24e"
+    },
+    {
+      "orderedIndex": 95,
+      "filename": "20260815210000_harden_foot_care_procurement_handoff.sql",
+      "timestamp": "20260815210000",
+      "milestone": "harden foot care procurement handoff",
+      "purpose": "harden foot care procurement handoff",
+      "dependencies": [
+        "20260815200000_foot_care_procurement_handoff.sql"
+      ],
+      "requiredExtensions": [],
+      "expectedObjectChanges": {
+        "tables": [],
+        "functions": [
+          "create_foot_care_procurement_handoff"
+        ],
+        "policies": [],
+        "indexes": 0
+      },
+      "expectedDataChanges": 2,
+      "lockRisk": "low",
+      "tableRewriteRisk": "not_detected",
+      "destructiveBehavior": "none detected",
+      "longTransactionRisk": "low_or_unknown",
+      "durationClass": "measure_in_rehearsal",
+      "classification": "authority_change",
+      "rollbackClassification": "backup_and_forward_fix_decision_required",
+      "forwardFixStrategy": "append a reviewed migration; never rewrite immutable business history",
+      "verificationQuery": "compare migration head, authority inventory, object counts, grants, RLS, and focused domain contracts",
+      "stopCondition": "migration error, drift, timeout, or object mismatch",
+      "hostedApplicationStatus": "pending_rehearsal",
+      "authorizationRequired": true,
+      "sourceHash": "d634acd87c532ba5917de5d8c4faacceb6aa3997fb90d8889a8127cb1daa191a"
+    },
+    {
+      "orderedIndex": 96,
+      "filename": "20260815220000_fix_foot_care_handoff_analysis_shape.sql",
+      "timestamp": "20260815220000",
+      "milestone": "fix foot care handoff analysis shape",
+      "purpose": "fix foot care handoff analysis shape",
+      "dependencies": [
+        "20260815210000_harden_foot_care_procurement_handoff.sql"
+      ],
+      "requiredExtensions": [],
+      "expectedObjectChanges": {
+        "tables": [],
+        "functions": [
+          "create_foot_care_procurement_handoff"
+        ],
+        "policies": [],
+        "indexes": 0
+      },
+      "expectedDataChanges": 2,
+      "lockRisk": "low",
+      "tableRewriteRisk": "not_detected",
+      "destructiveBehavior": "none detected",
+      "longTransactionRisk": "low_or_unknown",
+      "durationClass": "measure_in_rehearsal",
+      "classification": "authority_change",
+      "rollbackClassification": "backup_and_forward_fix_decision_required",
+      "forwardFixStrategy": "append a reviewed migration; never rewrite immutable business history",
+      "verificationQuery": "compare migration head, authority inventory, object counts, grants, RLS, and focused domain contracts",
+      "stopCondition": "migration error, drift, timeout, or object mismatch",
+      "hostedApplicationStatus": "pending_rehearsal",
+      "authorizationRequired": true,
+      "sourceHash": "513145bc24e5ee2043c3d4c9c1d62b04007339a9fdd4fb9855c0b5803ab9d849"
+    },
+    {
+      "orderedIndex": 97,
+      "filename": "20260816035129_procurement_follow_up_research.sql",
+      "timestamp": "20260816035129",
+      "milestone": "procurement follow up research",
+      "purpose": "procurement follow up research",
+      "dependencies": [
+        "20260815220000_fix_foot_care_handoff_analysis_shape.sql"
+      ],
+      "requiredExtensions": [],
+      "expectedObjectChanges": {
+        "tables": [],
+        "functions": [
+          "create_procurement_follow_up_research_job",
+          "finalize_procurement_background_operation",
+          "guard_procurement_follow_up_candidate_lineage",
+          "guard_procurement_follow_up_job_lineage",
+          "publish_procurement_research_results"
+        ],
+        "policies": [],
+        "indexes": 2
+      },
+      "expectedDataChanges": 9,
+      "lockRisk": "requires_rehearsal_measurement",
+      "tableRewriteRisk": "not_detected",
+      "destructiveBehavior": "none detected",
+      "longTransactionRisk": "requires_rehearsal_measurement",
+      "durationClass": "measure_in_rehearsal",
+      "classification": "authority_change",
+      "rollbackClassification": "backup_and_forward_fix_decision_required",
+      "forwardFixStrategy": "append a reviewed migration; never rewrite immutable business history",
+      "verificationQuery": "compare migration head, authority inventory, object counts, grants, RLS, and focused domain contracts",
+      "stopCondition": "migration error, drift, timeout, or object mismatch",
+      "hostedApplicationStatus": "pending_rehearsal",
+      "authorizationRequired": true,
+      "sourceHash": "5f8f2546bb921cdd8faa46280ecfbdf43953c35e626679ab9b10216ea118409c"
+    },
+    {
+      "orderedIndex": 98,
+      "filename": "20260816042422_procurement_research_tax_duty_estimate.sql",
+      "timestamp": "20260816042422",
+      "milestone": "procurement research tax duty estimate",
+      "purpose": "procurement research tax duty estimate",
+      "dependencies": [
+        "20260816035129_procurement_follow_up_research.sql"
+      ],
+      "requiredExtensions": [],
+      "expectedObjectChanges": {
+        "tables": [],
+        "functions": [
+          "accept_procurement_offer_candidate",
+          "create_procurement_follow_up_research_job",
+          "finalize_procurement_background_operation",
+          "publish_procurement_research_results"
+        ],
+        "policies": [],
+        "indexes": 0
+      },
+      "expectedDataChanges": 13,
+      "lockRisk": "low",
+      "tableRewriteRisk": "not_detected",
+      "destructiveBehavior": "none detected",
+      "longTransactionRisk": "requires_rehearsal_measurement",
+      "durationClass": "measure_in_rehearsal",
+      "classification": "authority_change",
+      "rollbackClassification": "backup_and_forward_fix_decision_required",
+      "forwardFixStrategy": "append a reviewed migration; never rewrite immutable business history",
+      "verificationQuery": "compare migration head, authority inventory, object counts, grants, RLS, and focused domain contracts",
+      "stopCondition": "migration error, drift, timeout, or object mismatch",
+      "hostedApplicationStatus": "pending_rehearsal",
+      "authorizationRequired": true,
+      "sourceHash": "b385c3f790b8c16437035179d46eec1545a8934d5d4cd67eebed2dfcee4bfdf7"
+    },
+    {
+      "orderedIndex": 99,
+      "filename": "20260816044500_fragrance_product_studio_type.sql",
+      "timestamp": "20260816044500",
+      "milestone": "fragrance product studio type",
+      "purpose": "fragrance product studio type",
+      "dependencies": [
+        "20260816042422_procurement_research_tax_duty_estimate.sql"
+      ],
+      "requiredExtensions": [],
+      "expectedObjectChanges": {
+        "tables": [],
+        "functions": [],
+        "policies": [],
+        "indexes": 0
+      },
+      "expectedDataChanges": 0,
+      "lockRisk": "low",
+      "tableRewriteRisk": "not_detected",
+      "destructiveBehavior": "none detected",
+      "longTransactionRisk": "low_or_unknown",
+      "durationClass": "short_expected",
+      "classification": "additive_safe",
+      "rollbackClassification": "code_rollback_or_forward_fix",
+      "forwardFixStrategy": "append a reviewed migration; never rewrite immutable business history",
+      "verificationQuery": "compare migration head, authority inventory, object counts, grants, RLS, and focused domain contracts",
+      "stopCondition": "migration error, drift, timeout, or object mismatch",
+      "hostedApplicationStatus": "pending_rehearsal",
+      "authorizationRequired": true,
+      "sourceHash": "0d9dfc21df387531a6edcd5bdb25a23f3b347c3093427d082a42a01333fa3a26"
     }
   ]
 }
