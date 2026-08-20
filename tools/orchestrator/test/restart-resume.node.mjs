@@ -1,5 +1,5 @@
 import assert from "node:assert/strict"
-import { mkdtemp, rm } from "node:fs/promises"
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
 import test from "node:test"
@@ -10,7 +10,11 @@ import {
   ensureTaskThread,
   Orchestrator,
 } from "../src/orchestrator.mjs"
-import { StateStore, redactForLog } from "../src/state-store.mjs"
+import {
+  currentStateSchemaVersion,
+  StateStore,
+  redactForLog,
+} from "../src/state-store.mjs"
 import { recordInstructionTurnStarted } from "../src/turn-accounting.mjs"
 
 function controlBlock({
@@ -96,6 +100,53 @@ test("persisted state survives restart and prevents duplicate consumption", asyn
     shouldConsumeInstruction(reloaded, { instructionId: "proof-001" }),
     false,
   )
+})
+
+test("schema-one Issue #53 state migrates without losing its active thread", async (t) => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "koalafrog-migration-"))
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const store = new StateStore({
+    stateDirectory: directory,
+    repository: "Sillyquack/koalafrog-hq",
+    issueNumber: 53,
+  })
+  await mkdir(store.directory, { recursive: true })
+  await writeFile(
+    store.statePath,
+    `${JSON.stringify({
+      schemaVersion: 1,
+      task: {
+        repository: "Sillyquack/koalafrog-hq",
+        issueNumber: 53,
+      },
+      status: "running",
+      lastConsumedInstructionId: "prior-001",
+      activeInstruction: {
+        instructionId: "active-002",
+        phase: "turn_started",
+        attempts: 0,
+      },
+      threadId: "thread-existing",
+      workspacePath: "/tmp/existing-workspace",
+      branch: "agent/existing",
+      turnCount: 7,
+      retryCount: 0,
+      pendingOwnerRequest: null,
+      runs: [{ instructionId: "prior-001", turnCount: 1 }],
+    })}\n`,
+  )
+
+  const migrated = await store.load()
+  assert.equal(migrated.schemaVersion, currentStateSchemaVersion)
+  assert.equal(migrated.task.originIssueNumber, 53)
+  assert.equal(migrated.task.originIssueUrl, null)
+  assert.equal(migrated.task.lastObservedIssueUpdatedAt, null)
+  assert.equal(migrated.task.originIssueClosed, false)
+  assert.equal(migrated.threadId, "thread-existing")
+  assert.equal(migrated.workspacePath, "/tmp/existing-workspace")
+  assert.equal(migrated.activeInstruction.instructionId, "active-002")
+  assert.equal(migrated.activeInstruction.turnCount, 1)
+  assert.equal(JSON.parse(await readFile(store.statePath, "utf8")).schemaVersion, 2)
 })
 
 test("restart resumes the persisted Codex thread instead of starting another", async () => {
@@ -241,7 +292,9 @@ test("polling continues after needs_owner and a fresh continue reuses the thread
   assert.equal(continued.instructionId, "owner-follow-up-002")
   assert.equal(threadStarts, 1)
   assert.equal(threadResumes, 1)
-  assert.equal(posted.length, 2)
+  assert.equal(posted.length, 4)
+  assert.equal(posted.filter((body) => body.includes("agent_pickup:")).length, 2)
+  assert.equal(posted.filter((body) => body.includes("agent_result:")).length, 2)
   const state = await store.load()
   assert.equal(state.threadId, "thread-persisted")
   assert.equal(state.lastConsumedInstructionId, "owner-follow-up-002")
@@ -313,11 +366,77 @@ test("restart finalizes a completed persisted turn without starting a duplicate"
   assert.equal(result.status, "needs_review")
   assert.equal(resumeCalls, 1)
   assert.equal(runTurnCalls, 0)
-  assert.equal(posted.length, 1)
+  assert.equal(posted.length, 2)
+  assert.equal(posted.filter((body) => body.includes("agent_pickup:")).length, 1)
+  assert.equal(posted.filter((body) => body.includes("agent_result:")).length, 1)
   const recoveredState = await store.load()
   assert.equal(recoveredState.threadId, "thread-before-crash")
   assert.equal(recoveredState.activeInstruction, null)
   assert.equal(recoveredState.runs[0].turnCount, 1)
+})
+
+test("restart defers a still-running persisted turn instead of starting a duplicate", async (t) => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "koalafrog-live-turn-"))
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const block = controlBlock({ instructionId: "live-recovery-001" })
+  const [instruction] = extractAgentControls(block)
+  const store = new StateStore({
+    stateDirectory: directory,
+    repository: "Sillyquack/koalafrog-hq",
+    issueNumber: 53,
+  })
+  const state = await store.load()
+  beginInstruction(state, instruction)
+  state.threadId = "thread-live"
+  state.workspacePath = "/tmp/workspace-live"
+  state.branch = "agent/live-recovery-001"
+  recordInstructionTurnStarted(state, { turnId: "turn-live", attempt: 0 })
+  await store.save(state)
+
+  let runTurnCalls = 0
+  const appServer = {
+    async start() {},
+    async resumeThread(threadId) {
+      return { thread: { id: threadId } }
+    },
+    async waitForMcpReady() {},
+    async readThread() {
+      return {
+        thread: { turns: [{ id: "turn-live", status: "inProgress" }] },
+      }
+    },
+    async runTurn() {
+      runTurnCalls += 1
+      throw new Error("A live recovery turn must not be duplicated")
+    },
+    async stop() {},
+  }
+  const posted = []
+  const orchestrator = new Orchestrator(
+    { ...runtimeConfig(directory), turnTimeoutMs: 60_000 },
+    {
+      appServer,
+      controlPlane: {
+        async fetchTask() {
+          return { issue: { body: "" }, comments: [{ body: block }] }
+        },
+        async postComment(comment) {
+          posted.push(comment)
+        },
+      },
+      store,
+      workspace: fakeWorkspace(),
+    },
+  )
+
+  const result = await orchestrator.runOnce()
+  assert.equal(result.status, "claim_deferred")
+  assert.equal(runTurnCalls, 0)
+  assert.equal(posted.filter((body) => body.includes("agent_pickup:")).length, 1)
+  const deferred = await store.load()
+  assert.equal(deferred.activeInstruction.phase, "turn_started")
+  assert.equal(deferred.activeInstruction.turnId, "turn-live")
+  assert.equal(deferred.activeInstruction.turnCount, 1)
 })
 
 test("restart publishes a persisted owner stop before returning to polling", async (t) => {

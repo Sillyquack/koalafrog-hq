@@ -7,7 +7,7 @@
   <key>ProgramArguments</key>
   <array>
     <string>/absolute/path/to/node</string>
-    <string>/absolute/path/to/koalafrog-hq/tools/orchestrator/bin/repository-orchestrator.mjs</string>
+    <string>/Users/owner/Library/Application Support/Koalafrog Orchestrator/runtime/releases/&lt;sha256&gt;/bin/repository-orchestrator.mjs</string>
     <string>watch</string>
     <string>--repository</string>
     <string>Sillyquack/koalafrog-hq</string>
@@ -29,6 +29,10 @@
     <string>2</string>
     <string>--retry-base-ms</string>
     <string>1000</string>
+    <string>--discovery-limit</string>
+    <string>50</string>
+    <string>--max-tasks-per-poll</string>
+    <string>4</string>
   </array>
   <key>WorkingDirectory</key>
   <string>/absolute/path/to/koalafrog-hq</string>

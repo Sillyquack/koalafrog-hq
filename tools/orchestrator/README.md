@@ -27,9 +27,39 @@ starting a duplicate turn. `action: continue` reuses that context;
 `action: start` deliberately creates a fresh instruction-specific worktree and
 thread.
 
-Durable run history and existing `agent_result` comments suppress replay. The
-newest unconsumed control block is selected, while an older pending instruction
-cannot be stranded merely because a newer instruction was already consumed.
+Durable per-issue run history, a repository-wide instruction claim ledger, and
+existing `agent_result` comments suppress replay. File locks cover both the
+origin issue and globally unique `instruction_id`, so overlapping polls and
+process restarts cannot start the same instruction twice. Within the bounded
+candidate set, issues and their unconsumed instructions are processed
+oldest-first; a failure or owner stop on one issue does not stop the scanner
+from considering the next issue.
+
+GitHub's issue `updated_at` value is persisted after a detail read. Unchanged
+search results are skipped on later polls, while changed issues and legacy
+persisted tasks are fetched again. This retains follow-up responsiveness while
+keeping the 15-second repository search bounded.
+
+## Making an issue eligible
+
+A new task must be an open GitHub issue, not a pull request, and its **issue
+body** must contain a valid fenced YAML `agent_control` block. The body
+requirement makes the issue discoverable by the bounded repository search.
+Ordinary prose, a bare `agent_control` word, malformed blocks, and pull requests
+are ignored. After first pickup, fresh follow-up blocks may be added as comments
+because the issue then has durable local state.
+
+Use a repository-wide unique `instruction_id`. Eligibility is explicit:
+
+- `action: start` accepts `task_state: ready` or `failed` and creates a new
+  isolated worktree/thread.
+- `action: continue` accepts `ready`, `failed`, `needs_review`, or
+  `needs_owner` and reuses the issue's persisted worktree/thread.
+- `action: stop` consumes the explicit stop without starting a Codex turn.
+
+`owner_approval_required: true` always produces `needs_owner`. The effective
+turn limit is the lower of the issue's `max_turns` and the local service limit.
+See `docs/agent-orchestration/AGENT_TASK_TEMPLATE.md` for the exact shape.
 
 ## Local start
 
@@ -95,8 +125,7 @@ GitHub/OpenAI token: the service launches the existing authenticated Codex
 binary and uses its connected GitHub app.
 
 Installing or enabling the LaunchAgent mutates the owner's Mac and therefore
-requires a separate explicit approval. Do not run `install` as part of code
-review. The non-mutating preview is:
+always requires explicit bounded owner approval. The non-mutating preview is:
 
 ```sh
 npm run --silent orchestrator:service -- render \
@@ -108,6 +137,8 @@ npm run --silent orchestrator:service -- render \
   --turn-timeout-ms 1200000 \
   --max-retries 2 \
   --retry-base-ms 1000 \
+  --discovery-limit 50 \
+  --max-tasks-per-poll 4 \
   --auto-commit | plutil -lint -
 ```
 
@@ -124,6 +155,8 @@ npm run orchestrator:service -- install \
   --turn-timeout-ms 1200000 \
   --max-retries 2 \
   --retry-base-ms 1000 \
+  --discovery-limit 50 \
+  --max-tasks-per-poll 4 \
   --auto-commit
 ```
 
@@ -131,7 +164,11 @@ The installer fails before launchd mutation unless Node and Codex are
 executable and `--checkout` is a stable coordinating checkout. It validates the
 generated plist before replacing the prior file, writes it atomically with mode
 `0600`, waits for an old instance to unload, retries bounded launchd bootstrap
-races, and restores the previous plist/service if the new bootstrap fails.
+races, and restores the previous plist/service if the new bootstrap fails. It
+first copies the audited orchestrator source to an immutable content-addressed
+release under the state root. The LaunchAgent executes that release, not a task
+worktree, while `WorkingDirectory` remains the stable coordinating checkout.
+No credentials are written to the release or plist.
 
 It writes and loads:
 
@@ -147,6 +184,19 @@ launchctl print gui/$(id -u)/com.sillyquack.koalafrog-orchestrator
 tail -n 40 ~/Library/Application\ Support/Koalafrog\ Orchestrator/service/orchestrator.stdout.log
 tail -n 40 ~/Library/Application\ Support/Koalafrog\ Orchestrator/service/orchestrator.stderr.log
 ```
+
+The active executable appears in `launchctl print` under `arguments` and has
+this stable shape:
+
+```text
+~/Library/Application Support/Koalafrog Orchestrator/runtime/releases/<sha256>/bin/repository-orchestrator.mjs
+```
+
+Repository-wide claim records are mode-`0600` JSON files under
+`repository-queue/instructions/`. Per-issue state and event logs remain in
+`Sillyquack-koalafrog-hq-issue-<number>/`; both `agent_pickup` and
+`agent_result` packets include the origin issue number/URL and are posted only
+to that issue by the orchestrator.
 
 An explicitly approved uninstall stops only this label and preserves all task
 state and worktrees:
@@ -191,6 +241,9 @@ npm run schema:ts
 - Production deploys, production migrations/data changes, credentials,
   payments, external accounts, destructive Git operations, and default-branch
   merges are owner-gated.
+- Constraint, exclusion, and prohibition language is classified by intent and
+  is not treated as an affirmative request merely because it names a protected
+  action; ambiguous or affirmative protected actions still fail closed.
 - The service never deploys, merges, force-pushes, or resolves owner questions.
 - `max_turns`, per-turn timeout, bounded retries, and exponential backoff are
   enforced locally even if the issue asks for larger limits.

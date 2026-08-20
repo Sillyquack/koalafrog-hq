@@ -355,6 +355,10 @@ export class AppServerClient extends EventEmitter {
     return this.request("thread/read", { threadId, includeTurns: true })
   }
 
+  async interruptTurn(threadId, turnId) {
+    return this.request("turn/interrupt", { threadId, turnId }, 60_000)
+  }
+
   async waitForMcpReady(threadId, server = "codex_apps", timeoutMs = 45_000) {
     const key = `${threadId}:${server}`
     if (this.mcpStatuses.get(key) === "ready") return

@@ -3,13 +3,19 @@ import { setTimeout as delay } from "node:timers/promises"
 import { AppServerClient } from "./app-server.mjs"
 import {
   findExistingResult,
+  findExistingPickup,
   formatCompletionPacket,
+  formatPickupPacket,
   ownerGateReason,
   selectNextInstruction,
   shouldConsumeInstruction,
 } from "./control-plane.mjs"
 import { GithubControlPlane } from "./github-control-plane.mjs"
-import { redactForLog, StateStore } from "./state-store.mjs"
+import {
+  recordTaskOrigin,
+  redactForLog,
+  StateStore,
+} from "./state-store.mjs"
 import {
   canStartInstructionTurn,
   instructionTurnCount,
@@ -270,12 +276,34 @@ export class Orchestrator {
       branch: packet.branch,
       commits: packet.commits,
       turnCount: instructionTurnCount(state, packet.instructionId),
+      originIssueNumber: state.task.originIssueNumber,
+      originIssueUrl: state.task.originIssueUrl,
       ownerRequest: packet.ownerRequest ?? null,
       completedAt: new Date().toISOString(),
     })
     state.activeInstruction = null
     state.retryCount = 0
     await this.#save(state)
+  }
+
+  async #postPickup(state, instruction, comments) {
+    if (findExistingPickup(comments, instruction.instructionId)) return
+    await this.controlPlane.postComment(
+      formatPickupPacket({
+        instructionId: instruction.instructionId,
+        originIssueNumber: state.task.originIssueNumber,
+        originIssueUrl: state.task.originIssueUrl,
+        codexThreadId: state.threadId,
+        branch: state.branch,
+      }),
+    )
+    await this.store.appendEvent({
+      type: "instruction_pickup_posted",
+      instructionId: instruction.instructionId,
+      originIssueNumber: state.task.originIssueNumber,
+      originIssueUrl: state.task.originIssueUrl,
+      threadId: state.threadId,
+    })
   }
 
   async #packetFromWorkspace(state, instruction, turnResult) {
@@ -313,6 +341,8 @@ export class Orchestrator {
         : "failed"
     return {
       instructionId: instruction.instructionId,
+      originIssueNumber: state.task.originIssueNumber,
+      originIssueUrl: state.task.originIssueUrl,
       codexThreadId: state.threadId,
       status,
       branch: workspace.branch || null,
@@ -414,15 +444,40 @@ export class Orchestrator {
     return result
   }
 
-  async runOnce() {
+  async runOnce({ task: providedTask = null, expectedInstructionId = null } = {}) {
     await this.start()
     const state = await this.store.load()
-    const task = await this.controlPlane.fetchTask()
+    const task = providedTask ?? (await this.controlPlane.fetchTask())
+    const originIssueUrl =
+      task.issue?.html_url ?? task.issue?.display_url ?? task.issue?.url ?? null
+    if (originIssueUrl !== state.task.originIssueUrl) {
+      recordTaskOrigin(state, {
+        issueNumber: this.config.issueNumber,
+        issueUrl: originIssueUrl,
+      })
+      await this.#save(state)
+    }
     const pendingInstruction = selectNextInstruction(
       task.issue,
       task.comments,
       state,
     )
+
+    const selectedInstruction = state.activeInstruction ?? pendingInstruction
+    if (
+      expectedInstructionId &&
+      selectedInstruction?.instructionId !== expectedInstructionId
+    ) {
+      await this.store.appendEvent({
+        type: "queue_claim_changed",
+        expectedInstructionId,
+        selectedInstructionId: selectedInstruction?.instructionId ?? null,
+      })
+      return {
+        status: "queue_changed",
+        instructionId: selectedInstruction?.instructionId ?? null,
+      }
+    }
 
     if (state.activeInstruction?.phase === "result_pending") {
       const pendingId = state.activeInstruction.instructionId
@@ -470,6 +525,8 @@ export class Orchestrator {
       } catch (error) {
         packet = {
           instructionId: stoppedId,
+          originIssueNumber: state.task.originIssueNumber,
+          originIssueUrl: state.task.originIssueUrl,
           codexThreadId: state.threadId,
           status: "needs_owner",
           branch: state.branch,
@@ -544,6 +601,8 @@ export class Orchestrator {
     if (gate) {
       const packet = {
         instructionId: instruction.instructionId,
+        originIssueNumber: state.task.originIssueNumber,
+        originIssueUrl: state.task.originIssueUrl,
         codexThreadId: state.threadId,
         status: "needs_owner",
         branch: state.branch,
@@ -586,6 +645,7 @@ export class Orchestrator {
       model: this.config.model,
       save: (nextState) => this.#save(nextState),
     })
+    await this.#postPickup(state, instruction, task.comments)
 
     if (state.activeInstruction.phase === "turn_started") {
       const recovered = await this.appServer.readThread(state.threadId)
@@ -600,6 +660,42 @@ export class Orchestrator {
         })
         await this.#completeInstruction(state, packet, task.comments)
         return { status: packet.status, instructionId: instruction.instructionId }
+      }
+      if (
+        new Set(["inProgress", "in_progress", "running"]).has(
+          priorTurn?.status,
+        )
+      ) {
+        const lastPersistedAt = Date.parse(state.updatedAt ?? "")
+        const recoveryAgeMs = Number.isFinite(lastPersistedAt)
+          ? Date.now() - lastPersistedAt
+          : Number.POSITIVE_INFINITY
+        if (recoveryAgeMs < this.config.turnTimeoutMs) {
+          await this.store.appendEvent({
+            type: "turn_recovery_deferred",
+            instructionId: instruction.instructionId,
+            threadId: state.threadId,
+            turnId: state.activeInstruction.turnId,
+            recoveryAgeMs,
+          })
+          return {
+            status: "claim_deferred",
+            instructionId: instruction.instructionId,
+          }
+        }
+        try {
+          await this.appServer.interruptTurn?.(
+            state.threadId,
+            state.activeInstruction.turnId,
+          )
+        } catch (error) {
+          await this.store.appendEvent({
+            type: "stale_turn_interrupt_failed",
+            instructionId: instruction.instructionId,
+            turnId: state.activeInstruction.turnId,
+            error: error.message,
+          })
+        }
       }
       state.activeInstruction.phase = "thread_ready"
       state.activeInstruction.attempts += 1
@@ -617,6 +713,8 @@ export class Orchestrator {
       )
       packet = {
         instructionId: instruction.instructionId,
+        originIssueNumber: state.task.originIssueNumber,
+        originIssueUrl: state.task.originIssueUrl,
         codexThreadId: state.threadId,
         status: "failed",
         branch: workspaceState.branch,

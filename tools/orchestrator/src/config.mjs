@@ -39,6 +39,8 @@ export function parseConfig(argv, cwd = process.cwd()) {
     stateDirectory: defaultStateDirectory(),
     baseRef: "origin/main",
     pollMs: 15_000,
+    discoveryLimit: 50,
+    maxTasksPerPoll: 4,
     maxTurns: 12,
     turnTimeoutMs: 20 * 60_000,
     maxRetries: 2,
@@ -83,6 +85,12 @@ export function parseConfig(argv, cwd = process.cwd()) {
       case "--poll-ms":
         config.pollMs = numeric(arg)
         break
+      case "--discovery-limit":
+        config.discoveryLimit = numeric(arg)
+        break
+      case "--max-tasks-per-poll":
+        config.maxTasksPerPoll = numeric(arg)
+        break
       case "--max-turns":
         config.maxTurns = numeric(arg)
         break
@@ -126,10 +134,12 @@ export function parseConfig(argv, cwd = process.cwd()) {
     config.maxTurns < 1 ||
     config.turnTimeoutMs < 1 ||
     config.pollMs < 1 ||
+    config.discoveryLimit < 1 ||
+    config.maxTasksPerPoll < 1 ||
     config.retryBaseMs < 1
   ) {
     throw new Error(
-      "Issue, max turns, timeout, poll interval, and retry base must be positive",
+      "Issue, limits, max turns, timeout, poll interval, and retry base must be positive",
     )
   }
   return config
@@ -148,6 +158,8 @@ Options:
   --state-dir path              Durable state root outside source
   --base-ref ref                Worktree base (default: origin/main)
   --poll-ms milliseconds        Watch interval (default: 15000)
+  --discovery-limit number      Maximum explicit issue search results (default: 50)
+  --max-tasks-per-poll number   Maximum claimed tasks per cycle (default: 4)
   --max-turns number            Hard local turn ceiling (default: 12)
   --turn-timeout-ms number      Per-turn timeout (default: 1200000)
   --max-retries number          Bounded failed-turn retries (default: 2)

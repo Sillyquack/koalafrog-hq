@@ -2,6 +2,8 @@ import { appendFile, chmod, mkdir, readFile, rename, writeFile } from "node:fs/p
 import path from "node:path"
 import { normalizeTurnAccounting } from "./turn-accounting.mjs"
 
+export const currentStateSchemaVersion = 2
+
 function redactString(value) {
   return value
     .replace(/Bearer\s+[A-Za-z0-9._~+/=-]+/gi, "Bearer [redacted]")
@@ -50,10 +52,17 @@ export function redactForLog(value, seen = new WeakSet()) {
   return redacted
 }
 
-export function initialState({ repository, issueNumber }) {
+export function initialState({ repository, issueNumber, issueUrl = null }) {
   return {
-    schemaVersion: 1,
-    task: { repository, issueNumber },
+    schemaVersion: currentStateSchemaVersion,
+    task: {
+      repository,
+      issueNumber,
+      originIssueNumber: issueNumber,
+      originIssueUrl: issueUrl,
+      lastObservedIssueUpdatedAt: null,
+      originIssueClosed: false,
+    },
     status: "ready",
     lastConsumedInstructionId: null,
     activeInstruction: null,
@@ -68,6 +77,51 @@ export function initialState({ repository, issueNumber }) {
     runs: [],
     updatedAt: new Date().toISOString(),
   }
+}
+
+export function migrateState(state, { repository, issueNumber }) {
+  if (state.schemaVersion === 1) {
+    state.schemaVersion = currentStateSchemaVersion
+    state.task ??= { repository, issueNumber }
+    state.task.originIssueNumber ??= state.task.issueNumber ?? issueNumber
+    state.task.originIssueUrl ??= state.task.issueUrl ?? null
+    state.task.lastObservedIssueUpdatedAt ??= null
+    state.task.originIssueClosed ??= false
+    state.retryInstructionIds ??= []
+    state.resultCorrectionInstructionIds ??= []
+  }
+  if (state.schemaVersion !== currentStateSchemaVersion) {
+    throw new Error(`Unsupported state schema: ${state.schemaVersion}`)
+  }
+  if (
+    state.task?.repository !== repository ||
+    state.task?.issueNumber !== issueNumber ||
+    state.task?.originIssueNumber !== issueNumber
+  ) {
+    throw new Error("Persisted task origin does not match the requested issue")
+  }
+  state.task.originIssueUrl ??= null
+  state.task.lastObservedIssueUpdatedAt ??= null
+  state.task.originIssueClosed ??= false
+  state.retryInstructionIds ??= []
+  state.resultCorrectionInstructionIds ??= []
+  return normalizeTurnAccounting(state)
+}
+
+export function recordTaskOrigin(state, { issueNumber, issueUrl }) {
+  if (state.task.originIssueNumber !== issueNumber) {
+    throw new Error("Refusing to reroute persisted task state to another issue")
+  }
+  if (issueUrl) state.task.originIssueUrl = issueUrl
+}
+
+export function recordIssueObservation(
+  state,
+  { issueNumber, issueUrl, updatedAt, closed },
+) {
+  recordTaskOrigin(state, { issueNumber, issueUrl })
+  if (updatedAt) state.task.lastObservedIssueUpdatedAt = updatedAt
+  state.task.originIssueClosed = Boolean(closed)
 }
 
 export class StateStore {
@@ -90,10 +144,15 @@ export class StateStore {
     await this.ensureDirectory()
     try {
       const parsed = JSON.parse(await readFile(this.statePath, "utf8"))
-      if (parsed.schemaVersion !== 1) {
-        throw new Error(`Unsupported state schema: ${parsed.schemaVersion}`)
+      const priorSchemaVersion = parsed.schemaVersion
+      const state = migrateState(parsed, {
+        repository: this.repository,
+        issueNumber: this.issueNumber,
+      })
+      if (priorSchemaVersion !== currentStateSchemaVersion) {
+        await this.save(state)
       }
-      return normalizeTurnAccounting(parsed)
+      return state
     } catch (error) {
       if (error.code !== "ENOENT") throw error
       const state = initialState({

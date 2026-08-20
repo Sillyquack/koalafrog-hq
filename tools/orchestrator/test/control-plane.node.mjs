@@ -4,6 +4,7 @@ import {
   extractAgentControls,
   findExistingResult,
   formatCompletionPacket,
+  isInstructionEligible,
   ownerGateReason,
   selectLatestInstruction,
   selectNextInstruction,
@@ -21,6 +22,9 @@ agent_control:
     Edit only the proof result.
     Do not deploy to production.
 \`\`\``
+
+const precedingIssue53Failure =
+  "Diagnose and fix the owner-gate parser/eligibility logic that incorrectly classified the sentence `Explicitly keep blocked: merge/default-branch changes, force-push, web-app deployment, Supabase migrations/schema/data mutations, secrets, purchases, unrelated product-domain changes.` as if those blocked actions had been requested."
 
 test("parses the strict control block and its multiline prompt", () => {
   const [control] = extractAgentControls(startBlock)
@@ -48,7 +52,7 @@ test("selects only the latest control instruction across comments", () => {
   assert.equal(latest.instructionId, "proof-002")
 })
 
-test("selects the newest pending instruction from durable history", () => {
+test("selects the oldest pending instruction from durable history", () => {
   const issue = { body: startBlock }
   const comments = [
     { body: startBlock.replaceAll("proof-001", "follow-up-001") },
@@ -62,6 +66,35 @@ test("selects the newest pending instruction from durable history", () => {
     ],
   })
   assert.equal(next.instructionId, "follow-up-001")
+})
+
+test("task state eligibility is explicit for start and continue actions", () => {
+  const instruction = extractAgentControls(startBlock)[0]
+  assert.equal(isInstructionEligible(instruction), true)
+  assert.equal(
+    isInstructionEligible({
+      ...instruction,
+      action: "start",
+      taskState: "needs_review",
+    }),
+    false,
+  )
+  assert.equal(
+    isInstructionEligible({
+      ...instruction,
+      action: "continue",
+      taskState: "needs_review",
+    }),
+    true,
+  )
+  assert.equal(
+    isInstructionEligible({
+      ...instruction,
+      action: "continue",
+      taskState: "needs_owner",
+    }),
+    true,
+  )
 })
 
 test("existing result comments suppress replay after local state loss", () => {
@@ -183,6 +216,51 @@ test("owner gate stops affirmative production actions but ignores prohibitions",
     }),
     /owner-gated action/,
   )
+})
+
+test("owner gate treats the exact preceding Issue #53 failure as diagnostic constraint context", () => {
+  const control = extractAgentControls(startBlock)[0]
+  assert.equal(
+    ownerGateReason({ ...control, prompt: precedingIssue53Failure }),
+    null,
+  )
+  assert.equal(
+    ownerGateReason({
+      ...control,
+      prompt:
+        "Explicitly keep blocked: merge/default-branch changes, force-push, web-app deployment, Supabase migrations/schema/data mutations, secrets, purchases, unrelated product-domain changes.",
+    }),
+    null,
+  )
+})
+
+test("owner gate preserves affirmative and ambiguous protected-action failures", () => {
+  const control = extractAgentControls(startBlock)[0]
+  for (const prompt of [
+    "Force-push the reviewed branch.",
+    "Consider a force-push if it makes the branch easier to review.",
+    "Keep force-push blocked, but deploy the web app to production.",
+    "Keep the old path blocked and deploy the web app to production.",
+    "This scope excludes payments; purchase the approved stock now.",
+    "The production deployment is outside scope; merge this into the default branch.",
+  ]) {
+    assert.match(ownerGateReason({ ...control, prompt }), /owner-gated action/)
+  }
+})
+
+test("owner gate recognizes explicit constraint and boundary language", () => {
+  const control = extractAgentControls(startBlock)[0]
+  for (const prompt of [
+    "Keep force-push blocked for this task.",
+    "Force-push remains blocked for this task.",
+    "Do not force-push this branch.",
+    "Exclude production deployments from scope.",
+    "Production migrations remain blocked.",
+    "Preserve the safety boundary against default-branch merges.",
+    "Payments are outside the authorized scope.",
+  ]) {
+    assert.equal(ownerGateReason({ ...control, prompt }), null)
+  }
 })
 
 test("completion packet is machine-readable and discoverable idempotently", () => {

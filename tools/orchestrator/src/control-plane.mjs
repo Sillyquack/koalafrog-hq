@@ -103,6 +103,22 @@ export function extractAgentControls(markdown) {
   return controls
 }
 
+export function extractValidAgentControls(markdown) {
+  if (typeof markdown !== "string") return []
+  const controls = []
+  const fences = /```(?:yaml|yml)\s*\n([\s\S]*?)```/gi
+  for (const match of markdown.matchAll(fences)) {
+    if (!/^\s*agent_control:\s*$/m.test(match[1])) continue
+    try {
+      const control = parseAgentControlBlock(match[1])
+      if (control) controls.push(control)
+    } catch {
+      // A malformed explicit block is ineligible, not an inferred task.
+    }
+  }
+  return controls
+}
+
 export function listAgentControls(issue, comments = []) {
   const sources = [
     { body: issue?.body ?? "" },
@@ -113,7 +129,7 @@ export function listAgentControls(issue, comments = []) {
 
   const controls = []
   for (const source of sources) {
-    controls.push(...extractAgentControls(source.body))
+    controls.push(...extractValidAgentControls(source.body))
   }
   return controls
 }
@@ -145,8 +161,20 @@ export function selectNextInstruction(issue, comments = [], state = {}) {
   return (
     controls
       .slice()
-      .reverse()
       .find((control) => !consumed.has(control.instructionId)) ?? null
+  )
+}
+
+const eligibleStatesByAction = {
+  start: new Set(["ready", "failed"]),
+  continue: new Set(["ready", "failed", "needs_review", "needs_owner"]),
+  stop: taskStates,
+}
+
+export function isInstructionEligible(instruction) {
+  return Boolean(
+    instruction &&
+      eligibleStatesByAction[instruction.action]?.has(instruction.taskState),
   )
 }
 
@@ -171,6 +199,30 @@ export function findExistingResult(comments, instructionId) {
   )
 }
 
+export function findExistingPickup(comments, instructionId) {
+  const escaped = instructionId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+  const pattern = new RegExp(
+    `agent_pickup:\\s*[\\s\\S]*?instruction_id:\\s*["']?${escaped}["']?(?:\\s|$)`,
+  )
+  return comments.find((comment) =>
+    pattern.test(comment.body ?? comment.comment ?? ""),
+  )
+}
+
+export function formatPickupPacket(packet) {
+  return `\`\`\`yaml
+agent_pickup:
+  instruction_id: ${yamlScalar(packet.instructionId)}
+  origin_issue_number: ${packet.originIssueNumber}
+  origin_issue_url: ${yamlScalar(packet.originIssueUrl)}
+  codex_thread_id: ${yamlScalar(packet.codexThreadId)}
+  status: running
+  branch: ${yamlScalar(packet.branch)}
+\`\`\`
+
+The persistent orchestrator claimed this explicit instruction and started or resumed its isolated task context.`
+}
+
 const gatedPatterns = [
   /\bdeploy(?:ment)?\b.*\bproduction\b/i,
   /\bapply\b.*\bproduction\b.*\bmigration/i,
@@ -183,8 +235,49 @@ const gatedPatterns = [
   /\b(?:create|open|register)\b.*\bexternal account\b/i,
 ]
 
-const prohibitionPattern =
-  /^(?:\s*no\b)|\b(?:do not|don't|does not|doesn't|never|must not|without|not authorized?|not permitted|not allowed)\b/i
+const constraintIntentPattern =
+  /(?:^|\b)(?:no\b|do not|don't|does not|doesn't|never|must not|without|not authorized?|not permitted|not allowed|keep(?:s|ing)? blocked|remain(?:s|ing)? blocked|explicitly block(?:ed|s|ing)?|prohibit(?:ed|s|ing)?|exclude(?:d|s|ing)?(?:\s+from\s+scope)?|outside (?:the )?(?:authorized )?scope|preserve(?:s|d|ing)? (?:the )?(?:safety |authorization )?boundary)\b/i
+
+const protectedTermPattern =
+  /\b(?:deploy(?:ment)?|production|migration|data|secret|credential|token|password|merge|main|master|default branch|force[- ]?push|purchase|payment|external account)\b/i
+
+const postposedConstraintPattern =
+  /\b(?:is|are|remain(?:s|ing)?|must remain)\s+(?:blocked|prohibited|excluded|not authorized|not permitted|not allowed|outside (?:the )?(?:authorized )?scope)\b/i
+
+const keepObjectBlockedPattern =
+  /\bkeep(?:s|ing)?\s+([^,;.!?]{1,80}?)\s+blocked\b/i
+
+function maskQuotedConstraintExamples(value) {
+  return value.replace(/(`+)([\s\S]*?)\1/g, (match, _ticks, contents) =>
+    constraintIntentPattern.test(contents) ? " ".repeat(match.length) : match,
+  )
+}
+
+function intentSegments(clause) {
+  return maskQuotedConstraintExamples(clause)
+    .split(/\s*(?:;|\bbut\b|\bhowever\b|\bexcept\b|\binstead\b|\bthen\b)\s*/i)
+    .map((segment) => segment.trim())
+    .filter(Boolean)
+}
+
+function isConstrainedProtectedMention(segment) {
+  const constraint = segment.match(constraintIntentPattern)
+  const protectedTerm = segment.match(protectedTermPattern)
+  const keepObjectBlocked = segment.match(keepObjectBlockedPattern)
+  const keepStart = keepObjectBlocked?.index ?? -1
+  const keepEnd = keepObjectBlocked
+    ? keepStart + keepObjectBlocked[0].length
+    : -1
+  return Boolean(
+    protectedTerm &&
+      ((constraint &&
+        ((constraint.index ?? 0) <= (protectedTerm.index ?? 0) ||
+          postposedConstraintPattern.test(segment))) ||
+        (keepObjectBlocked &&
+          (protectedTerm.index ?? 0) >= keepStart &&
+          (protectedTerm.index ?? 0) < keepEnd)),
+  )
+}
 
 export function ownerGateReason(instruction) {
   if (instruction.ownerApprovalRequired) {
@@ -193,14 +286,16 @@ export function ownerGateReason(instruction) {
 
   const clauses = instruction.prompt.split(/(?<=[.!?])\s+|\n+/)
   for (const clause of clauses) {
-    if (
-      prohibitionPattern.test(clause) ||
-      /\bzero side effects?\b/i.test(clause)
-    ) {
-      continue
-    }
-    if (gatedPatterns.some((pattern) => pattern.test(clause))) {
-      return `The instruction requests an owner-gated action: ${clause.trim()}`
+    for (const segment of intentSegments(clause)) {
+      if (
+        /\bzero side effects?\b/i.test(segment) ||
+        isConstrainedProtectedMention(segment)
+      ) {
+        continue
+      }
+      if (gatedPatterns.some((pattern) => pattern.test(segment))) {
+        return `The instruction requests an owner-gated action: ${clause.trim()}`
+      }
     }
   }
   return null
@@ -233,6 +328,8 @@ export function formatCompletionPacket(packet) {
   return `\`\`\`yaml
 agent_result:
   instruction_id: ${yamlScalar(packet.instructionId)}
+  origin_issue_number: ${packet.originIssueNumber ?? "null"}
+  origin_issue_url: ${yamlScalar(packet.originIssueUrl)}
   codex_thread_id: ${yamlScalar(packet.codexThreadId)}
   status: ${packet.status}
   branch: ${yamlScalar(packet.branch)}

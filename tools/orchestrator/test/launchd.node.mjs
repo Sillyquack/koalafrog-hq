@@ -1,5 +1,5 @@
 import assert from "node:assert/strict"
-import { mkdtemp, readFile, rm, stat } from "node:fs/promises"
+import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
 import test from "node:test"
@@ -10,6 +10,10 @@ import {
   validateLaunchAgentInputs,
   writeLaunchAgentPlist,
 } from "../src/launchd.mjs"
+import {
+  materializeRuntimeRelease,
+  planRuntimeRelease,
+} from "../src/runtime-bundle.mjs"
 
 function fixture(root) {
   const stateDirectory = path.join(root, "state & logs")
@@ -43,8 +47,32 @@ test("LaunchAgent configuration is persistent, bounded, and secret-free", () => 
   assert.match(contents, /--auto-commit/)
   assert.match(contents, /repository-orchestrator\.mjs/)
   assert.match(contents, /--repository/)
+  assert.match(contents, /--discovery-limit/)
+  assert.match(contents, /--max-tasks-per-poll/)
   assert.match(contents, /koalafrog &amp; hq/)
   assert.doesNotMatch(contents, /(?:github_pat|ghp_|Bearer|OPENAI_API_KEY)/i)
+})
+
+test("service runtime release is deterministic, immutable, and outside a task worktree", async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "koalafrog-runtime-"))
+  t.after(() => rm(root, { recursive: true, force: true }))
+  const sourceDirectory = path.resolve("tools/orchestrator")
+  const options = {
+    sourceDirectory,
+    stateDirectory: root,
+  }
+  const firstPlan = await planRuntimeRelease(options)
+  const secondPlan = await planRuntimeRelease(options)
+  assert.equal(firstPlan.digest, secondPlan.digest)
+  assert.match(firstPlan.orchestratorScript, /runtime\/releases\/[a-f0-9]{64}\/bin\/repository-orchestrator\.mjs$/)
+  assert.equal((await materializeRuntimeRelease(firstPlan)).status, "created")
+  assert.equal((await materializeRuntimeRelease(secondPlan)).status, "unchanged")
+
+  await writeFile(firstPlan.orchestratorScript, "tampered\n")
+  await assert.rejects(
+    materializeRuntimeRelease(firstPlan),
+    /immutable runtime was modified/,
+  )
 })
 
 test("plist installation is atomic and idempotent", async (t) => {

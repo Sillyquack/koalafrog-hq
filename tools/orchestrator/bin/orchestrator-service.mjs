@@ -11,11 +11,19 @@ import {
   uninstallLaunchAgent,
   validateLaunchAgentInputs,
 } from "../src/launchd.mjs"
+import {
+  materializeRuntimeRelease,
+  planRuntimeRelease,
+} from "../src/runtime-bundle.mjs"
 
 const orchestratorScript = fileURLToPath(
   new URL("./repository-orchestrator.mjs", import.meta.url),
 )
 const repositoryRoot = path.resolve(path.dirname(orchestratorScript), "../../..")
+const orchestratorSourceDirectory = path.resolve(
+  path.dirname(orchestratorScript),
+  "..",
+)
 
 function valueAfter(args, index, name) {
   const value = args[index + 1]
@@ -55,12 +63,16 @@ function parse(argv) {
     turnTimeoutMs: 20 * 60_000,
     maxRetries: 2,
     retryBaseMs: 1_000,
+    discoveryLimit: 50,
+    maxTasksPerPoll: 4,
     repository: "Sillyquack/koalafrog-hq",
     autoCommit: false,
     model: null,
   }
   let customStdoutPath = false
   let customStderrPath = false
+  let customRuntimeDirectory = false
+  config.runtimeDirectory = path.join(config.stateDirectory, "runtime")
   for (let index = 0; index < args.length; index += 1) {
     const arg = args[index]
     const take = () => {
@@ -77,6 +89,10 @@ function parse(argv) {
         break
       case "--state-dir":
         config.stateDirectory = path.resolve(take())
+        break
+      case "--runtime-dir":
+        config.runtimeDirectory = path.resolve(take())
+        customRuntimeDirectory = true
         break
       case "--codex-bin":
         config.codexBinary = path.resolve(take())
@@ -113,6 +129,12 @@ function parse(argv) {
       case "--retry-base-ms":
         config.retryBaseMs = positiveInteger(take(), arg)
         break
+      case "--discovery-limit":
+        config.discoveryLimit = positiveInteger(take(), arg)
+        break
+      case "--max-tasks-per-poll":
+        config.maxTasksPerPoll = positiveInteger(take(), arg)
+        break
       case "--model":
         config.model = take()
         break
@@ -129,6 +151,9 @@ function parse(argv) {
   if (!customStderrPath) {
     config.stderrPath = path.join(config.stateDirectory, "service", "orchestrator.stderr.log")
   }
+  if (!customRuntimeDirectory) {
+    config.runtimeDirectory = path.join(config.stateDirectory, "runtime")
+  }
   return config
 }
 
@@ -144,6 +169,7 @@ Options:
   --checkout path             Coordinating Git checkout
   --repository owner/name     GitHub repository to scan
   --state-dir path            Durable orchestrator state root
+  --runtime-dir path          Immutable service runtime releases
   --codex-bin path            Authenticated Codex CLI binary
   --node-bin path             Node executable
   --plist-path path           LaunchAgent plist destination
@@ -155,6 +181,8 @@ Options:
   --turn-timeout-ms number    Per-turn timeout
   --max-retries number        Bounded retry count
   --retry-base-ms number      Retry backoff base
+  --discovery-limit number    Bounded open-issue search result count
+  --max-tasks-per-poll number Bounded claimed tasks per poll
   --model model               Optional explicit Codex model
   --auto-commit               Commit task-owned changes after a successful turn
 `
@@ -177,14 +205,33 @@ async function main() {
     return
   }
 
-  const contents = buildLaunchAgentPlist(config)
+  const runtimePlan = await planRuntimeRelease({
+    sourceDirectory: orchestratorSourceDirectory,
+    stateDirectory: config.stateDirectory,
+    runtimeDirectory: config.runtimeDirectory,
+  })
+  const serviceConfig = {
+    ...config,
+    orchestratorScript: runtimePlan.orchestratorScript,
+  }
+  const contents = buildLaunchAgentPlist(serviceConfig)
   if (config.command === "render") {
     process.stdout.write(contents)
     return
   }
   await validateLaunchAgentInputs(config)
-  const result = await installAndStartLaunchAgent({ ...config, contents })
-  process.stdout.write(`${JSON.stringify({ ...result, stdoutPath: config.stdoutPath, stderrPath: config.stderrPath })}\n`)
+  const runtime = await materializeRuntimeRelease(runtimePlan)
+  await validateLaunchAgentInputs(serviceConfig)
+  const result = await installAndStartLaunchAgent({ ...serviceConfig, contents })
+  process.stdout.write(`${JSON.stringify({
+    ...result,
+    runtimeStatus: runtime.status,
+    runtimeRelease: runtime.releaseDirectory,
+    orchestratorScript: runtime.orchestratorScript,
+    checkoutPath: config.checkoutPath,
+    stdoutPath: config.stdoutPath,
+    stderrPath: config.stderrPath,
+  })}\n`)
 }
 
 main().catch((error) => {

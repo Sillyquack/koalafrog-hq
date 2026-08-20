@@ -53,6 +53,8 @@ export function buildLaunchAgentPlist({
   turnTimeoutMs = 20 * 60_000,
   maxRetries = 2,
   retryBaseMs = 1_000,
+  discoveryLimit = 50,
+  maxTasksPerPoll = 4,
   autoCommit = false,
   model = null,
 }) {
@@ -98,6 +100,10 @@ export function buildLaunchAgentPlist({
     String(maxRetries),
     "--retry-base-ms",
     String(retryBaseMs),
+    "--discovery-limit",
+    String(discoveryLimit),
+    "--max-tasks-per-poll",
+    String(maxTasksPerPoll),
   ]
   if (autoCommit) arguments_.push("--auto-commit")
   if (model) arguments_.push("--model", model)
