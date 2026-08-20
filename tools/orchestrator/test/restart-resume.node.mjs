@@ -34,6 +34,22 @@ agent_control:
 \`\`\``
 }
 
+function ownerDecisionBlock({ instructionId, prompt }) {
+  return `\`\`\`yaml
+agent_control:
+  action: continue
+  task_state: needs_owner
+  instruction_id: ${instructionId}
+  max_turns: 3
+  owner_approval_required: false
+  prompt: |
+${prompt
+  .split("\n")
+  .map((line) => `    ${line}`)
+  .join("\n")}
+\`\`\``
+}
+
 function runtimeConfig(stateDirectory) {
   return {
     repository: "Sillyquack/koalafrog-hq",
@@ -146,7 +162,7 @@ test("schema-one Issue #53 state migrates without losing its active thread", asy
   assert.equal(migrated.workspacePath, "/tmp/existing-workspace")
   assert.equal(migrated.activeInstruction.instructionId, "active-002")
   assert.equal(migrated.activeInstruction.turnCount, 1)
-  assert.equal(JSON.parse(await readFile(store.statePath, "utf8")).schemaVersion, 3)
+  assert.equal(JSON.parse(await readFile(store.statePath, "utf8")).schemaVersion, 4)
 })
 
 test("restart resumes the persisted Codex thread instead of starting another", async () => {
@@ -302,6 +318,162 @@ test("polling continues after needs_owner and a fresh continue reuses the thread
     state.runs.map((run) => run.status),
     ["needs_owner", "needs_review"],
   )
+})
+
+test("an interrupted approval restarts one same-thread continuation and consumes its decision once", async (t) => {
+  const directory = await mkdtemp(
+    path.join(os.tmpdir(), "koalafrog-interrupted-approval-"),
+  )
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const storeOptions = {
+    stateDirectory: directory,
+    repository: "Sillyquack/koalafrog-hq",
+    issueNumber: 53,
+  }
+  const originalControl = controlBlock({
+    instructionId: "approval-origin-001",
+    prompt: "Prepare only the reviewed local orchestrator approval recovery.",
+  })
+  const pendingReason =
+    "Create the authorized Issue #53 commit from only the already-staged reviewed orchestrator approval-recovery files."
+  const comments = []
+  const controlPlane = {
+    async fetchTask() {
+      return { issue: { body: originalControl }, comments }
+    },
+    async postComment(body) {
+      comments.push({ body })
+    },
+  }
+  const turnIds = []
+  const firstAppServer = {
+    async start() {},
+    async stop() {},
+    async startThread() {
+      return { thread: { id: "thread-interrupted-approval" } }
+    },
+    async waitForMcpReady() {},
+    async runTurn(options) {
+      turnIds.push("turn-waiting-on-approval")
+      await options.onTurnStarted("turn-waiting-on-approval")
+      const ownerRequest = {
+        requestId: 12,
+        method: "item/commandExecution/requestApproval",
+        threadId: "thread-interrupted-approval",
+        turnId: "turn-waiting-on-approval",
+        itemId: "exec-dead-request",
+        reason: pendingReason,
+      }
+      await options.onOwnerStop(ownerRequest)
+      return {
+        status: "needs_owner",
+        turn: {
+          id: "turn-waiting-on-approval",
+          status: "interrupted",
+          items: [],
+        },
+        pendingOwnerRequest: ownerRequest,
+        agentMessage: "",
+      }
+    },
+  }
+  const first = new Orchestrator(runtimeConfig(directory), {
+    store: new StateStore(storeOptions),
+    appServer: firstAppServer,
+    controlPlane,
+    workspace: fakeWorkspace(),
+  })
+  const ownerStop = await first.runOnce()
+  assert.equal(ownerStop.status, "needs_owner")
+  const interrupted = await new StateStore(storeOptions).load()
+  assert.equal(interrupted.pendingApprovalRequests.length, 1)
+  assert.equal(
+    interrupted.pendingApprovalRequests[0].requestIdentities[0].itemId,
+    "exec-dead-request",
+  )
+
+  comments.push({
+    body: ownerDecisionBlock({
+      instructionId: "approval-continuation-002",
+      prompt: `Resume the same thread and worktree.
+
+Owner approval is granted to create exactly one commit from only the already-staged, reviewed orchestrator approval-recovery files identified in the immediately preceding needs_owner result.`,
+    }),
+  })
+  let approvedActions = 0
+  const secondAppServer = {
+    async start() {},
+    async stop() {},
+    async resumeThread(threadId) {
+      assert.equal(threadId, "thread-interrupted-approval")
+      return { thread: { id: threadId } }
+    },
+    async waitForMcpReady() {},
+    async runTurn(options) {
+      turnIds.push("turn-fresh-continuation")
+      await options.onTurnStarted("turn-fresh-continuation")
+      const retryRequest = {
+        requestId: 13,
+        method: "item/commandExecution/requestApproval",
+        threadId: "thread-interrupted-approval",
+        turnId: "turn-fresh-continuation",
+        itemId: "exec-fresh-retry",
+        reason: pendingReason,
+      }
+      const resolution = await options.resolveApprovalRequest(retryRequest)
+      assert.deepEqual(resolution.response, { decision: "accept" })
+      assert.equal(resolution.decisionId, "approval-continuation-002")
+      approvedActions += 1
+      await options.onApprovedActionCompleted({
+        decisionId: resolution.decisionId,
+        ownerRequest: retryRequest,
+        item: { id: retryRequest.itemId, status: "completed", exitCode: 0 },
+        succeeded: true,
+      })
+      return {
+        status: "completed",
+        turn: { id: "turn-fresh-continuation", status: "completed", items: [] },
+        pendingOwnerRequest: null,
+        agentMessage: "",
+      }
+    },
+  }
+  const restarted = new Orchestrator(runtimeConfig(directory), {
+    store: new StateStore(storeOptions),
+    appServer: secondAppServer,
+    controlPlane,
+    workspace: fakeWorkspace(),
+  })
+  const completed = await restarted.runOnce()
+  assert.equal(completed.status, "needs_review")
+  assert.deepEqual(turnIds, [
+    "turn-waiting-on-approval",
+    "turn-fresh-continuation",
+  ])
+  assert.equal(approvedActions, 1)
+
+  const afterRestart = await new StateStore(storeOptions).load()
+  assert.equal(afterRestart.threadId, "thread-interrupted-approval")
+  assert.ok(afterRestart.ownerApprovalDecisions[0].consumedAt)
+  assert.ok(afterRestart.ownerApprovalDecisions[0].completedAt)
+  assert.equal(afterRestart.pendingApprovalRequests[0].status, "completed")
+  assert.ok(afterRestart.pendingApprovalRequests[0].clearedAt)
+  assert.equal(afterRestart.pendingOwnerRequest, null)
+
+  const replay = await restarted.runOnce()
+  assert.equal(replay.status, "idle")
+  assert.equal(approvedActions, 1)
+  const events = await readFile(
+    path.join(
+      directory,
+      "Sillyquack-koalafrog-hq-issue-53",
+      "events.jsonl",
+    ),
+    "utf8",
+  )
+  assert.match(events, /owner_approval_retry_turn_started/)
+  assert.match(events, /owner_approval_decision_consumed/)
+  assert.match(events, /owner_approved_action_completed/)
 })
 
 test("restart finalizes a completed persisted turn without starting a duplicate", async (t) => {

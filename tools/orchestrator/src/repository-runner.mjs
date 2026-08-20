@@ -2,6 +2,7 @@ import { setTimeout as delay } from "node:timers/promises"
 import { readdir, readFile } from "node:fs/promises"
 import path from "node:path"
 import { AppServerClient } from "./app-server.mjs"
+import { reconcileLaunchAgentApproval } from "./approval-decisions.mjs"
 import {
   isInstructionEligible,
   selectNextInstruction,
@@ -14,6 +15,7 @@ import {
   isPullRequest,
 } from "./repository-discovery.mjs"
 import { installTaskThreadPolicy } from "./runtime-policy.mjs"
+import { launchAgentLabel } from "./launchd.mjs"
 import {
   recordIssueObservation,
   redactForLog,
@@ -45,6 +47,64 @@ async function waitForNextCycle(milliseconds, signal, sleep) {
   } catch (error) {
     if (error.name !== "AbortError") throw error
   }
+}
+
+export async function reconcileServiceTransition(
+  config,
+  {
+    serviceLabel = process.env.XPC_SERVICE_NAME ?? null,
+    orchestratorScript = process.argv[1] ?? null,
+    workingDirectory = process.cwd(),
+    StateStoreClass = StateStore,
+  } = {},
+) {
+  if (
+    serviceLabel !== launchAgentLabel ||
+    !config.stateDirectory ||
+    !config.checkoutPath ||
+    workingDirectory !== config.checkoutPath
+  ) {
+    return null
+  }
+  const runtimeDirectory = path.join(config.stateDirectory, "runtime")
+  if (
+    !String(orchestratorScript ?? "").startsWith(
+      `${runtimeDirectory}/releases/`,
+    )
+  ) {
+    return null
+  }
+  const store = new StateStoreClass({
+    stateDirectory: config.stateDirectory,
+    repository: config.repository,
+    issueNumber: 53,
+  })
+  const state = await store.load()
+  const completion = reconcileLaunchAgentApproval({
+    state,
+    serviceLabel,
+    expectedServiceLabel: launchAgentLabel,
+    orchestratorScript,
+    runtimeDirectory,
+    checkoutPath: config.checkoutPath,
+    workingDirectory,
+  })
+  if (!completion?.cleared) return null
+  if (
+    state.pendingOwnerRequest?.reason === completion.pending?.reason
+  ) {
+    state.pendingOwnerRequest = null
+  }
+  await store.save(state)
+  await store.appendEvent({
+    type: "owner_approved_action_reconciled",
+    decisionId: completion.decision.decisionId,
+    pendingRequestKey: completion.decision.pendingRequestKey,
+    serviceLabel,
+    orchestratorScript,
+    checkoutPath: config.checkoutPath,
+  })
+  return completion
 }
 
 export async function createRepositoryScanner(config) {
@@ -319,8 +379,10 @@ export async function runRepositoryOnce(
   {
     createScanner = createRepositoryScanner,
     runCycle = runRepositoryCycle,
+    reconcile = reconcileServiceTransition,
   } = {},
 ) {
+  await reconcile(config)
   const scanner = await createScanner(config)
   try {
     return await runCycle(scanner, config)
@@ -335,11 +397,13 @@ export async function watchRepository(
     signal,
     createScanner = createRepositoryScanner,
     runCycle = runRepositoryCycle,
+    reconcile = reconcileServiceTransition,
     sleep = delay,
     write = (line) => process.stdout.write(line),
   } = {},
 ) {
   let scanner = null
+  await reconcile(config)
   writeJson(write, {
     event: "repository_watch_started",
     pid: process.pid,

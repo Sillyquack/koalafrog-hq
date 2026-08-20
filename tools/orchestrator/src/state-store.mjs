@@ -1,8 +1,9 @@
 import { appendFile, chmod, mkdir, readFile, rename, writeFile } from "node:fs/promises"
 import path from "node:path"
+import { recoverPendingApprovalRequestsFromEvents } from "./approval-decisions.mjs"
 import { normalizeTurnAccounting } from "./turn-accounting.mjs"
 
-export const currentStateSchemaVersion = 3
+export const currentStateSchemaVersion = 4
 
 function redactString(value) {
   return value
@@ -75,6 +76,7 @@ export function initialState({ repository, issueNumber, issueUrl = null }) {
     retryInstructionIds: [],
     resultCorrectionInstructionIds: [],
     ownerApprovalDecisions: [],
+    pendingApprovalRequests: [],
     runs: [],
     updatedAt: new Date().toISOString(),
   }
@@ -92,8 +94,12 @@ export function migrateState(state, { repository, issueNumber }) {
     state.resultCorrectionInstructionIds ??= []
   }
   if (state.schemaVersion === 2) {
-    state.schemaVersion = currentStateSchemaVersion
+    state.schemaVersion = 3
     state.ownerApprovalDecisions ??= []
+  }
+  if (state.schemaVersion === 3) {
+    state.schemaVersion = currentStateSchemaVersion
+    state.pendingApprovalRequests ??= []
   }
   if (state.schemaVersion !== currentStateSchemaVersion) {
     throw new Error(`Unsupported state schema: ${state.schemaVersion}`)
@@ -111,6 +117,7 @@ export function migrateState(state, { repository, issueNumber }) {
   state.retryInstructionIds ??= []
   state.resultCorrectionInstructionIds ??= []
   state.ownerApprovalDecisions ??= []
+  state.pendingApprovalRequests ??= []
   return normalizeTurnAccounting(state)
 }
 
@@ -155,6 +162,24 @@ export class StateStore {
         repository: this.repository,
         issueNumber: this.issueNumber,
       })
+      if (priorSchemaVersion < 4 && state.pendingApprovalRequests.length === 0) {
+        try {
+          const events = (await readFile(this.eventPath, "utf8"))
+            .split("\n")
+            .filter(Boolean)
+            .flatMap((line) => {
+              try {
+                return [JSON.parse(line)]
+              } catch {
+                return []
+              }
+            })
+          state.pendingApprovalRequests =
+            recoverPendingApprovalRequestsFromEvents(events)
+        } catch (error) {
+          if (error.code !== "ENOENT") throw error
+        }
+      }
       if (priorSchemaVersion !== currentStateSchemaVersion) {
         await this.save(state)
       }

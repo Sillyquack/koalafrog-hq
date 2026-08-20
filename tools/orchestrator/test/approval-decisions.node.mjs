@@ -1,10 +1,11 @@
 import assert from "node:assert/strict"
-import { mkdtemp, rm } from "node:fs/promises"
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
 import test from "node:test"
 import {
   consumeOwnerApprovalDecision,
+  recordPendingApprovalRequest,
   registerOwnerApprovalDecision,
 } from "../src/approval-decisions.mjs"
 import { StateStore } from "../src/state-store.mjs"
@@ -25,6 +26,37 @@ const decisionInstruction = {
   maxTurns: 12,
   ownerApprovalRequired: false,
   prompt: precedingIssue53DecisionPrompt,
+}
+
+const precedingIssue53BootstrapDecisionPrompt = `Resume the existing Issue #53 orchestrator thread/worktree.
+
+Owner approval is explicitly granted for the exact pending local user LaunchAgent install/reload action already identified in state as the current owner request. This approval is limited to the reviewed Koalafrog user LaunchAgent, the reviewed content-addressed orchestrator runtime, and the stable coordinating checkout already produced by the current Issue #53 work.
+
+Consume this approval for that exact pending action and proceed with the local service transition. Verify the upgraded persistent service is running from the intended stable runtime, then continue the already-scoped repo-wide discovery acceptance flow using the existing Issue #63.`
+
+const precedingIssue53BootstrapDecision = {
+  action: "continue",
+  taskState: "needs_owner",
+  instructionId: "orchestrator-launchagent-owner-approval-009",
+  maxTurns: 12,
+  ownerApprovalRequired: false,
+  prompt: precedingIssue53BootstrapDecisionPrompt,
+}
+
+const pendingApprovalRecoveryCommit =
+  "Create the authorized Issue #53 commit from only the already-staged reviewed orchestrator approval-recovery files."
+
+const precedingIssue53CommitDecision = {
+  action: "continue",
+  taskState: "needs_owner",
+  instructionId: "orchestrator-approval-recovery-commit-011",
+  maxTurns: 10,
+  ownerApprovalRequired: false,
+  prompt: `Resume the existing Issue #53 orchestrator thread/worktree.
+
+Owner approval is granted to create exactly one commit from only the already-staged, reviewed orchestrator approval-recovery files identified in the immediately preceding needs_owner result.
+
+Do not stage any additional files. Preserve all existing authorization boundaries.`,
 }
 
 function pendingState(completedAt = "2026-08-20T17:25:00.000Z") {
@@ -119,6 +151,16 @@ test("mismatched and broader pending actions remain blocked", () => {
   assert.equal(
     consumeOwnerApprovalDecision({
       state,
+      request: request(
+        "Install and reload only the owner-approved Koalafrog user LaunchAgent with the reviewed content-addressed orchestrator runtime and stable coordinating checkout after changing the service logs.",
+      ),
+      now: new Date("2026-08-20T17:31:00.000Z"),
+    }),
+    null,
+  )
+  assert.equal(
+    consumeOwnerApprovalDecision({
+      state,
       request: request(`${pendingLaunchAgentAction} Then deploy production.`),
       now: new Date("2026-08-20T17:31:00.000Z"),
     }),
@@ -197,6 +239,22 @@ test("expired decisions fail closed", () => {
   assert.deepEqual(state.ownerApprovalDecisions, [])
 })
 
+test("non-command owner requests do not enter command approval recovery", () => {
+  const state = { pendingApprovalRequests: [] }
+  assert.equal(
+    recordPendingApprovalRequest({
+      state,
+      instructionId: "mcp-owner-stop-001",
+      request: {
+        method: "mcpServer/elicitation/request",
+        reason: "Allow a connected tool request?",
+      },
+    }),
+    null,
+  )
+  assert.deepEqual(state.pendingApprovalRequests, [])
+})
+
 test("restart preserves a registered decision and its consumed state", async (t) => {
   const directory = await mkdtemp(path.join(os.tmpdir(), "koalafrog-decision-"))
   t.after(() => rm(directory, { recursive: true, force: true }))
@@ -240,5 +298,209 @@ test("restart preserves a registered decision and its consumed state", async (t)
       now: new Date("2026-08-20T17:32:00.000Z"),
     }),
     null,
+  )
+})
+
+test("the preceding Issue #53 schema-1 control/result recovers one exact bootstrap decision", async (t) => {
+  const directory = await mkdtemp(
+    path.join(os.tmpdir(), "koalafrog-bootstrap-decision-"),
+  )
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const taskDirectory = path.join(
+    directory,
+    "Sillyquack-koalafrog-hq-issue-53",
+  )
+  await mkdir(taskDirectory, { recursive: true })
+  await writeFile(
+    path.join(taskDirectory, "state.json"),
+    `${JSON.stringify({
+      schemaVersion: 1,
+      task: {
+        repository: "Sillyquack/koalafrog-hq",
+        issueNumber: 53,
+      },
+      status: "running",
+      lastConsumedInstructionId:
+        "orchestrator-launchagent-owner-approval-009",
+      activeInstruction: null,
+      threadId: "01a0109a-3185-7992-acbb-b11d16c6e6bd",
+      workspacePath: "/tmp/issue-53-workspace",
+      branch: "agent/issue-53-orchestrator-persistent-mobile-runtime-008",
+      turnCount: 10,
+      retryCount: 0,
+      pendingOwnerRequest: { reason: pendingLaunchAgentAction },
+      retryInstructionIds: [],
+      resultCorrectionInstructionIds: [],
+      runs: [
+        {
+          instructionId: "orchestrator-launchagent-owner-approval-009",
+          status: "needs_owner",
+          completedAt: "2026-08-20T17:50:00.000Z",
+        },
+      ],
+      updatedAt: "2026-08-20T17:50:00.000Z",
+    }, null, 2)}\n`,
+  )
+
+  const options = {
+    stateDirectory: directory,
+    repository: "Sillyquack/koalafrog-hq",
+    issueNumber: 53,
+  }
+  const store = new StateStore(options)
+  const migrated = await store.load()
+  assert.equal(migrated.schemaVersion, 4)
+  assert.deepEqual(migrated.ownerApprovalDecisions, [])
+
+  const registered = registerOwnerApprovalDecision({
+    state: migrated,
+    controls: [precedingIssue53BootstrapDecision],
+    now: new Date("2026-08-20T17:55:00.000Z"),
+  })
+  assert.equal(
+    registered.decisionId,
+    "orchestrator-launchagent-owner-approval-009",
+  )
+  await store.save(migrated)
+
+  const restarted = await new StateStore(options).load()
+  const consumed = consumeOwnerApprovalDecision({
+    state: restarted,
+    request: request(),
+    now: new Date("2026-08-20T17:56:00.000Z"),
+  })
+  assert.equal(
+    consumed.decision.pendingInstructionId,
+    "orchestrator-launchagent-owner-approval-009",
+  )
+  await new StateStore(options).save(restarted)
+
+  const afterConsumptionRestart = await new StateStore(options).load()
+  assert.ok(afterConsumptionRestart.ownerApprovalDecisions[0].consumedAt)
+  assert.equal(
+    consumeOwnerApprovalDecision({
+      state: afterConsumptionRestart,
+      request: request(),
+      now: new Date("2026-08-20T17:57:00.000Z"),
+    }),
+    null,
+  )
+})
+
+test("the latest interrupted Issue #53 event sequence recovers a fresh-turn decision", async (t) => {
+  const directory = await mkdtemp(
+    path.join(os.tmpdir(), "koalafrog-interrupted-decision-"),
+  )
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const taskDirectory = path.join(
+    directory,
+    "Sillyquack-koalafrog-hq-issue-53",
+  )
+  await mkdir(taskDirectory, { recursive: true })
+  await writeFile(
+    path.join(taskDirectory, "state.json"),
+    `${JSON.stringify({
+      schemaVersion: 1,
+      task: {
+        repository: "Sillyquack/koalafrog-hq",
+        issueNumber: 53,
+      },
+      status: "failed",
+      lastConsumedInstructionId: "orchestrator-approval-recovery-commit-011",
+      activeInstruction: null,
+      threadId: "01a0109a-3185-7992-acbb-b11d16c6e6bd",
+      workspacePath: "/tmp/issue-53-workspace",
+      branch: "agent/issue-53-orchestrator-persistent-mobile-runtime-008",
+      turnCount: 11,
+      retryCount: 0,
+      pendingOwnerRequest: null,
+      retryInstructionIds: [],
+      resultCorrectionInstructionIds: [],
+      runs: [
+        {
+          instructionId: "orchestrator-approval-recovery-commit-011",
+          status: "failed",
+          completedAt: "2026-08-20T18:53:59.353Z",
+        },
+      ],
+      updatedAt: "2026-08-20T18:53:59.353Z",
+    }, null, 2)}\n`,
+  )
+  const events = [
+    {
+      at: "2026-08-20T18:41:54.138Z",
+      type: "turn_started",
+      instructionId: "orchestrator-owner-decision-bootstrap-consumption-fix-010",
+      threadId: "01a0109a-3185-7992-acbb-b11d16c6e6bd",
+      turnId: "01a0207a-cdd6-7101-a664-afd82ddde791",
+    },
+    {
+      at: "2026-08-20T18:47:22.933Z",
+      type: "server_request",
+      message: {
+        method: "item/commandExecution/requestApproval",
+        id: 12,
+        threadId: "01a0109a-3185-7992-acbb-b11d16c6e6bd",
+        turnId: "01a0207a-cdd6-7101-a664-afd82ddde791",
+        itemId: "exec-0e8db5e7-9b9e-43ff-956c-2997613dff57",
+        reason: pendingApprovalRecoveryCommit,
+      },
+    },
+    {
+      at: "2026-08-20T18:47:23.002Z",
+      type: "notification",
+      message: {
+        method: "turn/completed",
+        threadId: "01a0109a-3185-7992-acbb-b11d16c6e6bd",
+        turnId: "01a0207a-cdd6-7101-a664-afd82ddde791",
+        status: "interrupted",
+      },
+    },
+  ]
+  await writeFile(
+    path.join(taskDirectory, "events.jsonl"),
+    `${events.map((event) => JSON.stringify(event)).join("\n")}\n`,
+  )
+
+  const options = {
+    stateDirectory: directory,
+    repository: "Sillyquack/koalafrog-hq",
+    issueNumber: 53,
+  }
+  const store = new StateStore(options)
+  const migrated = await store.load()
+  assert.equal(migrated.pendingApprovalRequests.length, 1)
+  assert.deepEqual(
+    migrated.pendingApprovalRequests[0].requestIdentities[0],
+    {
+      requestId: 12,
+      method: "item/commandExecution/requestApproval",
+      threadId: "01a0109a-3185-7992-acbb-b11d16c6e6bd",
+      turnId: "01a0207a-cdd6-7101-a664-afd82ddde791",
+      itemId: "exec-0e8db5e7-9b9e-43ff-956c-2997613dff57",
+      identityDigest:
+        migrated.pendingApprovalRequests[0].requestIdentities[0].identityDigest,
+      observedAt: "2026-08-20T18:47:22.933Z",
+    },
+  )
+
+  const decision = registerOwnerApprovalDecision({
+    state: migrated,
+    controls: [precedingIssue53CommitDecision],
+    now: new Date("2026-08-20T18:55:00.000Z"),
+  })
+  assert.equal(
+    decision.decisionId,
+    "orchestrator-approval-recovery-commit-011",
+  )
+  assert.ok(
+    consumeOwnerApprovalDecision({
+      state: migrated,
+      request: {
+        method: "item/commandExecution/requestApproval",
+        reason: pendingApprovalRecoveryCommit,
+      },
+      now: new Date("2026-08-20T18:56:00.000Z"),
+    }),
   )
 })

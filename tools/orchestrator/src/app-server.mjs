@@ -134,6 +134,29 @@ export function classifyServerRequest(message, mcpToolCall = null) {
   }
 }
 
+function ownerStopResponse(message) {
+  if (
+    new Set([
+      "item/commandExecution/requestApproval",
+      "item/fileChange/requestApproval",
+    ]).has(message?.method)
+  ) {
+    return { decision: "cancel" }
+  }
+  if (message?.method === "mcpServer/elicitation/request") {
+    return { action: "cancel", content: null }
+  }
+  return null
+}
+
+function approvedItemSucceeded(item) {
+  const exitCode = item?.exitCode ?? item?.exit_code ?? null
+  return (
+    item?.status === "completed" &&
+    (exitCode === null || exitCode === 0)
+  )
+}
+
 const boundedGitHubApprovalMessages = [
   /^Allow GitHub to create a Git tree\?$/i,
   /^Allow GitHub to create a commit\?$/i,
@@ -402,21 +425,25 @@ export class AppServerClient extends EventEmitter {
     onTurnStarted = () => {},
     onOwnerStop = () => {},
     resolveApprovalRequest = () => null,
+    onApprovedActionCompleted = () => {},
   }) {
     let turnId = null
     let pendingOwnerRequest = null
     let ownerStopPersistence = Promise.resolve()
+    let approvedActionPersistence = Promise.resolve()
     let ownerStopTimer = null
     let agentMessage = ""
     let settled = false
     const mcpToolCalls = new Map()
+    const approvedItems = new Map()
     const terminal = deferred()
+    const handledServerRequestIds = new Set()
 
     const complete = (result) => {
       if (settled) return
       settled = true
       cleanup()
-      ownerStopPersistence.then(
+      Promise.all([ownerStopPersistence, approvedActionPersistence]).then(
         () => terminal.resolve(result),
         (error) => terminal.reject(error),
       )
@@ -446,6 +473,17 @@ export class AppServerClient extends EventEmitter {
       if (turnId && params?.turnId !== turnId) return
       if (params.item?.type === "agentMessage") agentMessage = params.item.text ?? ""
       if (params.item?.type === "mcpToolCall") mcpToolCalls.delete(params.item.id)
+      const approved = approvedItems.get(params.item?.id)
+      if (approved) {
+        approvedItems.delete(params.item.id)
+        approvedActionPersistence = approvedActionPersistence.then(() =>
+          onApprovedActionCompleted({
+            ...approved,
+            item: params.item,
+            succeeded: approvedItemSucceeded(params.item),
+          }),
+        )
+      }
     }
     const onTurnCompleted = (params) => {
       if (params?.threadId !== threadId || params?.turn?.id !== turnId) return
@@ -456,11 +494,18 @@ export class AppServerClient extends EventEmitter {
         agentMessage,
       })
     }
-    const stopForOwner = (message, ownerRequest) => {
+    const stopForOwner = async (message, ownerRequest) => {
       pendingOwnerRequest = ownerRequest
-      if (message.method === "mcpServer/elicitation/request") {
+      ownerStopPersistence = ownerStopPersistence.then(() =>
+        onOwnerStop(pendingOwnerRequest),
+      )
+      await ownerStopPersistence
+      const response = ownerStopResponse(message)
+      let requestResolved = false
+      if (response) {
         try {
-          this.respond(message.id, { action: "cancel", content: null })
+          this.respond(message.id, response)
+          requestResolved = true
           Promise.resolve(
             this.eventSink({
               type: "server_request_owner_stopped",
@@ -470,14 +515,18 @@ export class AppServerClient extends EventEmitter {
         } catch (error) {
           pendingOwnerRequest = {
             ...ownerRequest,
-            reason: `Failed to cancel owner-gated MCP request: ${error.message}`,
+            reason: `Failed to cancel owner-gated server request: ${error.message}`,
           }
+          ownerStopPersistence = ownerStopPersistence.then(() =>
+            onOwnerStop(pendingOwnerRequest),
+          )
+          await ownerStopPersistence
         }
       }
-      ownerStopPersistence = ownerStopPersistence.then(() =>
-        onOwnerStop(pendingOwnerRequest),
-      )
-      if (turnId) {
+      const responseInterruptsTurn =
+        requestResolved &&
+        message.method === "item/commandExecution/requestApproval"
+      if (!responseInterruptsTurn && turnId) {
         void this.request("turn/interrupt", { threadId, turnId }).catch(() => {})
       }
       scheduleOwnerStopFallback()
@@ -498,19 +547,30 @@ export class AppServerClient extends EventEmitter {
           ? await resolveApprovalRequest(ownerRequest)
           : null
       } catch (error) {
-        stopForOwner(message, {
+        await stopForOwner(message, {
           ...ownerRequest,
           reason: `Failed to consume a matched owner decision: ${error.message}`,
         })
         return
       }
+      const matchedResolution = matchedResponse?.response
+        ? matchedResponse
+        : matchedResponse
+          ? { response: matchedResponse, decisionId: null }
+          : null
       const autoResponse =
-        matchedResponse ??
+        matchedResolution?.response ??
         autoResponseForBoundedElicitation(message, prompt) ??
         autoResponseForBoundedCommandApproval(message, prompt)
       if (autoResponse) {
         try {
           this.respond(message.id, autoResponse)
+          if (matchedResolution?.decisionId && ownerRequest.itemId) {
+            approvedItems.set(ownerRequest.itemId, {
+              decisionId: matchedResolution.decisionId,
+              ownerRequest,
+            })
+          }
           Promise.resolve(
             this.eventSink({
               type: "server_request_auto_resolved",
@@ -518,7 +578,7 @@ export class AppServerClient extends EventEmitter {
             }),
           ).catch(() => {})
         } catch (error) {
-          stopForOwner(message, {
+          await stopForOwner(message, {
             ...classifyServerRequest(message),
             reason: `Failed to resolve approved server request: ${error.message}`,
           })
@@ -526,9 +586,20 @@ export class AppServerClient extends EventEmitter {
         return
       }
 
-      stopForOwner(message, ownerRequest)
+      await stopForOwner(message, ownerRequest)
     }
     const onServerRequest = (message) => {
+      const requestKey = `${message?.method ?? "unknown"}:${String(message?.id)}`
+      if (handledServerRequestIds.has(requestKey)) {
+        Promise.resolve(
+          this.eventSink({
+            type: "duplicate_server_request_ignored",
+            message: compactProtocolMessage(message),
+          }),
+        ).catch(() => {})
+        return
+      }
+      handledServerRequestIds.add(requestKey)
       void handleServerRequest(message)
     }
     const timeout = setTimeout(() => {

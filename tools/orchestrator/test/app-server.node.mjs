@@ -137,20 +137,20 @@ test("a matched durable decision responds through requestApproval exactly once",
   }
   client.request = async (method) => {
     if (method !== "turn/start") throw new Error(`Unexpected request: ${method}`)
-    setTimeout(
-      () =>
-        client.emit("server_request", {
-          id: 88,
-          method: "item/commandExecution/requestApproval",
-          params: {
-            threadId: "thread-approved",
-            turnId: "turn-approved",
-            itemId: "exec-approved",
-            reason: "Exact pending action",
-          },
-        }),
-      0,
-    )
+    setTimeout(() => {
+      const request_ = {
+        id: 88,
+        method: "item/commandExecution/requestApproval",
+        params: {
+          threadId: "thread-approved",
+          turnId: "turn-approved",
+          itemId: "exec-approved",
+          reason: "Exact pending action",
+        },
+      }
+      client.emit("server_request", request_)
+      client.emit("server_request", request_)
+    }, 0)
     return { turn: { id: "turn-approved" } }
   }
 
@@ -173,6 +173,76 @@ test("a matched durable decision responds through requestApproval exactly once",
     { requestId: 88, result: { decision: "accept" } },
   ])
   assert.deepEqual(ownerStops, [])
+})
+
+test("an unmatched command approval is persisted before cancel resolves its turn", async () => {
+  const client = new AppServerClient({ cwd: "/tmp" })
+  const order = []
+  const persisted = []
+  client.respond = (requestId, result) => {
+    order.push(`respond:${requestId}:${result.decision}`)
+    setTimeout(
+      () =>
+        client.emit("turn/completed", {
+          threadId: "thread-owner-stop",
+          turn: { id: "turn-owner-stop", status: "interrupted", items: [] },
+        }),
+      0,
+    )
+  }
+  client.request = async (method) => {
+    if (method !== "turn/start") {
+      throw new Error(`Unexpected request after command cancel: ${method}`)
+    }
+    setTimeout(
+      () =>
+        client.emit("server_request", {
+          id: 91,
+          method: "item/commandExecution/requestApproval",
+          params: {
+            threadId: "thread-owner-stop",
+            turnId: "turn-owner-stop",
+            itemId: "exec-owner-stop",
+            reason: "Exact pending owner action",
+          },
+        }),
+      0,
+    )
+    return { turn: { id: "turn-owner-stop" } }
+  }
+
+  const result = await client.runTurn({
+    threadId: "thread-owner-stop",
+    prompt: "Stop for an unmatched owner action.",
+    cwd: "/tmp",
+    timeoutMs: 1_000,
+    onOwnerStop: async (request_) => {
+      await new Promise((resolve) => setTimeout(resolve, 5))
+      persisted.push(request_)
+      order.push("persisted")
+    },
+  })
+
+  assert.equal(result.status, "needs_owner")
+  assert.deepEqual(order, ["persisted", "respond:91:cancel"])
+  assert.deepEqual(
+    {
+      requestId: persisted[0].requestId,
+      method: persisted[0].method,
+      threadId: persisted[0].threadId,
+      turnId: persisted[0].turnId,
+      itemId: persisted[0].itemId,
+      reason: persisted[0].reason,
+    },
+    {
+      requestId: 91,
+      method: "item/commandExecution/requestApproval",
+      threadId: "thread-owner-stop",
+      turnId: "turn-owner-stop",
+      itemId: "exec-owner-stop",
+      reason: "Exact pending owner action",
+    },
+  )
 })
 
 test("nested elicitation messages remain visible to owner classification", () => {

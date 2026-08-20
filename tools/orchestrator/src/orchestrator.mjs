@@ -2,8 +2,11 @@ import path from "node:path"
 import { setTimeout as delay } from "node:timers/promises"
 import { AppServerClient } from "./app-server.mjs"
 import {
+  completeOwnerApprovedAction,
   consumeOwnerApprovalDecision,
-  registerOwnerApprovalDecision,
+  recordPendingApprovalRequest,
+  registerOwnerApprovalDecisions,
+  supersedePendingApprovalRequests,
 } from "./approval-decisions.mjs"
 import {
   findExistingResult,
@@ -71,7 +74,11 @@ function compactOwnerQuestion(request) {
 function compactOwnerRequest(request) {
   if (!request) return null
   return redactForLog({
+    requestId: request.requestId ?? null,
     method: request.method ?? null,
+    threadId: request.threadId ?? null,
+    turnId: request.turnId ?? null,
+    itemId: request.itemId ?? null,
     serverName: request.serverName ?? null,
     toolName: request.toolName ?? null,
     arguments: request.arguments ?? null,
@@ -95,13 +102,20 @@ function checks(tests) {
 export function beginInstruction(state, instruction, selectedAt = new Date()) {
   normalizeTurnAccounting(state)
   if (instruction.action === "start") {
+    supersedePendingApprovalRequests({ state, now: selectedAt })
+    state.pendingOwnerRequest = null
     state.threadId = null
     state.workspacePath = null
     state.branch = null
     state.retryCount = 0
   }
+  const retainsPendingApproval = (state.pendingApprovalRequests ?? []).some(
+    (pending) =>
+      !pending.clearedAt &&
+      pending.reason === state.pendingOwnerRequest?.reason,
+  )
+  if (!retainsPendingApproval) state.pendingOwnerRequest = null
   const priorTurnCount = instructionTurnCount(state, instruction.instructionId)
-  state.pendingOwnerRequest = null
   state.activeInstruction = {
     ...instruction,
     phase: "selected",
@@ -402,6 +416,13 @@ export class Orchestrator {
         timeoutMs: this.config.turnTimeoutMs,
         prompt: `${retryPrefix}${promptForInstruction(instruction, this.config.allowedPaths)}`,
         onTurnStarted: async (turnId) => {
+          const availableDecisionIds = (state.ownerApprovalDecisions ?? [])
+            .filter(
+              (decision) =>
+                !decision.consumedAt &&
+                Date.parse(decision.expiresAt) > Date.now(),
+            )
+            .map((decision) => decision.decisionId)
           recordInstructionTurnStarted(state, { turnId, attempt })
           state.retryCount = attempt
           if (state.activeInstruction.ownerRequest) {
@@ -419,8 +440,22 @@ export class Orchestrator {
             turnId,
             attempt,
           })
+          if (availableDecisionIds.length) {
+            await this.store.appendEvent({
+              type: "owner_approval_retry_turn_started",
+              instructionId: instruction.instructionId,
+              threadId: state.threadId,
+              turnId,
+              decisionIds: availableDecisionIds,
+            })
+          }
         },
         onOwnerStop: async (ownerRequest) => {
+          recordPendingApprovalRequest({
+            state,
+            instructionId: instruction.instructionId,
+            request: ownerRequest,
+          })
           const structuredOwnerRequest = compactOwnerRequest(ownerRequest)
           state.activeInstruction.phase = "owner_stopped"
           state.activeInstruction.ownerRequest = structuredOwnerRequest
@@ -443,7 +478,33 @@ export class Orchestrator {
             requestMethod: ownerRequest.method,
             requestReasonDigest: consumed.decision.consumedRequestDigest,
           })
-          return consumed.response
+          return {
+            response: consumed.response,
+            decisionId: consumed.decision.decisionId,
+          }
+        },
+        onApprovedActionCompleted: async ({ decisionId, succeeded }) => {
+          const completion = completeOwnerApprovedAction({
+            state,
+            decisionId,
+            succeeded,
+          })
+          if (!completion) return
+          if (
+            completion.cleared &&
+            state.pendingOwnerRequest?.reason === completion.pending?.reason
+          ) {
+            state.pendingOwnerRequest = null
+          }
+          await this.#save(state)
+          await this.store.appendEvent({
+            type: succeeded
+              ? "owner_approved_action_completed"
+              : "owner_approved_action_failed",
+            decisionId,
+            pendingRequestKey: completion.decision.pendingRequestKey,
+            instructionId: instruction.instructionId,
+          })
         },
       })
       if (result.status === "completed" || result.status === "needs_owner") {
@@ -470,20 +531,30 @@ export class Orchestrator {
     await this.start()
     const state = await this.store.load()
     const task = providedTask ?? (await this.controlPlane.fetchTask())
-    const decisionCount = state.ownerApprovalDecisions?.length ?? 0
-    const registeredDecision = registerOwnerApprovalDecision({
+    const decisionIds = new Set(
+      (state.ownerApprovalDecisions ?? []).map(
+        (decision) => decision.decisionId,
+      ),
+    )
+    const registeredDecisions = registerOwnerApprovalDecisions({
       state,
       controls: listAgentControls(task.issue, task.comments),
     })
-    if ((state.ownerApprovalDecisions?.length ?? 0) > decisionCount) {
+    const newDecisions = registeredDecisions.filter(
+      (decision) => !decisionIds.has(decision.decisionId),
+    )
+    if (newDecisions.length) {
       await this.#save(state)
-      await this.store.appendEvent({
-        type: "owner_approval_decision_registered",
-        decisionId: registeredDecision.decisionId,
-        scope: registeredDecision.scope,
-        pendingInstructionId: registeredDecision.pendingInstructionId,
-        expiresAt: registeredDecision.expiresAt,
-      })
+      for (const registeredDecision of newDecisions) {
+        await this.store.appendEvent({
+          type: "owner_approval_decision_registered",
+          decisionId: registeredDecision.decisionId,
+          scope: registeredDecision.scope,
+          pendingInstructionId: registeredDecision.pendingInstructionId,
+          pendingRequestKey: registeredDecision.pendingRequestKey,
+          expiresAt: registeredDecision.expiresAt,
+        })
+      }
     }
     const originIssueUrl =
       task.issue?.html_url ?? task.issue?.display_url ?? task.issue?.url ?? null

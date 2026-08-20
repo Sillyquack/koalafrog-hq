@@ -218,11 +218,23 @@ and worktree. No `repository:once` command is needed. A materially new task uses
 `action: start` to receive a clean context.
 
 For an App Server `requestApproval`, the follow-up must explicitly approve the
-exact pending action. The service binds that decision to a normalized action
-scope (or exact reason digest), persists a 24-hour expiry, and consumes it
-before replying `decision: accept` through the App Server protocol. A consumed,
-expired, replayed, mismatched, broader, or protected production/destructive
-request fails closed and cannot borrow another decision.
+exact pending action. The service binds that decision to both the normalized
+action scope and the exact pending-reason digest, persists a 24-hour expiry,
+and consumes it before replying `decision: accept` through the App Server
+protocol. Before an unmatched command approval is stopped, its App Server
+request/turn/item identity and exact scope are persisted; the live request is
+then answered with `decision: cancel`, which also interrupts that turn. A later
+matching continuation starts a fresh turn in the same Codex thread/worktree and
+can consume the decision only when it recreates that exact action. Successful
+completion of the approved command clears the pending action. A failed command
+retains the audit record but cannot reuse the consumed decision.
+
+On upgrade from schema-1 state, unresolved interrupted approvals can be
+reconstructed from the redacted local event history before their
+machine-readable owner continuations are registered; the reconstructed request
+and one-time decision are then persisted in schema-4 state. A consumed,
+expired, replayed, reworded, mismatched, broader, or protected
+production/destructive request fails closed and cannot borrow another decision.
 
 ## Protocol compatibility
 

@@ -4,10 +4,16 @@ import os from "node:os"
 import path from "node:path"
 import test from "node:test"
 import {
+  reconcileServiceTransition,
   runRepositoryCycle,
   runRepositoryIssue,
   watchRepository,
 } from "../src/repository-runner.mjs"
+import {
+  consumeOwnerApprovalDecision,
+  recordPendingApprovalRequest,
+  registerOwnerApprovalDecision,
+} from "../src/approval-decisions.mjs"
 import { StateStore } from "../src/state-store.mjs"
 
 function controlBlock(instructionId) {
@@ -99,6 +105,86 @@ test("repository watch reconnects and keeps polling after needs_owner", async ()
       .map((line) => line.results[0].status),
     ["needs_owner", "needs_review"],
   )
+})
+
+test("a restarted content-addressed LaunchAgent reconciles its consumed install decision", async () => {
+  const reason =
+    "Install and reload only the owner-approved Koalafrog user LaunchAgent with the reviewed content-addressed runtime and stable coordinating checkout."
+  const state = {
+    pendingOwnerRequest: { reason },
+    pendingApprovalRequests: [],
+    ownerApprovalDecisions: [],
+    runs: [
+      {
+        instructionId: "launchagent-origin-001",
+        status: "needs_owner",
+        completedAt: "2026-08-20T18:00:00.000Z",
+      },
+    ],
+  }
+  recordPendingApprovalRequest({
+    state,
+    instructionId: "launchagent-origin-001",
+    request: {
+      method: "item/commandExecution/requestApproval",
+      reason,
+    },
+    now: new Date("2026-08-20T18:00:00.000Z"),
+  })
+  registerOwnerApprovalDecision({
+    state,
+    controls: [
+      {
+        action: "continue",
+        taskState: "needs_owner",
+        instructionId: "launchagent-decision-002",
+        maxTurns: 3,
+        ownerApprovalRequired: false,
+        prompt: `Owner approval is explicitly granted to install and reload the reviewed Koalafrog user LaunchAgent with the reviewed content-addressed orchestrator runtime and stable coordinating checkout.`,
+      },
+    ],
+    now: new Date("2026-08-20T18:01:00.000Z"),
+  })
+  consumeOwnerApprovalDecision({
+    state,
+    request: {
+      method: "item/commandExecution/requestApproval",
+      reason,
+    },
+    now: new Date("2026-08-20T18:02:00.000Z"),
+  })
+  const events = []
+  class FakeStateStore {
+    async load() {
+      return state
+    }
+
+    async save(nextState) {
+      assert.equal(nextState, state)
+    }
+
+    async appendEvent(event) {
+      events.push(event)
+    }
+  }
+  const digest = "a".repeat(64)
+  const config = {
+    repository: "Sillyquack/koalafrog-hq",
+    stateDirectory: "/state/Koalafrog Orchestrator",
+    checkoutPath: "/stable/koalafrog-hq",
+  }
+  const completion = await reconcileServiceTransition(config, {
+    serviceLabel: "com.sillyquack.koalafrog-orchestrator",
+    orchestratorScript: `${config.stateDirectory}/runtime/releases/${digest}/bin/repository-orchestrator.mjs`,
+    workingDirectory: config.checkoutPath,
+    StateStoreClass: FakeStateStore,
+  })
+
+  assert.equal(completion.cleared, true)
+  assert.ok(state.ownerApprovalDecisions[0].completedAt)
+  assert.equal(state.pendingApprovalRequests[0].status, "completed")
+  assert.equal(state.pendingOwnerRequest, null)
+  assert.equal(events[0].type, "owner_approved_action_reconciled")
 })
 
 test("a failed oldest issue does not starve the next deterministic candidate", async () => {
