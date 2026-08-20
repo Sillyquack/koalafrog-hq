@@ -146,7 +146,7 @@ test("schema-one Issue #53 state migrates without losing its active thread", asy
   assert.equal(migrated.workspacePath, "/tmp/existing-workspace")
   assert.equal(migrated.activeInstruction.instructionId, "active-002")
   assert.equal(migrated.activeInstruction.turnCount, 1)
-  assert.equal(JSON.parse(await readFile(store.statePath, "utf8")).schemaVersion, 2)
+  assert.equal(JSON.parse(await readFile(store.statePath, "utf8")).schemaVersion, 3)
 })
 
 test("restart resumes the persisted Codex thread instead of starting another", async () => {

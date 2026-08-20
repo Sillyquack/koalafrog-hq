@@ -2,10 +2,15 @@ import path from "node:path"
 import { setTimeout as delay } from "node:timers/promises"
 import { AppServerClient } from "./app-server.mjs"
 import {
+  consumeOwnerApprovalDecision,
+  registerOwnerApprovalDecision,
+} from "./approval-decisions.mjs"
+import {
   findExistingResult,
   findExistingPickup,
   formatCompletionPacket,
   formatPickupPacket,
+  listAgentControls,
   ownerGateReason,
   selectNextInstruction,
   shouldConsumeInstruction,
@@ -423,6 +428,23 @@ export class Orchestrator {
           state.status = "needs_owner"
           await this.#save(state)
         },
+        resolveApprovalRequest: async (ownerRequest) => {
+          const consumed = consumeOwnerApprovalDecision({
+            state,
+            request: ownerRequest,
+          })
+          if (!consumed) return null
+          await this.#save(state)
+          await this.store.appendEvent({
+            type: "owner_approval_decision_consumed",
+            decisionId: consumed.decision.decisionId,
+            scope: consumed.decision.scope,
+            instructionId: instruction.instructionId,
+            requestMethod: ownerRequest.method,
+            requestReasonDigest: consumed.decision.consumedRequestDigest,
+          })
+          return consumed.response
+        },
       })
       if (result.status === "completed" || result.status === "needs_owner") {
         return result
@@ -448,6 +470,21 @@ export class Orchestrator {
     await this.start()
     const state = await this.store.load()
     const task = providedTask ?? (await this.controlPlane.fetchTask())
+    const decisionCount = state.ownerApprovalDecisions?.length ?? 0
+    const registeredDecision = registerOwnerApprovalDecision({
+      state,
+      controls: listAgentControls(task.issue, task.comments),
+    })
+    if ((state.ownerApprovalDecisions?.length ?? 0) > decisionCount) {
+      await this.#save(state)
+      await this.store.appendEvent({
+        type: "owner_approval_decision_registered",
+        decisionId: registeredDecision.decisionId,
+        scope: registeredDecision.scope,
+        pendingInstructionId: registeredDecision.pendingInstructionId,
+        expiresAt: registeredDecision.expiresAt,
+      })
+    }
     const originIssueUrl =
       task.issue?.html_url ?? task.issue?.display_url ?? task.issue?.url ?? null
     if (originIssueUrl !== state.task.originIssueUrl) {

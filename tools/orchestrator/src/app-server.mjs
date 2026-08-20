@@ -401,6 +401,7 @@ export class AppServerClient extends EventEmitter {
     timeoutMs,
     onTurnStarted = () => {},
     onOwnerStop = () => {},
+    resolveApprovalRequest = () => null,
   }) {
     let turnId = null
     let pendingOwnerRequest = null
@@ -455,44 +456,7 @@ export class AppServerClient extends EventEmitter {
         agentMessage,
       })
     }
-    const onServerRequest = (message) => {
-      const autoResponse =
-        autoResponseForBoundedElicitation(message, prompt) ??
-        autoResponseForBoundedCommandApproval(message, prompt)
-      if (autoResponse) {
-        try {
-          this.respond(message.id, autoResponse)
-          Promise.resolve(
-            this.eventSink({
-              type: "server_request_auto_resolved",
-              message: compactProtocolMessage(message),
-            }),
-          ).catch(() => {})
-        } catch (error) {
-          pendingOwnerRequest = {
-            ...classifyServerRequest(message),
-            reason: `Failed to resolve approved server request: ${error.message}`,
-          }
-          ownerStopPersistence = ownerStopPersistence.then(() =>
-            onOwnerStop(pendingOwnerRequest),
-          )
-          if (turnId) {
-            void this.request("turn/interrupt", { threadId, turnId }).catch(() => {})
-          }
-          scheduleOwnerStopFallback()
-        }
-        return
-      }
-
-      const ownerRequest = classifyServerRequest(
-        message,
-        message.method === "mcpServer/elicitation/request"
-          ? matchingMcpToolCall(message, mcpToolCalls)
-          : null,
-      )
-      if (!ownerRequest || ownerRequest.threadId !== threadId) return
-      if (turnId && ownerRequest.turnId && ownerRequest.turnId !== turnId) return
-      if (!turnId && ownerRequest.turnId) turnId = ownerRequest.turnId
+    const stopForOwner = (message, ownerRequest) => {
       pendingOwnerRequest = ownerRequest
       if (message.method === "mcpServer/elicitation/request") {
         try {
@@ -517,6 +481,55 @@ export class AppServerClient extends EventEmitter {
         void this.request("turn/interrupt", { threadId, turnId }).catch(() => {})
       }
       scheduleOwnerStopFallback()
+    }
+    const handleServerRequest = async (message) => {
+      const ownerRequest = classifyServerRequest(
+        message,
+        message.method === "mcpServer/elicitation/request"
+          ? matchingMcpToolCall(message, mcpToolCalls)
+          : null,
+      )
+      if (!ownerRequest || ownerRequest.threadId !== threadId) return
+      if (turnId && ownerRequest.turnId && ownerRequest.turnId !== turnId) return
+      if (!turnId && ownerRequest.turnId) turnId = ownerRequest.turnId
+      let matchedResponse = null
+      try {
+        matchedResponse = ownerRequest
+          ? await resolveApprovalRequest(ownerRequest)
+          : null
+      } catch (error) {
+        stopForOwner(message, {
+          ...ownerRequest,
+          reason: `Failed to consume a matched owner decision: ${error.message}`,
+        })
+        return
+      }
+      const autoResponse =
+        matchedResponse ??
+        autoResponseForBoundedElicitation(message, prompt) ??
+        autoResponseForBoundedCommandApproval(message, prompt)
+      if (autoResponse) {
+        try {
+          this.respond(message.id, autoResponse)
+          Promise.resolve(
+            this.eventSink({
+              type: "server_request_auto_resolved",
+              message: compactProtocolMessage(message),
+            }),
+          ).catch(() => {})
+        } catch (error) {
+          stopForOwner(message, {
+            ...classifyServerRequest(message),
+            reason: `Failed to resolve approved server request: ${error.message}`,
+          })
+        }
+        return
+      }
+
+      stopForOwner(message, ownerRequest)
+    }
+    const onServerRequest = (message) => {
+      void handleServerRequest(message)
     }
     const timeout = setTimeout(() => {
       if (turnId) {

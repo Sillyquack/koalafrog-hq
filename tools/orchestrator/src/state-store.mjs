@@ -2,7 +2,7 @@ import { appendFile, chmod, mkdir, readFile, rename, writeFile } from "node:fs/p
 import path from "node:path"
 import { normalizeTurnAccounting } from "./turn-accounting.mjs"
 
-export const currentStateSchemaVersion = 2
+export const currentStateSchemaVersion = 3
 
 function redactString(value) {
   return value
@@ -74,6 +74,7 @@ export function initialState({ repository, issueNumber, issueUrl = null }) {
     pendingOwnerRequest: null,
     retryInstructionIds: [],
     resultCorrectionInstructionIds: [],
+    ownerApprovalDecisions: [],
     runs: [],
     updatedAt: new Date().toISOString(),
   }
@@ -81,7 +82,7 @@ export function initialState({ repository, issueNumber, issueUrl = null }) {
 
 export function migrateState(state, { repository, issueNumber }) {
   if (state.schemaVersion === 1) {
-    state.schemaVersion = currentStateSchemaVersion
+    state.schemaVersion = 2
     state.task ??= { repository, issueNumber }
     state.task.originIssueNumber ??= state.task.issueNumber ?? issueNumber
     state.task.originIssueUrl ??= state.task.issueUrl ?? null
@@ -89,6 +90,10 @@ export function migrateState(state, { repository, issueNumber }) {
     state.task.originIssueClosed ??= false
     state.retryInstructionIds ??= []
     state.resultCorrectionInstructionIds ??= []
+  }
+  if (state.schemaVersion === 2) {
+    state.schemaVersion = currentStateSchemaVersion
+    state.ownerApprovalDecisions ??= []
   }
   if (state.schemaVersion !== currentStateSchemaVersion) {
     throw new Error(`Unsupported state schema: ${state.schemaVersion}`)
@@ -105,6 +110,7 @@ export function migrateState(state, { repository, issueNumber }) {
   state.task.originIssueClosed ??= false
   state.retryInstructionIds ??= []
   state.resultCorrectionInstructionIds ??= []
+  state.ownerApprovalDecisions ??= []
   return normalizeTurnAccounting(state)
 }
 

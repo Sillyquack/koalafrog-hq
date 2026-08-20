@@ -40,6 +40,15 @@ the owner resumes work by adding a fresh uniquely identified control block.
 consumed without a Codex turn. `owner_approval_required: true` fails closed to
 `needs_owner`, and the effective turn budget never exceeds the local limit.
 
+An owner decision for an App Server approval request is a fresh `continue`
+instruction with `task_state: needs_owner`, `owner_approval_required: false`,
+and an explicit approval of the exact pending action. The runtime binds it to
+that action's scope/reason digest, persists it with a 24-hour stale guard, and
+consumes it exactly once while returning the real App Server approval response.
+Duplicate controls, restart, and duplicate GitHub reads cannot renew it; a
+different, broader, stale, or protected production/destructive request remains
+`needs_owner`.
+
 ## Pickup packet
 
 Once a thread and isolated worktree are durably recorded, the orchestrator

@@ -16,6 +16,7 @@ const runtimeFiles = [
   "bin/orchestrator-service.mjs",
   "bin/repository-orchestrator.mjs",
   "src/app-server.mjs",
+  "src/approval-decisions.mjs",
   "src/config.mjs",
   "src/control-plane.mjs",
   "src/github-control-plane.mjs",

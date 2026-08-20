@@ -119,6 +119,62 @@ test("bounded command approval does not authorize unrelated escalations", () => 
   }
 })
 
+test("a matched durable decision responds through requestApproval exactly once", async () => {
+  const client = new AppServerClient({ cwd: "/tmp" })
+  const responses = []
+  const ownerStops = []
+  let decisionCalls = 0
+  client.respond = (requestId, result) => {
+    responses.push({ requestId, result })
+    setTimeout(
+      () =>
+        client.emit("turn/completed", {
+          threadId: "thread-approved",
+          turn: { id: "turn-approved", status: "completed", items: [] },
+        }),
+      0,
+    )
+  }
+  client.request = async (method) => {
+    if (method !== "turn/start") throw new Error(`Unexpected request: ${method}`)
+    setTimeout(
+      () =>
+        client.emit("server_request", {
+          id: 88,
+          method: "item/commandExecution/requestApproval",
+          params: {
+            threadId: "thread-approved",
+            turnId: "turn-approved",
+            itemId: "exec-approved",
+            reason: "Exact pending action",
+          },
+        }),
+      0,
+    )
+    return { turn: { id: "turn-approved" } }
+  }
+
+  const result = await client.runTurn({
+    threadId: "thread-approved",
+    prompt: "Continue only after the durable decision matches.",
+    cwd: "/tmp",
+    timeoutMs: 1_000,
+    onOwnerStop: async (request_) => ownerStops.push(request_),
+    resolveApprovalRequest: async (request_) => {
+      decisionCalls += 1
+      assert.equal(request_.reason, "Exact pending action")
+      return { decision: "accept" }
+    },
+  })
+
+  assert.equal(result.status, "completed")
+  assert.equal(decisionCalls, 1)
+  assert.deepEqual(responses, [
+    { requestId: 88, result: { decision: "accept" } },
+  ])
+  assert.deepEqual(ownerStops, [])
+})
+
 test("nested elicitation messages remain visible to owner classification", () => {
   const request = {
     id: 9,

@@ -217,6 +217,13 @@ approval and `action: continue`; the next poll reuses the persisted Codex thread
 and worktree. No `repository:once` command is needed. A materially new task uses
 `action: start` to receive a clean context.
 
+For an App Server `requestApproval`, the follow-up must explicitly approve the
+exact pending action. The service binds that decision to a normalized action
+scope (or exact reason digest), persists a 24-hour expiry, and consumes it
+before replying `decision: accept` through the App Server protocol. A consumed,
+expired, replayed, mismatched, broader, or protected production/destructive
+request fails closed and cannot borrow another decision.
+
 ## Protocol compatibility
 
 The implementation was verified against `codex-cli 0.148.0-alpha.9`. It uses
