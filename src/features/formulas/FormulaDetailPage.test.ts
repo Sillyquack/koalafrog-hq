@@ -29,6 +29,13 @@ describe('Product Studio to Development Workspace continuity',()=>{
   expect(detail).toContain('Ingredient-documentation review')
   expect(detail).toContain('Prepare Lab Batch blocked')
   expect(detail).toContain('disabled={!candidateReady}')
+  expect(detail).toContain('Equipment requirements')
+  expect(detail).toContain('hasEquipmentBlockers')
+  expect(detail).toContain('saveEquipmentRequirements(selected.id,requirements)')
+ })
+ it('creates Beard Oil Formula requirements atomically from the canonical catalog',()=>{
+  expect(studio).toContain('equipmentRequirements:beardOilEquipmentRequirements')
+  expect(detail).toContain('<EquipmentRequirementsPanel')
  })
  it('keeps source notes separate from Formula composition',()=>{
   expect(detail).toContain('Context notes from Product Studio')

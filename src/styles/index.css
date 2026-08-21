@@ -329,3 +329,69 @@ html{scroll-behavior:auto;scroll-padding-top:80px}
  .foot-care-project-actions .button,.foot-care-procurement>.button{width:100%;justify-content:center;min-height:44px}
  .foot-care-benchmark>header{display:grid}
 }
+
+/* Formula-version Equipment requirements and current-Equipment readiness */
+.equipment-requirements-panel{display:grid;gap:18px}
+.equipment-requirements-panel>header,.equipment-catalog>header,.execution-equipment-checklist>header{display:flex;justify-content:space-between;align-items:flex-start;gap:18px}
+.equipment-requirements-panel h2,.equipment-catalog h2,.execution-equipment-checklist h2{margin:5px 0}
+.equipment-requirements-panel header p,.equipment-catalog header p,.execution-equipment-checklist header p{margin:0;color:var(--muted);font-size:9px;line-height:1.5}
+.frozen-requirements,.execution-equipment-checklist>header>span{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;border-radius:999px;background:#e7e9e2;padding:7px 10px;font:8px 'DM Mono';text-transform:uppercase}
+.execution-equipment-checklist>header>span.blocked{background:#f2e2df;color:#874b42}
+.execution-equipment-checklist>header>span.ready{background:#e2ebdf;color:#365f3c}
+.equipment-readiness-summary{display:grid;grid-template-columns:repeat(3,1fr);border-radius:6px;background:#303b31;color:#edf0e9;overflow:hidden}
+.equipment-readiness-summary>div{padding:13px 16px;border-right:1px solid #4b564b}
+.equipment-readiness-summary span{font:7px 'DM Mono';text-transform:uppercase;color:#a9b2a8}
+.equipment-readiness-summary strong{display:block;margin-top:5px;font:500 18px 'DM Mono'}
+.equipment-requirement-list{display:grid;gap:10px}
+.equipment-requirement{border:1px solid var(--line);border-left:4px solid #aa7a32;border-radius:6px;padding:15px;background:#f3f3ed}
+.equipment-requirement.available{border-left-color:#4c764b}
+.requirement-heading{display:flex;justify-content:space-between;align-items:start;gap:14px}
+.requirement-heading h3{margin:5px 0}
+.requirement-heading>span{font:8px 'DM Mono';text-transform:uppercase;color:#8a5833}
+.equipment-requirement.available .requirement-heading>span{color:#4c764b}
+.equipment-requirement>p{font-size:9px;color:var(--muted)}
+.equipment-requirement dl{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin:12px 0 0}
+.equipment-requirement dl>div{padding:9px;background:#e8eae3;border-radius:4px;min-width:0}
+.equipment-requirement dt{font:7px 'DM Mono';text-transform:uppercase;color:var(--muted)}
+.equipment-requirement dd{margin:5px 0 0;font-size:9px;overflow-wrap:anywhere}
+.equipment-requirement-fields{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
+.equipment-requirement-fields label,.equipment-requirement-actions label{font:7px 'DM Mono';text-transform:uppercase;color:var(--muted)}
+.equipment-requirement-fields input,.equipment-requirement-fields select,.equipment-requirement-fields textarea,.equipment-requirement-actions select{display:block;width:100%;margin-top:5px;border:1px solid var(--line);border-radius:4px;background:var(--paper);padding:8px;font:9px Manrope}
+.equipment-requirement-fields .wide{grid-column:span 2}
+.equipment-requirement-fields .remove-line{align-self:end;justify-self:start}
+.equipment-requirement-actions{display:flex;align-items:end;gap:9px;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:15px}
+.equipment-requirement-actions label{min-width:260px;flex:1}
+.equipment-checklist{border-top:1px solid var(--line);padding-top:16px}
+.equipment-checklist h3{margin:5px 0}
+.equipment-checklist ul{display:grid;gap:7px;margin:12px 0 0;padding:0;list-style:none}
+.equipment-checklist li{display:grid;grid-template-columns:70px 1fr;gap:10px;align-items:start;border-radius:5px;background:#e8ebe4;padding:10px}
+.equipment-checklist li.blocked{background:#f2e2df}.equipment-checklist li.warning{background:#eee8d9}
+.equipment-checklist li>strong{font:7px 'DM Mono';text-transform:uppercase}
+.equipment-checklist li>span{font-size:9px}.equipment-checklist li small{display:block;margin-top:4px;color:var(--muted)}
+.execution-equipment-checklist{margin-bottom:18px;border-left:4px solid #4c764b}
+.execution-equipment-checklist.blocked{border-left-color:#874b42}
+.execution-equipment-checklist header p{display:flex;align-items:center;gap:5px}
+.execution-equipment-checklist .empty-copy{display:flex;align-items:center;gap:9px;margin-top:14px}
+.execution-equipment-checklist .empty-copy p{margin:0}
+.equipment-catalog{margin-top:18px;display:grid;gap:16px}
+.equipment-catalog-group>h3{text-transform:capitalize;font:9px 'DM Mono';color:var(--muted)}
+.equipment-catalog-group>div{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.equipment-catalog-group article{display:grid;grid-template-columns:1fr auto;align-items:center;gap:12px;border:1px solid var(--line);border-radius:5px;padding:12px;background:#f1f2ec}
+.equipment-catalog-group article p{margin:5px 0 0;font-size:8px;color:var(--muted);line-height:1.45}
+
+@media(max-width:800px){
+ .equipment-requirement dl{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .equipment-requirement-fields{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .equipment-catalog-group>div{grid-template-columns:1fr}
+}
+@media(max-width:480px){
+ .equipment-requirements-panel>header,.equipment-catalog>header,.execution-equipment-checklist>header{display:grid}
+ .equipment-readiness-summary{grid-template-columns:1fr}
+ .equipment-readiness-summary>div{border-right:0;border-bottom:1px solid #4b564b}
+ .equipment-requirement dl,.equipment-requirement-fields{grid-template-columns:1fr}
+ .equipment-requirement-fields .wide{grid-column:auto}
+ .equipment-requirement-actions{align-items:stretch;display:grid}
+ .equipment-requirement-actions label{min-width:0}
+ .equipment-checklist li{grid-template-columns:1fr}
+ .equipment-catalog-group article{grid-template-columns:1fr}
+}

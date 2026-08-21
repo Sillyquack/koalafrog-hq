@@ -34,6 +34,7 @@ export const formulaSeed: FormulaState = {
     { id: 'fv-bo-s-01', formulaId: 'f-bo-summer', version: 'v0.1', status: 'Draft', description: 'Early lightweight seasonal study.', targetCharacteristics: 'Very light wear and restrained scent.', createdAt: '2026-06-10', updatedAt: '2026-07-10' },
     { id: 'fv-bb-01', formulaId: 'f-bb-original', version: 'v0.4', status: 'Draft', description: 'Cooling curve and butter-ratio iteration.', targetCharacteristics: 'Soft scoop, clean melt, minimal wax drag.', createdAt: '2026-07-01', updatedAt: '2026-07-12' },
   ],
+  formulaEquipmentRequirements: [],
   formulaLines: [
     ...linesFor('fv-bo-01'),
     ...linesFor('fv-bo-02'),

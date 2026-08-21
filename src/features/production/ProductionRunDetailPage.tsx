@@ -19,10 +19,14 @@ import { useActiveWorkspace } from "../../platform/startup/ActiveWorkspaceContex
 import { BatchMaterialControlWorkspace } from "./components/BatchMaterialControlWorkspace";
 import { ProductionOutputWorkspace } from "./components/ProductionOutputWorkspace";
 import type { CompletionReadiness } from "./domain/productionInventoryControl";
+import { useProcurement } from "../procurement/useProcurement";
+import { EquipmentPreparationChecklist } from "../formulas/components/EquipmentPreparationChecklist";
+import { evaluateEquipmentRequirements, hasEquipmentBlockers } from "../formulas/domain/equipmentRequirements";
 export function ProductionRunDetailPage() {
   const { productionRunId } = useParams();
   const d = useFormulaData();
   const workspace = useActiveWorkspace();
+  const procurement = useProcurement();
   const [message, setMessage] = useState("");
   const [materialReadiness, setMaterialReadiness] = useState<CompletionReadiness>();
   const run = d.productionRuns.find((r) => r.id === productionRunId);
@@ -35,6 +39,16 @@ export function ProductionRunDetailPage() {
   const product = d.products.find((p) => p.id === run.productId),
     formula = d.formulas.find((f) => f.id === run.formulaId),
     version = d.formulaVersions.find((v) => v.id === run.formulaVersionId);
+  const equipmentRequirements = d.formulaEquipmentRequirements.filter(
+    (requirement) => requirement.formulaVersionId === run.formulaVersionId,
+  );
+  const equipmentBlocked = hasEquipmentBlockers(
+    evaluateEquipmentRequirements(
+      equipmentRequirements,
+      procurement.data?.equipment,
+      procurement.data?.capabilities,
+    ),
+  );
   const lines = d.productionRunLines.filter(
       (l) => l.productionRunId === run.id,
     ),
@@ -91,6 +105,12 @@ export function ProductionRunDetailPage() {
             {run.status === "Planned" && (
               <button
                 className="button primary"
+                disabled={equipmentBlocked}
+                title={
+                  equipmentBlocked
+                    ? "Required Equipment is missing or unavailable for this Formula Version."
+                    : undefined
+                }
                 onClick={() => d.transitionProductionRun(run.id, "In Progress")}
               >
                 <Factory size={15} />
@@ -147,6 +167,16 @@ export function ProductionRunDetailPage() {
           </strong>
         </div>
       </section>
+      {version ? (
+        <EquipmentPreparationChecklist
+          version={version}
+          requirements={equipmentRequirements}
+          equipment={procurement.data?.equipment}
+          capabilities={procurement.data?.capabilities}
+          policies={procurement.data?.equipmentPolicies}
+          equipmentError={procurement.error}
+        />
+      ) : null}
       {workspace ? (
         <BatchMaterialControlWorkspace
           kind="production"

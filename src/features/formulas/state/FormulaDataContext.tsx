@@ -15,6 +15,7 @@ import type {
   FinishedGoodsBatch,
   FinishedGoodsMovement,
   Formula,
+  FormulaEquipmentRequirement,
   FormulaLine,
   FormulaPhaseDefinition,
   FormulaProcessStep,
@@ -118,7 +119,7 @@ interface FormulaDataValue extends FormulaState {
     input: Omit<Product, "id" | "createdAt" | "updatedAt">,
   ): Product;
   saveProductStudioConcept(input:Omit<ProductStudioConcept,"id"|"createdAt"|"updatedAt">&{id?:string}):Promise<ProductStudioConcept>;
-  createFormulaFromStudio(conceptId:string,input:{productName:string;productCategory?:string;formulaName:string;description:string;lines:Array<{ingredientId:string;percentage:number;role:string;phase:string}>;phaseDefinitions?:FormulaPhaseDefinition[];manufacturingProcess?:FormulaProcessStep[];blankDraft?:boolean}):Promise<{productId:string;formulaId:string;formulaVersionId:string}>;
+  createFormulaFromStudio(conceptId:string,input:{productName:string;productCategory?:string;formulaName:string;description:string;lines:Array<{ingredientId:string;percentage:number;role:string;phase:string}>;phaseDefinitions?:FormulaPhaseDefinition[];manufacturingProcess?:FormulaProcessStep[];equipmentRequirements?:FormulaEquipmentRequirementInput[];blankDraft?:boolean}):Promise<{productId:string;formulaId:string;formulaVersionId:string}>;
   updateProduct(id: string, patch: Partial<Product>): void;
   updateLine(
     versionId: string,
@@ -129,6 +130,7 @@ interface FormulaDataValue extends FormulaState {
   removeLine(versionId: string, lineId: string): void;
   moveLine(versionId: string, lineId: string, direction: -1 | 1): void;
   saveVersion(versionId: string, patch: Partial<FormulaVersion>): void;
+  saveEquipmentRequirements(versionId:string,requirements:FormulaEquipmentRequirementInput[]):Promise<void>;
   transitionVersion(versionId: string, status: FormulaVersionStatus): void;
   duplicateAsDraft(versionId: string): FormulaVersion | undefined;
   createFormula(productId: string, name: string, description: string): Formula;
@@ -290,6 +292,7 @@ interface FormulaDataValue extends FormulaState {
     notes: string,
   ): Promise<void> | undefined;
 }
+type FormulaEquipmentRequirementInput=Omit<FormulaEquipmentRequirement,'id'|'formulaVersionId'|'createdAt'|'updatedAt'>&{id?:string}
 const FormulaDataContext = createContext<FormulaDataValue | null>(null);
 const uid = () => crypto.randomUUID();
 const defaultWorkspaceRepository = new LocalWorkspaceRepository();
@@ -457,6 +460,24 @@ export function FormulaDataProvider({
           ),
         }));
       },
+      async saveEquipmentRequirements(versionId,requirements) {
+        const source=stateRef.current.formulaVersions.find(item=>item.id===versionId)
+        if(!source||source.status!=='Draft')throw new Error('Equipment requirements are editable only on a Draft Formula Version.')
+        const now=new Date().toISOString(),previous=new Map(stateRef.current.formulaEquipmentRequirements.filter(item=>item.formulaVersionId===versionId).map(item=>[item.id,item]))
+        const normalized=requirements.map((requirement,index):FormulaEquipmentRequirement=>({
+          ...requirement,
+          id:requirement.id??uid(),
+          formulaVersionId:versionId,
+          quantityRequired:Math.max(1,Math.floor(requirement.quantityRequired)),
+          sortOrder:index+1,
+          createdAt:requirement.id?previous.get(requirement.id)?.createdAt??now:now,
+          updatedAt:now,
+        }))
+        await commitState('saveEquipmentRequirements',current=>({...current,
+          formulaEquipmentRequirements:[...current.formulaEquipmentRequirements.filter(item=>item.formulaVersionId!==versionId),...normalized],
+          formulaVersions:current.formulaVersions.map(item=>item.id===versionId?{...item,updatedAt:now}:item),
+        }))
+      },
       transitionVersion(versionId, status) {
         commitState("transitionVersion", (current) => {
           const source = current.formulaVersions.find(
@@ -520,10 +541,13 @@ export function FormulaDataProvider({
           ),
           state.formulaVersions,
           uid,
+          undefined,
+          state.formulaEquipmentRequirements.filter(requirement=>requirement.formulaVersionId===versionId),
         );
         commitState("duplicateAsDraft", (current) => ({
           ...current,
           formulaVersions: [...current.formulaVersions, result.version],
+          formulaEquipmentRequirements:[...current.formulaEquipmentRequirements,...result.requirements],
           formulaLines: [...current.formulaLines, ...result.lines],
         }));
         return result.version;
@@ -575,7 +599,8 @@ export function FormulaDataProvider({
         const formula:Formula={id:formulaId,productId,name:input.formulaName,description:input.description,createdAt:now,updatedAt:now}
         const version:FormulaVersion={id:formulaVersionId,formulaId,version:'v0.1',status:'Draft',description:input.blankDraft?'Blank Draft created after explicit Benchmark Lab readiness review.':'Rule-based Product Studio starting point.',targetCharacteristics:input.blankDraft?'Development targets remain in the linked Benchmark Lab brief; composition is intentionally empty.':'Predicted direction; physical testing required.',processInstructions:input.blankDraft?undefined:input.manufacturingProcess?.map(step=>`${step.order}. ${step.title}: ${step.instruction}`).join('\n')??'Use the Product Studio template procedure as preparation guidance, then execute through a Lab Batch.',developmentNotes:input.blankDraft?`Lineage: benchmark ${String(concept.analysis.referenceBenchmarkId??(concept.analysis.benchmarkLab as {benchmarkLink?:{benchmarkId?:string}}|undefined)?.benchmarkLink?.benchmarkId??'Unknown')} → development project ${concept.id}. No benchmark INCI, percentages, phases, or process instructions were copied.`:'Percentages are explainable starting points from curated rules, not supplier-specific limits or safety approval.',phaseDefinitions:input.blankDraft?undefined:input.phaseDefinitions,manufacturingProcess:input.blankDraft?undefined:input.manufacturingProcess,createdAt:now,updatedAt:now}
         const lines:FormulaLine[]=input.lines.map((line,index)=>({id:uid(),formulaVersionId,ingredientId:line.ingredientId,percentage:line.percentage,phase:line.phase,sortOrder:index+1,notes:'Product Studio starting recommendation; editable in Draft.',formulationRole:line.role}))
-        await commitState("createFormulaFromStudio",current=>({...current,products:[...current.products,product],formulas:[...current.formulas,formula],formulaVersions:[...current.formulaVersions,version],formulaLines:[...current.formulaLines,...lines],productStudioConcepts:current.productStudioConcepts.map(concept=>concept.id===conceptId?{...concept,generatedProductId:productId,generatedFormulaId:formulaId,generatedFormulaVersionId:formulaVersionId,updatedAt:now}:concept)}))
+        const equipmentRequirements:FormulaEquipmentRequirement[]=(input.equipmentRequirements??[]).map((requirement,index)=>({...requirement,id:requirement.id??uid(),formulaVersionId,sortOrder:index+1,createdAt:now,updatedAt:now}))
+        await commitState("createFormulaFromStudio",current=>({...current,products:[...current.products,product],formulas:[...current.formulas,formula],formulaVersions:[...current.formulaVersions,version],formulaEquipmentRequirements:[...current.formulaEquipmentRequirements,...equipmentRequirements],formulaLines:[...current.formulaLines,...lines],productStudioConcepts:current.productStudioConcepts.map(concept=>concept.id===conceptId?{...concept,generatedProductId:productId,generatedFormulaId:formulaId,generatedFormulaVersionId:formulaVersionId,updatedAt:now}:concept)}))
         if(!stateRef.current.formulas.some(item=>item.id===formulaId))throw new Error('The Formula could not be opened after saving. Stay here and try again.')
         return{productId,formulaId,formulaVersionId}
       },

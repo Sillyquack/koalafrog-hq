@@ -16,11 +16,15 @@ import { TestSessionForm } from "../testing/components/TestSessionForm";
 import { useActiveWorkspace } from "../../platform/startup/ActiveWorkspaceContext";
 import { BatchMaterialControlWorkspace } from "../production/components/BatchMaterialControlWorkspace";
 import type { CompletionReadiness } from "../production/domain/productionInventoryControl";
+import { useProcurement } from "../procurement/useProcurement";
+import { EquipmentPreparationChecklist } from "../formulas/components/EquipmentPreparationChecklist";
+import { evaluateEquipmentRequirements, hasEquipmentBlockers } from "../formulas/domain/equipmentRequirements";
 
 export function LabBatchDetailPage() {
   const { labBatchId } = useParams();
   const data = useFormulaData();
   const workspace = useActiveWorkspace();
+  const procurement = useProcurement();
   const [message, setMessage] = useState("");
   const [observing, setObserving] = useState(false);
   const [testing, setTesting] = useState(false);
@@ -36,6 +40,16 @@ export function LabBatchDetailPage() {
   const formula = data.formulas.find((f) => f.id === batch.formulaId);
   const version = data.formulaVersions.find(
     (v) => v.id === batch.formulaVersionId,
+  );
+  const equipmentRequirements = data.formulaEquipmentRequirements.filter(
+    (requirement) => requirement.formulaVersionId === batch.formulaVersionId,
+  );
+  const equipmentBlocked = hasEquipmentBlockers(
+    evaluateEquipmentRequirements(
+      equipmentRequirements,
+      procurement.data?.equipment,
+      procurement.data?.capabilities,
+    ),
   );
   const lines = data.labBatchLines
     .filter((l) => l.labBatchId === batch.id)
@@ -101,6 +115,12 @@ export function LabBatchDetailPage() {
             {batch.status === "Planned" && (
               <button
                 className="button primary"
+                disabled={equipmentBlocked}
+                title={
+                  equipmentBlocked
+                    ? "Required Equipment is missing or unavailable for this Formula Version."
+                    : undefined
+                }
                 onClick={() => data.transitionBatch(batch.id, "In Progress")}
               >
                 <FlaskConical size={15} />
@@ -154,6 +174,16 @@ export function LabBatchDetailPage() {
           <strong>{batch.targetCharacteristics}</strong>
         </div>
       </section>
+      {version ? (
+        <EquipmentPreparationChecklist
+          version={version}
+          requirements={equipmentRequirements}
+          equipment={procurement.data?.equipment}
+          capabilities={procurement.data?.capabilities}
+          policies={procurement.data?.equipmentPolicies}
+          equipmentError={procurement.error}
+        />
+      ) : null}
       {workspace ? (
         <BatchMaterialControlWorkspace
           kind="lab"

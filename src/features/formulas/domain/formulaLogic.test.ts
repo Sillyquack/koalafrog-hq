@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { FormulaLine, FormulaVersion } from '../../../types/domain'
+import type { FormulaEquipmentRequirement, FormulaLine, FormulaVersion } from '../../../types/domain'
 import { batchPlanningTarget, calculatePercentageTotal, canTransition, duplicateVersion, nextVersionNumber, percentageBalance, scaleFormula } from './formulaLogic'
 
 const line = (id: string, percentage: number): FormulaLine => ({ id, formulaVersionId: 'version-1', ingredientId: `ingredient-${id}`, percentage, phase: 'Phase A', sortOrder: Number(id), notes: '' })
@@ -31,15 +31,18 @@ describe('batch scaling', () => {
 
 describe('immutable version creation', () => {
   it('copies lines with new identities and leaves the source untouched', () => {
-    const ids = ['new-version', 'new-line-1', 'new-line-2']; let index = 0
+    const ids = ['new-version', 'new-line-1', 'new-line-2', 'new-requirement']; let index = 0
     const sourceLines = [{...line('1', 60),formulationRole:'Adds controlled viscosity and gloss'}, line('2', 40)]
-    const result = duplicateVersion(version, sourceLines, [version], () => ids[index++], '2026-07-14')
+    const sourceRequirements:FormulaEquipmentRequirement[]=[{id:'source-requirement',formulaVersionId:version.id,catalogKey:'precision_balance',requirementName:'Precision balance',category:'weighing',requiredEquipmentType:'scale',requiredPrecision:.01,unit:'g',quantityRequired:1,requirementLevel:'required',preparationInstructions:'Verify before use.',notes:'',sortOrder:1,createdAt:'2026-01-01',updatedAt:'2026-01-02'}]
+    const result = duplicateVersion(version, sourceLines, [version], () => ids[index++], '2026-07-14',sourceRequirements)
     expect(result.version).toMatchObject({ id: 'new-version', version: 'v0.3', status: 'Draft', derivedFromVersionId: 'version-1' })
     expect(result.lines.map((item) => item.id)).toEqual(['new-line-1', 'new-line-2'])
     expect(result.lines.every((item) => item.formulaVersionId === 'new-version')).toBe(true)
     expect(version.status).toBe('Candidate')
     expect(sourceLines[0].formulaVersionId).toBe('version-1')
     expect(result.lines[0].formulationRole).toBe('Adds controlled viscosity and gloss')
+    expect(result.requirements).toEqual([expect.objectContaining({id:'new-requirement',formulaVersionId:'new-version',catalogKey:'precision_balance',createdAt:'2026-07-14',updatedAt:'2026-07-14'})])
+    expect(sourceRequirements[0]).toMatchObject({id:'source-requirement',formulaVersionId:'version-1'})
     expect(calculatePercentageTotal(result.lines)).toBe(100)
   })
   it('increments the highest human-readable version predictably', () => expect(nextVersionNumber([{ version: 'v0.3' }, { version: 'v1.0' }])).toBe('v1.1'))

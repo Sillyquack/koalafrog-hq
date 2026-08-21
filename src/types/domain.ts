@@ -45,6 +45,30 @@ export interface FormulaVersion {
   manufacturingProcess?: FormulaProcessStep[]
 }
 
+export type EquipmentRequirementLevel = 'required' | 'recommended' | 'optional'
+export interface FormulaEquipmentRequirement {
+  id: string
+  formulaVersionId: string
+  catalogKey: string
+  requirementName: string
+  category: string
+  requiredEquipmentType?: string
+  requiredCapability?: string
+  minimumCapacity?: number
+  requiredPrecision?: number
+  minimumValue?: number
+  maximumValue?: number
+  unit?: string
+  requiredMaterial?: string
+  quantityRequired: number
+  requirementLevel: EquipmentRequirementLevel
+  preparationInstructions: string
+  notes: string
+  sortOrder: number
+  createdAt: string
+  updatedAt: string
+}
+
 export interface FormulaLine {
   id: string
   formulaVersionId: string
@@ -76,6 +100,7 @@ export interface FormulaState {
   products: Product[]
   formulas: Formula[]
   formulaVersions: FormulaVersion[]
+  formulaEquipmentRequirements: FormulaEquipmentRequirement[]
   formulaLines: FormulaLine[]
   ingredients: Ingredient[]
   supplierProducts: SupplierProduct[]

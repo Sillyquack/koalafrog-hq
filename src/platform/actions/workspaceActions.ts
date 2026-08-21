@@ -11,6 +11,7 @@ export const workspaceActionNames = [
   "removeLine",
   "moveLine",
   "saveVersion",
+  "saveEquipmentRequirements",
   "transitionVersion",
   "duplicateAsDraft",
   "createFormula",

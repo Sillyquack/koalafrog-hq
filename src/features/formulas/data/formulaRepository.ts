@@ -22,7 +22,7 @@ export {
 export interface FormulaRepository { load(): FormulaState; save(state: FormulaState): void }
 const cloneSeed = () => structuredClone(formulaSeed)
 const emptyBeardStudio=()=>({revision:0,profiles:[],lengthMaps:[],tools:[],recipes:[],sessions:[],logs:[]})
-export function normalizeWorkspaceState(state:FormulaState):FormulaState{return{...state,beardStudio:{...emptyBeardStudio(),...(state.beardStudio??{})},ingredientKnowledgeProfiles:state.ingredientKnowledgeProfiles??[],ingredientKnowledgeRoles:state.ingredientKnowledgeRoles??[],ingredientKnowledgeCompatibility:state.ingredientKnowledgeCompatibility??[],ingredientKnowledgeEvidence:state.ingredientKnowledgeEvidence??[]}}
+export function normalizeWorkspaceState(state:FormulaState):FormulaState{return{...state,beardStudio:{...emptyBeardStudio(),...(state.beardStudio??{})},ingredientKnowledgeProfiles:state.ingredientKnowledgeProfiles??[],ingredientKnowledgeRoles:state.ingredientKnowledgeRoles??[],ingredientKnowledgeCompatibility:state.ingredientKnowledgeCompatibility??[],ingredientKnowledgeEvidence:state.ingredientKnowledgeEvidence??[],formulaEquipmentRequirements:state.formulaEquipmentRequirements??[]}}
 type PhaseTwoState = Pick<FormulaState, 'products' | 'formulas' | 'formulaVersions' | 'formulaLines'>
 export function migratePhaseTwoState(legacy: PhaseTwoState): FormulaState { const seed = cloneSeed(); return { ...seed, products: legacy.products, formulas: legacy.formulas, formulaVersions: legacy.formulaVersions, formulaLines: legacy.formulaLines } }
 type PhaseThreeState = Pick<FormulaState,'products'|'formulas'|'formulaVersions'|'formulaLines'|'ingredients'|'supplierProducts'|'inventoryLots'|'inventoryMovements'>
@@ -42,15 +42,15 @@ export class LocalFormulaRepository implements FormulaRepository {
       const phaseSeven=window.localStorage.getItem(PHASE_SEVEN_STORAGE_KEY)
       if(phaseSeven)return normalizeWorkspaceState(JSON.parse(phaseSeven) as FormulaState)
       const phaseSix=window.localStorage.getItem(PHASE_SIX_STORAGE_KEY)
-      if(phaseSix)return migratePhaseSixState(JSON.parse(phaseSix) as PhaseSixState)
+      if(phaseSix)return normalizeWorkspaceState(migratePhaseSixState(JSON.parse(phaseSix) as PhaseSixState))
       const phaseFive=window.localStorage.getItem(PHASE_FIVE_STORAGE_KEY)
-      if(phaseFive)return migratePhaseFiveState(JSON.parse(phaseFive) as PhaseFiveState)
+      if(phaseFive)return normalizeWorkspaceState(migratePhaseFiveState(JSON.parse(phaseFive) as PhaseFiveState))
       const phaseFour = window.localStorage.getItem(PHASE_FOUR_STORAGE_KEY)
-      if(phaseFour)return migratePhaseFourState(JSON.parse(phaseFour) as PhaseFourState)
+      if(phaseFour)return normalizeWorkspaceState(migratePhaseFourState(JSON.parse(phaseFour) as PhaseFourState))
       const phaseThree = window.localStorage.getItem(PHASE_THREE_STORAGE_KEY)
-      if (phaseThree) return migratePhaseThreeState(JSON.parse(phaseThree) as PhaseThreeState)
+      if (phaseThree) return normalizeWorkspaceState(migratePhaseThreeState(JSON.parse(phaseThree) as PhaseThreeState))
       const legacy = window.localStorage.getItem(LEGACY_STORAGE_KEY)
-      return legacy ? migratePhaseTwoState(JSON.parse(legacy) as PhaseTwoState) : cloneSeed()
+      return legacy ? normalizeWorkspaceState(migratePhaseTwoState(JSON.parse(legacy) as PhaseTwoState)) : cloneSeed()
     } catch { return cloneSeed() }
   }
   save(state: FormulaState) { window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state)) }

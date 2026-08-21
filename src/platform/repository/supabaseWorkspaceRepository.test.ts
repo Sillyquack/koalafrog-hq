@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { formulaSeed } from '../../data/formulaSeed'
-import { assertSupplierProductPersistenceReadback, normalizeProductRow, relationalMigrationPayload, relationalTableByCollection, toDatabaseValue, toDomainValue } from './supabaseWorkspaceRepository'
+import { assertFormulaEquipmentRequirementsReadback, assertSupplierProductPersistenceReadback, formulaEquipmentRequirementDatabaseRow, normalizeProductRow, relationalMigrationPayload, relationalTableByCollection, toDatabaseValue, toDomainValue } from './supabaseWorkspaceRepository'
 
 describe('relational workspace mapping', () => {
   it('maps every relational collection explicitly and keeps Beard Studio as a typed aggregate gateway', () => {
@@ -22,6 +22,14 @@ describe('relational workspace mapping', () => {
     const payload = relationalMigrationPayload(formulaSeed)
     expect((payload.formulaVersions as Array<Record<string, unknown>>)[0].formula_id).toBe(formulaSeed.formulaVersions[0].formulaId)
     expect(formulaSeed).toEqual(before)
+  })
+
+  it('maps Formula Equipment snapshots onto the existing process requirement root',()=>{
+    const requirement={id:'11111111-1111-4111-8111-111111111111',formulaVersionId:'formula-version',catalogKey:'precision_balance',requirementName:'Precision balance',category:'weighing',requiredEquipmentType:'scale',requiredPrecision:.01,unit:'g',quantityRequired:1,requirementLevel:'required',preparationInstructions:'Verify before use.',notes:'',sortOrder:1,createdAt:'2026-08-21T10:00:00.000Z',updatedAt:'2026-08-21T10:00:00.000Z'}
+    const row=formulaEquipmentRequirementDatabaseRow(requirement)
+    expect(row).toMatchObject({source_type:'formula_version',source_id:'formula-version',formula_version_id:'formula-version',catalog_key:'precision_balance'})
+    expect(()=>assertFormulaEquipmentRequirementsReadback([requirement], [row])).not.toThrow()
+    expect(()=>assertFormulaEquipmentRequirementsReadback([requirement], [{...row,required_precision:.1}])).toThrow(/requiredPrecision/)
   })
 
   it('hydrates a nullable Product launch date as absent', () => {

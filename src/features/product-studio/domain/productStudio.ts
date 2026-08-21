@@ -1,7 +1,9 @@
-import type{FormulaState,Ingredient,InventoryLot,InventoryMovement,LabObservation,PackagingComponent,PackagingInventoryLot,PackagingInventoryMovement,ProductStudioSelection,SupplierProduct}from'../../../types/domain'
+import type{FormulaEquipmentRequirement,FormulaState,Ingredient,InventoryLot,InventoryMovement,LabObservation,PackagingComponent,PackagingInventoryLot,PackagingInventoryMovement,ProductStudioSelection,SupplierProduct}from'../../../types/domain'
 import{convertUnit,lotBalance}from'../../inventory/domain/inventoryLogic'
 import{packagingLotBalance}from'../../packaging/domain/packagingLogic'
-import type{EquipmentItem}from'../../procurement/domain/procurement'
+import type{EquipmentCapability,EquipmentItem}from'../../procurement/domain/procurement'
+import{beardOilEquipmentRequirements}from'../../procurement/domain/equipmentCatalog'
+import{evaluateEquipmentRequirements}from'../../formulas/domain/equipmentRequirements'
 import{productTemplates}from'./formulationEngine'
 
 export type FindingSeverity='information'|'recommendation'|'caution'|'blocking'
@@ -114,7 +116,14 @@ export function substituteSuggestions(missingId:string,ingredients:Ingredient[],
  return candidates.slice(0,3).map(f=>({ingredientId:f.ingredient.id,name:f.ingredient.commonName,explanation:`Same ${source.role.replaceAll('_',' ')} role with stocked material; sensory equivalence is predicted, not verified.`}))
 }
 
-export function equipmentReadiness(items:EquipmentItem[]){return beardOilArchitecture.equipment.map(requirement=>{const semantic=(item:EquipmentItem)=>item.equipment_type.includes(requirement.type)||item.name.toLowerCase().includes(requirement.label.split(' ')[0].toLowerCase()),candidates=items.filter(item=>!item.archived_at&&semantic(item)),matches=candidates.filter(item=>item.ownership_state==='owned'&&['available','in_use'].includes(item.availability_state)&&item.calibration_status!=='out_of_service'&&item.calibration_status!=='calibration_due'),state=matches.length?'ready' as const:candidates.length?'planned' as const:'missing' as const;return{...requirement,state,matches:matches.map(item=>item.id),candidates:candidates.map(item=>item.id),explanation:state==='ready'?'Recorded owned and available equipment matches this operational requirement.':state==='planned'?'A candidate or planned Equipment record exists, but it is not both owned and available.':'No Equipment candidate matches; reference knowledge is not ownership.'}})}
+export function equipmentReadiness(items:EquipmentItem[],capabilities:EquipmentCapability[]=[]){
+ const preview=beardOilEquipmentRequirements.map((requirement,index):FormulaEquipmentRequirement=>({...requirement,id:`beard-oil-equipment-${index+1}`,formulaVersionId:'product-studio-preview',createdAt:'preview',updatedAt:'preview'}))
+ return evaluateEquipmentRequirements(preview,items,capabilities).map(item=>({
+  type:item.requirement.catalogKey,label:item.requirement.requirementName,level:item.requirement.requirementLevel,
+  state:item.state==='available'?'ready' as const:item.state==='missing'?'missing' as const:'planned' as const,
+  matches:item.matchedEquipmentIds,candidates:item.candidateEquipmentIds,explanation:item.explanation,
+ }))
+}
 export function packagingReadiness(components:PackagingComponent[],lots:PackagingInventoryLot[],movements:PackagingInventoryMovement[]){const suitable=components.filter(c=>(/bottle/i.test(c.category)||/bottle/i.test(c.name))&&(!c.capacityUnit||['ml','L'].includes(c.capacityUnit))),available=suitable.reduce((sum,c)=>sum+lots.filter(l=>l.packagingComponentId===c.id&&l.status==='Active').reduce((s,l)=>s+Math.max(0,packagingLotBalance(l,movements)),0),0),selected=suitable.some(c=>['selected','ordered','received','active'].includes(c.status)),planned=suitable.length>0,state=available>0?'ready' as const:selected?'selected' as const:planned?'planned' as const:'missing' as const;return{state,available,componentIds:suitable.map(c=>c.id),explanation:state==='ready'?'Suitable liquid packaging is recorded in Packaging Inventory.':state==='selected'?'Suitable packaging is selected, but no physical stock is recorded.':state==='planned'?'A planned packaging candidate exists, but it is neither selected nor owned.':'No suitable packaging candidate is recorded.'}}
 export function maximumBatchSize(readiness:ReadinessItem[]){const ratios=readiness.filter(x=>x.required>0).map(x=>x.available/x.required);return ratios.length?Math.max(0,Math.floor(Math.min(...ratios)*30)):0}
 export function missingItemPlan(readiness:ReadinessItem[],equipment:ReturnType<typeof equipmentReadiness>,packaging:ReturnType<typeof packagingReadiness>){return{ingredients:readiness.filter(x=>x.state!=='ready').map(x=>({id:x.id,name:x.name,state:x.supplierProduct?'recorded_supplier_product':'procurement_required',supplierProductId:x.supplierProduct?.id,reason:x.reason})),equipment:equipment.filter(x=>x.state!=='ready').map(x=>({name:x.label,state:x.state,reason:x.explanation})),packaging:packaging.state==='ready'?[]:[{name:'Suitable liquid bottle',state:packaging.state,reason:packaging.explanation}],documentation:['Review supplier specification, SDS, CoA, allergens and applicable fragrance documentation before later controlled stages.']}}

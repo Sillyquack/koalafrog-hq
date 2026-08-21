@@ -1,4 +1,4 @@
-import type { FormulaLine, FormulaVersion, FormulaVersionStatus } from '../../../types/domain'
+import type { FormulaEquipmentRequirement, FormulaLine, FormulaVersion, FormulaVersionStatus } from '../../../types/domain'
 
 export const roundFormulaNumber = (value: number) => Math.round((value + Number.EPSILON) * 10000) / 10000
 export const calculatePercentageTotal = (lines: Pick<FormulaLine, 'percentage'>[]) => roundFormulaNumber(lines.reduce((sum, line) => sum + Number(line.percentage || 0), 0))
@@ -23,9 +23,10 @@ export const nextVersionNumber = (versions: Pick<FormulaVersion, 'version'>[]) =
   return `v${numbers[0].major}.${numbers[0].minor + 1}`
 }
 
-export function duplicateVersion(source: FormulaVersion, sourceLines: FormulaLine[], allFormulaVersions: FormulaVersion[], idFactory: () => string = () => crypto.randomUUID(), now = new Date().toISOString()) {
+export function duplicateVersion(source: FormulaVersion, sourceLines: FormulaLine[], allFormulaVersions: FormulaVersion[], idFactory: () => string = () => crypto.randomUUID(), now = new Date().toISOString(), sourceRequirements:FormulaEquipmentRequirement[] = []) {
   const versionId = idFactory()
   const version: FormulaVersion = { ...source, id: versionId, version: nextVersionNumber(allFormulaVersions.filter((item) => item.formulaId === source.formulaId)), status: 'Draft', derivedFromVersionId: source.id, approvedAt: undefined, createdAt: now, updatedAt: now }
   const lines = sourceLines.map((line, index) => ({ ...line, id: idFactory(), formulaVersionId: versionId, sortOrder: index + 1 }))
-  return { version, lines }
+  const requirements=sourceRequirements.map((requirement,index)=>({...requirement,id:idFactory(),formulaVersionId:versionId,sortOrder:index+1,createdAt:now,updatedAt:now}))
+  return { version, lines, requirements }
 }

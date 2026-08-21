@@ -9,7 +9,7 @@ import{SupabaseBeardStudioGateway}from'../../features/beard-studio/data/beardStu
 
 export const relationalTableByCollection: Record<Exclude<keyof FormulaState,'beardStudio'>, string> = {
   ingredientKnowledgeProfiles:'ingredient_knowledge_profiles',ingredientKnowledgeRoles:'ingredient_knowledge_roles',ingredientKnowledgeCompatibility:'ingredient_knowledge_compatibility',ingredientKnowledgeEvidence:'ingredient_knowledge_evidence',
-  productStudioConcepts:'product_studio_concepts',products:'products',formulas:'formulas',formulaVersions:'formula_versions',formulaLines:'formula_lines',ingredients:'ingredients',supplierProducts:'supplier_products',inventoryLots:'inventory_lots',inventoryMovements:'inventory_movements',labBatches:'lab_batches',labBatchLines:'lab_batch_lines',labBatchAllocations:'lab_lot_allocations',processSteps:'lab_process_steps',labObservations:'lab_observations',testers:'testers',testTemplates:'test_templates',testSessions:'test_sessions',testResponses:'test_responses',productionRuns:'production_runs',productionRunLines:'production_run_lines',productionRunAllocations:'production_lot_allocations',productionProcessSteps:'production_process_steps',costLines:'cost_lines',packagingComponents:'packaging_components',packagingSupplierProducts:'packaging_supplier_products',packagingInventoryLots:'packaging_inventory_lots',packagingInventoryMovements:'packaging_inventory_movements',packagingSpecifications:'packaging_specifications',packagingSpecificationVersions:'packaging_specification_versions',packagingSpecificationLines:'packaging_specification_lines',packagingAllocations:'packaging_allocations',finishedGoodsBatches:'finished_goods_batches',finishedGoodsMovements:'finished_goods_movements',responsiblePersons:'responsible_persons',complianceDossiers:'compliance_dossiers',complianceDocuments:'compliance_documents',regulatorySources:'regulatory_sources',regulatoryReviews:'regulatory_reviews',pifSections:'pif_evidence_sections',cpsrRecords:'cpsr_records',labelArtworkVersions:'label_artwork_versions',labelReviewItems:'label_checklist_items',inciDrafts:'inci_declarations',claims:'claims',claimEvidence:'claim_evidence',cpnpRecords:'cpnp_records',readinessIssues:'readiness_issues',launchPlans:'launch_plans',launchMilestones:'launch_milestones',launchDecisions:'launch_decisions',safetyEffectRecords:'undesirable_effect_records',
+  productStudioConcepts:'product_studio_concepts',products:'products',formulas:'formulas',formulaVersions:'formula_versions',formulaEquipmentRequirements:'process_equipment_requirements',formulaLines:'formula_lines',ingredients:'ingredients',supplierProducts:'supplier_products',inventoryLots:'inventory_lots',inventoryMovements:'inventory_movements',labBatches:'lab_batches',labBatchLines:'lab_batch_lines',labBatchAllocations:'lab_lot_allocations',processSteps:'lab_process_steps',labObservations:'lab_observations',testers:'testers',testTemplates:'test_templates',testSessions:'test_sessions',testResponses:'test_responses',productionRuns:'production_runs',productionRunLines:'production_run_lines',productionRunAllocations:'production_lot_allocations',productionProcessSteps:'production_process_steps',costLines:'cost_lines',packagingComponents:'packaging_components',packagingSupplierProducts:'packaging_supplier_products',packagingInventoryLots:'packaging_inventory_lots',packagingInventoryMovements:'packaging_inventory_movements',packagingSpecifications:'packaging_specifications',packagingSpecificationVersions:'packaging_specification_versions',packagingSpecificationLines:'packaging_specification_lines',packagingAllocations:'packaging_allocations',finishedGoodsBatches:'finished_goods_batches',finishedGoodsMovements:'finished_goods_movements',responsiblePersons:'responsible_persons',complianceDossiers:'compliance_dossiers',complianceDocuments:'compliance_documents',regulatorySources:'regulatory_sources',regulatoryReviews:'regulatory_reviews',pifSections:'pif_evidence_sections',cpsrRecords:'cpsr_records',labelArtworkVersions:'label_artwork_versions',labelReviewItems:'label_checklist_items',inciDrafts:'inci_declarations',claims:'claims',claimEvidence:'claim_evidence',cpnpRecords:'cpnp_records',readinessIssues:'readiness_issues',launchPlans:'launch_plans',launchMilestones:'launch_milestones',launchDecisions:'launch_decisions',safetyEffectRecords:'undesirable_effect_records',
 }
 
 const snake = (value: string) => value.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`)
@@ -32,6 +32,14 @@ export function normalizeProductRow(value: unknown) {
   const target = product.targetLaunchDate
   if (target == null || target === '') delete product.targetLaunchDate
   return product
+}
+
+export function formulaEquipmentRequirementDatabaseRow(record:Record<string,unknown>){
+  return{
+    ...toDatabaseValue(record) as Record<string,unknown>,
+    source_type:'formula_version',
+    source_id:record.formulaVersionId,
+  }
 }
 
 export function assertSupplierProductPersistenceReadback(
@@ -72,6 +80,23 @@ function packagingDatabaseRow(record:Record<string,unknown>){
 
 const equalPersistedValue=(left:unknown,right:unknown)=>JSON.stringify(left??null)===JSON.stringify(right??null)
 
+export function assertFormulaEquipmentRequirementsReadback(
+  expected:Array<{id:string;formulaVersionId:string}>,
+  persisted:Array<Record<string,unknown>>,
+){
+  if(persisted.length!==expected.length)throw new Error('Formula Equipment requirement readback returned an unexpected record count.')
+  const persistedById=new Map(persisted.map(item=>[String(item.id),item]))
+  for(const requirement of expected){
+    const requested=requirement as unknown as Record<string,unknown>
+    const row=persistedById.get(String(requirement.id))
+    if(!row)throw new Error('Formula Equipment requirement readback omitted a requested record.')
+    if(row.source_type!=='formula_version'||row.source_id!==requirement.formulaVersionId||row.formula_version_id!==requirement.formulaVersionId)throw new Error('Formula Equipment requirement readback did not preserve its Formula Version owner.')
+    for(const field of ['catalogKey','requirementName','category','requiredEquipmentType','requiredCapability','minimumCapacity','requiredPrecision','minimumValue','maximumValue','unit','requiredMaterial','quantityRequired','requirementLevel','preparationInstructions','notes','sortOrder'] as const){
+      if(!equalPersistedValue(row[snake(field)],requested[field]))throw new Error(`Formula Equipment requirement readback did not confirm ${field}.`)
+    }
+  }
+}
+
 export function assertPackagingComponentPersistenceReadback(
   previous:Record<string,unknown>,
   requested:Record<string,unknown>,
@@ -92,7 +117,7 @@ export function assertPackagingComponentPersistenceReadback(
 }
 
 export function relationalMigrationPayload(state: FormulaState) {
-  return Object.fromEntries(Object.entries(state).filter(([collection])=>collection!=='beardStudio').map(([collection, records]) => [collection, toDatabaseValue(records)]))
+  return Object.fromEntries(Object.entries(state).filter(([collection])=>collection!=='beardStudio').map(([collection, records]) => [collection,collection==='formulaEquipmentRequirements'?(records as Array<Record<string,unknown>>).map(formulaEquipmentRequirementDatabaseRow):toDatabaseValue(records)]))
 }
 
 const embeddedColumns: Partial<Record<keyof FormulaState, string[]>> = {
@@ -288,11 +313,50 @@ export class SupabaseWorkspaceRepository implements WorkspaceRepository {
       const formula=change.next.formulas.find(item=>item.id===concept.generatedFormulaId)
       const version=change.next.formulaVersions.find(item=>item.id===concept.generatedFormulaVersionId)
       const lines=change.next.formulaLines.filter(item=>item.formulaVersionId===concept.generatedFormulaVersionId)
+      const equipmentRequirements=change.next.formulaEquipmentRequirements.filter(item=>item.formulaVersionId===concept.generatedFormulaVersionId)
       if(!product||!formula||!version)throw new Error('Formula creation is incomplete.')
-      const result=await client.rpc('create_product_studio_formula_handoff',{concept_id:concept.id,product:toDatabaseValue(product) as Json,formula:toDatabaseValue(formula) as Json,formula_version:toDatabaseValue(version) as Json,formula_lines:toDatabaseValue(lines) as Json})
+      const result=await client.rpc('create_product_studio_formula_handoff',{concept_id:concept.id,product:toDatabaseValue(product) as Json,formula:toDatabaseValue(formula) as Json,formula_version:toDatabaseValue(version) as Json,formula_lines:toDatabaseValue(lines) as Json,equipment_requirements:toDatabaseValue(equipmentRequirements) as Json})
       if(result.error)throw new Error(result.error.message)
       const persisted=result.data as {productId?:string;formulaId?:string;formulaVersionId?:string}|null
       if(persisted?.formulaId!==concept.generatedFormulaId)throw new Error('Formula creation returned an unexpected record.')
+      const requirementReadback=await client.from('process_equipment_requirements').select('*').eq('formula_version_id',version.id).order('sort_order')
+      if(requirementReadback.error)throw new Error(requirementReadback.error.message)
+      assertFormulaEquipmentRequirementsReadback(equipmentRequirements,requirementReadback.data??[])
+      return true
+    }
+    if(change.action==='saveEquipmentRequirements'){
+      const version=change.next.formulaVersions.find(item=>change.previous.formulaVersions.find(previous=>previous.id===item.id)?.updatedAt!==item.updatedAt)
+      const previousVersion=change.previous.formulaVersions.find(item=>item.id===version?.id)
+      if(!version||!previousVersion||version.status!=='Draft')throw new Error('A Draft Formula Version is required to save Equipment requirements.')
+      const requirements=change.next.formulaEquipmentRequirements.filter(item=>item.formulaVersionId===version.id)
+      const result=await client.rpc('replace_formula_equipment_requirements_v1',{
+        target_formula_version_id:version.id,
+        expected_formula_updated_at:previousVersion.updatedAt,
+        candidate_formula_updated_at:version.updatedAt,
+        candidate_requirements:toDatabaseValue(requirements) as Json,
+      })
+      if(result.error)throw new Error(result.error.message)
+      const payload=result.data as {requirements?:Array<Record<string,unknown>>}|null
+      assertFormulaEquipmentRequirementsReadback(requirements,payload?.requirements??[])
+      return true
+    }
+    if(change.action==='duplicateAsDraft'){
+      const version=change.next.formulaVersions.find(item=>!change.previous.formulaVersions.some(previous=>previous.id===item.id))
+      if(!version?.derivedFromVersionId||version.status!=='Draft')throw new Error('Formula duplication is missing its derived Draft Formula Version.')
+      const lines=change.next.formulaLines.filter(item=>item.formulaVersionId===version.id)
+      const requirements=change.next.formulaEquipmentRequirements.filter(item=>item.formulaVersionId===version.id)
+      const result=await client.rpc('duplicate_formula_version_as_draft_v1',{
+        source_formula_version_id:version.derivedFromVersionId,
+        candidate_formula_version:toDatabaseValue(version) as Json,
+        candidate_formula_lines:toDatabaseValue(lines) as Json,
+        candidate_equipment_requirements:toDatabaseValue(requirements) as Json,
+      })
+      if(result.error)throw new Error(result.error.message)
+      const persisted=result.data as {formulaVersionId?:string}|null
+      if(persisted?.formulaVersionId!==version.id)throw new Error('Formula duplication returned an unexpected Formula Version.')
+      const requirementReadback=await client.from('process_equipment_requirements').select('*').eq('formula_version_id',version.id).order('sort_order')
+      if(requirementReadback.error)throw new Error(requirementReadback.error.message)
+      assertFormulaEquipmentRequirementsReadback(requirements,requirementReadback.data??[])
       return true
     }
     if(change.action==='markSupplierPreferred'){
@@ -339,7 +403,9 @@ export class SupabaseWorkspaceRepository implements WorkspaceRepository {
     const result: Partial<Record<Exclude<keyof FormulaState,'beardStudio'>, unknown[]>> = {}
     const client: SupabaseClient = supabase
     for (const [collection, table] of Object.entries(relationalTableByCollection) as Array<[Exclude<keyof FormulaState,'beardStudio'>, string]>) {
-      const response = await client.from(table).select('*').eq('owner_id', ownerId)
+      let query = client.from(table).select('*').eq('owner_id', ownerId)
+      if(collection==='formulaEquipmentRequirements')query=query.eq('source_type','formula_version')
+      const response = await query
       if (response.error) throw new Error(`${table}: ${response.error.message}`)
       result[collection] = collection === 'products'
         ? (response.data ?? []).map(normalizeProductRow)

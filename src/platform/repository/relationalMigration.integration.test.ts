@@ -92,6 +92,45 @@ run('relational v9 migration against local Supabase', () => {
     expect((await client.from('workspaces').select('lifecycle_state').eq('owner_id',ownerId).single()).data?.lifecycle_state).toBe('failed')
   })
 
+  it('persists owner-isolated Formula Equipment snapshots, freezes them after Draft, and duplicates them atomically',async()=>{
+    const ownerA=await ownerClient('formula-equipment-a'),ownerB=await ownerClient('formula-equipment-b')
+    const importedState=structuredClone(formulaSeed)
+    importedState.formulaEquipmentRequirements=[{
+      id:'11111111-1111-4111-8111-111111111111',formulaVersionId:'fv-bo-02',catalogKey:'precision_balance',requirementName:'Precision balance',category:'weighing',requiredEquipmentType:'scale',requiredPrecision:.01,unit:'g',quantityRequired:1,requirementLevel:'required',preparationInstructions:'Verify before use.',notes:'Imported Approved snapshot',sortOrder:1,createdAt:'2026-08-21T09:00:00.000Z',updatedAt:'2026-08-21T09:00:00.000Z',
+    }]
+    const imported=await ownerA.client.rpc('import_v9_relational',{payload:relationalMigrationPayload(importedState)})
+    expect(imported.error).toBeNull()
+    expect((await ownerA.client.rpc('complete_v9_reconciliation',{run_id:(imported.data as {migrationRunId:string}).migrationRunId,report:{complete:true}})).error).toBeNull()
+    expect((await ownerA.client.from('process_equipment_requirements').select('catalog_key,formula_version_id')).data).toEqual([{catalog_key:'precision_balance',formula_version_id:'fv-bo-02'}])
+    expect((await ownerB.client.from('process_equipment_requirements').select('id')).data).toHaveLength(0)
+
+    const direct=await ownerA.client.from('process_equipment_requirements').insert({id:'22222222-2222-4222-8222-222222222222'})
+    expect(direct.error).not.toBeNull()
+    const frozen=await ownerA.client.rpc('replace_formula_equipment_requirements_v1',{target_formula_version_id:'fv-bo-02',expected_formula_updated_at:'2026-07-11',candidate_formula_updated_at:'2026-08-21T10:00:00.000Z',candidate_requirements:[]})
+    expect(frozen.error?.message).toContain('immutable after Draft')
+
+    const draftVersion=importedState.formulaVersions.find(item=>item.id==='fv-bo-s-01')!
+    const draftRequirement={id:'33333333-3333-4333-8333-333333333333',formulaVersionId:draftVersion.id,catalogKey:'glass_beaker',requirementName:'Glass beaker',category:'mixing',requiredEquipmentType:'lab_vessel',minimumCapacity:250,unit:'ml',requiredMaterial:'glass',quantityRequired:1,requirementLevel:'required' as const,preparationInstructions:'Inspect, clean, and dry.',notes:'',sortOrder:1,createdAt:'2026-08-21T10:00:00.000Z',updatedAt:'2026-08-21T10:00:00.000Z'}
+    const replaced=await ownerA.client.rpc('replace_formula_equipment_requirements_v1',{target_formula_version_id:draftVersion.id,expected_formula_updated_at:draftVersion.updatedAt,candidate_formula_updated_at:'2026-08-21T10:00:00.000Z',candidate_requirements:toDatabaseValue([draftRequirement])})
+    expect(replaced.error).toBeNull()
+    expect((replaced.data as {requirements:unknown[]}).requirements).toHaveLength(1)
+    const stale=await ownerA.client.rpc('replace_formula_equipment_requirements_v1',{target_formula_version_id:draftVersion.id,expected_formula_updated_at:draftVersion.updatedAt,candidate_formula_updated_at:'2026-08-21T10:30:00.000Z',candidate_requirements:toDatabaseValue([draftRequirement])})
+    expect(stale.error?.message).toContain('changed; refresh and retry')
+
+    expect((await ownerA.client.from('formula_versions').update({status:'Candidate',updated_at:'2026-08-21T11:00:00.000Z'}).eq('id',draftVersion.id)).error).toBeNull()
+    const postCandidate=await ownerA.client.rpc('replace_formula_equipment_requirements_v1',{target_formula_version_id:draftVersion.id,expected_formula_updated_at:'2026-08-21T11:00:00.000Z',candidate_formula_updated_at:'2026-08-21T11:30:00.000Z',candidate_requirements:toDatabaseValue([draftRequirement])})
+    expect(postCandidate.error?.message).toContain('immutable after Draft')
+
+    const duplicateId='fv-equipment-copy',now='2026-08-21T12:00:00.000Z'
+    const duplicateVersion={...draftVersion,id:duplicateId,version:'v0.2',status:'Draft' as const,derivedFromVersionId:draftVersion.id,approvedAt:undefined,createdAt:now,updatedAt:now}
+    const duplicateLines=importedState.formulaLines.filter(item=>item.formulaVersionId===draftVersion.id).map((item,index)=>({...item,id:`fl-equipment-copy-${index+1}`,formulaVersionId:duplicateId}))
+    const duplicateRequirement={...draftRequirement,id:'44444444-4444-4444-8444-444444444444',formulaVersionId:duplicateId,createdAt:now,updatedAt:now}
+    const duplicated=await ownerA.client.rpc('duplicate_formula_version_as_draft_v1',{source_formula_version_id:draftVersion.id,candidate_formula_version:toDatabaseValue(duplicateVersion),candidate_formula_lines:toDatabaseValue(duplicateLines),candidate_equipment_requirements:toDatabaseValue([duplicateRequirement])})
+    expect(duplicated.error).toBeNull()
+    expect(duplicated.data).toMatchObject({formulaVersionId:duplicateId,lineCount:duplicateLines.length,requirementCount:1})
+    expect((await ownerA.client.from('process_equipment_requirements').select('catalog_key').eq('formula_version_id',duplicateId)).data).toEqual([{catalog_key:'glass_beaker'}])
+  })
+
   it('imports and atomically replaces an owner-isolated Ingredient Knowledge aggregate',async()=>{
     const {client,ownerId}=await ownerClient('ingredient-knowledge')
     const state=structuredClone(formulaSeed),profile=createEmptyIngredientKnowledgeProfile('i1','2026-07-20T12:00:00.000Z')
