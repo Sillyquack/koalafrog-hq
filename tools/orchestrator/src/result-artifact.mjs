@@ -168,12 +168,20 @@ function mergeCheckEvidence(messageEvidence, executionEvidence) {
   return Object.fromEntries(
     resultCheckNames.map((name) => {
       const evidence = [...executionEvidence[name], ...messageEvidence[name]]
-      const finalMessage = messageEvidence[name].at(-1)
-      const lastExecution = executionEvidence[name].at(-1)
+      const finalMessage = messageEvidence[name]
+        .filter(({ status }) => status === "pass" || status === "fail")
+        .at(-1)
+      const lastExecution = executionEvidence[name]
+        .filter(({ status }) => status === "pass" || status === "fail")
+        .at(-1)
+      const status =
+        lastExecution?.status === "fail" || finalMessage?.status === "fail"
+          ? "fail"
+          : finalMessage?.status ?? lastExecution?.status ?? "unknown"
       return [
         name,
         {
-          status: finalMessage?.status ?? lastExecution?.status ?? "unknown",
+          status,
           evidence,
         },
       ]

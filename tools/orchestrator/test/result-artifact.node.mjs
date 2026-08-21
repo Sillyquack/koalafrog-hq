@@ -4,6 +4,7 @@ import {
   checksFromResultArtifact,
   resultArtifactFromTurnResult,
 } from "../src/result-artifact.mjs"
+import { issue63AcceptanceTurnResult } from "./fixtures/issue-63-production-day1-result-fidelity-acceptance-005.mjs"
 import { issue63CloseoutFinalMessage } from "./fixtures/issue-63-production-day1-review-closeout-004.mjs"
 
 test("Issue #63/004 final message produces faithful checks and findings", () => {
@@ -83,4 +84,67 @@ test("terminal command evidence can prove a check when the final message is abse
   assert.equal(artifact.checks.lint.status, "pass")
   assert.equal(artifact.checks.typecheck.status, "unknown")
   assert.equal(artifact.source, "completed_turn_execution_evidence")
+})
+
+test("Issue #63/005 keeps canonical tests pass while preserving its later caveat", () => {
+  const artifact = resultArtifactFromTurnResult(
+    issue63AcceptanceTurnResult,
+    "2026-08-21T20:25:29.556Z",
+  )
+
+  assert.equal(artifact.checks.tests.status, "pass")
+  assert.deepEqual(
+    artifact.checks.tests.evidence.map(({ source, status }) => ({
+      source,
+      status,
+    })),
+    [
+      { source: "command_execution", status: "pass" },
+      { source: "final_message", status: "pass" },
+      { source: "final_message", status: "unknown" },
+    ],
+  )
+  assert.ok(
+    artifact.checks.tests.evidence.some(({ summary }) =>
+      /local-Supabase integration coverage/.test(summary),
+    ),
+  )
+  assert.match(
+    artifact.finalMessage,
+    /isolated execution of the proposed migration remains unverified and gated/,
+  )
+  assert.ok(
+    artifact.findings.ownerGates.some((line) =>
+      /migration still requires isolated rehearsal/.test(line),
+    ),
+  )
+})
+
+test("a definitive failed test command cannot be hidden by prose PASS", () => {
+  const artifact = resultArtifactFromTurnResult({
+    status: "completed",
+    turn: { id: "turn-tests-failed", status: "completed", items: [] },
+    agentMessage: "| Tests | PASS | A prose summary without execution proof |",
+    commandExecutions: [
+      {
+        id: "command-tests-failed",
+        type: "commandExecution",
+        command: "npm test",
+        status: "failed",
+        exitCode: 1,
+      },
+    ],
+  })
+
+  assert.equal(artifact.checks.tests.status, "fail")
+  assert.deepEqual(
+    artifact.checks.tests.evidence.map(({ source, status }) => ({
+      source,
+      status,
+    })),
+    [
+      { source: "command_execution", status: "fail" },
+      { source: "final_message", status: "pass" },
+    ],
+  )
 })
