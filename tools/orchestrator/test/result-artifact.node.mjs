@@ -120,7 +120,51 @@ test("Issue #63/005 keeps canonical tests pass while preserving its later caveat
   )
 })
 
-test("a definitive failed test command cannot be hidden by prose PASS", () => {
+test("insufficient test evidence remains unknown", () => {
+  const artifact = resultArtifactFromTurnResult({
+    status: "completed",
+    turn: { id: "turn-tests-unknown", status: "completed", items: [] },
+    agentMessage:
+      "Tests include skipped local-Supabase integration coverage; isolated migration execution remains unverified.",
+  })
+
+  assert.equal(artifact.checks.tests.status, "unknown")
+  assert.deepEqual(
+    artifact.checks.tests.evidence.map(({ source, status }) => ({
+      source,
+      status,
+    })),
+    [{ source: "final_message", status: "unknown" }],
+  )
+})
+
+test("a nonzero canonical test command is definitive failure", () => {
+  const artifact = resultArtifactFromTurnResult({
+    status: "completed",
+    turn: { id: "turn-tests-nonzero", status: "completed", items: [] },
+    agentMessage: "Implementation complete.",
+    commandExecutions: [
+      {
+        id: "command-tests-nonzero",
+        type: "commandExecution",
+        command: "npm test",
+        status: "completed",
+        exitCode: 1,
+      },
+    ],
+  })
+
+  assert.equal(artifact.checks.tests.status, "fail")
+  assert.deepEqual(
+    artifact.checks.tests.evidence.map(({ source, status }) => ({
+      source,
+      status,
+    })),
+    [{ source: "command_execution", status: "fail" }],
+  )
+})
+
+test("optimistic prose cannot hide a failed canonical test command", () => {
   const artifact = resultArtifactFromTurnResult({
     status: "completed",
     turn: { id: "turn-tests-failed", status: "completed", items: [] },
