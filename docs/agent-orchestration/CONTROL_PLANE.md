@@ -25,10 +25,13 @@ origin issue has persisted local state.
 
 The orchestrator selects the oldest unconsumed explicit instruction using
 durable run history, repository-wide claim records, and existing
-`agent_result` comments. An `instruction_id` is unique across the repository
-and executes at most once unless an audited local retry marker explicitly
-reopens it. Concurrent polls claim both the origin issue and instruction before
-starting or resuming Codex.
+`agent_result` comments. A pending control is eligible only when its declared
+`task_state` exactly matches the persisted current task state. A stale mismatch
+stays unconsumed while oldest-to-newest scanning continues to the next pending
+control. An `instruction_id` is unique across the repository and executes at
+most once unless an audited local retry marker explicitly reopens it.
+Concurrent polls claim both the origin issue and instruction before starting or
+resuming Codex.
 
 `action: start` creates a fresh instruction-specific worktree and Codex thread.
 `action: continue` reuses the persisted worktree and thread, including after a

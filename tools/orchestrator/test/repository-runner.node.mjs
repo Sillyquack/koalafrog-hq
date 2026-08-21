@@ -14,11 +14,16 @@ import {
   recordPendingApprovalRequest,
   registerOwnerApprovalDecision,
 } from "../src/approval-decisions.mjs"
+import { selectNextInstruction } from "../src/control-plane.mjs"
 import { StateStore } from "../src/state-store.mjs"
 
 function controlBlock(
   instructionId,
-  { action = "start", taskState = "ready" } = {},
+  {
+    action = "start",
+    taskState = "ready",
+    prompt = "Make only the bounded orchestrator change.",
+  } = {},
 ) {
   return `\`\`\`yaml
 agent_control:
@@ -28,7 +33,10 @@ agent_control:
   max_turns: 2
   owner_approval_required: false
   prompt: |
-    Make only the bounded orchestrator change.
+${prompt
+  .split("\n")
+  .map((line) => `    ${line}`)
+  .join("\n")}
 \`\`\``
 }
 
@@ -356,6 +364,197 @@ test("an unchanged searched issue is skipped without repeated GitHub detail read
     claimed: false,
   })
   assert.equal(apiCalls, 0)
+})
+
+test("Issue #63 skips stale 002, claims matching 003 once, and preserves task continuity", async (t) => {
+  const directory = await mkdtemp(
+    path.join(os.tmpdir(), "koalafrog-issue-63-stale-continuation-"),
+  )
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const storeOptions = {
+    stateDirectory: directory,
+    repository: "Sillyquack/koalafrog-hq",
+    issueNumber: 63,
+  }
+  const store = new StateStore(storeOptions)
+  const state = await store.load()
+  state.status = "needs_review"
+  state.lastConsumedInstructionId = "production-day1-stock-equipment-001"
+  state.threadId = "01a0243c-dcdf-7121-a02d-0aaba354c2dd"
+  state.workspacePath =
+    "/workspaces/issue-63-production-day1-stock-equipment-001"
+  state.branch = "agent/issue-63-production-day1-stock-equipment-001"
+  state.runs.push({
+    instructionId: "production-day1-stock-equipment-001",
+    status: "needs_review",
+  })
+  await store.save(state)
+
+  const noWriteSafetyBoundary =
+    "Do not perform any new production writes, receipts, mutations, migrations, deployments, purchases, merges, or other external side effects."
+  const issue = {
+    number: 63,
+    state: "open",
+    updated_at: "2026-08-21T13:29:47Z",
+    body: controlBlock("production-day1-stock-equipment-001"),
+  }
+  const comments = [
+    {
+      body: controlBlock("production-day1-safety-readback-002", {
+        action: "continue",
+        taskState: "running",
+        prompt:
+          "From this point forward, do not perform any new production writes, receipts, mutations, migrations, deployments, purchases, or other external side effects in this instruction.",
+      }),
+    },
+    {
+      body: controlBlock("production-day1-safety-readback-resume-003", {
+        action: "continue",
+        taskState: "needs_review",
+        prompt: noWriteSafetyBoundary,
+      }),
+    },
+  ]
+  const selected = selectNextInstruction(issue, comments, state)
+  assert.equal(
+    selected.instructionId,
+    "production-day1-safety-readback-resume-003",
+  )
+  assert.equal(selected.prompt, noWriteSafetyBoundary)
+
+  let detailReads = 0
+  const scanner = {
+    threadId: "scanner-thread",
+    appServer: {
+      async callMcpTool(request) {
+        detailReads += 1
+        if (request.tool === "github.fetch_issue") {
+          return { structuredContent: { issue } }
+        }
+        if (request.tool === "github.fetch_issue_comments") {
+          return { structuredContent: { comments } }
+        }
+        throw new Error(`Unexpected MCP tool: ${request.tool}`)
+      },
+    },
+  }
+  const executed = []
+  class ConsumingOrchestrator {
+    constructor(_config, { store: taskStore }) {
+      this.store = taskStore
+    }
+
+    async runOnce({ expectedInstructionId }) {
+      executed.push(expectedInstructionId)
+      assert.equal(
+        expectedInstructionId,
+        "production-day1-safety-readback-resume-003",
+      )
+      const nextState = await this.store.load()
+      assert.equal(
+        nextState.threadId,
+        "01a0243c-dcdf-7121-a02d-0aaba354c2dd",
+      )
+      assert.equal(
+        nextState.workspacePath,
+        "/workspaces/issue-63-production-day1-stock-equipment-001",
+      )
+      assert.equal(
+        nextState.branch,
+        "agent/issue-63-production-day1-stock-equipment-001",
+      )
+      nextState.status = "needs_review"
+      nextState.lastConsumedInstructionId = expectedInstructionId
+      nextState.runs.push({
+        instructionId: expectedInstructionId,
+        status: "needs_review",
+      })
+      await this.store.save(nextState)
+      return {
+        status: "needs_review",
+        instructionId: expectedInstructionId,
+      }
+    }
+
+    async stop() {}
+  }
+  const config = {
+    repository: storeOptions.repository,
+    stateDirectory: directory,
+    retryBaseMs: 1,
+  }
+  const candidate = {
+    issueNumber: 63,
+    searchMatched: true,
+    updatedAt: issue.updated_at,
+  }
+
+  const claimed = await runRepositoryIssue(scanner, config, candidate, {
+    OrchestratorClass: ConsumingOrchestrator,
+  })
+  const replay = await runRepositoryIssue(scanner, config, candidate, {
+    OrchestratorClass: ConsumingOrchestrator,
+  })
+
+  assert.equal(claimed.status, "needs_review")
+  assert.equal(
+    claimed.instructionId,
+    "production-day1-safety-readback-resume-003",
+  )
+  assert.equal(claimed.claimed, true)
+  assert.deepEqual(replay, {
+    issueNumber: 63,
+    status: "no_pending_agent_control",
+    claimed: false,
+  })
+  assert.deepEqual(executed, ["production-day1-safety-readback-resume-003"])
+  assert.equal(detailReads, 4)
+
+  const claimDirectory = path.join(
+    directory,
+    "repository-queue",
+    "instructions",
+  )
+  const claimRecord = JSON.parse(
+    await readFile(
+      path.join(
+        claimDirectory,
+        "production-day1-safety-readback-resume-003.json",
+      ),
+      "utf8",
+    ),
+  )
+  assert.equal(claimRecord.status, "completed")
+  assert.equal(claimRecord.attempt, 1)
+  await assert.rejects(
+    readFile(
+      path.join(
+        claimDirectory,
+        "production-day1-safety-readback-002.json",
+      ),
+      "utf8",
+    ),
+    (error) => error.code === "ENOENT",
+  )
+
+  const finalState = await store.load()
+  assert.equal(
+    finalState.lastConsumedInstructionId,
+    "production-day1-safety-readback-resume-003",
+  )
+  assert.equal(
+    finalState.runs.filter(
+      (run) => run.instructionId === "production-day1-safety-readback-002",
+    ).length,
+    0,
+  )
+  assert.equal(
+    finalState.runs.filter(
+      (run) =>
+        run.instructionId === "production-day1-safety-readback-resume-003",
+    ).length,
+    1,
+  )
 })
 
 for (const [terminalStatus, issueNumber] of [

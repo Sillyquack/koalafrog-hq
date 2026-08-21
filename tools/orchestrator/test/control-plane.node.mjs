@@ -26,6 +26,22 @@ agent_control:
 const precedingIssue53Failure =
   "Diagnose and fix the owner-gate parser/eligibility logic that incorrectly classified the sentence `Explicitly keep blocked: merge/default-branch changes, force-push, web-app deployment, Supabase migrations/schema/data mutations, secrets, purchases, unrelated product-domain changes.` as if those blocked actions had been requested."
 
+function continuationBlock(instructionId, taskState, prompt) {
+  return `\`\`\`yaml
+agent_control:
+  action: continue
+  task_state: ${taskState}
+  instruction_id: ${instructionId}
+  max_turns: 8
+  owner_approval_required: false
+  prompt: |
+${prompt
+  .split("\n")
+  .map((line) => `    ${line}`)
+  .join("\n")}
+\`\`\``
+}
+
 test("parses the strict control block and its multiline prompt", () => {
   const [control] = extractAgentControls(startBlock)
   assert.deepEqual(control, {
@@ -68,6 +84,80 @@ test("selects the oldest pending instruction from durable history", () => {
   assert.equal(next.instructionId, "follow-up-001")
 })
 
+test("Issue #63 skips stale 002 and selects the oldest state-matching continuation", () => {
+  const noWriteSafetyBoundary =
+    "Do not perform any new production writes, receipts, mutations, migrations, deployments, purchases, merges, or other external side effects."
+  const issue = {
+    body: startBlock.replaceAll(
+      "proof-001",
+      "production-day1-stock-equipment-001",
+    ),
+  }
+  const comments = [
+    {
+      body: continuationBlock(
+        "production-day1-safety-readback-002",
+        "running",
+        "Continue the prior safety readback.",
+      ),
+    },
+    {
+      body: continuationBlock(
+        "production-day1-safety-readback-resume-003",
+        "needs_review",
+        noWriteSafetyBoundary,
+      ),
+    },
+    {
+      body: continuationBlock(
+        "production-day1-later-needs-review-004",
+        "needs_review",
+        "Remain within the same no-write boundary.",
+      ),
+    },
+  ]
+
+  const next = selectNextInstruction(issue, comments, {
+    status: "needs_review",
+    lastConsumedInstructionId: "production-day1-stock-equipment-001",
+    runs: [{ instructionId: "production-day1-stock-equipment-001" }],
+  })
+
+  assert.equal(
+    next.instructionId,
+    "production-day1-safety-readback-resume-003",
+  )
+  assert.equal(next.prompt, noWriteSafetyBoundary)
+})
+
+test("a stale pending continuation remains unconsumed when no later control matches state", () => {
+  const issue = {
+    body: startBlock.replaceAll(
+      "proof-001",
+      "production-day1-stock-equipment-001",
+    ),
+  }
+  const comments = [
+    {
+      body: continuationBlock(
+        "production-day1-safety-readback-002",
+        "running",
+        "Continue the prior safety readback.",
+      ),
+    },
+  ]
+  const state = {
+    status: "needs_review",
+    lastConsumedInstructionId: "production-day1-stock-equipment-001",
+    runs: [{ instructionId: "production-day1-stock-equipment-001" }],
+  }
+  const initialState = structuredClone(state)
+
+  assert.equal(selectNextInstruction(issue, comments, state), null)
+  assert.equal(selectNextInstruction(issue, comments, state), null)
+  assert.deepEqual(state, initialState)
+})
+
 test("task state eligibility is explicit for start and continue actions", () => {
   const instruction = extractAgentControls(startBlock)[0]
   assert.equal(isInstructionEligible(instruction), true)
@@ -94,6 +184,28 @@ test("task state eligibility is explicit for start and continue actions", () => 
       taskState: "needs_owner",
     }),
     true,
+  )
+  assert.equal(
+    isInstructionEligible(
+      {
+        ...instruction,
+        action: "continue",
+        taskState: "needs_review",
+      },
+      "needs_review",
+    ),
+    true,
+  )
+  assert.equal(
+    isInstructionEligible(
+      {
+        ...instruction,
+        action: "continue",
+        taskState: "needs_review",
+      },
+      "needs_owner",
+    ),
+    false,
   )
 })
 
@@ -141,6 +253,7 @@ test("an explicitly audited instruction can be retried without a duplicate", () 
     { body: startBlock },
     [{ body: completed }],
     {
+      status: "ready",
       lastConsumedInstructionId: "proof-001",
       runs: [{ instructionId: "proof-001" }],
       retryInstructionIds: ["proof-001"],

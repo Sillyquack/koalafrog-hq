@@ -21,11 +21,12 @@ function controlBlock({
   action = "start",
   instructionId,
   prompt = "Continue the bounded local implementation. Do not deploy.",
+  taskState = "ready",
 }) {
   return `\`\`\`yaml
 agent_control:
   action: ${action}
-  task_state: ready
+  task_state: ${taskState}
   instruction_id: ${instructionId}
   max_turns: 3
   owner_approval_required: false
@@ -231,6 +232,7 @@ test("polling continues after needs_owner and a fresh continue reuses the thread
   const followUpControl = controlBlock({
     action: "continue",
     instructionId: "owner-follow-up-002",
+    taskState: "needs_owner",
   })
   let fetchCount = 0
   const posted = []

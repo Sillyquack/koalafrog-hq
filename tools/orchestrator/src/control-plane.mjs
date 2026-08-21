@@ -161,7 +161,11 @@ export function selectNextInstruction(issue, comments = [], state = {}) {
   return (
     controls
       .slice()
-      .find((control) => !consumed.has(control.instructionId)) ?? null
+      .find(
+        (control) =>
+          !consumed.has(control.instructionId) &&
+          isInstructionEligible(control, state.status),
+      ) ?? null
   )
 }
 
@@ -171,10 +175,12 @@ const eligibleStatesByAction = {
   stop: taskStates,
 }
 
-export function isInstructionEligible(instruction) {
+export function isInstructionEligible(instruction, currentTaskState) {
   return Boolean(
     instruction &&
-      eligibleStatesByAction[instruction.action]?.has(instruction.taskState),
+      eligibleStatesByAction[instruction.action]?.has(instruction.taskState) &&
+      (currentTaskState === undefined ||
+        instruction.taskState === currentTaskState),
   )
 }
 
