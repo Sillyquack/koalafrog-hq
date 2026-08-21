@@ -616,7 +616,10 @@ test("a timeout retry starts only after the interrupted turn command is terminal
   t.after(() => rm(directory, { recursive: true, force: true }))
   const block = controlBlock({ instructionId: "retry-isolation-001" })
   const comments = []
-  const appServer = new AppServerClient({ cwd: "/tmp" })
+  const appServer = new AppServerClient({
+    cwd: "/tmp",
+    turnTerminationTimeoutMs: 2_000,
+  })
   let activeCommand = false
   let interruptRequests = 0
   let turnStarts = 0
@@ -630,6 +633,15 @@ test("a timeout retry starts only after the interrupted turn command is terminal
       const turnId = `turn-retry-${turnStarts}`
       if (turnStarts === 1) {
         activeCommand = true
+        appServer.emit("item/started", {
+          threadId: "thread-retry-isolation",
+          turnId,
+          item: {
+            id: "command-retry-1",
+            type: "commandExecution",
+            status: "inProgress",
+          },
+        })
       } else {
         assert.equal(
           activeCommand,
@@ -650,6 +662,12 @@ test("a timeout retry starts only after the interrupted turn command is terminal
     if (method === "turn/interrupt") {
       interruptRequests += 1
       setTimeout(() => {
+        appServer.emit("turn/completed", {
+          threadId: "thread-retry-isolation",
+          turn: { id: "turn-retry-1", status: "interrupted", items: [] },
+        })
+      }, 20)
+      setTimeout(() => {
         activeCommand = false
         appServer.emit("item/completed", {
           threadId: "thread-retry-isolation",
@@ -660,11 +678,7 @@ test("a timeout retry starts only after the interrupted turn command is terminal
             status: "failed",
           },
         })
-        appServer.emit("turn/completed", {
-          threadId: "thread-retry-isolation",
-          turn: { id: "turn-retry-1", status: "interrupted", items: [] },
-        })
-      }, 300)
+      }, 600)
       return {}
     }
     throw new Error(`Unexpected request: ${method}`)
@@ -701,6 +715,72 @@ test("a timeout retry starts only after the interrupted turn command is terminal
   assert.equal(turnStarts, 2)
   assert.equal(interruptRequests, 1)
   assert.equal(activeCommand, false)
+})
+
+test("a timed-out turn fails closed when an interrupted command never becomes terminal", async () => {
+  const appServer = new AppServerClient({
+    cwd: "/tmp",
+    turnTerminationTimeoutMs: 30,
+  })
+  let turnStarts = 0
+  let interruptRequests = 0
+  appServer.request = async (method) => {
+    if (method === "turn/start") {
+      turnStarts += 1
+      appServer.emit("item/started", {
+        threadId: "thread-unproven-command",
+        turnId: "turn-unproven-command",
+        item: {
+          id: "command-unproven",
+          type: "commandExecution",
+          status: "inProgress",
+        },
+      })
+      return { turn: { id: "turn-unproven-command" } }
+    }
+    if (method === "turn/interrupt") {
+      interruptRequests += 1
+      setTimeout(
+        () =>
+          appServer.emit("turn/completed", {
+            threadId: "thread-unproven-command",
+            turn: {
+              id: "turn-unproven-command",
+              status: "interrupted",
+              items: [],
+            },
+          }),
+        0,
+      )
+      setTimeout(
+        () =>
+          appServer.emit("item/completed", {
+            threadId: "thread-unproven-command",
+            turnId: "turn-unproven-command",
+            item: {
+              id: "command-unproven",
+              type: "commandExecution",
+              status: "inProgress",
+            },
+          }),
+        5,
+      )
+      return {}
+    }
+    throw new Error(`Unexpected request: ${method}`)
+  }
+
+  await assert.rejects(
+    appServer.runTurn({
+      threadId: "thread-unproven-command",
+      prompt: "Do not overlap an unproven command.",
+      cwd: "/tmp",
+      timeoutMs: 5,
+    }),
+    /did not prove terminal command completion/,
+  )
+  assert.equal(turnStarts, 1)
+  assert.equal(interruptRequests, 1)
 })
 
 test("restart publishes a persisted owner stop before returning to polling", async (t) => {

@@ -166,10 +166,13 @@ executable and `--checkout` is a stable coordinating checkout. It validates the
 generated plist before replacing the prior file, writes it atomically with mode
 `0600`, waits for an old instance to unload, retries bounded launchd bootstrap
 races, and restores the previous plist/service if the new bootstrap fails. It
-first copies the audited orchestrator source to an immutable content-addressed
-release under the state root. The LaunchAgent executes that release, not a task
-worktree, while `WorkingDirectory` remains the stable coordinating checkout.
-No credentials are written to the release or plist.
+first copies the audited orchestrator source from the validated
+`<checkout>/tools/orchestrator` directory to an immutable content-addressed
+release under the state root. The installer never treats the release that
+launched it as update source. The stable checkout must therefore be updated to
+the reviewed commit before an approved install. The LaunchAgent executes the
+new release, not a task worktree, while `WorkingDirectory` remains the stable
+coordinating checkout. No credentials are written to the release or plist.
 
 It writes and loads:
 
@@ -267,7 +270,9 @@ npm run schema:ts
 - The service never deploys, merges, force-pushes, or resolves owner questions.
 - `max_turns`, per-turn timeout, bounded retries, and exponential backoff are
   enforced locally even if the issue asks for larger limits.
-- A timed-out turn must report a matching terminal completion after interruption
-  before a retry can start; unconfirmed restart recovery remains deferred.
+- A timed-out turn must report a matching terminal completion after interruption,
+  and every observed command execution from that turn must also be terminal,
+  before a retry can start. Missing command-terminal evidence fails closed;
+  unconfirmed restart recovery remains deferred.
 - Durable history plus GitHub result comments consume each `instruction_id` at
   most once unless an audited local retry marker explicitly reopens it.

@@ -13,17 +13,13 @@ import {
 } from "../src/launchd.mjs"
 import {
   materializeRuntimeRelease,
-  planRuntimeRelease,
+  planRuntimeReleaseFromCheckout,
 } from "../src/runtime-bundle.mjs"
 
 const orchestratorScript = fileURLToPath(
   new URL("./repository-orchestrator.mjs", import.meta.url),
 )
 const repositoryRoot = path.resolve(path.dirname(orchestratorScript), "../../..")
-const orchestratorSourceDirectory = path.resolve(
-  path.dirname(orchestratorScript),
-  "..",
-)
 
 function valueAfter(args, index, name) {
   const value = args[index + 1]
@@ -205,8 +201,8 @@ async function main() {
     return
   }
 
-  const runtimePlan = await planRuntimeRelease({
-    sourceDirectory: orchestratorSourceDirectory,
+  const runtimePlan = await planRuntimeReleaseFromCheckout({
+    checkoutPath: config.checkoutPath,
     stateDirectory: config.stateDirectory,
     runtimeDirectory: config.runtimeDirectory,
   })

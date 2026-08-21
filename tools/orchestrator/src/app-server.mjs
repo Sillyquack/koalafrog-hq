@@ -157,7 +157,21 @@ function approvedItemSucceeded(item) {
   )
 }
 
-const turnTerminationTimeoutMs = 60_000
+const terminalCommandStatuses = new Set([
+  "completed",
+  "failed",
+  "interrupted",
+  "cancelled",
+  "canceled",
+  "declined",
+])
+
+function commandExecutionIsTerminal(item) {
+  return (
+    item?.type === "commandExecution" &&
+    terminalCommandStatuses.has(item.status)
+  )
+}
 
 const boundedGitHubApprovalMessages = [
   /^Allow GitHub to create a Git tree\?$/i,
@@ -230,13 +244,21 @@ export class AppServerClient extends EventEmitter {
     binary = "codex",
     cwd,
     requestTimeoutMs = 30_000,
+    turnTerminationTimeoutMs = 60_000,
     eventSink = () => {},
     stderrSink = () => {},
   }) {
     super()
+    if (
+      !Number.isSafeInteger(turnTerminationTimeoutMs) ||
+      turnTerminationTimeoutMs < 1
+    ) {
+      throw new Error("turnTerminationTimeoutMs must be a positive integer")
+    }
     this.binary = binary
     this.cwd = cwd
     this.requestTimeoutMs = requestTimeoutMs
+    this.turnTerminationTimeoutMs = turnTerminationTimeoutMs
     this.eventSink = eventSink
     this.stderrSink = stderrSink
     this.nextRequestId = 1
@@ -439,6 +461,8 @@ export class AppServerClient extends EventEmitter {
     let settled = false
     let turnTimedOut = false
     let timeoutInterruption = null
+    let interruptedTurnCompletion = null
+    const activeCommandExecutions = new Set()
     const mcpToolCalls = new Map()
     const approvedItems = new Map()
     const terminal = deferred()
@@ -468,10 +492,10 @@ export class AppServerClient extends EventEmitter {
         () =>
           fail(
             new Error(
-              `Timed-out turn ${turnId} did not reach a terminal state after interruption`,
+              `Timed-out turn ${turnId} did not prove terminal command completion after interruption`,
             ),
           ),
-        turnTerminationTimeoutMs,
+        this.turnTerminationTimeoutMs,
       )
       timeoutInterruption = this.interruptTurn(threadId, turnId).catch((error) => {
         fail(
@@ -497,14 +521,35 @@ export class AppServerClient extends EventEmitter {
     const onItemStarted = (params) => {
       if (params?.threadId !== threadId) return
       if (turnId && params?.turnId !== turnId) return
+      if (params.item?.type === "commandExecution" && params.item.id) {
+        activeCommandExecutions.add(params.item.id)
+      }
       if (params.item?.type === "mcpToolCall") {
         mcpToolCalls.set(params.item.id, params.item)
       }
+    }
+    const finishTurn = (turn) => {
+      const completedTurn = turnTimedOut
+        ? {
+            ...turn,
+            status: "failed",
+            error: { message: `Turn timed out after ${timeoutMs}ms` },
+          }
+        : turn
+      complete({
+        status: pendingOwnerRequest ? "needs_owner" : completedTurn.status,
+        turn: completedTurn,
+        pendingOwnerRequest,
+        agentMessage,
+      })
     }
     const onItemCompleted = (params) => {
       if (params?.threadId !== threadId) return
       if (turnId && params?.turnId !== turnId) return
       if (params.item?.type === "agentMessage") agentMessage = params.item.text ?? ""
+      if (commandExecutionIsTerminal(params.item) && params.item.id) {
+        activeCommandExecutions.delete(params.item.id)
+      }
       if (params.item?.type === "mcpToolCall") mcpToolCalls.delete(params.item.id)
       const approved = approvedItems.get(params.item?.id)
       if (approved) {
@@ -517,22 +562,17 @@ export class AppServerClient extends EventEmitter {
           }),
         )
       }
+      if (interruptedTurnCompletion && activeCommandExecutions.size === 0) {
+        finishTurn(interruptedTurnCompletion)
+      }
     }
     const onTurnCompleted = (params) => {
       if (params?.threadId !== threadId || params?.turn?.id !== turnId) return
-      const completedTurn = turnTimedOut
-        ? {
-            ...params.turn,
-            status: "failed",
-            error: { message: `Turn timed out after ${timeoutMs}ms` },
-          }
-        : params.turn
-      complete({
-        status: pendingOwnerRequest ? "needs_owner" : completedTurn.status,
-        turn: completedTurn,
-        pendingOwnerRequest,
-        agentMessage,
-      })
+      if (turnTimedOut && activeCommandExecutions.size > 0) {
+        interruptedTurnCompletion = params.turn
+        return
+      }
+      finishTurn(params.turn)
     }
     const stopForOwner = async (message, ownerRequest) => {
       pendingOwnerRequest = ownerRequest

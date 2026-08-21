@@ -358,13 +358,16 @@ test("an unchanged searched issue is skipped without repeated GitHub detail read
   assert.equal(apiCalls, 0)
 })
 
-for (const terminalStatus of ["needs_review", "failed"]) {
+for (const [terminalStatus, issueNumber] of [
+  ["needs_review", 63],
+  ["failed", 53],
+  ["needs_owner", 65],
+]) {
   test(`${terminalStatus} tasks fetch and consume a comment continuation exactly once despite an unchanged issue watermark`, async (t) => {
     const directory = await mkdtemp(
       path.join(os.tmpdir(), `koalafrog-${terminalStatus}-continuation-`),
     )
     t.after(() => rm(directory, { recursive: true, force: true }))
-    const issueNumber = terminalStatus === "needs_review" ? 63 : 65
     const storeOptions = {
       stateDirectory: directory,
       repository: "Sillyquack/koalafrog-hq",
@@ -374,6 +377,9 @@ for (const terminalStatus of ["needs_review", "failed"]) {
     const state = await store.load()
     state.status = terminalStatus
     state.lastConsumedInstructionId = `initial-${terminalStatus}`
+    state.threadId = `thread-${terminalStatus}`
+    state.workspacePath = `/workspaces/${terminalStatus}`
+    state.branch = `agent/${terminalStatus}`
     state.task.lastObservedIssueUpdatedAt = "2026-08-21T14:00:00Z"
     state.runs.push({
       instructionId: state.lastConsumedInstructionId,
@@ -421,6 +427,9 @@ for (const terminalStatus of ["needs_review", "failed"]) {
       async runOnce({ expectedInstructionId }) {
         turns += 1
         const nextState = await this.store.load()
+        assert.equal(nextState.threadId, `thread-${terminalStatus}`)
+        assert.equal(nextState.workspacePath, `/workspaces/${terminalStatus}`)
+        assert.equal(nextState.branch, `agent/${terminalStatus}`)
         nextState.status = "needs_review"
         nextState.lastConsumedInstructionId = expectedInstructionId
         nextState.runs.push({
@@ -462,6 +471,9 @@ for (const terminalStatus of ["needs_review", "failed"]) {
     assert.equal(turns, 1)
     assert.equal(detailReads, 4)
     const finalState = await store.load()
+    assert.equal(finalState.threadId, `thread-${terminalStatus}`)
+    assert.equal(finalState.workspacePath, `/workspaces/${terminalStatus}`)
+    assert.equal(finalState.branch, `agent/${terminalStatus}`)
     assert.equal(finalState.lastConsumedInstructionId, continuationId)
     assert.equal(
       finalState.runs.filter(

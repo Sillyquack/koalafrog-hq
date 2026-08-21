@@ -51,6 +51,25 @@ async function inspectSource(sourceDirectory) {
   return { files, digest: releaseDigest.digest("hex") }
 }
 
+export function runtimeSourceDirectoryForCheckout(checkoutPath) {
+  if (!path.isAbsolute(checkoutPath)) {
+    throw new Error("Runtime checkout must be an absolute path")
+  }
+  return path.join(checkoutPath, "tools", "orchestrator")
+}
+
+export async function planRuntimeReleaseFromCheckout({
+  checkoutPath,
+  stateDirectory,
+  runtimeDirectory = path.join(stateDirectory, "runtime"),
+}) {
+  return planRuntimeRelease({
+    sourceDirectory: runtimeSourceDirectoryForCheckout(checkoutPath),
+    stateDirectory,
+    runtimeDirectory,
+  })
+}
+
 export async function planRuntimeRelease({
   sourceDirectory,
   stateDirectory,

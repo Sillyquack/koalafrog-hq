@@ -13,6 +13,7 @@ import {
 import {
   materializeRuntimeRelease,
   planRuntimeRelease,
+  planRuntimeReleaseFromCheckout,
 } from "../src/runtime-bundle.mjs"
 
 function fixture(root) {
@@ -72,6 +73,30 @@ test("service runtime release is deterministic, immutable, and outside a task wo
   await assert.rejects(
     materializeRuntimeRelease(firstPlan),
     /immutable runtime was modified/,
+  )
+})
+
+test("service runtime release is planned from the coordinating checkout", async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "koalafrog-checkout-runtime-"))
+  t.after(() => rm(root, { recursive: true, force: true }))
+  const checkoutPath = path.resolve(".")
+  const plan = await planRuntimeReleaseFromCheckout({
+    checkoutPath,
+    stateDirectory: root,
+  })
+
+  assert.equal(
+    plan.sourceDirectory,
+    path.join(checkoutPath, "tools", "orchestrator"),
+  )
+  assert.equal(
+    plan.files.find((file) => file.relativePath === "src/app-server.mjs")
+      ?.digest,
+    (await planRuntimeRelease({
+      sourceDirectory: path.join(checkoutPath, "tools", "orchestrator"),
+      stateDirectory: root,
+    })).files.find((file) => file.relativePath === "src/app-server.mjs")
+      ?.digest,
   )
 })
 
