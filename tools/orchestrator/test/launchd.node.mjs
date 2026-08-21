@@ -65,6 +65,11 @@ test("service runtime release is deterministic, immutable, and outside a task wo
   const firstPlan = await planRuntimeRelease(options)
   const secondPlan = await planRuntimeRelease(options)
   assert.equal(firstPlan.digest, secondPlan.digest)
+  assert.ok(
+    firstPlan.files.some(
+      (file) => file.relativePath === "src/result-artifact.mjs",
+    ),
+  )
   assert.match(firstPlan.orchestratorScript, /runtime\/releases\/[a-f0-9]{64}\/bin\/repository-orchestrator\.mjs$/)
   assert.equal((await materializeRuntimeRelease(firstPlan)).status, "created")
   assert.equal((await materializeRuntimeRelease(secondPlan)).status, "unchanged")

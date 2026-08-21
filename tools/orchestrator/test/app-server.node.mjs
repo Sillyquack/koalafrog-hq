@@ -378,3 +378,56 @@ test("issue #56 waiting MCP approval is cancelled and returned as needs_owner", 
   )
   assert.equal(result.pendingOwnerRequest.arguments.authorization, "[redacted]")
 })
+
+test("completed turns return the final agent message and compact command evidence", async () => {
+  const client = new AppServerClient({ cwd: "/tmp" })
+  client.request = async (method) => {
+    if (method !== "turn/start") throw new Error(`Unexpected request: ${method}`)
+    setTimeout(() => {
+      client.emit("item/completed", {
+        threadId: "thread-result",
+        turnId: "turn-result",
+        item: {
+          id: "command-result",
+          type: "commandExecution",
+          command: "npm run lint",
+          status: "completed",
+          exitCode: 0,
+          aggregatedOutput: "output intentionally not persisted",
+        },
+      })
+      client.emit("item/completed", {
+        threadId: "thread-result",
+        turnId: "turn-result",
+        item: {
+          id: "message-result",
+          type: "agentMessage",
+          text: "ESLint: passed",
+        },
+      })
+      client.emit("turn/completed", {
+        threadId: "thread-result",
+        turn: { id: "turn-result", status: "completed", items: [] },
+      })
+    }, 0)
+    return { turn: { id: "turn-result" } }
+  }
+
+  const result = await client.runTurn({
+    threadId: "thread-result",
+    prompt: "Return the completed result.",
+    cwd: "/tmp",
+    timeoutMs: 1_000,
+  })
+
+  assert.equal(result.agentMessage, "ESLint: passed")
+  assert.deepEqual(result.commandExecutions, [
+    {
+      id: "command-result",
+      command: "npm run lint",
+      status: "completed",
+      exitCode: 0,
+    },
+  ])
+  assert.equal("aggregatedOutput" in result.commandExecutions[0], false)
+})

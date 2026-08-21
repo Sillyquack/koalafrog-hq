@@ -9,6 +9,7 @@ import {
   beginInstruction,
   ensureTaskThread,
   Orchestrator,
+  recordCompletedTurnResult,
 } from "../src/orchestrator.mjs"
 import {
   currentStateSchemaVersion,
@@ -16,6 +17,7 @@ import {
   redactForLog,
 } from "../src/state-store.mjs"
 import { recordInstructionTurnStarted } from "../src/turn-accounting.mjs"
+import { issue63CloseoutFinalMessage } from "./fixtures/issue-63-production-day1-review-closeout-004.mjs"
 
 function controlBlock({
   action = "start",
@@ -163,7 +165,10 @@ test("schema-one Issue #53 state migrates without losing its active thread", asy
   assert.equal(migrated.workspacePath, "/tmp/existing-workspace")
   assert.equal(migrated.activeInstruction.instructionId, "active-002")
   assert.equal(migrated.activeInstruction.turnCount, 1)
-  assert.equal(JSON.parse(await readFile(store.statePath, "utf8")).schemaVersion, 4)
+  assert.equal(
+    JSON.parse(await readFile(store.statePath, "utf8")).schemaVersion,
+    currentStateSchemaVersion,
+  )
 })
 
 test("restart resumes the persisted Codex thread instead of starting another", async () => {
@@ -313,6 +318,10 @@ test("polling continues after needs_owner and a fresh continue reuses the thread
   assert.equal(posted.length, 4)
   assert.equal(posted.filter((body) => body.includes("agent_pickup:")).length, 2)
   assert.equal(posted.filter((body) => body.includes("agent_result:")).length, 2)
+  for (const result of posted.filter((body) => body.includes("agent_result:"))) {
+    assert.match(result, /typecheck: unknown/)
+    assert.doesNotMatch(result, /not_run/)
+  }
   const state = await store.load()
   assert.equal(state.threadId, "thread-persisted")
   assert.equal(state.lastConsumedInstructionId, "owner-follow-up-002")
@@ -511,7 +520,19 @@ test("restart finalizes a completed persisted turn without starting a duplicate"
     async readThread() {
       return {
         thread: {
-          turns: [{ id: "turn-before-crash", status: "completed" }],
+          turns: [
+            {
+              id: "turn-before-crash",
+              status: "completed",
+              items: [
+                {
+                  id: "message-before-crash",
+                  type: "agentMessage",
+                  text: "Typecheck: passed\nESLint: passed\nTests: passed\nBuild: passed",
+                },
+              ],
+            },
+          ],
         },
       }
     },
@@ -543,10 +564,214 @@ test("restart finalizes a completed persisted turn without starting a duplicate"
   assert.equal(posted.length, 2)
   assert.equal(posted.filter((body) => body.includes("agent_pickup:")).length, 1)
   assert.equal(posted.filter((body) => body.includes("agent_result:")).length, 1)
+  assert.match(posted.find((body) => body.includes("agent_result:")), /typecheck: pass/)
+  assert.match(posted.find((body) => body.includes("agent_result:")), /lint: pass/)
+  assert.match(posted.find((body) => body.includes("agent_result:")), /tests: pass/)
+  assert.match(posted.find((body) => body.includes("agent_result:")), /build: pass/)
   const recoveredState = await store.load()
   assert.equal(recoveredState.threadId, "thread-before-crash")
   assert.equal(recoveredState.activeInstruction, null)
   assert.equal(recoveredState.runs[0].turnCount, 1)
+})
+
+test("Issue #63/004 final artifact survives restart and publishes exactly once", async (t) => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "koalafrog-result-recovery-"))
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const instructionId = "production-day1-review-closeout-004"
+  const block = controlBlock({
+    action: "continue",
+    instructionId,
+    taskState: "needs_review",
+  })
+  const [instruction] = extractAgentControls(block)
+  const storeOptions = {
+    stateDirectory: directory,
+    repository: "Sillyquack/koalafrog-hq",
+    issueNumber: 63,
+  }
+  const store = new StateStore(storeOptions)
+  const state = await store.load()
+  state.status = "needs_review"
+  state.task.originIssueUrl = "https://github.com/Sillyquack/koalafrog-hq/issues/63"
+  beginInstruction(state, instruction)
+  state.threadId = "01a0243c-dcdf-7121-a02d-0aaba354c2dd"
+  state.workspacePath = "/workspaces/issue-63-production-day1-stock-equipment-001"
+  state.branch = "agent/issue-63-production-day1-stock-equipment-001"
+  recordInstructionTurnStarted(state, {
+    turnId: "turn-production-day1-review-closeout-004",
+    attempt: 0,
+  })
+  recordCompletedTurnResult(
+    state,
+    {
+      status: "completed",
+      turn: {
+        id: "turn-production-day1-review-closeout-004",
+        status: "completed",
+        items: [],
+      },
+      pendingOwnerRequest: null,
+      agentMessage: issue63CloseoutFinalMessage,
+    },
+    "2026-08-21T17:58:00.000Z",
+  )
+  await store.save(state)
+
+  let runTurnCalls = 0
+  let readThreadCalls = 0
+  const appServer = {
+    async start() {},
+    async resumeThread(threadId) {
+      return { thread: { id: threadId } }
+    },
+    async waitForMcpReady() {},
+    async readThread() {
+      readThreadCalls += 1
+      throw new Error("A durable completed-turn artifact must avoid thread recovery")
+    },
+    async runTurn() {
+      runTurnCalls += 1
+      throw new Error("A durable completed-turn artifact must not be replayed")
+    },
+    async stop() {},
+  }
+  const comments = [{ body: block }]
+  const posted = []
+  const controlPlane = {
+    async fetchTask() {
+      return {
+        issue: {
+          body: "",
+          html_url: "https://github.com/Sillyquack/koalafrog-hq/issues/63",
+        },
+        comments,
+      }
+    },
+    async postComment(body) {
+      posted.push(body)
+      comments.push({ body })
+    },
+  }
+  const workspace = {
+    ...fakeWorkspace(),
+    async inspectWorkspace() {
+      return {
+        branch: "agent/issue-63-production-day1-stock-equipment-001",
+        commits: [
+          "a74079be88ec4a8b36b850f95dca791ff42e4e80",
+          "a920e5811646e33081ad698609b0c13ce026c9af",
+        ],
+        changedFiles: ["src/features/formulas/domain/equipmentRequirements.ts"],
+      }
+    },
+  }
+  const config = { ...runtimeConfig(directory), issueNumber: 63 }
+  const restarted = new Orchestrator(config, {
+    appServer,
+    controlPlane,
+    store: new StateStore(storeOptions),
+    workspace,
+  })
+
+  const completed = await restarted.runOnce()
+  const replay = await restarted.runOnce()
+
+  assert.equal(completed.status, "needs_review")
+  assert.equal(replay.status, "idle")
+  assert.equal(runTurnCalls, 0)
+  assert.equal(readThreadCalls, 0)
+  assert.equal(posted.filter((body) => body.includes("agent_result:")).length, 1)
+  const result = posted.find((body) => body.includes("agent_result:"))
+  assert.match(result, /typecheck: pass/)
+  assert.match(result, /lint: pass/)
+  assert.match(result, /tests: pass/)
+  assert.match(result, /cloudflare_readiness: pass/)
+  assert.match(result, /build: pass/)
+  assert.match(result, /diff_check: pass/)
+  assert.doesNotMatch(result, /not_run/)
+  assert.match(result, /Supabase migration remains unapplied/)
+  assert.match(result, /all four Aromantic receipts/)
+  assert.match(result, /no old or overlapping command execution/)
+  assert.match(result, /pushed normally/)
+  assert.doesNotMatch(result, /ghp_123456789/)
+
+  const persisted = await new StateStore(storeOptions).load()
+  assert.equal(persisted.runs.length, 1)
+  assert.equal(persisted.runs[0].instructionId, instructionId)
+  assert.equal(persisted.runs[0].checks.typecheck, "pass")
+  assert.match(
+    persisted.runs[0].resultArtifact.finalMessage,
+    /1,049 passed, 66 skipped/,
+  )
+  assert.ok(
+    persisted.runs[0].resultArtifact.findings.blockers.some((line) =>
+      /unapplied/.test(line),
+    ),
+  )
+  assert.doesNotMatch(
+    persisted.runs[0].resultArtifact.finalMessage,
+    /ghp_123456789/,
+  )
+})
+
+test("a persisted result packet cannot be published to a different origin", async (t) => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "koalafrog-result-origin-"))
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const block = controlBlock({ instructionId: "origin-bound-result-001" })
+  const [instruction] = extractAgentControls(block)
+  const store = new StateStore({
+    stateDirectory: directory,
+    repository: "Sillyquack/koalafrog-hq",
+    issueNumber: 53,
+  })
+  const state = await store.load()
+  beginInstruction(state, instruction)
+  state.activeInstruction.phase = "result_pending"
+  state.activeInstruction.packet = {
+    instructionId: instruction.instructionId,
+    originIssueNumber: 64,
+    originIssueUrl: "https://github.com/Sillyquack/koalafrog-hq/issues/64",
+    codexThreadId: "thread-origin",
+    status: "needs_review",
+    branch: "agent/origin",
+    commits: [],
+    changedFiles: [],
+    checks: {},
+    ownerQuestion: null,
+    ownerRequest: null,
+  }
+  await store.save(state)
+
+  let posts = 0
+  const orchestrator = new Orchestrator(runtimeConfig(directory), {
+    store,
+    appServer: {
+      async start() {},
+      async stop() {},
+    },
+    controlPlane: {
+      async fetchTask() {
+        return {
+          issue: {
+            body: block,
+            html_url: "https://github.com/Sillyquack/koalafrog-hq/issues/53",
+          },
+          comments: [],
+        }
+      },
+      async postComment() {
+        posts += 1
+      },
+    },
+    workspace: fakeWorkspace(),
+  })
+
+  await assert.rejects(
+    orchestrator.runOnce(),
+    /outside its persisted origin/,
+  )
+  assert.equal(posts, 0)
+  assert.equal((await store.load()).activeInstruction.phase, "result_pending")
 })
 
 test("restart defers a still-running persisted turn instead of starting a duplicate", async (t) => {

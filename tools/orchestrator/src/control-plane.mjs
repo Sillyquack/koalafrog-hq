@@ -322,6 +322,15 @@ export function formatCompletionPacket(packet) {
     ? `\nChanged files:\n${packet.changedFiles.map((file) => `- \`${file}\``).join("\n")}`
     : "\nChanged files: none"
   const detail = packet.detail ? `\n\n${packet.detail}` : ""
+  const resultArtifact = packet.resultArtifact
+    ? JSON.stringify(packet.resultArtifact)
+    : "null"
+  const blockers = JSON.stringify(packet.blockers ?? [])
+  const ownerGates = JSON.stringify(packet.ownerGates ?? [])
+  const productionReadback = JSON.stringify(packet.productionReadback ?? [])
+  const safetyFindings = JSON.stringify(packet.safetyFindings ?? [])
+  const branchPushState = JSON.stringify(packet.branchPushState ?? [])
+  const check = (name) => packet.checks?.[name] ?? "unknown"
   const ownerRequest = packet.ownerRequest
     ? `  owner_request:
     method: ${yamlScalar(packet.ownerRequest.method)}
@@ -341,11 +350,19 @@ agent_result:
   branch: ${yamlScalar(packet.branch)}
 ${commits}
   checks:
-    typecheck: ${packet.checks.typecheck}
-    lint: ${packet.checks.lint}
-    tests: ${packet.checks.tests}
-    build: ${packet.checks.build}
+    typecheck: ${check("typecheck")}
+    lint: ${check("lint")}
+    tests: ${check("tests")}
+    cloudflare_readiness: ${check("cloudflareReadiness")}
+    build: ${check("build")}
+    diff_check: ${check("diffCheck")}
   owner_question: ${yamlScalar(packet.ownerQuestion)}
 ${ownerRequest}
+  blockers: ${blockers}
+  owner_gates: ${ownerGates}
+  production_readback: ${productionReadback}
+  safety_findings: ${safetyFindings}
+  branch_push_state: ${branchPushState}
+  result_artifact: ${resultArtifact}
 \`\`\`${files}${detail}`
 }

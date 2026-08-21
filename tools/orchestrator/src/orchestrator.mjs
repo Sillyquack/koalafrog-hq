@@ -20,6 +20,11 @@ import {
 } from "./control-plane.mjs"
 import { GithubControlPlane } from "./github-control-plane.mjs"
 import {
+  checksFromResultArtifact,
+  resultArtifactFromTurnResult,
+  resultCheckNames,
+} from "./result-artifact.mjs"
+import {
   recordTaskOrigin,
   redactForLog,
   StateStore,
@@ -90,13 +95,39 @@ function compactOwnerRequest(request) {
   })
 }
 
-function checks(tests) {
-  return {
-    typecheck: "not_run",
-    lint: "not_run",
-    tests,
-    build: "not_run",
+function uniformChecks(status) {
+  return Object.fromEntries(resultCheckNames.map((name) => [name, status]))
+}
+
+export function recordCompletedTurnResult(
+  state,
+  turnResult,
+  capturedAt = new Date().toISOString(),
+) {
+  if (!state.activeInstruction) {
+    throw new Error("Cannot persist a completed turn without an active instruction")
   }
+  const resultArtifact =
+    turnResult?.resultArtifact ??
+    resultArtifactFromTurnResult(turnResult, capturedAt)
+  const persisted = redactForLog({
+    status: turnResult?.status ?? turnResult?.turn?.status ?? "failed",
+    turn: {
+      id: turnResult?.turn?.id ?? state.activeInstruction.turnId ?? null,
+      status: turnResult?.turn?.status ?? turnResult?.status ?? "failed",
+      error: turnResult?.turn?.error ?? null,
+    },
+    pendingOwnerRequest: compactOwnerRequest(
+      turnResult?.pendingOwnerRequest ?? null,
+    ),
+    resultArtifact,
+  })
+  state.activeInstruction.resultArtifact = persisted.resultArtifact
+  state.activeInstruction.completedTurnResult = persisted
+  if (state.activeInstruction.phase !== "owner_stopped") {
+    state.activeInstruction.phase = "turn_completed"
+  }
+  return persisted
 }
 
 export function beginInstruction(state, instruction, selectedAt = new Date()) {
@@ -183,7 +214,12 @@ export async function ensureTaskThread({
   model,
   save,
 }) {
-  const recoveringTurn = state.activeInstruction.phase === "turn_started"
+  const durableTurnPhase = new Set([
+    "turn_started",
+    "turn_completed",
+    "owner_stopped",
+    "result_pending",
+  ]).has(state.activeInstruction.phase)
   const common = {
     cwd: workspacePath,
     approvalPolicy: "on-request",
@@ -200,7 +236,7 @@ export async function ensureTaskThread({
         threadSource: "appServer",
       })
   state.threadId = response.thread.id
-  if (!recoveringTurn) state.activeInstruction.phase = "thread_ready"
+  if (!durableTurnPhase) state.activeInstruction.phase = "thread_ready"
   await save(state)
   await appServer.waitForMcpReady(state.threadId)
   return response.thread
@@ -266,6 +302,16 @@ export class Orchestrator {
   }
 
   async #completeInstruction(state, packet, comments) {
+    if (state.activeInstruction?.instructionId !== packet.instructionId) {
+      throw new Error("Refusing to publish a result for a different instruction")
+    }
+    if (
+      packet.originIssueNumber !== state.task.originIssueNumber ||
+      packet.originIssueUrl !== state.task.originIssueUrl
+    ) {
+      throw new Error("Refusing to publish a result outside its persisted origin")
+    }
+    packet = redactForLog(packet)
     state.activeInstruction.phase = "result_pending"
     state.activeInstruction.packet = packet
     await this.#save(state)
@@ -286,8 +332,11 @@ export class Orchestrator {
 
     state.lastConsumedInstructionId = packet.instructionId
     state.status = packet.status
-    state.pendingOwnerRequest = packet.ownerRequest ??
-      (packet.ownerQuestion ? { reason: packet.ownerQuestion } : null)
+    state.pendingOwnerRequest =
+      packet.status === "needs_owner"
+        ? packet.ownerRequest ??
+          (packet.ownerQuestion ? { reason: packet.ownerQuestion } : null)
+        : null
     state.runs.push({
       instructionId: packet.instructionId,
       status: packet.status,
@@ -298,6 +347,13 @@ export class Orchestrator {
       originIssueNumber: state.task.originIssueNumber,
       originIssueUrl: state.task.originIssueUrl,
       ownerRequest: packet.ownerRequest ?? null,
+      checks: packet.checks,
+      blockers: packet.blockers ?? [],
+      ownerGates: packet.ownerGates ?? [],
+      productionReadback: packet.productionReadback ?? [],
+      safetyFindings: packet.safetyFindings ?? [],
+      branchPushState: packet.branchPushState ?? [],
+      resultArtifact: packet.resultArtifact ?? null,
       completedAt: new Date().toISOString(),
     })
     state.activeInstruction = null
@@ -352,6 +408,12 @@ export class Orchestrator {
     )
     const ownerRequest = turnResult.pendingOwnerRequest
     const structuredOwnerRequest = compactOwnerRequest(ownerRequest)
+    const resultArtifact =
+      turnResult.resultArtifact ??
+      state.activeInstruction?.resultArtifact ??
+      resultArtifactFromTurnResult(turnResult)
+    const findings = resultArtifact.findings ?? {}
+    const finalMessage = resultArtifact.finalMessage ?? ""
     const completed = turnResult.status === "completed" && validation.pass
     const status = ownerRequest
       ? "needs_owner"
@@ -367,14 +429,33 @@ export class Orchestrator {
       branch: workspace.branch || null,
       commits: workspace.commits,
       changedFiles: workspace.changedFiles,
-      checks: checks(validation.pass ? "pass" : "fail"),
-      ownerQuestion: compactOwnerQuestion(structuredOwnerRequest),
+      checks: checksFromResultArtifact(resultArtifact, {
+        diffCheck: validation.pass ? "pass" : "fail",
+      }),
+      ownerQuestion:
+        compactOwnerQuestion(structuredOwnerRequest) ??
+        findings.ownerGates?.[0] ??
+        null,
       ownerRequest: structuredOwnerRequest,
-      detail: validation.pass
-        ? ownerRequest
-          ? "The Codex turn stopped for owner input after the MCP request was cancelled. The local worktree passed `git diff --check`; no deployment or production operation was performed."
-          : "The local worktree passed `git diff --check`. Awaiting review; no deployment or production operation was performed."
-        : `Local validation failed: ${validation.detail || turnResult.turn?.error?.message || "unknown error"}`,
+      blockers: [...(findings.blockers ?? [])],
+      ownerGates: [...(findings.ownerGates ?? [])],
+      productionReadback: [...(findings.productionReadback ?? [])],
+      safetyFindings: [...(findings.safetyFindings ?? [])],
+      branchPushState: [...(findings.branchPushState ?? [])],
+      resultArtifact,
+      detail: [
+        validation.pass
+          ? "Orchestrator workspace validation: `git diff --check` passed."
+          : `Orchestrator workspace validation failed: ${validation.detail || turnResult.turn?.error?.message || "unknown error"}`,
+        ownerRequest
+          ? "The Codex turn stopped for owner input after the request was cancelled or interrupted fail-closed."
+          : null,
+        finalMessage
+          ? `Final Codex report (redacted):\n\n${finalMessage}`
+          : "No final Codex message or command evidence was recoverable; unproven checks are reported as `unknown`.",
+      ]
+        .filter(Boolean)
+        .join("\n\n"),
     }
   }
 
@@ -619,18 +700,25 @@ export class Orchestrator {
       const stoppedId = stoppedInstruction.instructionId
       const ownerRequest =
         state.pendingOwnerRequest ?? stoppedInstruction.ownerRequest ?? null
+      const recoveredTurnResult =
+        stoppedInstruction.completedTurnResult ?? {
+          status: "needs_owner",
+          turn: { id: stoppedInstruction.turnId, status: "interrupted" },
+          pendingOwnerRequest: ownerRequest,
+          resultArtifact: stoppedInstruction.resultArtifact ?? null,
+        }
       let packet
       try {
         packet = await this.#packetFromWorkspace(
           state,
           stoppedInstruction,
-          {
-            status: "needs_owner",
-            turn: { id: stoppedInstruction.turnId, status: "interrupted" },
-            pendingOwnerRequest: ownerRequest,
-          },
+          recoveredTurnResult,
         )
       } catch (error) {
+        const resultArtifact =
+          recoveredTurnResult.resultArtifact ??
+          resultArtifactFromTurnResult(recoveredTurnResult)
+        const findings = resultArtifact.findings ?? {}
         packet = {
           instructionId: stoppedId,
           originIssueNumber: state.task.originIssueNumber,
@@ -640,9 +728,15 @@ export class Orchestrator {
           branch: state.branch,
           commits: [],
           changedFiles: [],
-          checks: checks("fail"),
+          checks: checksFromResultArtifact(resultArtifact),
           ownerQuestion: compactOwnerQuestion(ownerRequest),
           ownerRequest: compactOwnerRequest(ownerRequest),
+          blockers: [...(findings.blockers ?? [])],
+          ownerGates: [...(findings.ownerGates ?? [])],
+          productionReadback: [...(findings.productionReadback ?? [])],
+          safetyFindings: [...(findings.safetyFindings ?? [])],
+          branchPushState: [...(findings.branchPushState ?? [])],
+          resultArtifact,
           detail: `Recovered an owner stop, but local validation failed: ${error.message}`,
         }
       }
@@ -716,12 +810,18 @@ export class Orchestrator {
         branch: state.branch,
         commits: [],
         changedFiles: [],
-        checks: checks("not_run"),
+        checks: uniformChecks("not_run"),
         ownerQuestion: gate,
         ownerRequest: compactOwnerRequest({
           method: "control-plane/ownerGate",
           reason: gate,
         }),
+        blockers: [],
+        ownerGates: [gate],
+        productionReadback: [],
+        safetyFindings: [],
+        branchPushState: [],
+        resultArtifact: null,
         detail: "No Codex turn was started because the owner gate stopped the instruction.",
       }
       await this.#completeInstruction(state, packet, task.comments)
@@ -755,21 +855,34 @@ export class Orchestrator {
     })
     await this.#postPickup(state, instruction, task.comments)
 
+    let turnResult =
+      state.activeInstruction.phase === "turn_completed"
+        ? state.activeInstruction.completedTurnResult
+        : null
+    if (
+      state.activeInstruction.phase === "turn_completed" &&
+      !turnResult
+    ) {
+      throw new Error(
+        "Persisted completed turn is missing its durable result artifact",
+      )
+    }
+
     if (state.activeInstruction.phase === "turn_started") {
       const recovered = await this.appServer.readThread(state.threadId)
       const priorTurn = recovered.thread?.turns?.find(
         (turn) => turn.id === state.activeInstruction.turnId,
       )
       if (priorTurn?.status === "completed") {
-        const packet = await this.#packetFromWorkspace(state, instruction, {
+        turnResult = recordCompletedTurnResult(state, {
           status: "completed",
           turn: priorTurn,
           pendingOwnerRequest: null,
         })
-        await this.#completeInstruction(state, packet, task.comments)
-        return { status: packet.status, instructionId: instruction.instructionId }
+        await this.#save(state)
       }
       if (
+        !turnResult &&
         new Set(["inProgress", "in_progress", "running"]).has(
           priorTurn?.status,
         )
@@ -815,10 +928,11 @@ export class Orchestrator {
         }
       }
       if (
-        !priorTurn ||
-        !new Set(["failed", "interrupted", "cancelled", "canceled"]).has(
-          priorTurn.status,
-        )
+        !turnResult &&
+        (!priorTurn ||
+          !new Set(["failed", "interrupted", "cancelled", "canceled"]).has(
+            priorTurn?.status,
+          ))
       ) {
         await this.store.appendEvent({
           type: "turn_recovery_unconfirmed",
@@ -832,12 +946,18 @@ export class Orchestrator {
           instructionId: instruction.instructionId,
         }
       }
-      state.activeInstruction.phase = "thread_ready"
-      state.activeInstruction.attempts += 1
-      await this.#save(state)
+      if (!turnResult) {
+        state.activeInstruction.phase = "thread_ready"
+        state.activeInstruction.attempts += 1
+        await this.#save(state)
+      }
     }
 
-    const turnResult = await this.#runWithRetries(state, instruction)
+    if (!turnResult) {
+      turnResult = await this.#runWithRetries(state, instruction)
+      turnResult = recordCompletedTurnResult(state, turnResult)
+      await this.#save(state)
+    }
     let packet
     try {
       packet = await this.#packetFromWorkspace(state, instruction, turnResult)
@@ -846,6 +966,11 @@ export class Orchestrator {
         state.workspacePath,
         this.config.baseRef,
       )
+      const resultArtifact =
+        turnResult.resultArtifact ??
+        state.activeInstruction?.resultArtifact ??
+        resultArtifactFromTurnResult(turnResult)
+      const findings = resultArtifact.findings ?? {}
       packet = {
         instructionId: instruction.instructionId,
         originIssueNumber: state.task.originIssueNumber,
@@ -855,9 +980,15 @@ export class Orchestrator {
         branch: workspaceState.branch,
         commits: workspaceState.commits,
         changedFiles: workspaceState.changedFiles,
-        checks: checks("fail"),
-        ownerQuestion: null,
-        ownerRequest: null,
+        checks: checksFromResultArtifact(resultArtifact),
+        ownerQuestion: findings.ownerGates?.[0] ?? null,
+        ownerRequest: compactOwnerRequest(turnResult.pendingOwnerRequest),
+        blockers: [...(findings.blockers ?? [])],
+        ownerGates: [...(findings.ownerGates ?? [])],
+        productionReadback: [...(findings.productionReadback ?? [])],
+        safetyFindings: [...(findings.safetyFindings ?? [])],
+        branchPushState: [...(findings.branchPushState ?? [])],
+        resultArtifact,
         detail: error.message,
       }
     }

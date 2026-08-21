@@ -218,10 +218,10 @@ test("existing result comments suppress replay after local state loss", () => {
     commits: [],
     changedFiles: [],
     checks: {
-      typecheck: "not_run",
-      lint: "not_run",
+      typecheck: "unknown",
+      lint: "unknown",
       tests: "pass",
-      build: "not_run",
+      build: "unknown",
     },
     ownerQuestion: null,
   })
@@ -385,10 +385,10 @@ test("completion packet is machine-readable and discoverable idempotently", () =
     commits: ["abc123"],
     changedFiles: ["docs/agent-orchestration/PROOF_OF_LIFE.md"],
     checks: {
-      typecheck: "not_run",
-      lint: "not_run",
+      typecheck: "unknown",
+      lint: "unknown",
       tests: "pass",
-      build: "not_run",
+      build: "unknown",
     },
     ownerQuestion: null,
   })
@@ -406,10 +406,10 @@ test("empty commits use the exact inline array shape", () => {
     commits: [],
     changedFiles: [],
     checks: {
-      typecheck: "not_run",
-      lint: "not_run",
-      tests: "not_run",
-      build: "not_run",
+      typecheck: "unknown",
+      lint: "unknown",
+      tests: "unknown",
+      build: "unknown",
     },
     ownerQuestion: null,
   })
@@ -425,10 +425,10 @@ test("needs_owner packet exposes structured MCP request details", () => {
     commits: [],
     changedFiles: [],
     checks: {
-      typecheck: "not_run",
-      lint: "not_run",
+      typecheck: "unknown",
+      lint: "unknown",
       tests: "pass",
-      build: "not_run",
+      build: "unknown",
     },
     ownerQuestion: 'Allow Supabase to run tool "supabase.execute_sql"?',
     ownerRequest: {

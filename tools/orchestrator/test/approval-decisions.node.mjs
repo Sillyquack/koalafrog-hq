@@ -8,7 +8,10 @@ import {
   recordPendingApprovalRequest,
   registerOwnerApprovalDecision,
 } from "../src/approval-decisions.mjs"
-import { StateStore } from "../src/state-store.mjs"
+import {
+  currentStateSchemaVersion,
+  StateStore,
+} from "../src/state-store.mjs"
 
 const pendingLaunchAgentAction =
   "Install and reload only the owner-approved Koalafrog user LaunchAgent with the reviewed content-addressed runtime and stable coordinating checkout."
@@ -349,7 +352,7 @@ test("the preceding Issue #53 schema-1 control/result recovers one exact bootstr
   }
   const store = new StateStore(options)
   const migrated = await store.load()
-  assert.equal(migrated.schemaVersion, 4)
+  assert.equal(migrated.schemaVersion, currentStateSchemaVersion)
   assert.deepEqual(migrated.ownerApprovalDecisions, [])
 
   const registered = registerOwnerApprovalDecision({
@@ -388,6 +391,10 @@ test("the preceding Issue #53 schema-1 control/result recovers one exact bootstr
 })
 
 test("the latest interrupted Issue #53 event sequence recovers a fresh-turn decision", async (t) => {
+  const decisionAt = new Date()
+  const turnStartedAt = new Date(decisionAt.getTime() - 2 * 60_000)
+  const requestAt = new Date(decisionAt.getTime() - 60_000)
+  const interruptedAt = new Date(requestAt.getTime() + 100)
   const directory = await mkdtemp(
     path.join(os.tmpdir(), "koalafrog-interrupted-decision-"),
   )
@@ -428,14 +435,14 @@ test("the latest interrupted Issue #53 event sequence recovers a fresh-turn deci
   )
   const events = [
     {
-      at: "2026-08-20T18:41:54.138Z",
+      at: turnStartedAt.toISOString(),
       type: "turn_started",
       instructionId: "orchestrator-owner-decision-bootstrap-consumption-fix-010",
       threadId: "01a0109a-3185-7992-acbb-b11d16c6e6bd",
       turnId: "01a0207a-cdd6-7101-a664-afd82ddde791",
     },
     {
-      at: "2026-08-20T18:47:22.933Z",
+      at: requestAt.toISOString(),
       type: "server_request",
       message: {
         method: "item/commandExecution/requestApproval",
@@ -447,7 +454,7 @@ test("the latest interrupted Issue #53 event sequence recovers a fresh-turn deci
       },
     },
     {
-      at: "2026-08-20T18:47:23.002Z",
+      at: interruptedAt.toISOString(),
       type: "notification",
       message: {
         method: "turn/completed",
@@ -480,14 +487,14 @@ test("the latest interrupted Issue #53 event sequence recovers a fresh-turn deci
       itemId: "exec-0e8db5e7-9b9e-43ff-956c-2997613dff57",
       identityDigest:
         migrated.pendingApprovalRequests[0].requestIdentities[0].identityDigest,
-      observedAt: "2026-08-20T18:47:22.933Z",
+      observedAt: requestAt.toISOString(),
     },
   )
 
   const decision = registerOwnerApprovalDecision({
     state: migrated,
     controls: [precedingIssue53CommitDecision],
-    now: new Date("2026-08-20T18:55:00.000Z"),
+    now: decisionAt,
   })
   assert.equal(
     decision.decisionId,
@@ -500,7 +507,7 @@ test("the latest interrupted Issue #53 event sequence recovers a fresh-turn deci
         method: "item/commandExecution/requestApproval",
         reason: pendingApprovalRecoveryCommit,
       },
-      now: new Date("2026-08-20T18:56:00.000Z"),
+      now: new Date(decisionAt.getTime() + 60_000),
     }),
   )
 })

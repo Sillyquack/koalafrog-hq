@@ -22,8 +22,11 @@ The default state root is
 
 An instruction and turn ID are persisted before work continues. After a process
 restart or crash, the runtime reopens the same state, worktree, and Codex thread.
-If the persisted turn already completed, recovery records its result without
-starting a duplicate turn. `action: continue` reuses that context;
+If the persisted turn already completed, recovery records its redacted final
+agent message and compact command evidence without starting a duplicate turn.
+A completed-turn artifact is persisted before workspace inspection and result
+publication, so restart can reconstruct the same check states and final report.
+`action: continue` reuses that context;
 `action: start` deliberately creates a fresh instruction-specific worktree and
 thread.
 
@@ -200,7 +203,10 @@ Repository-wide claim records are mode-`0600` JSON files under
 `repository-queue/instructions/`. Per-issue state and event logs remain in
 `Sillyquack-koalafrog-hq-issue-<number>/`; both `agent_pickup` and
 `agent_result` packets include the origin issue number/URL and are posted only
-to that issue by the orchestrator.
+to that issue by the orchestrator. Executed checks use `pass`, `fail`, or
+`unknown`; `not_run` is reserved for checks proven not to have started. The
+packet also carries the redacted completed-turn artifact and extracted blocker,
+owner-gate, production-readback, safety, and branch/push findings.
 
 An explicitly approved uninstall stops only this label and preserves all task
 state and worktrees:

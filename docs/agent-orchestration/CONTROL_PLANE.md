@@ -81,14 +81,35 @@ agent_result:
   branch: <branch or null>
   commits: []
   checks:
-    typecheck: pass | fail | not_run
-    lint: pass | fail | not_run
-    tests: pass | fail | not_run
-    build: pass | fail | not_run
+    typecheck: pass | fail | unknown | not_run
+    lint: pass | fail | unknown | not_run
+    tests: pass | fail | unknown | not_run
+    cloudflare_readiness: pass | fail | unknown | not_run
+    build: pass | fail | unknown | not_run
+    diff_check: pass | fail | unknown | not_run
   owner_question: <null or concise question>
+  owner_request: <null or structured owner request>
+  blockers: []
+  owner_gates: []
+  production_readback: []
+  safety_findings: []
+  branch_push_state: []
+  result_artifact: <null or redacted completed-turn artifact>
 ```
 
-Human-readable detail may follow the structured block.
+`not_run` is reserved for a check that is proven not to have started, such as a
+pre-turn owner gate. A completed turn without sufficient evidence reports
+`unknown`; parser uncertainty must never be presented as `not_run`.
+
+The completed turn's final Codex message and compact command evidence are
+redacted and persisted before workspace inspection or result publication. The
+artifact is sufficient to reconstruct checks and the report after restart and
+is retained in durable run history. Result publication remains origin-bound and
+idempotent: a persisted `result_pending` packet or an existing result for the
+same instruction is never posted twice.
+
+Human-readable detail, including the redacted final Codex report, may follow the
+structured block.
 
 ## Guardrails
 

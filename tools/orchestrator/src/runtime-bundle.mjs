@@ -25,6 +25,7 @@ const runtimeFiles = [
   "src/queue-claim-store.mjs",
   "src/repository-discovery.mjs",
   "src/repository-runner.mjs",
+  "src/result-artifact.mjs",
   "src/runtime-bundle.mjs",
   "src/runtime-policy.mjs",
   "src/state-store.mjs",

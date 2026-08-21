@@ -1,6 +1,10 @@
 import { spawn } from "node:child_process"
 import { EventEmitter } from "node:events"
 import readline from "node:readline"
+import {
+  compactCommandExecution,
+  finalAgentMessageFromTurn,
+} from "./result-artifact.mjs"
 import { redactForLog } from "./state-store.mjs"
 
 function deferred() {
@@ -463,6 +467,7 @@ export class AppServerClient extends EventEmitter {
     let timeoutInterruption = null
     let interruptedTurnCompletion = null
     const activeCommandExecutions = new Set()
+    const completedCommandExecutions = []
     const mcpToolCalls = new Map()
     const approvedItems = new Map()
     const terminal = deferred()
@@ -514,6 +519,7 @@ export class AppServerClient extends EventEmitter {
             turn: { id: turnId, status: "interrupted", items: [] },
             pendingOwnerRequest,
             agentMessage,
+            commandExecutions: completedCommandExecutions,
           }),
         5_000,
       )
@@ -540,7 +546,8 @@ export class AppServerClient extends EventEmitter {
         status: pendingOwnerRequest ? "needs_owner" : completedTurn.status,
         turn: completedTurn,
         pendingOwnerRequest,
-        agentMessage,
+        agentMessage: agentMessage || finalAgentMessageFromTurn(completedTurn),
+        commandExecutions: completedCommandExecutions,
       })
     }
     const onItemCompleted = (params) => {
@@ -549,6 +556,7 @@ export class AppServerClient extends EventEmitter {
       if (params.item?.type === "agentMessage") agentMessage = params.item.text ?? ""
       if (commandExecutionIsTerminal(params.item) && params.item.id) {
         activeCommandExecutions.delete(params.item.id)
+        completedCommandExecutions.push(compactCommandExecution(params.item))
       }
       if (params.item?.type === "mcpToolCall") mcpToolCalls.delete(params.item.id)
       const approved = approvedItems.get(params.item?.id)
