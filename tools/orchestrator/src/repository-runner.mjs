@@ -24,6 +24,12 @@ import {
 
 installTaskThreadPolicy(AppServerClient)
 
+const commentContinuationStates = new Set([
+  "needs_review",
+  "needs_owner",
+  "failed",
+])
+
 function unwrap(result, operation) {
   if (!result || result.isError) {
     throw new Error(`${operation} failed through the connected GitHub app`)
@@ -235,6 +241,7 @@ export async function runRepositoryIssue(
   const state = await store.load()
   if (
     !state.activeInstruction &&
+    !commentContinuationStates.has(state.status) &&
     candidate.searchMatched &&
     candidate.updatedAt &&
     candidate.updatedAt === state.task.lastObservedIssueUpdatedAt

@@ -36,9 +36,10 @@ oldest-first; a failure or owner stop on one issue does not stop the scanner
 from considering the next issue.
 
 GitHub's issue `updated_at` value is persisted after a detail read. Unchanged
-search results are skipped on later polls, while changed issues and legacy
-persisted tasks are fetched again. This retains follow-up responsiveness while
-keeping the 15-second repository search bounded.
+search results are skipped on later polls except for persisted `needs_review`,
+`needs_owner`, and `failed` tasks, whose comments are refreshed because a new
+comment does not reliably advance the issue watermark. Durable run history and
+instruction claims still consume each continuation at most once.
 
 ## Making an issue eligible
 
@@ -266,5 +267,7 @@ npm run schema:ts
 - The service never deploys, merges, force-pushes, or resolves owner questions.
 - `max_turns`, per-turn timeout, bounded retries, and exponential backoff are
   enforced locally even if the issue asks for larger limits.
+- A timed-out turn must report a matching terminal completion after interruption
+  before a retry can start; unconfirmed restart recovery remains deferred.
 - Durable history plus GitHub result comments consume each `instruction_id` at
   most once unless an audited local retry marker explicitly reopens it.

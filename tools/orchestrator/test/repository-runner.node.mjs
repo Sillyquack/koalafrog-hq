@@ -16,11 +16,14 @@ import {
 } from "../src/approval-decisions.mjs"
 import { StateStore } from "../src/state-store.mjs"
 
-function controlBlock(instructionId) {
+function controlBlock(
+  instructionId,
+  { action = "start", taskState = "ready" } = {},
+) {
   return `\`\`\`yaml
 agent_control:
-  action: start
-  task_state: ready
+  action: ${action}
+  task_state: ${taskState}
   instruction_id: ${instructionId}
   max_turns: 2
   owner_approval_required: false
@@ -354,3 +357,117 @@ test("an unchanged searched issue is skipped without repeated GitHub detail read
   })
   assert.equal(apiCalls, 0)
 })
+
+for (const terminalStatus of ["needs_review", "failed"]) {
+  test(`${terminalStatus} tasks fetch and consume a comment continuation exactly once despite an unchanged issue watermark`, async (t) => {
+    const directory = await mkdtemp(
+      path.join(os.tmpdir(), `koalafrog-${terminalStatus}-continuation-`),
+    )
+    t.after(() => rm(directory, { recursive: true, force: true }))
+    const issueNumber = terminalStatus === "needs_review" ? 63 : 65
+    const storeOptions = {
+      stateDirectory: directory,
+      repository: "Sillyquack/koalafrog-hq",
+      issueNumber,
+    }
+    const store = new StateStore(storeOptions)
+    const state = await store.load()
+    state.status = terminalStatus
+    state.lastConsumedInstructionId = `initial-${terminalStatus}`
+    state.task.lastObservedIssueUpdatedAt = "2026-08-21T14:00:00Z"
+    state.runs.push({
+      instructionId: state.lastConsumedInstructionId,
+      status: terminalStatus,
+    })
+    await store.save(state)
+
+    const continuationId = `continue-${terminalStatus}`
+    const issue = {
+      number: issueNumber,
+      state: "open",
+      updated_at: "2026-08-21T14:00:00Z",
+      body: controlBlock(state.lastConsumedInstructionId),
+    }
+    const comments = [
+      {
+        body: controlBlock(continuationId, {
+          action: "continue",
+          taskState: terminalStatus,
+        }),
+      },
+    ]
+    let detailReads = 0
+    const scanner = {
+      threadId: "scanner-thread",
+      appServer: {
+        async callMcpTool(request) {
+          detailReads += 1
+          if (request.tool === "github.fetch_issue") {
+            return { structuredContent: { issue } }
+          }
+          if (request.tool === "github.fetch_issue_comments") {
+            return { structuredContent: { comments } }
+          }
+          throw new Error(`Unexpected MCP tool: ${request.tool}`)
+        },
+      },
+    }
+    let turns = 0
+    class ConsumingOrchestrator {
+      constructor(_config, { store: taskStore }) {
+        this.store = taskStore
+      }
+
+      async runOnce({ expectedInstructionId }) {
+        turns += 1
+        const nextState = await this.store.load()
+        nextState.status = "needs_review"
+        nextState.lastConsumedInstructionId = expectedInstructionId
+        nextState.runs.push({
+          instructionId: expectedInstructionId,
+          status: "needs_review",
+        })
+        await this.store.save(nextState)
+        return {
+          status: "needs_review",
+          instructionId: expectedInstructionId,
+        }
+      }
+
+      async stop() {}
+    }
+    const config = {
+      repository: storeOptions.repository,
+      stateDirectory: directory,
+      retryBaseMs: 1,
+    }
+    const candidate = {
+      issueNumber,
+      searchMatched: true,
+      updatedAt: issue.updated_at,
+    }
+
+    const consumed = await runRepositoryIssue(scanner, config, candidate, {
+      OrchestratorClass: ConsumingOrchestrator,
+    })
+    const replay = await runRepositoryIssue(scanner, config, candidate, {
+      OrchestratorClass: ConsumingOrchestrator,
+    })
+
+    assert.equal(consumed.status, "needs_review")
+    assert.equal(consumed.instructionId, continuationId)
+    assert.equal(consumed.claimed, true)
+    assert.equal(replay.status, "no_pending_agent_control")
+    assert.equal(replay.claimed, false)
+    assert.equal(turns, 1)
+    assert.equal(detailReads, 4)
+    const finalState = await store.load()
+    assert.equal(finalState.lastConsumedInstructionId, continuationId)
+    assert.equal(
+      finalState.runs.filter(
+        (run) => run.instructionId === continuationId,
+      ).length,
+      1,
+    )
+  })
+}

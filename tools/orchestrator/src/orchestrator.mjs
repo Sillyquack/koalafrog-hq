@@ -796,6 +796,11 @@ export class Orchestrator {
             state.threadId,
             state.activeInstruction.turnId,
           )
+          await this.store.appendEvent({
+            type: "stale_turn_interrupt_requested",
+            instructionId: instruction.instructionId,
+            turnId: state.activeInstruction.turnId,
+          })
         } catch (error) {
           await this.store.appendEvent({
             type: "stale_turn_interrupt_failed",
@@ -803,6 +808,28 @@ export class Orchestrator {
             turnId: state.activeInstruction.turnId,
             error: error.message,
           })
+        }
+        return {
+          status: "claim_deferred",
+          instructionId: instruction.instructionId,
+        }
+      }
+      if (
+        !priorTurn ||
+        !new Set(["failed", "interrupted", "cancelled", "canceled"]).has(
+          priorTurn.status,
+        )
+      ) {
+        await this.store.appendEvent({
+          type: "turn_recovery_unconfirmed",
+          instructionId: instruction.instructionId,
+          threadId: state.threadId,
+          turnId: state.activeInstruction.turnId,
+          status: priorTurn?.status ?? null,
+        })
+        return {
+          status: "claim_deferred",
+          instructionId: instruction.instructionId,
         }
       }
       state.activeInstruction.phase = "thread_ready"

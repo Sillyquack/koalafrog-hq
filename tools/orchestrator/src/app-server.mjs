@@ -157,6 +157,8 @@ function approvedItemSucceeded(item) {
   )
 }
 
+const turnTerminationTimeoutMs = 60_000
+
 const boundedGitHubApprovalMessages = [
   /^Allow GitHub to create a Git tree\?$/i,
   /^Allow GitHub to create a commit\?$/i,
@@ -432,8 +434,11 @@ export class AppServerClient extends EventEmitter {
     let ownerStopPersistence = Promise.resolve()
     let approvedActionPersistence = Promise.resolve()
     let ownerStopTimer = null
+    let turnTerminationTimer = null
     let agentMessage = ""
     let settled = false
+    let turnTimedOut = false
+    let timeoutInterruption = null
     const mcpToolCalls = new Map()
     const approvedItems = new Map()
     const terminal = deferred()
@@ -447,6 +452,34 @@ export class AppServerClient extends EventEmitter {
         () => terminal.resolve(result),
         (error) => terminal.reject(error),
       )
+    }
+    const fail = (error) => {
+      if (settled) return
+      settled = true
+      cleanup()
+      Promise.all([ownerStopPersistence, approvedActionPersistence]).then(
+        () => terminal.reject(error),
+        (persistenceError) => terminal.reject(persistenceError),
+      )
+    }
+    const interruptTimedOutTurn = () => {
+      if (!turnId || timeoutInterruption || settled) return
+      turnTerminationTimer = setTimeout(
+        () =>
+          fail(
+            new Error(
+              `Timed-out turn ${turnId} did not reach a terminal state after interruption`,
+            ),
+          ),
+        turnTerminationTimeoutMs,
+      )
+      timeoutInterruption = this.interruptTurn(threadId, turnId).catch((error) => {
+        fail(
+          new Error(
+            `Failed to interrupt timed-out turn ${turnId}: ${error.message}`,
+          ),
+        )
+      })
     }
     const scheduleOwnerStopFallback = () => {
       clearTimeout(ownerStopTimer)
@@ -487,9 +520,16 @@ export class AppServerClient extends EventEmitter {
     }
     const onTurnCompleted = (params) => {
       if (params?.threadId !== threadId || params?.turn?.id !== turnId) return
+      const completedTurn = turnTimedOut
+        ? {
+            ...params.turn,
+            status: "failed",
+            error: { message: `Turn timed out after ${timeoutMs}ms` },
+          }
+        : params.turn
       complete({
-        status: pendingOwnerRequest ? "needs_owner" : params.turn.status,
-        turn: params.turn,
+        status: pendingOwnerRequest ? "needs_owner" : completedTurn.status,
+        turn: completedTurn,
         pendingOwnerRequest,
         agentMessage,
       })
@@ -603,24 +643,13 @@ export class AppServerClient extends EventEmitter {
       void handleServerRequest(message)
     }
     const timeout = setTimeout(() => {
-      if (turnId) {
-        void this.request("turn/interrupt", { threadId, turnId }).catch(() => {})
-      }
-      complete({
-        status: "failed",
-        turn: {
-          id: turnId,
-          status: "failed",
-          items: [],
-          error: { message: `Turn timed out after ${timeoutMs}ms` },
-        },
-        pendingOwnerRequest: null,
-        agentMessage,
-      })
+      turnTimedOut = true
+      interruptTimedOutTurn()
     }, timeoutMs)
     const cleanup = () => {
       clearTimeout(timeout)
       clearTimeout(ownerStopTimer)
+      clearTimeout(turnTerminationTimer)
       this.off("item/started", onItemStarted)
       this.off("item/completed", onItemCompleted)
       this.off("turn/completed", onTurnCompleted)
@@ -644,6 +673,7 @@ export class AppServerClient extends EventEmitter {
       )
       turnId = response.turn.id
       await onTurnStarted(turnId)
+      if (turnTimedOut) interruptTimedOutTurn()
     } catch (error) {
       cleanup()
       throw error

@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
 import test from "node:test"
-import { classifyServerRequest } from "../src/app-server.mjs"
+import { AppServerClient, classifyServerRequest } from "../src/app-server.mjs"
 import { extractAgentControls, shouldConsumeInstruction } from "../src/control-plane.mjs"
 import {
   beginInstruction,
@@ -609,6 +609,98 @@ test("restart defers a still-running persisted turn instead of starting a duplic
   assert.equal(deferred.activeInstruction.phase, "turn_started")
   assert.equal(deferred.activeInstruction.turnId, "turn-live")
   assert.equal(deferred.activeInstruction.turnCount, 1)
+})
+
+test("a timeout retry starts only after the interrupted turn command is terminal", async (t) => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "koalafrog-retry-isolation-"))
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const block = controlBlock({ instructionId: "retry-isolation-001" })
+  const comments = []
+  const appServer = new AppServerClient({ cwd: "/tmp" })
+  let activeCommand = false
+  let interruptRequests = 0
+  let turnStarts = 0
+  appServer.start = async () => {}
+  appServer.stop = async () => {}
+  appServer.startThread = async () => ({ thread: { id: "thread-retry-isolation" } })
+  appServer.waitForMcpReady = async () => {}
+  appServer.request = async (method) => {
+    if (method === "turn/start") {
+      turnStarts += 1
+      const turnId = `turn-retry-${turnStarts}`
+      if (turnStarts === 1) {
+        activeCommand = true
+      } else {
+        assert.equal(
+          activeCommand,
+          false,
+          "retry turn overlapped the interrupted turn command",
+        )
+        setTimeout(
+          () =>
+            appServer.emit("turn/completed", {
+              threadId: "thread-retry-isolation",
+              turn: { id: turnId, status: "completed", items: [] },
+            }),
+          0,
+        )
+      }
+      return { turn: { id: turnId } }
+    }
+    if (method === "turn/interrupt") {
+      interruptRequests += 1
+      setTimeout(() => {
+        activeCommand = false
+        appServer.emit("item/completed", {
+          threadId: "thread-retry-isolation",
+          turnId: "turn-retry-1",
+          item: {
+            id: "command-retry-1",
+            type: "commandExecution",
+            status: "failed",
+          },
+        })
+        appServer.emit("turn/completed", {
+          threadId: "thread-retry-isolation",
+          turn: { id: "turn-retry-1", status: "interrupted", items: [] },
+        })
+      }, 300)
+      return {}
+    }
+    throw new Error(`Unexpected request: ${method}`)
+  }
+
+  const orchestrator = new Orchestrator(
+    {
+      ...runtimeConfig(directory),
+      maxRetries: 1,
+      turnTimeoutMs: 5,
+    },
+    {
+      appServer,
+      controlPlane: {
+        async fetchTask() {
+          return { issue: { body: block }, comments }
+        },
+        async postComment(body) {
+          comments.push({ body })
+        },
+      },
+      store: new StateStore({
+        stateDirectory: directory,
+        repository: "Sillyquack/koalafrog-hq",
+        issueNumber: 53,
+      }),
+      workspace: fakeWorkspace(),
+    },
+  )
+
+  const result = await orchestrator.runOnce()
+
+  assert.equal(result.status, "needs_review")
+  assert.equal(turnStarts, 2)
+  assert.equal(interruptRequests, 1)
+  assert.equal(activeCommand, false)
 })
 
 test("restart publishes a persisted owner stop before returning to polling", async (t) => {
