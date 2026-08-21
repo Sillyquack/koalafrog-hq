@@ -313,6 +313,145 @@ test("a repository task is claimed once and routes pickup to its origin issue", 
   assert.equal(record.originIssueUrl, candidate.issueUrl)
 })
 
+test("known Issue #63 resumes its same context once from needs_review", async (t) => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "koalafrog-issue-63-continuation-"))
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const continuation = ({ instructionId, taskState }) => `\`\`\`yaml
+agent_control:
+  action: continue
+  task_state: ${taskState}
+  instruction_id: ${instructionId}
+  max_turns: 8
+  owner_approval_required: false
+  prompt: |
+    Resume the existing Issue #63 thread/worktree for read-only safety work.
+\`\`\``
+  const comments = [
+    {
+      body: continuation({
+        instructionId: "production-day1-safety-readback-002",
+        taskState: "running",
+      }),
+    },
+    {
+      body: continuation({
+        instructionId: "production-day1-safety-readback-resume-003",
+        taskState: "needs_review",
+      }),
+    },
+  ]
+  const store = new StateStore({
+    stateDirectory: directory,
+    repository: "Sillyquack/koalafrog-hq",
+    issueNumber: 63,
+  })
+  const state = await store.load()
+  state.status = "needs_review"
+  state.activeInstruction = null
+  state.lastConsumedInstructionId = "production-day1-stock-equipment-001"
+  state.threadId = "thread-63-existing"
+  state.workspacePath = "/tmp/issue-63-existing-workspace"
+  state.branch = "agent/issue-63-production-day1-stock-equipment-001"
+  state.runs = [
+    {
+      instructionId: "production-day1-stock-equipment-001",
+      status: "needs_review",
+      threadId: state.threadId,
+      branch: state.branch,
+      commits: ["a920e5811646e33081ad698609b0c13ce026c9af"],
+      turnCount: 3,
+    },
+  ]
+  await store.save(state)
+
+  const scanner = {
+    threadId: "scanner-thread",
+    appServer: {
+      async callMcpTool(request) {
+        if (request.tool === "github.fetch_issue") {
+          return {
+            structuredContent: {
+              issue: {
+                number: 63,
+                state: "open",
+                html_url: "https://github.com/Sillyquack/koalafrog-hq/issues/63",
+                body: controlBlock("production-day1-stock-equipment-001"),
+              },
+            },
+          }
+        }
+        if (request.tool === "github.fetch_issue_comments") {
+          return { structuredContent: { comments } }
+        }
+        if (request.tool === "github.add_comment_to_issue") {
+          assert.equal(request.arguments.pr_number, 63)
+          comments.push({ body: request.arguments.comment })
+          return { structuredContent: { id: 63_003 } }
+        }
+        throw new Error(`Unexpected MCP tool: ${request.tool}`)
+      },
+    },
+  }
+  let turns = 0
+  class FakeContinuationOrchestrator {
+    constructor(_config, dependencies) {
+      this.controlPlane = dependencies.controlPlane
+      this.store = dependencies.store
+    }
+
+    async runOnce({ expectedInstructionId }) {
+      turns += 1
+      assert.equal(expectedInstructionId, "production-day1-safety-readback-resume-003")
+      const persisted = await this.store.load()
+      assert.equal(persisted.status, "needs_review")
+      assert.equal(persisted.activeInstruction, null)
+      assert.equal(persisted.threadId, "thread-63-existing")
+      assert.equal(persisted.workspacePath, "/tmp/issue-63-existing-workspace")
+      await this.controlPlane.postComment(`\`\`\`yaml
+agent_pickup:
+  instruction_id: "${expectedInstructionId}"
+\`\`\``)
+      await this.controlPlane.postComment(`\`\`\`yaml
+agent_result:
+  instruction_id: "${expectedInstructionId}"
+  status: needs_review
+\`\`\``)
+      persisted.lastConsumedInstructionId = expectedInstructionId
+      persisted.runs.push({ instructionId: expectedInstructionId, status: "needs_review" })
+      await this.store.save(persisted)
+      return { status: "needs_review", instructionId: expectedInstructionId }
+    }
+
+    async stop() {}
+  }
+  const config = {
+    repository: "Sillyquack/koalafrog-hq",
+    stateDirectory: directory,
+    retryBaseMs: 1,
+  }
+  const candidate = { issueNumber: 63, searchMatched: false }
+  const first = await runRepositoryIssue(scanner, config, candidate, {
+    OrchestratorClass: FakeContinuationOrchestrator,
+  })
+  const replay = await runRepositoryIssue(scanner, config, candidate, {
+    OrchestratorClass: FakeContinuationOrchestrator,
+  })
+
+  assert.equal(first.claimed, true)
+  assert.equal(first.instructionId, "production-day1-safety-readback-resume-003")
+  assert.equal(replay.status, "no_pending_agent_control")
+  assert.equal(replay.claimed, false)
+  assert.equal(turns, 1)
+  assert.equal(
+    comments.filter((comment) => comment.body.includes("agent_pickup:")).length,
+    1,
+  )
+  assert.equal(
+    comments.filter((comment) => comment.body.includes("agent_result:")).length,
+    1,
+  )
+})
+
 test("an unchanged searched issue is skipped without repeated GitHub detail reads", async (t) => {
   const directory = await mkdtemp(path.join(os.tmpdir(), "koalafrog-watermark-"))
   t.after(() => rm(directory, { recursive: true, force: true }))

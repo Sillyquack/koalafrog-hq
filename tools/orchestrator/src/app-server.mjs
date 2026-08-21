@@ -157,6 +157,65 @@ function approvedItemSucceeded(item) {
   )
 }
 
+const terminalCommandStatuses = new Set([
+  "completed",
+  "failed",
+  "declined",
+  "cancelled",
+  "canceled",
+  "interrupted",
+])
+const terminalTurnStatuses = new Set([
+  "completed",
+  "failed",
+  "interrupted",
+  "cancelled",
+  "canceled",
+])
+
+export const defaultCommandQuiescenceTimeoutMs = 75_000
+
+function isTerminalCommand(item) {
+  return terminalCommandStatuses.has(String(item?.status ?? "").toLowerCase())
+}
+
+export function inspectTurnCommandQuiescence(turn) {
+  if (!turn) {
+    return {
+      proven: false,
+      outstandingCommandIds: [],
+      reason: "The prior Codex turn could not be found.",
+    }
+  }
+  const turnTerminal = terminalTurnStatuses.has(
+    String(turn.status ?? "").toLowerCase(),
+  )
+  if (!Array.isArray(turn.items)) {
+    if (turn.status === "completed") {
+      return { proven: true, outstandingCommandIds: [], reason: null }
+    }
+    return {
+      proven: false,
+      outstandingCommandIds: [],
+      reason: "The prior Codex turn did not expose command lifecycle state.",
+    }
+  }
+  const commands = turn.items.filter((item) => item?.type === "commandExecution")
+  const outstandingCommandIds = commands
+    .filter((item) => !isTerminalCommand(item))
+    .map((item) => item.id)
+    .filter(Boolean)
+  return {
+    proven: turnTerminal && outstandingCommandIds.length === 0,
+    outstandingCommandIds,
+    reason: !turnTerminal
+      ? "The prior Codex turn has not acknowledged a terminal state."
+      : outstandingCommandIds.length
+        ? "The prior Codex turn still has non-terminal command executions."
+        : null,
+  }
+}
+
 const boundedGitHubApprovalMessages = [
   /^Allow GitHub to create a Git tree\?$/i,
   /^Allow GitHub to create a commit\?$/i,
@@ -228,6 +287,7 @@ export class AppServerClient extends EventEmitter {
     binary = "codex",
     cwd,
     requestTimeoutMs = 30_000,
+    commandQuiescenceTimeoutMs = defaultCommandQuiescenceTimeoutMs,
     eventSink = () => {},
     stderrSink = () => {},
   }) {
@@ -235,6 +295,7 @@ export class AppServerClient extends EventEmitter {
     this.binary = binary
     this.cwd = cwd
     this.requestTimeoutMs = requestTimeoutMs
+    this.commandQuiescenceTimeoutMs = commandQuiescenceTimeoutMs
     this.eventSink = eventSink
     this.stderrSink = stderrSink
     this.nextRequestId = 1
@@ -417,6 +478,31 @@ export class AppServerClient extends EventEmitter {
     )
   }
 
+  async waitForTurnCommandQuiescence({
+    threadId,
+    turnId,
+    initialTurn = null,
+    timeoutMs = this.commandQuiescenceTimeoutMs,
+    pollMs = 250,
+  }) {
+    const deadline = Date.now() + timeoutMs
+    let turn = initialTurn
+    let inspection = inspectTurnCommandQuiescence(turn)
+    while (!inspection.proven && Date.now() < deadline) {
+      await new Promise((resolve) =>
+        setTimeout(resolve, Math.min(pollMs, Math.max(1, deadline - Date.now()))),
+      )
+      const recovered = await this.readThread(threadId)
+      turn = recovered.thread?.turns?.find((candidate) => candidate.id === turnId)
+      inspection = inspectTurnCommandQuiescence(turn)
+    }
+    return {
+      ...inspection,
+      turn,
+      timeoutMs,
+    }
+  }
+
   async runTurn({
     threadId,
     prompt,
@@ -434,8 +520,11 @@ export class AppServerClient extends EventEmitter {
     let ownerStopTimer = null
     let agentMessage = ""
     let settled = false
+    let completionStarted = false
+    let turnTerminalAcknowledged = false
     const mcpToolCalls = new Map()
     const approvedItems = new Map()
+    const commandStatesByTurn = new Map()
     const terminal = deferred()
     const handledServerRequestIds = new Set()
 
@@ -448,11 +537,99 @@ export class AppServerClient extends EventEmitter {
         (error) => terminal.reject(error),
       )
     }
+    const commandStates = (candidateTurnId) => {
+      if (!commandStatesByTurn.has(candidateTurnId)) {
+        commandStatesByTurn.set(candidateTurnId, new Map())
+      }
+      return commandStatesByTurn.get(candidateTurnId)
+    }
+    const outstandingCommandIds = () =>
+      [...(commandStatesByTurn.get(turnId)?.entries() ?? [])]
+        .filter(([, command]) => !command.terminal)
+        .map(([itemId]) => itemId)
+    const waitForObservedCommandQuiescence = async () => {
+      let outstanding = outstandingCommandIds()
+      if (turnTerminalAcknowledged && !outstanding.length) {
+        return {
+          proven: true,
+          turnTerminalAcknowledged,
+          outstandingCommandIds: [],
+        }
+      }
+      await Promise.resolve(
+        this.eventSink({
+          type: "command_quiescence_wait_started",
+          threadId,
+          turnId,
+          outstandingCommandIds: outstanding,
+          timeoutMs: this.commandQuiescenceTimeoutMs,
+        }),
+      ).catch(() => {})
+      const deadline = Date.now() + this.commandQuiescenceTimeoutMs
+      while (
+        (!turnTerminalAcknowledged || outstanding.length) &&
+        Date.now() < deadline
+      ) {
+        await new Promise((resolve) =>
+          setTimeout(
+            resolve,
+            Math.min(100, Math.max(1, deadline - Date.now())),
+          ),
+        )
+        outstanding = outstandingCommandIds()
+      }
+      return {
+        proven: turnTerminalAcknowledged && outstanding.length === 0,
+        turnTerminalAcknowledged,
+        outstandingCommandIds: outstanding,
+      }
+    }
+    const completeAfterCommandQuiescence = async (result) => {
+      if (settled || completionStarted) return
+      completionStarted = true
+      const quiescence = await waitForObservedCommandQuiescence()
+      if (quiescence.proven) {
+        await Promise.resolve(
+          this.eventSink({
+            type: "command_quiescence_proven",
+            threadId,
+            turnId,
+          }),
+        ).catch(() => {})
+        complete({ ...result, commandQuiescence: quiescence })
+        return
+      }
+      const message =
+        `Command quiescence could not be proven within ${this.commandQuiescenceTimeoutMs}ms; ` +
+        `retry suppressed because the prior turn or its command(s) remain non-terminal: ` +
+        `${quiescence.outstandingCommandIds.join(", ") || "no terminal turn acknowledgement"}`
+      await Promise.resolve(
+        this.eventSink({
+          type: "command_quiescence_failed",
+          threadId,
+          turnId,
+          outstandingCommandIds: quiescence.outstandingCommandIds,
+          timeoutMs: this.commandQuiescenceTimeoutMs,
+        }),
+      ).catch(() => {})
+      complete({
+        ...result,
+        status: pendingOwnerRequest ? "needs_owner" : "failed",
+        retrySafe: false,
+        commandQuiescence: quiescence,
+        turn: {
+          ...(result.turn ?? {}),
+          id: result.turn?.id ?? turnId,
+          status: pendingOwnerRequest ? "interrupted" : "failed",
+          error: { message },
+        },
+      })
+    }
     const scheduleOwnerStopFallback = () => {
       clearTimeout(ownerStopTimer)
       ownerStopTimer = setTimeout(
         () =>
-          complete({
+          void completeAfterCommandQuiescence({
             status: "needs_owner",
             turn: { id: turnId, status: "interrupted", items: [] },
             pendingOwnerRequest,
@@ -463,14 +640,25 @@ export class AppServerClient extends EventEmitter {
     }
     const onItemStarted = (params) => {
       if (params?.threadId !== threadId) return
-      if (turnId && params?.turnId !== turnId) return
+      if (!params?.turnId) return
+      if (params.item?.type === "commandExecution" && params.item.id) {
+        const states = commandStates(params.turnId)
+        if (!states.get(params.item.id)?.terminal) {
+          states.set(params.item.id, { terminal: isTerminalCommand(params.item) })
+        }
+      }
+      if (turnId && params.turnId !== turnId) return
       if (params.item?.type === "mcpToolCall") {
         mcpToolCalls.set(params.item.id, params.item)
       }
     }
     const onItemCompleted = (params) => {
       if (params?.threadId !== threadId) return
-      if (turnId && params?.turnId !== turnId) return
+      if (!params?.turnId) return
+      if (params.item?.type === "commandExecution" && params.item.id) {
+        commandStates(params.turnId).set(params.item.id, { terminal: true })
+      }
+      if (turnId && params.turnId !== turnId) return
       if (params.item?.type === "agentMessage") agentMessage = params.item.text ?? ""
       if (params.item?.type === "mcpToolCall") mcpToolCalls.delete(params.item.id)
       const approved = approvedItems.get(params.item?.id)
@@ -487,7 +675,15 @@ export class AppServerClient extends EventEmitter {
     }
     const onTurnCompleted = (params) => {
       if (params?.threadId !== threadId || params?.turn?.id !== turnId) return
-      complete({
+      turnTerminalAcknowledged = true
+      for (const item of params.turn.items ?? []) {
+        if (item?.type !== "commandExecution" || !item.id) continue
+        const states = commandStates(params.turn.id)
+        if (!states.get(item.id)?.terminal) {
+          states.set(item.id, { terminal: isTerminalCommand(item) })
+        }
+      }
+      void completeAfterCommandQuiescence({
         status: pendingOwnerRequest ? "needs_owner" : params.turn.status,
         turn: params.turn,
         pendingOwnerRequest,
@@ -606,7 +802,7 @@ export class AppServerClient extends EventEmitter {
       if (turnId) {
         void this.request("turn/interrupt", { threadId, turnId }).catch(() => {})
       }
-      complete({
+      void completeAfterCommandQuiescence({
         status: "failed",
         turn: {
           id: turnId,

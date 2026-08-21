@@ -1,6 +1,9 @@
 import path from "node:path"
 import { setTimeout as delay } from "node:timers/promises"
-import { AppServerClient } from "./app-server.mjs"
+import {
+  AppServerClient,
+  inspectTurnCommandQuiescence,
+} from "./app-server.mjs"
 import {
   completeOwnerApprovedAction,
   consumeOwnerApprovalDecision,
@@ -353,6 +356,7 @@ export class Orchestrator {
     const ownerRequest = turnResult.pendingOwnerRequest
     const structuredOwnerRequest = compactOwnerRequest(ownerRequest)
     const completed = turnResult.status === "completed" && validation.pass
+    const turnFailure = turnResult.turn?.error?.message ?? null
     const status = ownerRequest
       ? "needs_owner"
       : completed
@@ -372,8 +376,12 @@ export class Orchestrator {
       ownerRequest: structuredOwnerRequest,
       detail: validation.pass
         ? ownerRequest
-          ? "The Codex turn stopped for owner input after the MCP request was cancelled. The local worktree passed `git diff --check`; no deployment or production operation was performed."
-          : "The local worktree passed `git diff --check`. Awaiting review; no deployment or production operation was performed."
+          ? turnFailure
+            ? `The Codex turn stopped for owner input and failed closed during recovery: ${turnFailure}`
+            : "The Codex turn stopped for owner input after the MCP request was cancelled. The local worktree passed `git diff --check`; no deployment or production operation was performed."
+          : completed
+            ? "The local worktree passed `git diff --check`. Awaiting review; no deployment or production operation was performed."
+            : `The Codex turn failed closed without another retry: ${turnFailure ?? "the prior turn did not reach a successful terminal state"}`
         : `Local validation failed: ${validation.detail || turnResult.turn?.error?.message || "unknown error"}`,
     }
   }
@@ -508,6 +516,16 @@ export class Orchestrator {
         },
       })
       if (result.status === "completed" || result.status === "needs_owner") {
+        return result
+      }
+      if (result.retrySafe === false) {
+        await this.store.appendEvent({
+          type: "retry_suppressed_unproven_command_quiescence",
+          instructionId: instruction.instructionId,
+          attempt,
+          outstandingCommandIds:
+            result.commandQuiescence?.outstandingCommandIds ?? [],
+        })
         return result
       }
       if (attempt < this.config.maxRetries) {
@@ -769,6 +787,7 @@ export class Orchestrator {
         await this.#completeInstruction(state, packet, task.comments)
         return { status: packet.status, instructionId: instruction.instructionId }
       }
+      let interruptedForRecovery = false
       if (
         new Set(["inProgress", "in_progress", "running"]).has(
           priorTurn?.status,
@@ -796,6 +815,7 @@ export class Orchestrator {
             state.threadId,
             state.activeInstruction.turnId,
           )
+          interruptedForRecovery = true
         } catch (error) {
           await this.store.appendEvent({
             type: "stale_turn_interrupt_failed",
@@ -804,6 +824,58 @@ export class Orchestrator {
             error: error.message,
           })
         }
+      }
+      if (priorTurn?.status !== "completed") {
+        const initialQuiescence = inspectTurnCommandQuiescence(priorTurn)
+        const quiescence = initialQuiescence.proven
+          ? initialQuiescence
+          : this.appServer.waitForTurnCommandQuiescence
+            ? await this.appServer.waitForTurnCommandQuiescence({
+                threadId: state.threadId,
+                turnId: state.activeInstruction.turnId,
+                initialTurn: priorTurn,
+              })
+            : initialQuiescence
+        if (!quiescence.proven) {
+          const outstanding = quiescence.outstandingCommandIds ?? []
+          const recoveryResult = {
+            status: "failed",
+            retrySafe: false,
+            commandQuiescence: quiescence,
+            turn: {
+              id: state.activeInstruction.turnId,
+              status: "failed",
+              items: priorTurn?.items ?? [],
+              error: {
+                message:
+                  `Restart recovery could not prove command quiescence; retry suppressed for outstanding command(s): ` +
+                  `${outstanding.join(", ") || "unknown"}`,
+              },
+            },
+            pendingOwnerRequest: null,
+          }
+          await this.store.appendEvent({
+            type: "retry_suppressed_unproven_command_quiescence",
+            instructionId: instruction.instructionId,
+            turnId: state.activeInstruction.turnId,
+            recovery: true,
+            interruptedForRecovery,
+            outstandingCommandIds: outstanding,
+          })
+          const packet = await this.#packetFromWorkspace(
+            state,
+            instruction,
+            recoveryResult,
+          )
+          await this.#completeInstruction(state, packet, task.comments)
+          return { status: packet.status, instructionId: instruction.instructionId }
+        }
+        await this.store.appendEvent({
+          type: "recovered_turn_command_quiescence_proven",
+          instructionId: instruction.instructionId,
+          turnId: state.activeInstruction.turnId,
+          interruptedForRecovery,
+        })
       }
       state.activeInstruction.phase = "thread_ready"
       state.activeInstruction.attempts += 1

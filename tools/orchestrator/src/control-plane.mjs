@@ -161,7 +161,11 @@ export function selectNextInstruction(issue, comments = [], state = {}) {
   return (
     controls
       .slice()
-      .find((control) => !consumed.has(control.instructionId)) ?? null
+      .find(
+        (control) =>
+          !consumed.has(control.instructionId) &&
+          isInstructionEligible(control),
+      ) ?? null
   )
 }
 

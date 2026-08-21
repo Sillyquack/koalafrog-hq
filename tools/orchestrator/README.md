@@ -31,9 +31,10 @@ Durable per-issue run history, a repository-wide instruction claim ledger, and
 existing `agent_result` comments suppress replay. File locks cover both the
 origin issue and globally unique `instruction_id`, so overlapping polls and
 process restarts cannot start the same instruction twice. Within the bounded
-candidate set, issues and their unconsumed instructions are processed
-oldest-first; a failure or owner stop on one issue does not stop the scanner
-from considering the next issue.
+candidate set, issues and their unconsumed eligible instructions are processed
+oldest-first. An obsolete or invalid state transition is skipped without
+starving a later valid continuation on the same issue, and a failure or owner
+stop on one issue does not stop the scanner from considering the next issue.
 
 GitHub's issue `updated_at` value is persisted after a detail read. Unchanged
 search results are skipped on later polls, while changed issues and legacy
@@ -60,6 +61,12 @@ Use a repository-wide unique `instruction_id`. Eligibility is explicit:
 `owner_approval_required: true` always produces `needs_owner`. The effective
 turn limit is the lower of the issue's `max_turns` and the local service limit.
 See `docs/agent-orchestration/AGENT_TASK_TEMPLATE.md` for the exact shape.
+
+An issue already known to durable state remains eligible for fresh comment
+continuations after `needs_review`, `needs_owner`, or `failed`. A
+`continue/needs_review` control resumes the existing issue thread, worktree,
+and branch. A prior unconsumed control whose declared state is not eligible for
+its action does not block that later continuation.
 
 ## Local start
 
@@ -236,6 +243,15 @@ and one-time decision are then persisted in schema-4 state. A consumed,
 expired, replayed, reworded, mismatched, broader, or protected
 production/destructive request fails closed and cannot borrow another decision.
 
+Failed or interrupted turns are retryable only after every observed
+`commandExecution` for that turn emits terminal completion/cancellation. The
+runtime keeps the prior turn listeners active for a bounded 75-second
+quiescence window, so late terminal interaction or output cannot overlap a new
+turn. Restart recovery verifies the prior turn's command items through
+`thread/read`. If either path cannot prove quiescence, the instruction returns
+an explicit `failed` result and suppresses the retry instead of sharing a
+worktree with a potentially live command.
+
 ## Protocol compatibility
 
 The implementation was verified against `codex-cli 0.148.0-alpha.9`. It uses
@@ -264,7 +280,8 @@ npm run schema:ts
   is not treated as an affirmative request merely because it names a protected
   action; ambiguous or affirmative protected actions still fail closed.
 - The service never deploys, merges, force-pushes, or resolves owner questions.
-- `max_turns`, per-turn timeout, bounded retries, and exponential backoff are
-  enforced locally even if the issue asks for larger limits.
+- `max_turns`, per-turn timeout, command-quiescence proof, bounded retries, and
+  exponential backoff are enforced locally even if the issue asks for larger
+  limits.
 - Durable history plus GitHub result comments consume each `instruction_id` at
   most once unless an audited local retry marker explicitly reopens it.

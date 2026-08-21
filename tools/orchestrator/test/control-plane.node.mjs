@@ -68,6 +68,53 @@ test("selects the oldest pending instruction from durable history", () => {
   assert.equal(next.instructionId, "follow-up-001")
 })
 
+test("Issue #63 skips an obsolete running continuation and selects the needs_review continuation", () => {
+  const continuation = ({ instructionId, taskState }) => `\`\`\`yaml
+agent_control:
+  action: continue
+  task_state: ${taskState}
+  instruction_id: ${instructionId}
+  max_turns: 8
+  owner_approval_required: false
+  prompt: |
+    Resume the existing Issue #63 thread and worktree with read-only safety checks.
+\`\`\``
+  const state = {
+    status: "needs_review",
+    activeInstruction: null,
+    lastConsumedInstructionId: "production-day1-stock-equipment-001",
+    runs: [
+      {
+        instructionId: "production-day1-stock-equipment-001",
+        status: "needs_review",
+        threadId: "thread-63",
+      },
+    ],
+  }
+  const next = selectNextInstruction(
+    { body: startBlock.replaceAll("proof-001", "production-day1-stock-equipment-001") },
+    [
+      {
+        body: continuation({
+          instructionId: "production-day1-safety-readback-002",
+          taskState: "running",
+        }),
+      },
+      {
+        body: continuation({
+          instructionId: "production-day1-safety-readback-resume-003",
+          taskState: "needs_review",
+        }),
+      },
+    ],
+    state,
+  )
+
+  assert.equal(next.instructionId, "production-day1-safety-readback-resume-003")
+  assert.equal(next.action, "continue")
+  assert.equal(next.taskState, "needs_review")
+})
+
 test("task state eligibility is explicit for start and continue actions", () => {
   const instruction = extractAgentControls(startBlock)[0]
   assert.equal(isInstructionEligible(instruction), true)

@@ -5,6 +5,7 @@ import {
   autoResponseForBoundedCommandApproval,
   autoResponseForBoundedElicitation,
   classifyServerRequest,
+  inspectTurnCommandQuiescence,
 } from "../src/app-server.mjs"
 
 const approvedPrompt = `
@@ -377,4 +378,201 @@ test("issue #56 waiting MCP approval is cancelled and returned as needs_owner", 
     "select id from public.workspaces limit 1",
   )
   assert.equal(result.pendingOwnerRequest.arguments.authorization, "[redacted]")
+})
+
+test("an interrupted turn waits for its running command before a retry turn starts", async () => {
+  const lifecycle = []
+  const protocolEvents = []
+  const client = new AppServerClient({
+    cwd: "/tmp",
+    commandQuiescenceTimeoutMs: 500,
+    eventSink: (event) => protocolEvents.push(event),
+  })
+  let starts = 0
+  client.request = async (method) => {
+    assert.equal(method, "turn/start")
+    starts += 1
+    const turnId = starts === 1 ? "turn-interrupted" : "turn-retry"
+    lifecycle.push(`start:${turnId}`)
+    if (starts === 1) {
+      setTimeout(() => {
+        client.emit("item/started", {
+          threadId: "thread-63",
+          turnId,
+          item: {
+            id: "exec-still-running",
+            type: "commandExecution",
+            status: "inProgress",
+          },
+        })
+        lifecycle.push("command:started")
+      }, 0)
+      setTimeout(() => {
+        client.emit("turn/completed", {
+          threadId: "thread-63",
+          turn: { id: turnId, status: "interrupted", items: [] },
+        })
+        lifecycle.push("turn:interrupted")
+      }, 5)
+      setTimeout(() => {
+        client.emit("item/commandExecution/terminalInteraction", {
+          threadId: "thread-63",
+          turnId,
+          itemId: "exec-still-running",
+        })
+        lifecycle.push("command:terminal-interaction")
+      }, 15)
+      setTimeout(() => {
+        client.emit("item/completed", {
+          threadId: "thread-63",
+          turnId,
+          item: {
+            id: "exec-still-running",
+            type: "commandExecution",
+            status: "completed",
+          },
+        })
+        lifecycle.push("command:completed")
+      }, 40)
+    } else {
+      setTimeout(
+        () =>
+          client.emit("turn/completed", {
+            threadId: "thread-63",
+            turn: { id: turnId, status: "completed", items: [] },
+          }),
+        0,
+      )
+    }
+    return { turn: { id: turnId } }
+  }
+
+  const interrupted = await client.runTurn({
+    threadId: "thread-63",
+    prompt: "First attempt",
+    cwd: "/tmp",
+    timeoutMs: 1_000,
+  })
+  const retry = await client.runTurn({
+    threadId: "thread-63",
+    prompt: "Retry only after quiescence",
+    cwd: "/tmp",
+    timeoutMs: 1_000,
+  })
+
+  assert.equal(interrupted.status, "interrupted")
+  assert.equal(interrupted.commandQuiescence.proven, true)
+  assert.equal(retry.status, "completed")
+  assert.ok(
+    lifecycle.indexOf("command:completed") <
+      lifecycle.indexOf("start:turn-retry"),
+  )
+  assert.ok(
+    protocolEvents.some((event) => event.type === "command_quiescence_wait_started"),
+  )
+  assert.ok(
+    protocolEvents.some((event) => event.type === "command_quiescence_proven"),
+  )
+})
+
+test("an interrupted turn fails closed when command quiescence cannot be proven", async () => {
+  const events = []
+  const client = new AppServerClient({
+    cwd: "/tmp",
+    commandQuiescenceTimeoutMs: 20,
+    eventSink: (event) => events.push(event),
+  })
+  client.request = async (method) => {
+    assert.equal(method, "turn/start")
+    setTimeout(() => {
+      client.emit("item/started", {
+        threadId: "thread-blocked",
+        turnId: "turn-blocked",
+        item: {
+          id: "exec-never-terminal",
+          type: "commandExecution",
+          status: "inProgress",
+        },
+      })
+      client.emit("turn/completed", {
+        threadId: "thread-blocked",
+        turn: { id: "turn-blocked", status: "interrupted", items: [] },
+      })
+    }, 0)
+    return { turn: { id: "turn-blocked" } }
+  }
+
+  const result = await client.runTurn({
+    threadId: "thread-blocked",
+    prompt: "Do not overlap a retry.",
+    cwd: "/tmp",
+    timeoutMs: 1_000,
+  })
+
+  assert.equal(result.status, "failed")
+  assert.equal(result.retrySafe, false)
+  assert.deepEqual(result.commandQuiescence.outstandingCommandIds, [
+    "exec-never-terminal",
+  ])
+  assert.match(result.turn.error.message, /retry suppressed/)
+  assert.ok(events.some((event) => event.type === "command_quiescence_failed"))
+})
+
+test("a timed-out turn cannot retry without terminal turn acknowledgement", async () => {
+  const client = new AppServerClient({
+    cwd: "/tmp",
+    commandQuiescenceTimeoutMs: 20,
+  })
+  let interrupts = 0
+  client.request = async (method) => {
+    if (method === "turn/start") return { turn: { id: "turn-no-ack" } }
+    if (method === "turn/interrupt") {
+      interrupts += 1
+      return {}
+    }
+    throw new Error(`Unexpected request: ${method}`)
+  }
+
+  const result = await client.runTurn({
+    threadId: "thread-no-ack",
+    prompt: "Fail closed if interruption is not acknowledged.",
+    cwd: "/tmp",
+    timeoutMs: 5,
+  })
+
+  assert.equal(interrupts, 1)
+  assert.equal(result.status, "failed")
+  assert.equal(result.retrySafe, false)
+  assert.equal(result.commandQuiescence.turnTerminalAcknowledged, false)
+  assert.match(result.turn.error.message, /no terminal turn acknowledgement/)
+})
+
+test("restart snapshots distinguish terminal and still-running commands", () => {
+  assert.deepEqual(
+    inspectTurnCommandQuiescence({
+      id: "turn-terminal",
+      status: "interrupted",
+      items: [
+        { id: "exec-complete", type: "commandExecution", status: "completed" },
+      ],
+    }).proven,
+    true,
+  )
+  assert.deepEqual(
+    inspectTurnCommandQuiescence({
+      id: "turn-running",
+      status: "interrupted",
+      items: [
+        { id: "exec-running", type: "commandExecution", status: "inProgress" },
+      ],
+    }).outstandingCommandIds,
+    ["exec-running"],
+  )
+  assert.equal(
+    inspectTurnCommandQuiescence({
+      id: "turn-ambiguous",
+      status: "interrupted",
+    }).proven,
+    false,
+  )
 })

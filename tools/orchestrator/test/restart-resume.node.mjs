@@ -611,6 +611,218 @@ test("restart defers a still-running persisted turn instead of starting a duplic
   assert.equal(deferred.activeInstruction.turnCount, 1)
 })
 
+test("retry starts only after the prior turn reports proven command quiescence", async (t) => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "koalafrog-quiescent-retry-"))
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const block = controlBlock({ instructionId: "quiescent-retry-001" })
+  let runTurnCalls = 0
+  const appServer = {
+    async start() {},
+    async stop() {},
+    async startThread() {
+      return { thread: { id: "thread-quiescent-retry" } }
+    },
+    async waitForMcpReady() {},
+    async runTurn({ onTurnStarted }) {
+      runTurnCalls += 1
+      await onTurnStarted(`turn-quiescent-${runTurnCalls}`)
+      if (runTurnCalls === 1) {
+        return {
+          status: "interrupted",
+          turn: { id: "turn-quiescent-1", status: "interrupted", items: [] },
+          commandQuiescence: { proven: true, outstandingCommandIds: [] },
+          pendingOwnerRequest: null,
+        }
+      }
+      return {
+        status: "completed",
+        turn: { id: "turn-quiescent-2", status: "completed", items: [] },
+        commandQuiescence: { proven: true, outstandingCommandIds: [] },
+        pendingOwnerRequest: null,
+      }
+    },
+  }
+  const comments = []
+  const store = new StateStore({
+    stateDirectory: directory,
+    repository: "Sillyquack/koalafrog-hq",
+    issueNumber: 53,
+  })
+  const orchestrator = new Orchestrator(runtimeConfig(directory), {
+    appServer,
+    store,
+    controlPlane: {
+      async fetchTask() {
+        return { issue: { body: block }, comments }
+      },
+      async postComment(body) {
+        comments.push({ body })
+      },
+    },
+    workspace: fakeWorkspace(),
+  })
+
+  const result = await orchestrator.runOnce()
+
+  assert.equal(result.status, "needs_review")
+  assert.equal(runTurnCalls, 2)
+  const events = await readFile(store.eventPath, "utf8")
+  assert.match(events, /retry_scheduled/)
+  assert.doesNotMatch(events, /retry_suppressed_unproven_command_quiescence/)
+})
+
+test("unproven command quiescence suppresses retry and reports an explicit failure", async (t) => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "koalafrog-unproven-retry-"))
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const block = controlBlock({ instructionId: "unproven-retry-001" })
+  let runTurnCalls = 0
+  const comments = []
+  const store = new StateStore({
+    stateDirectory: directory,
+    repository: "Sillyquack/koalafrog-hq",
+    issueNumber: 53,
+  })
+  const orchestrator = new Orchestrator(runtimeConfig(directory), {
+    store,
+    appServer: {
+      async start() {},
+      async stop() {},
+      async startThread() {
+        return { thread: { id: "thread-unproven-retry" } }
+      },
+      async waitForMcpReady() {},
+      async runTurn({ onTurnStarted }) {
+        runTurnCalls += 1
+        await onTurnStarted("turn-unproven")
+        return {
+          status: "failed",
+          retrySafe: false,
+          commandQuiescence: {
+            proven: false,
+            outstandingCommandIds: ["exec-still-running"],
+          },
+          turn: {
+            id: "turn-unproven",
+            status: "failed",
+            items: [],
+            error: {
+              message:
+                "Command quiescence could not be proven; retry suppressed for exec-still-running",
+            },
+          },
+          pendingOwnerRequest: null,
+        }
+      },
+    },
+    controlPlane: {
+      async fetchTask() {
+        return { issue: { body: block }, comments }
+      },
+      async postComment(body) {
+        comments.push({ body })
+      },
+    },
+    workspace: fakeWorkspace(),
+  })
+
+  const result = await orchestrator.runOnce()
+
+  assert.equal(result.status, "failed")
+  assert.equal(runTurnCalls, 1)
+  const resultComment = comments.find(({ body }) => body.includes("agent_result:"))
+  assert.match(resultComment.body, /failed closed without another retry/)
+  assert.match(resultComment.body, /quiescence could not be proven/)
+  const events = await readFile(store.eventPath, "utf8")
+  assert.match(events, /retry_suppressed_unproven_command_quiescence/)
+  assert.doesNotMatch(events, /retry_scheduled/)
+})
+
+test("restart fails closed when an interrupted turn still has a running command", async (t) => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "koalafrog-restart-command-"))
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const block = controlBlock({ instructionId: "restart-command-001" })
+  const [instruction] = extractAgentControls(block)
+  const store = new StateStore({
+    stateDirectory: directory,
+    repository: "Sillyquack/koalafrog-hq",
+    issueNumber: 53,
+  })
+  const state = await store.load()
+  beginInstruction(state, instruction)
+  state.threadId = "thread-restart-command"
+  state.workspacePath = "/tmp/workspace-restart-command"
+  state.branch = "agent/restart-command-001"
+  recordInstructionTurnStarted(state, { turnId: "turn-interrupted", attempt: 0 })
+  await store.save(state)
+
+  let runTurnCalls = 0
+  let quiescenceChecks = 0
+  const comments = []
+  const orchestrator = new Orchestrator(runtimeConfig(directory), {
+    store,
+    appServer: {
+      async start() {},
+      async stop() {},
+      async resumeThread(threadId) {
+        return { thread: { id: threadId } }
+      },
+      async waitForMcpReady() {},
+      async readThread() {
+        return {
+          thread: {
+            turns: [
+              {
+                id: "turn-interrupted",
+                status: "interrupted",
+                items: [
+                  {
+                    id: "exec-restart-running",
+                    type: "commandExecution",
+                    status: "inProgress",
+                  },
+                ],
+              },
+            ],
+          },
+        }
+      },
+      async waitForTurnCommandQuiescence() {
+        quiescenceChecks += 1
+        return {
+          proven: false,
+          outstandingCommandIds: ["exec-restart-running"],
+        }
+      },
+      async runTurn() {
+        runTurnCalls += 1
+        throw new Error("Restart must not overlap the still-running command")
+      },
+    },
+    controlPlane: {
+      async fetchTask() {
+        return { issue: { body: block }, comments }
+      },
+      async postComment(body) {
+        comments.push({ body })
+      },
+    },
+    workspace: fakeWorkspace(),
+  })
+
+  const result = await orchestrator.runOnce()
+
+  assert.equal(result.status, "failed")
+  assert.equal(quiescenceChecks, 1)
+  assert.equal(runTurnCalls, 0)
+  assert.match(
+    comments.find(({ body }) => body.includes("agent_result:")).body,
+    /Restart recovery could not prove command quiescence/,
+  )
+  const recovered = await store.load()
+  assert.equal(recovered.activeInstruction, null)
+  assert.equal(recovered.lastConsumedInstructionId, "restart-command-001")
+})
+
 test("restart publishes a persisted owner stop before returning to polling", async (t) => {
   const directory = await mkdtemp(path.join(os.tmpdir(), "koalafrog-owner-recovery-"))
   t.after(() => rm(directory, { recursive: true, force: true }))
