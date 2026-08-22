@@ -1236,6 +1236,12 @@ test("Issue #63/010 reconciles the authorized branch once and survives restart",
     1,
   )
   assert.equal(
+    events.filter(
+      (event) => event.type === "workspace_branch_reconciliation_rejected",
+    ).length,
+    0,
+  )
+  assert.equal(
     events.find((event) => event.type === "workspace_branch_reconciled")
       .originIssueUrl,
     issue63OriginUrl,

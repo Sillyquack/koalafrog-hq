@@ -9,7 +9,11 @@ import {
   extractAgentControls,
   ownerGateReason,
 } from "../src/control-plane.mjs"
-import { authorizedWorkspaceBranchReconciliation } from "../src/orchestrator.mjs"
+import {
+  authorizedWorkspaceBranchReconciliation,
+  recordWorkspaceBranchReconciliationRejection,
+  workspaceBranchReconciliationRejection,
+} from "../src/orchestrator.mjs"
 import { initialState } from "../src/state-store.mjs"
 import { ensureWorkspace } from "../src/workspace.mjs"
 import {
@@ -139,6 +143,75 @@ test("Issue #63/010 scans past the exact non-mutating 009 owner stop", () => {
   ]) {
     assert.equal(Object.hasOwn(authorized.record, broaderOperation), false)
   }
+})
+
+test("diagnostics leave an accepted live-shaped reconciliation unchanged", () => {
+  const fixture = reconciliationFixture()
+  const input = {
+    ...fixture,
+    reconciledAt: "2026-08-22T05:11:00.000Z",
+  }
+  const before = authorizedWorkspaceBranchReconciliation(input)
+
+  assert.equal(workspaceBranchReconciliationRejection(input), null)
+  assert.deepEqual(authorizedWorkspaceBranchReconciliation(input), before)
+  assert.equal(before?.isNew, true)
+})
+
+test("live-shaped intervening mutation has one deterministic safe rejection", async () => {
+  const fixture = reconciliationFixture()
+  fixture.state.runs[1].changedFiles = ["unexpected-change.mjs"]
+  const before = authorizedWorkspaceBranchReconciliation(fixture)
+  const rejection = workspaceBranchReconciliationRejection(fixture)
+  const events = []
+
+  const event = await recordWorkspaceBranchReconciliationRejection({
+    store: {
+      async appendEvent(value) {
+        events.push(value)
+      },
+    },
+    reconciliationInput: fixture,
+  })
+
+  assert.equal(before, null)
+  assert.equal(authorizedWorkspaceBranchReconciliation(fixture), before)
+  assert.deepEqual(rejection, {
+    code: "intervening_changed_files",
+    instructionId: "production-day1-git-reconciliation-resume-010",
+    expectedBranch: issue63ExpectedBranch,
+    actualBranch: issue63ReconciledBranch,
+    head: issue63ReconciledHead,
+    runCount: 2,
+    runInstructionId: issue63InterveningInstructionId,
+  })
+  assert.deepEqual(events, [event])
+  assert.deepEqual(event, {
+    type: "workspace_branch_reconciliation_rejected",
+    ...rejection,
+  })
+})
+
+test("diagnostic events never include arbitrary prompts or secrets", async () => {
+  const fixture = reconciliationFixture()
+  const secret = `ghp_${"a".repeat(24)}`
+  fixture.instruction.prompt += `\nDo not emit ${secret}`
+  const events = []
+
+  const event = await recordWorkspaceBranchReconciliationRejection({
+    store: {
+      async appendEvent(value) {
+        events.push(value)
+      },
+    },
+    reconciliationInput: fixture,
+  })
+
+  assert.equal(event.code, "top_current_control_prompt")
+  assert.equal(events.length, 1)
+  assert.equal(Object.hasOwn(event, "prompt"), false)
+  assert.equal(JSON.stringify(event).includes(secret), false)
+  assert.equal(JSON.stringify(event).length < 4_096, true)
 })
 
 test("absent historical workspace paths are treated as legacy unknown", () => {
@@ -282,6 +355,11 @@ for (const [name, change] of [
     const fixture = reconciliationFixture()
     change(fixture)
     assert.equal(authorizedWorkspaceBranchReconciliation(fixture), null)
+    assert.equal(
+      typeof workspaceBranchReconciliationRejection(fixture)?.code,
+      "string",
+    )
+    assert.equal(authorizedWorkspaceBranchReconciliation(fixture), null)
     assert.equal(fixture.state.branch, issue63ExpectedBranch)
     assert.deepEqual(fixture.state.workspaceBranchReconciliations, [])
   })
@@ -357,6 +435,11 @@ for (const [name, change] of [
     const fixture = reconciliationFixture()
     change(fixture)
     assert.equal(authorizedWorkspaceBranchReconciliation(fixture), null)
+    assert.equal(
+      typeof workspaceBranchReconciliationRejection(fixture)?.code,
+      "string",
+    )
+    assert.equal(authorizedWorkspaceBranchReconciliation(fixture), null)
     assert.equal(fixture.state.branch, issue63ExpectedBranch)
     assert.deepEqual(fixture.state.workspaceBranchReconciliations, [])
   })
@@ -427,6 +510,11 @@ for (const [name, change] of [
   test(`history scan fails closed for ${name}`, () => {
     const fixture = reconciliationFixture()
     change(fixture)
+    assert.equal(authorizedWorkspaceBranchReconciliation(fixture), null)
+    assert.equal(
+      typeof workspaceBranchReconciliationRejection(fixture)?.code,
+      "string",
+    )
     assert.equal(authorizedWorkspaceBranchReconciliation(fixture), null)
     assert.equal(fixture.state.branch, issue63ExpectedBranch)
     assert.deepEqual(fixture.state.workspaceBranchReconciliations, [])
