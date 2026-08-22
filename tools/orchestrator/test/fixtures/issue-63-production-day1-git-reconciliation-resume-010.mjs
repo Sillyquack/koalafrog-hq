@@ -15,6 +15,8 @@ export const issue63InterveningInstructionId =
   "production-day1-git-reconciliation-metadata-009"
 export const issue63ContinuationInstructionId =
   "production-day1-git-reconciliation-resume-010"
+export const issue63DurableOwnerGateReason =
+  "The instruction requests an owner-gated action: Supabase migration approval, deployment, production writes, Aromantic Supplier/Supplier Product provenance, and Aromantic receipt creation all remain explicitly outside scope and separately gated."
 
 export const issue63PriorControl = `\`\`\`yaml
 agent_control:
@@ -42,9 +44,11 @@ agent_control:
   task_state: needs_review
   instruction_id: production-day1-git-reconciliation-metadata-009
   max_turns: 4
-  owner_approval_required: true
+  owner_approval_required: false
   prompt: |
-    Resume the existing Issue #63 Codex thread/worktree and request the exact linked-worktree Git metadata write needed by the reviewed reconciliation. Stop before any action unless the owner gate is satisfied.
+    Deploy the reviewed Supabase migration to production only after a separate owner approval.
+
+    Supabase migration approval, deployment, production writes, Aromantic Supplier/Supplier Product provenance, and Aromantic receipt creation all remain explicitly outside scope and separately gated.
 \`\`\``
 
 export const issue63ContinuationControl = `\`\`\`yaml
@@ -105,9 +109,6 @@ Git reconciliation stopped safely before applying any commit.
   completedAt: "2026-08-22T04:56:32.019Z",
 }
 
-const issue63OwnerGate =
-  "The control-plane instruction explicitly requires owner approval."
-
 export const issue63InterveningRun = {
   instructionId: issue63InterveningInstructionId,
   status: "needs_owner",
@@ -119,7 +120,7 @@ export const issue63InterveningRun = {
   originIssueUrl: issue63OriginUrl,
   ownerRequest: {
     method: "control-plane/ownerGate",
-    reason: issue63OwnerGate,
+    reason: issue63DurableOwnerGateReason,
   },
   checks: {
     typecheck: "not_run",
@@ -130,7 +131,7 @@ export const issue63InterveningRun = {
     diffCheck: "not_run",
   },
   blockers: [],
-  ownerGates: [issue63OwnerGate],
+  ownerGates: [issue63DurableOwnerGateReason],
   productionReadback: [],
   safetyFindings: [],
   branchPushState: [],

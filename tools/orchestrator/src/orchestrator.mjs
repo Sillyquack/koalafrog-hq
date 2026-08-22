@@ -153,24 +153,69 @@ function isEmptyArray(value) {
   return Array.isArray(value) && value.length === 0
 }
 
+const explicitOwnerGateReason =
+  "The control-plane instruction explicitly requires owner approval."
+const classifiedOwnerGatePrefix =
+  "The instruction requests an owner-gated action: "
+
+function normalizedGateClause(value) {
+  if (
+    typeof value !== "string" ||
+    value.length === 0 ||
+    value.length > 2_000 ||
+    /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/.test(value)
+  ) {
+    return null
+  }
+  return value.replace(/\s+/g, " ").trim() || null
+}
+
+function hasDurableOwnerGateBinding(control, durableReason) {
+  const currentReason = control ? ownerGateReason(control) : null
+  if (!currentReason) return false
+
+  if (control.ownerApprovalRequired) {
+    return (
+      currentReason === explicitOwnerGateReason &&
+      durableReason === explicitOwnerGateReason
+    )
+  }
+  if (
+    !currentReason.startsWith(classifiedOwnerGatePrefix) ||
+    typeof durableReason !== "string" ||
+    !durableReason.startsWith(classifiedOwnerGatePrefix)
+  ) {
+    return false
+  }
+
+  const durableClause = normalizedGateClause(
+    durableReason.slice(classifiedOwnerGatePrefix.length),
+  )
+  if (!durableClause) return false
+  const matchingClauses = control.prompt
+    .split(/(?<=[.!?])\s+|\n+/)
+    .map(normalizedGateClause)
+    .filter((clause) => clause === durableClause)
+  return matchingClauses.length === 1
+}
+
 function isProvablyNonMutatingRun({ run, control, state, workspace }) {
-  const gate = control ? ownerGateReason(control) : null
+  const durableGate = run?.ownerRequest?.reason
   return Boolean(
     runHasWorkspaceContinuity(run, state) &&
       control?.action === "continue" &&
-      gate &&
+      hasDurableOwnerGateBinding(control, durableGate) &&
       run.status === "needs_owner" &&
       run.branch === workspace.expectedBranch &&
       isEmptyArray(run.commits) &&
       run.turnCount === 0 &&
       run.resultArtifact === null &&
       run.ownerRequest?.method === "control-plane/ownerGate" &&
-      run.ownerRequest.reason === gate &&
       hasOnlyNotRunChecks(run.checks) &&
       isEmptyArray(run.blockers) &&
       Array.isArray(run.ownerGates) &&
       run.ownerGates.length === 1 &&
-      run.ownerGates[0] === gate &&
+      run.ownerGates[0] === durableGate &&
       isEmptyArray(run.productionReadback) &&
       isEmptyArray(run.safetyFindings) &&
       isEmptyArray(run.branchPushState) &&
