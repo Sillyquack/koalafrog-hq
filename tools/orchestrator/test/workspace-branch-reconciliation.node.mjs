@@ -12,13 +12,26 @@ import { ensureWorkspace } from "../src/workspace.mjs"
 import {
   issue63ContinuationControl,
   issue63ExpectedBranch,
+  issue63InterveningInstructionId,
   issue63OriginUrl,
+  issue63PriorRun,
   issue63ReconciledBranch,
   issue63ReconciledHead,
   issue63ReconciliationTask,
   issue63WorkspacePath,
   prepareIssue63ReconciliationState,
 } from "./fixtures/issue-63-production-day1-git-reconciliation-resume-010.mjs"
+import {
+  issue68ContinuationControl,
+  issue68ExpectedBranch,
+  issue68OriginUrl,
+  issue68PriorInstructionId,
+  issue68ReconciledBranch,
+  issue68ReconciledHead,
+  issue68ReconciliationTask,
+  issue68WorkspacePath,
+  prepareIssue68ReconciliationState,
+} from "./fixtures/issue-68-branch-reconciliation-continuation-004.mjs"
 
 const execFileAsync = promisify(execFile)
 
@@ -47,7 +60,7 @@ function reconciliationFixture() {
   }
 }
 
-test("Issue #63/010 authorizes the exact preceding durable branch transition", () => {
+test("Issue #63/010 scans past the exact non-mutating 009 owner stop", () => {
   const fixture = reconciliationFixture()
   const authorized = authorizedWorkspaceBranchReconciliation({
     ...fixture,
@@ -59,6 +72,7 @@ test("Issue #63/010 authorizes the exact preceding durable branch transition", (
     reconciliationId:
       "authorized-workspace-branch:production-day1-git-reconciliation-008:production-day1-git-reconciliation-resume-010:ec719153c8e726831d7e2b748067383ea7f4e314",
     precedingInstructionId: "production-day1-git-reconciliation-008",
+    interveningInstructionIds: [issue63InterveningInstructionId],
     continuationInstructionId:
       "production-day1-git-reconciliation-resume-010",
     originIssueNumber: 63,
@@ -75,6 +89,47 @@ test("Issue #63/010 authorizes the exact preceding durable branch transition", (
     ...fixture,
     reconciledAt: "2026-08-22T05:12:00.000Z",
   })
+  assert.equal(replay.isNew, false)
+  assert.equal(replay.record, authorized.record)
+})
+
+test("Issue #68/004 reconciles its reviewed clean branch idempotently", () => {
+  const [instruction] = extractAgentControls(issue68ContinuationControl)
+  const state = prepareIssue68ReconciliationState(
+    initialState({
+      repository: "Sillyquack/koalafrog-hq",
+      issueNumber: 68,
+      issueUrl: issue68OriginUrl,
+    }),
+    instruction,
+  )
+  const fixture = {
+    state,
+    instruction: state.activeInstruction,
+    task: issue68ReconciliationTask(),
+    workspace: {
+      path: issue68WorkspacePath,
+      expectedBranch: issue68ExpectedBranch,
+      actualBranch: issue68ReconciledBranch,
+      head: issue68ReconciledHead,
+      dirty: false,
+      operationsInProgress: [],
+    },
+  }
+
+  const authorized = authorizedWorkspaceBranchReconciliation({
+    ...fixture,
+    reconciledAt: "2026-08-22T09:31:00.000Z",
+  })
+  assert.equal(authorized.isNew, true)
+  assert.equal(authorized.record.precedingInstructionId, issue68PriorInstructionId)
+  assert.deepEqual(authorized.record.interveningInstructionIds, [])
+  assert.equal(authorized.record.fromBranch, issue68ExpectedBranch)
+  assert.equal(authorized.record.toBranch, issue68ReconciledBranch)
+  assert.equal(authorized.record.head, issue68ReconciledHead)
+
+  state.workspaceBranchReconciliations.push(authorized.record)
+  const replay = authorizedWorkspaceBranchReconciliation(fixture)
   assert.equal(replay.isNew, false)
   assert.equal(replay.record, authorized.record)
 })
@@ -110,6 +165,41 @@ for (const [name, change] of [
   }],
 ]) {
   test(`branch reconciliation fails closed for ${name}`, () => {
+    const fixture = reconciliationFixture()
+    change(fixture)
+    assert.equal(authorizedWorkspaceBranchReconciliation(fixture), null)
+    assert.equal(fixture.state.branch, issue63ExpectedBranch)
+    assert.deepEqual(fixture.state.workspaceBranchReconciliations, [])
+  })
+}
+
+for (const [name, change] of [
+  ["mutable intervening run", (fixture) => {
+    fixture.state.runs[1].changedFiles = ["unexpected-change.mjs"]
+  }],
+  ["conflicting intervening HEAD evidence", (fixture) => {
+    fixture.state.runs[1].commits = ["a".repeat(40)]
+  }],
+  ["intervening wrong thread", (fixture) => {
+    fixture.state.runs[1].threadId = "different-thread"
+  }],
+  ["intervening wrong origin", (fixture) => {
+    fixture.state.runs[1].originIssueNumber = 68
+  }],
+  ["intervening wrong workspace", (fixture) => {
+    fixture.state.runs[1].workspacePath = "/workspaces/different"
+  }],
+  ["conflicting intervening branch evidence", (fixture) => {
+    fixture.state.runs[1].branch = issue63ReconciledBranch
+  }],
+  ["intervening turn execution", (fixture) => {
+    fixture.state.runs[1].turnCount = 1
+  }],
+  ["ambiguous transition sources", (fixture) => {
+    fixture.state.runs.splice(1, 0, structuredClone(issue63PriorRun))
+  }],
+]) {
+  test(`history scan fails closed for ${name}`, () => {
     const fixture = reconciliationFixture()
     change(fixture)
     assert.equal(authorizedWorkspaceBranchReconciliation(fixture), null)

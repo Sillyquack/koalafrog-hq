@@ -16,9 +16,11 @@ import {
 } from "../src/approval-decisions.mjs"
 import {
   extractAgentControls,
+  formatPickupPacket,
   selectNextInstruction,
 } from "../src/control-plane.mjs"
 import { Orchestrator } from "../src/orchestrator.mjs"
+import { QueueClaimStore } from "../src/queue-claim-store.mjs"
 import { StateStore } from "../src/state-store.mjs"
 import {
   issue63ContinuationControl,
@@ -572,7 +574,7 @@ test("Issue #63 skips stale 002, claims matching 003 once, and preserves task co
   )
 })
 
-test("repository runner claims the Issue #63/010 reconciled continuation exactly once", async (t) => {
+test("repository runner recovers retryable Issue #63/010 without duplicate publication", async (t) => {
   const directory = await mkdtemp(
     path.join(os.tmpdir(), "koalafrog-repository-branch-reconciliation-"),
   )
@@ -592,6 +594,16 @@ test("repository runner claims the Issue #63/010 reconciled continuation exactly
   await store.save(state)
 
   const task = issue63ReconciliationTask()
+  task.comments.push({
+    id: 1,
+    body: formatPickupPacket({
+      instructionId: instruction.instructionId,
+      originIssueNumber: 63,
+      originIssueUrl: issue63OriginUrl,
+      codexThreadId: issue63ThreadId,
+      branch: issue63ExpectedBranch,
+    }),
+  })
   let postedCommentId = 1
   const posted = []
   const scanner = {
@@ -703,12 +715,34 @@ test("repository runner claims the Issue #63/010 reconciled continuation exactly
     searchMatched: true,
     updatedAt: task.issue.updated_at,
   }
+  let queueNow = new Date("2026-08-22T05:10:00.000Z")
+  const claimStore = new QueueClaimStore({
+    stateDirectory: directory,
+    retryBaseMs: 1,
+    now: () => queueNow,
+  })
+  await assert.rejects(
+    claimStore.withClaim(
+      {
+        instructionId: instruction.instructionId,
+        originIssueNumber: 63,
+        originIssueUrl: issue63OriginUrl,
+      },
+      async () => {
+        throw new Error("Workspace branch changed before runtime recovery")
+      },
+    ),
+    /Workspace branch changed before runtime recovery/,
+  )
+  queueNow = new Date("2026-08-22T05:10:00.010Z")
 
   const claimed = await runRepositoryIssue(scanner, config, candidate, {
     OrchestratorClass: Issue63ReconciliationOrchestrator,
+    claimStore,
   })
   const replay = await runRepositoryIssue(scanner, config, candidate, {
     OrchestratorClass: Issue63ReconciliationOrchestrator,
+    claimStore,
   })
 
   assert.equal(claimed.status, "needs_review")
@@ -727,10 +761,20 @@ test("repository runner claims the Issue #63/010 reconciled continuation exactly
   assert.equal(reconciliationCallbacks, 1)
   assert.equal(
     posted.filter((body) => body.includes("agent_pickup:")).length,
-    1,
+    0,
   )
   assert.equal(
     posted.filter((body) => body.includes("agent_result:")).length,
+    1,
+  )
+  assert.equal(
+    task.comments.filter((comment) => comment.body.includes("agent_pickup:"))
+      .length,
+    1,
+  )
+  assert.equal(
+    task.comments.filter((comment) => comment.body.includes("agent_result:"))
+      .length,
     1,
   )
   const persisted = await new StateStore(storeOptions).load()
@@ -758,7 +802,7 @@ test("repository runner claims the Issue #63/010 reconciled continuation exactly
     ),
   )
   assert.equal(claimRecord.status, "completed")
-  assert.equal(claimRecord.attempt, 1)
+  assert.equal(claimRecord.attempt, 2)
 })
 
 for (const [terminalStatus, issueNumber] of [

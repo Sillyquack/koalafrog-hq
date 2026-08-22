@@ -11,6 +11,8 @@ export const issue63ReconciledHead =
   "ec719153c8e726831d7e2b748067383ea7f4e314"
 export const issue63PriorInstructionId =
   "production-day1-git-reconciliation-008"
+export const issue63InterveningInstructionId =
+  "production-day1-git-reconciliation-metadata-009"
 export const issue63ContinuationInstructionId =
   "production-day1-git-reconciliation-resume-010"
 
@@ -32,6 +34,17 @@ agent_control:
     - if and only if the cherry-pick is clean and validation is green, push the new integration branch normally without force-push and open a PR for review against the appropriate reviewed base/default branch. Do not merge the PR.
 
     Fail closed on any conflict, unexpected lineage/tree mismatch, test/check regression, or ambiguity.
+\`\`\``
+
+export const issue63InterveningControl = `\`\`\`yaml
+agent_control:
+  action: continue
+  task_state: needs_review
+  instruction_id: production-day1-git-reconciliation-metadata-009
+  max_turns: 4
+  owner_approval_required: true
+  prompt: |
+    Resume the existing Issue #63 Codex thread/worktree and request the exact linked-worktree Git metadata write needed by the reviewed reconciliation. Stop before any action unless the owner gate is satisfied.
 \`\`\``
 
 export const issue63ContinuationControl = `\`\`\`yaml
@@ -92,6 +105,39 @@ Git reconciliation stopped safely before applying any commit.
   completedAt: "2026-08-22T04:56:32.019Z",
 }
 
+const issue63OwnerGate =
+  "The control-plane instruction explicitly requires owner approval."
+
+export const issue63InterveningRun = {
+  instructionId: issue63InterveningInstructionId,
+  status: "needs_owner",
+  threadId: issue63ThreadId,
+  branch: issue63ExpectedBranch,
+  commits: [],
+  turnCount: 0,
+  originIssueNumber: 63,
+  originIssueUrl: issue63OriginUrl,
+  ownerRequest: {
+    method: "control-plane/ownerGate",
+    reason: issue63OwnerGate,
+  },
+  checks: {
+    typecheck: "not_run",
+    lint: "not_run",
+    tests: "not_run",
+    cloudflareReadiness: "not_run",
+    build: "not_run",
+    diffCheck: "not_run",
+  },
+  blockers: [],
+  ownerGates: [issue63OwnerGate],
+  productionReadback: [],
+  safetyFindings: [],
+  branchPushState: [],
+  resultArtifact: null,
+  completedAt: "2026-08-22T05:04:00.000Z",
+}
+
 export function issue63ReconciliationTask(comments = []) {
   return {
     issue: {
@@ -101,14 +147,18 @@ export function issue63ReconciliationTask(comments = []) {
       updated_at: "2026-08-22T05:10:00.000Z",
       body: issue63PriorControl,
     },
-    comments: [{ body: issue63ContinuationControl }, ...comments],
+    comments: [
+      { body: issue63InterveningControl },
+      { body: issue63ContinuationControl },
+      ...comments,
+    ],
   }
 }
 
 export function prepareIssue63ReconciliationState(state, instruction) {
   state.status = "needs_owner"
   state.task.originIssueUrl = issue63OriginUrl
-  state.lastConsumedInstructionId = issue63PriorInstructionId
+  state.lastConsumedInstructionId = issue63InterveningInstructionId
   state.activeInstruction = {
     ...instruction,
     phase: "selected",
@@ -119,6 +169,9 @@ export function prepareIssue63ReconciliationState(state, instruction) {
   state.threadId = issue63ThreadId
   state.workspacePath = issue63WorkspacePath
   state.branch = issue63ExpectedBranch
-  state.runs = [structuredClone(issue63PriorRun)]
+  state.runs = [
+    structuredClone(issue63PriorRun),
+    structuredClone(issue63InterveningRun),
+  ]
   return state
 }

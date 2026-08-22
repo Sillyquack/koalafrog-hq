@@ -130,6 +130,95 @@ function explicitlyAuthorizesBranchTransition(prompt, branch, head, finalMessage
   )
 }
 
+function runHasWorkspaceContinuity(run, state) {
+  return Boolean(
+    run &&
+      run.threadId === state.threadId &&
+      run.originIssueNumber === state.task.originIssueNumber &&
+      run.originIssueUrl === state.task.originIssueUrl &&
+      (!Object.hasOwn(run, "workspacePath") ||
+        run.workspacePath === state.workspacePath),
+  )
+}
+
+function hasOnlyNotRunChecks(checks) {
+  return Boolean(
+    checks &&
+      resultCheckNames.every((name) => checks[name] === "not_run") &&
+      Object.keys(checks).every((name) => resultCheckNames.includes(name)),
+  )
+}
+
+function isEmptyArray(value) {
+  return Array.isArray(value) && value.length === 0
+}
+
+function isProvablyNonMutatingRun({ run, control, state, workspace }) {
+  const gate = control ? ownerGateReason(control) : null
+  return Boolean(
+    runHasWorkspaceContinuity(run, state) &&
+      control?.action === "continue" &&
+      gate &&
+      run.status === "needs_owner" &&
+      run.branch === workspace.expectedBranch &&
+      isEmptyArray(run.commits) &&
+      run.turnCount === 0 &&
+      run.resultArtifact === null &&
+      run.ownerRequest?.method === "control-plane/ownerGate" &&
+      run.ownerRequest.reason === gate &&
+      hasOnlyNotRunChecks(run.checks) &&
+      isEmptyArray(run.blockers) &&
+      Array.isArray(run.ownerGates) &&
+      run.ownerGates.length === 1 &&
+      run.ownerGates[0] === gate &&
+      isEmptyArray(run.productionReadback) &&
+      isEmptyArray(run.safetyFindings) &&
+      isEmptyArray(run.branchPushState) &&
+      (!Object.hasOwn(run, "changedFiles") || isEmptyArray(run.changedFiles)),
+  )
+}
+
+function transitionSource({ run, controls, state, workspace, head }) {
+  if (
+    !runHasWorkspaceContinuity(run, state) ||
+    run.branch !== workspace.actualBranch ||
+    !Array.isArray(run.commits) ||
+    run.commits[0] !== head ||
+    !Number.isSafeInteger(run.turnCount) ||
+    run.turnCount < 1
+  ) {
+    return null
+  }
+  const matchingControls = controls.filter(
+    (control) => control.instructionId === run.instructionId,
+  )
+  if (
+    matchingControls.length !== 1 ||
+    matchingControls[0].action !== "continue" ||
+    matchingControls[0].ownerApprovalRequired ||
+    !explicitlyAuthorizesBranchTransition(
+      matchingControls[0].prompt,
+      workspace.actualBranch,
+      head,
+      run.resultArtifact?.finalMessage ?? "",
+    )
+  ) {
+    return null
+  }
+  return { run, control: matchingControls[0] }
+}
+
+function reconciliationRecordMatches(existing, expected) {
+  return Object.entries(expected).every(([key, value]) => {
+    if (!Array.isArray(value)) return existing[key] === value
+    return (
+      Array.isArray(existing[key]) &&
+      existing[key].length === value.length &&
+      existing[key].every((item, index) => item === value[index])
+    )
+  })
+}
+
 export function authorizedWorkspaceBranchReconciliation({
   state,
   instruction,
@@ -139,15 +228,12 @@ export function authorizedWorkspaceBranchReconciliation({
 }) {
   const issueUrl = taskIssueUrl(task)
   const controls = listAgentControls(task.issue, task.comments)
-  const priorRun = state.runs?.at(-1)
-  const priorControls = controls.filter(
-    (control) => control.instructionId === priorRun?.instructionId,
-  )
   const currentControls = controls.filter(
     (control) => control.instructionId === instruction?.instructionId,
   )
-  const finalMessage = priorRun?.resultArtifact?.finalMessage ?? ""
   const head = workspace?.head
+  const runs = state.runs ?? []
+  const historyTail = runs.at(-1)
 
   if (
     !state.activeInstruction ||
@@ -169,31 +255,51 @@ export function authorizedWorkspaceBranchReconciliation({
     workspace.operationsInProgress?.length !== 0 ||
     typeof head !== "string" ||
     !/^[0-9a-f]{40}$/.test(head) ||
-    !priorRun ||
-    state.lastConsumedInstructionId !== priorRun.instructionId ||
-    priorRun.instructionId === instruction.instructionId ||
-    priorRun.threadId !== state.threadId ||
-    priorRun.branch !== workspace.actualBranch ||
-    priorRun.commits?.[0] !== head ||
-    priorRun.originIssueNumber !== state.task.originIssueNumber ||
-    priorRun.originIssueUrl !== state.task.originIssueUrl ||
+    !historyTail ||
+    state.lastConsumedInstructionId !== historyTail.instructionId ||
+    runs.some((run) => run.instructionId === instruction.instructionId) ||
+    task.issue?.number !== state.task.originIssueNumber ||
     issueUrl === null ||
-    issueUrl !== state.task.originIssueUrl ||
-    priorControls.length !== 1 ||
-    priorControls[0].action !== "continue" ||
-    !explicitlyAuthorizesBranchTransition(
-      priorControls[0].prompt,
-      workspace.actualBranch,
-      head,
-      finalMessage,
-    )
+    issueUrl !== state.task.originIssueUrl
   ) {
     return null
   }
 
+  const sources = []
+  for (let index = runs.length - 1; index >= 0; index -= 1) {
+    const run = runs[index]
+    const source = transitionSource({ run, controls, state, workspace, head })
+    if (source) sources.push({ ...source, index })
+  }
+  if (sources.length !== 1) return null
+
+  const [{ run: sourceRun, index: sourceIndex }] = sources
+  const interveningRuns = runs.slice(sourceIndex + 1)
+  const interveningInstructionIds = []
+  const observedInstructionIds = new Set([sourceRun.instructionId])
+  for (const run of interveningRuns) {
+    const matchingControls = controls.filter(
+      (control) => control.instructionId === run.instructionId,
+    )
+    if (
+      observedInstructionIds.has(run.instructionId) ||
+      matchingControls.length !== 1 ||
+      !isProvablyNonMutatingRun({
+        run,
+        control: matchingControls[0],
+        state,
+        workspace,
+      })
+    ) {
+      return null
+    }
+    observedInstructionIds.add(run.instructionId)
+    interveningInstructionIds.push(run.instructionId)
+  }
+
   const reconciliationId = [
     "authorized-workspace-branch",
-    priorRun.instructionId,
+    sourceRun.instructionId,
     instruction.instructionId,
     head,
   ].join(":")
@@ -202,7 +308,8 @@ export function authorizedWorkspaceBranchReconciliation({
   )
   const expectedRecord = {
     reconciliationId,
-    precedingInstructionId: priorRun.instructionId,
+    precedingInstructionId: sourceRun.instructionId,
+    interveningInstructionIds,
     continuationInstructionId: instruction.instructionId,
     originIssueNumber: state.task.originIssueNumber,
     originIssueUrl: state.task.originIssueUrl,
@@ -213,9 +320,7 @@ export function authorizedWorkspaceBranchReconciliation({
     head,
   }
   if (existing) {
-    return Object.entries(expectedRecord).every(
-      ([key, value]) => existing[key] === value,
-    )
+    return reconciliationRecordMatches(existing, expectedRecord)
       ? { record: existing, isNew: false }
       : null
   }
@@ -491,8 +596,10 @@ export class Orchestrator {
       instructionId: packet.instructionId,
       status: packet.status,
       threadId: packet.codexThreadId,
+      workspacePath: state.workspacePath,
       branch: packet.branch,
       commits: packet.commits,
+      changedFiles: packet.changedFiles,
       turnCount: instructionTurnCount(state, packet.instructionId),
       originIssueNumber: state.task.originIssueNumber,
       originIssueUrl: state.task.originIssueUrl,
