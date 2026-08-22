@@ -8,9 +8,13 @@ test("workspace-local task turns do not enter recursive app-server approval loop
     approvalPolicy: "on-request",
     approvalsReviewer: "user",
     sandbox: "workspace-write",
+    config: { "features.exec_permission_approvals": true },
   })
   assert.equal(normalized.approvalPolicy, "never")
   assert.equal(normalized.sandbox, "workspace-write")
+  assert.deepEqual(normalized.config, {
+    "features.exec_permission_approvals": true,
+  })
 })
 
 test("read-only and unrelated policies are not rewritten", () => {

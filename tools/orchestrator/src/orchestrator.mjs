@@ -20,6 +20,12 @@ import {
 } from "./control-plane.mjs"
 import { GithubControlPlane } from "./github-control-plane.mjs"
 import {
+  authorizedGitExecutionBoundary,
+  gitExecutionBoundaryIsCurrent,
+  gitExecutionBoundaryPrompt,
+  matchGitExecutionBoundaryRequest,
+} from "./git-execution-boundary.mjs"
+import {
   checksFromResultArtifact,
   resultArtifactFromTurnResult,
   resultCheckNames,
@@ -997,6 +1003,7 @@ export async function ensureTaskThread({
   state,
   workspacePath,
   model,
+  gitExecutionBoundary = null,
   save,
 }) {
   const durableTurnPhase = new Set([
@@ -1011,6 +1018,9 @@ export async function ensureTaskThread({
     approvalsReviewer: "user",
     sandbox: "workspace-write",
     developerInstructions: safetyInstructions,
+    ...(gitExecutionBoundary
+      ? { config: { "features.exec_permission_approvals": true } }
+      : {}),
   }
   const response = state.threadId
     ? await appServer.resumeThread(state.threadId, common)
@@ -1052,6 +1062,8 @@ export class Orchestrator {
       ensureWorkspace,
       inspectWorkspace,
       validateWorkspace,
+      authorizedGitExecutionBoundary,
+      gitExecutionBoundaryIsCurrent,
       ...dependencies.workspace,
     }
     this.controlThreadId = null
@@ -1279,7 +1291,7 @@ export class Orchestrator {
     }
   }
 
-  async #runWithRetries(state, instruction) {
+  async #runWithRetries(state, instruction, gitExecutionBoundary = null) {
     const maxTurns = Math.min(instruction.maxTurns, this.config.maxTurns)
     let result = null
     if ((state.activeInstruction.attempts ?? 0) > this.config.maxRetries) {
@@ -1315,7 +1327,8 @@ export class Orchestrator {
         threadId: state.threadId,
         cwd: state.workspacePath,
         timeoutMs: this.config.turnTimeoutMs,
-        prompt: `${retryPrefix}${promptForInstruction(instruction, this.config.allowedPaths)}`,
+        prompt: `${retryPrefix}${promptForInstruction(instruction, this.config.allowedPaths)}${gitExecutionBoundaryPrompt(gitExecutionBoundary)}`,
+        ...(gitExecutionBoundary ? { approvalPolicy: "on-request" } : {}),
         onTurnStarted: async (turnId) => {
           const availableDecisionIds = (state.ownerApprovalDecisions ?? [])
             .filter(
@@ -1364,7 +1377,61 @@ export class Orchestrator {
           state.status = "needs_owner"
           await this.#save(state)
         },
-        resolveApprovalRequest: async (ownerRequest) => {
+        resolveApprovalRequest: async (ownerRequest, requestContext = {}) => {
+          const boundaryStillCurrent = Boolean(
+            gitExecutionBoundary &&
+              state.activeInstruction?.instructionId ===
+                gitExecutionBoundary.instructionId &&
+              state.activeInstruction.phase === "turn_started" &&
+              state.activeInstruction.turnId === ownerRequest.turnId &&
+              state.threadId === gitExecutionBoundary.threadId &&
+              state.workspacePath === gitExecutionBoundary.workspacePath &&
+              state.branch === gitExecutionBoundary.branch,
+          )
+          const matchedGitGrant = boundaryStillCurrent
+            ? matchGitExecutionBoundaryRequest({
+                boundary: gitExecutionBoundary,
+                request: ownerRequest,
+                commandExecution: requestContext.commandExecution,
+              })
+            : null
+          const gitGrant =
+            matchedGitGrant &&
+            (await this.workspace.gitExecutionBoundaryIsCurrent(
+              gitExecutionBoundary,
+              matchedGitGrant.action,
+            ))
+              ? matchedGitGrant
+              : null
+          if (gitGrant) {
+            state.activeInstruction.gitExecutionPermissionGrants ??= []
+            const duplicateAction =
+              state.activeInstruction.gitExecutionPermissionGrants.find(
+                (grant) =>
+                  grant.turnId === ownerRequest.turnId &&
+                  grant.action === gitGrant.action,
+              )
+            if (duplicateAction && gitGrant.action !== "validation") return null
+            state.activeInstruction.gitExecutionPermissionGrants.push({
+              action: gitGrant.action,
+              turnId: ownerRequest.turnId,
+              itemId: ownerRequest.itemId,
+              grantedAt: new Date().toISOString(),
+            })
+            await this.#save(state)
+            await this.store.appendEvent({
+              type: "git_execution_permission_granted",
+              instructionId: instruction.instructionId,
+              action: gitGrant.action,
+              turnId: ownerRequest.turnId,
+              itemId: ownerRequest.itemId,
+              pathCount:
+                gitGrant.action === "cherry_pick"
+                  ? gitExecutionBoundary.writablePaths.length
+                  : 0,
+            })
+            return { response: gitGrant.response, decisionId: null }
+          }
           const consumed = consumeOwnerApprovalDecision({
             state,
             request: ownerRequest,
@@ -1673,11 +1740,24 @@ export class Orchestrator {
     state.branch = workspace.branch
     await this.#save(state)
 
+    const gitExecutionBoundary =
+      await this.workspace.authorizedGitExecutionBoundary({
+        state,
+        instruction,
+        task,
+        workspacePath: state.workspacePath,
+        workspaceRoot: path.join(this.store.directory, "workspaces"),
+        checkoutPath: this.config.checkoutPath,
+        repository: this.config.repository,
+        baseRef: this.config.baseRef,
+      })
+
     await ensureTaskThread({
       appServer: this.appServer,
       state,
       workspacePath: state.workspacePath,
       model: this.config.model,
+      gitExecutionBoundary,
       save: (nextState) => this.#save(nextState),
     })
     await this.#postPickup(state, instruction, task.comments)
@@ -1781,7 +1861,11 @@ export class Orchestrator {
     }
 
     if (!turnResult) {
-      turnResult = await this.#runWithRetries(state, instruction)
+      turnResult = await this.#runWithRetries(
+        state,
+        instruction,
+        gitExecutionBoundary,
+      )
       turnResult = recordCompletedTurnResult(state, turnResult)
       await this.#save(state)
     }
