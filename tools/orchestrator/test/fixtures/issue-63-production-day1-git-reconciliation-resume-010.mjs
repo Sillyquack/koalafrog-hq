@@ -17,6 +17,12 @@ export const issue63ContinuationInstructionId =
   "production-day1-git-reconciliation-resume-010"
 export const issue63DurableOwnerGateReason =
   "The instruction requests an owner-gated action: Supabase migration approval, deployment, production writes, Aromantic Supplier/Supplier Product provenance, and Aromantic receipt creation all remain explicitly outside scope and separately gated."
+export const issue63CleanWorkspaceEvidence =
+  "No conflict occurred, no `CHERRY_PICK_HEAD` remains, and the worktree is clean."
+export const issue63GitMetadataGate =
+  "Remaining gate: rerun with write access to this linked worktree’s Git metadata, then perform the exact authorized cherry-pick and full validation before any normal push or PR creation. Supabase migration approval and all Aromantic provenance/receipt authorization remain separate, unresolved owner gates."
+export const issue63NoProductionMutations =
+  "Production, migration, deployment, receipt, and Aromantic mutations: **none**"
 
 export const issue63PriorControl = `\`\`\`yaml
 agent_control:
@@ -81,14 +87,28 @@ export const issue63PriorRun = {
   turnCount: 1,
   originIssueNumber: 63,
   originIssueUrl: issue63OriginUrl,
+  ownerRequest: null,
   checks: {
     typecheck: "unknown",
     lint: "unknown",
     tests: "unknown",
-    cloudflare_readiness: "unknown",
+    cloudflareReadiness: "unknown",
     build: "unknown",
-    diff_check: "pass",
+    diffCheck: "pass",
   },
+  blockers: [issue63CleanWorkspaceEvidence, issue63GitMetadataGate],
+  ownerGates: [issue63GitMetadataGate],
+  productionReadback: [
+    issue63NoProductionMutations,
+    issue63GitMetadataGate,
+  ],
+  safetyFindings: [],
+  branchPushState: [
+    "Git reconciliation stopped safely before applying any commit.",
+    `Integration branch: \`${issue63ReconciledBranch}\``,
+    "Push: **NOT ATTEMPTED**",
+    issue63GitMetadataGate,
+  ],
   resultArtifact: {
     version: 1,
     source: "completed_turn_final_message",
@@ -101,13 +121,102 @@ Git reconciliation stopped safely before applying any commit.
 
 - Integration branch: \`agent/issue-63-production-day1-integration-001\`
 - Authorized base/current HEAD: \`ec719153c8e726831d7e2b748067383ea7f4e314\`
-- Cherry-pick: **FAILED before application** because the sandbox denied creation of the linked worktree's \`index.lock\`.
+- Base tree: \`2330f747713ce620c7927c2c505c622b40e18386\`
+- Cherry-pick: **FAILED before application** because the sandbox denied creation of the linked worktree’s \`index.lock\`.
 - No conflict occurred, no \`CHERRY_PICK_HEAD\` remains, and the worktree is clean.
 - Commits above base: \`0\`
 - \`git diff --check\`: **PASS**
-- Push: **NOT ATTEMPTED**`,
+- Typecheck/lint/tests/readiness/build: **NOT RUN** because the required cherry-pick did not complete.
+- Push: **NOT ATTEMPTED**
+- PR: **NOT CREATED**
+- Production, migration, deployment, receipt, and Aromantic mutations: **none**
+
+Lineage verification succeeded before the failure: \`ec719153…\` has the same tree as \`a74079be…^\`, confirming that \`a920e581…\` must not be replayed. The expected tree after cherry-picking \`a74079be…\` would be \`60c53e071144b4803e6f77dd07c73085050e4c75\`.
+
+${issue63GitMetadataGate}`,
+    checks: {
+      typecheck: {
+        status: "unknown",
+        evidence: [
+          {
+            source: "final_message",
+            status: "unknown",
+            summary:
+              "Typecheck/lint/tests/readiness/build: **NOT RUN** because the required cherry-pick did not complete.",
+          },
+        ],
+      },
+      lint: {
+        status: "unknown",
+        evidence: [
+          {
+            source: "final_message",
+            status: "unknown",
+            summary:
+              "Typecheck/lint/tests/readiness/build: **NOT RUN** because the required cherry-pick did not complete.",
+          },
+        ],
+      },
+      tests: {
+        status: "unknown",
+        evidence: [
+          {
+            source: "final_message",
+            status: "unknown",
+            summary:
+              "Typecheck/lint/tests/readiness/build: **NOT RUN** because the required cherry-pick did not complete.",
+          },
+        ],
+      },
+      cloudflareReadiness: {
+        status: "unknown",
+        evidence: [],
+      },
+      build: {
+        status: "unknown",
+        evidence: [
+          {
+            source: "final_message",
+            status: "unknown",
+            summary:
+              "Typecheck/lint/tests/readiness/build: **NOT RUN** because the required cherry-pick did not complete.",
+          },
+        ],
+      },
+      diffCheck: {
+        status: "fail",
+        evidence: [
+          {
+            source: "command_execution",
+            status: "fail",
+            summary:
+              "/bin/zsh -lc 'git diff --check\\ngit status --porcelain=v1\\ngit rev-list --count ec719153c8e726831d7e2b748067383ea7f4e314..HEAD\\ngit rev-parse HEAD''^{tree}\\ngit ls-remote --heads origin refs/heads/agent/issue-63-production-day1-integration-001' (failed, exit 128)",
+          },
+          {
+            source: "final_message",
+            status: "pass",
+            summary: "`git diff --check`: **PASS**",
+          },
+        ],
+      },
+    },
+    findings: {
+      blockers: [issue63CleanWorkspaceEvidence, issue63GitMetadataGate],
+      ownerGates: [issue63GitMetadataGate],
+      productionReadback: [
+        issue63NoProductionMutations,
+        issue63GitMetadataGate,
+      ],
+      safetyFindings: [],
+      branchPushState: [
+        "Git reconciliation stopped safely before applying any commit.",
+        `Integration branch: \`${issue63ReconciledBranch}\``,
+        "Push: **NOT ATTEMPTED**",
+        issue63GitMetadataGate,
+      ],
+    },
   },
-  completedAt: "2026-08-22T04:56:32.019Z",
+  completedAt: "2026-08-22T04:56:33.827Z",
 }
 
 export const issue63InterveningRun = {

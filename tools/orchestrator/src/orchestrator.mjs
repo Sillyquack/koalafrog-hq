@@ -224,6 +224,145 @@ function isProvablyNonMutatingRun({ run, control, state, workspace }) {
   )
 }
 
+function checkHasFailedCommandEvidence(check) {
+  return Boolean(
+    check?.status === "fail" &&
+      Array.isArray(check.evidence) &&
+      check.evidence.some(
+        (evidence) =>
+          evidence?.source === "command_execution" &&
+          evidence.status === "fail",
+      ),
+  )
+}
+
+function hasFailedCommandEvidence(resultArtifact) {
+  const checks = resultArtifact?.checks
+  return Boolean(
+    checks && Object.values(checks).some(checkHasFailedCommandEvidence),
+  )
+}
+
+function hasLaterGitFailureEvidence(run) {
+  const finalMessage = run?.resultArtifact?.finalMessage
+  return Boolean(
+    hasFailedCommandEvidence(run?.resultArtifact) ||
+      (typeof finalMessage === "string" &&
+        /(?:Git reconciliation stopped safely|Cherry-pick:\s*\*\*FAILED|cherry-pick[^\n]*\b(?:conflict|partially applied)\b)/i.test(
+          finalMessage,
+        )),
+  )
+}
+
+function hasExactlyOneLine(lines, expected) {
+  return lines.filter((line) => line === expected).length === 1
+}
+
+function sameStringArray(left, right) {
+  return Boolean(
+    Array.isArray(left) &&
+      Array.isArray(right) &&
+      left.length === right.length &&
+      left.every(
+        (value, index) =>
+          typeof value === "string" && value === right[index],
+      ),
+  )
+}
+
+function provesBranchTransitionBeforeLaterFailure({ run, branch, head }) {
+  const artifact = run?.resultArtifact
+  const finalMessage = artifact?.finalMessage
+  if (typeof finalMessage !== "string") return false
+
+  const lines = finalMessage.split(/\r?\n/).map((line) => line.trim())
+  const stoppedLine = "Git reconciliation stopped safely before applying any commit."
+  const branchLine = `- Integration branch: \`${branch}\``
+  const headLine = `- Authorized base/current HEAD: \`${head}\``
+  const cleanLine =
+    "- No conflict occurred, no `CHERRY_PICK_HEAD` remains, and the worktree is clean."
+  const noMutationLine =
+    "- Production, migration, deployment, receipt, and Aromantic mutations: **none**"
+  const gate = run.ownerGates?.[0]
+  const checks = run.checks
+  const artifactFindings = artifact.findings
+  const failedDiffCommands = artifact.checks?.diffCheck?.evidence?.filter(
+    (evidence) =>
+      evidence?.source === "command_execution" && evidence.status === "fail",
+  )
+
+  return Boolean(
+    run.status === "needs_review" &&
+      run.ownerRequest === null &&
+      Array.isArray(run.commits) &&
+      run.commits.length === 1 &&
+      run.commits[0] === head &&
+      (!Object.hasOwn(run, "changedFiles") || isEmptyArray(run.changedFiles)) &&
+      checks &&
+      Object.keys(checks).length === resultCheckNames.length &&
+      checks.typecheck === "unknown" &&
+      checks.lint === "unknown" &&
+      checks.tests === "unknown" &&
+      checks.cloudflareReadiness === "unknown" &&
+      checks.build === "unknown" &&
+      checks.diffCheck === "pass" &&
+      artifact.version === 1 &&
+      artifact.source === "completed_turn_final_message" &&
+      artifact.turnStatus === "completed" &&
+      checkHasFailedCommandEvidence(artifact.checks?.diffCheck) &&
+      failedDiffCommands.length === 1 &&
+      typeof failedDiffCommands[0].summary === "string" &&
+      failedDiffCommands[0].summary.includes("git diff --check") &&
+      failedDiffCommands[0].summary.includes(head) &&
+      failedDiffCommands[0].summary.includes(`refs/heads/${branch}`) &&
+      failedDiffCommands[0].summary.endsWith("(failed, exit 128)") &&
+      hasExactlyOneLine(lines, stoppedLine) &&
+      hasExactlyOneLine(lines, branchLine) &&
+      hasExactlyOneLine(lines, headLine) &&
+      lines.filter((line) =>
+        /^- Cherry-pick: \*\*FAILED before application\*\* because the sandbox denied creation of the linked worktree(?:'|’)s `index\.lock`\.$/.test(
+          line,
+        ),
+      ).length === 1 &&
+      hasExactlyOneLine(lines, cleanLine) &&
+      hasExactlyOneLine(lines, "- Commits above base: `0`") &&
+      hasExactlyOneLine(
+        lines,
+        "- Typecheck/lint/tests/readiness/build: **NOT RUN** because the required cherry-pick did not complete.",
+      ) &&
+      hasExactlyOneLine(lines, "- Push: **NOT ATTEMPTED**") &&
+      hasExactlyOneLine(lines, "- PR: **NOT CREATED**") &&
+      hasExactlyOneLine(lines, noMutationLine) &&
+      Array.isArray(run.blockers) &&
+      run.blockers.length === 2 &&
+      run.blockers[0] === cleanLine.slice(2) &&
+      typeof gate === "string" &&
+      run.ownerGates.length === 1 &&
+      run.blockers[1] === gate &&
+      hasExactlyOneLine(lines, gate) &&
+      Array.isArray(run.productionReadback) &&
+      run.productionReadback.length === 2 &&
+      run.productionReadback[0] === noMutationLine.slice(2) &&
+      run.productionReadback[1] === gate &&
+      isEmptyArray(run.safetyFindings) &&
+      Array.isArray(run.branchPushState) &&
+      run.branchPushState.length === 4 &&
+      run.branchPushState[0] === stoppedLine &&
+      run.branchPushState[1] === branchLine.slice(2) &&
+      run.branchPushState[2] === "Push: **NOT ATTEMPTED**" &&
+      run.branchPushState[3] === gate &&
+      artifactFindings &&
+      sameStringArray(artifactFindings.blockers, run.blockers) &&
+      sameStringArray(artifactFindings.ownerGates, run.ownerGates) &&
+      sameStringArray(
+        artifactFindings.productionReadback,
+        run.productionReadback,
+      ) &&
+      sameStringArray(artifactFindings.safetyFindings, run.safetyFindings) &&
+      sameStringArray(artifactFindings.branchPushState, run.branchPushState)
+  )
+}
+
 function transitionSource({ run, controls, state, workspace, head }) {
   if (
     !runHasWorkspaceContinuity(run, state) ||
@@ -248,6 +387,16 @@ function transitionSource({ run, controls, state, workspace, head }) {
       head,
       run.resultArtifact?.finalMessage ?? "",
     )
+  ) {
+    return null
+  }
+  if (
+    hasLaterGitFailureEvidence(run) &&
+    !provesBranchTransitionBeforeLaterFailure({
+      run,
+      branch: workspace.actualBranch,
+      head,
+    })
   ) {
     return null
   }
