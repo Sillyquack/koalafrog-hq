@@ -67,6 +67,9 @@ function reconciliationFixture() {
 
 test("Issue #63/010 scans past the exact non-mutating 009 owner stop", () => {
   const fixture = reconciliationFixture()
+  assert.equal(fixture.state.workspacePath, issue63WorkspacePath)
+  assert.equal(fixture.state.runs[0].workspacePath, null)
+  assert.equal(fixture.state.runs[1].workspacePath, null)
   const [interveningControl] = extractAgentControls(issue63InterveningControl)
   assert.notEqual(
     ownerGateReason(interveningControl),
@@ -101,6 +104,49 @@ test("Issue #63/010 scans past the exact non-mutating 009 owner stop", () => {
   })
   assert.equal(replay.isNew, false)
   assert.equal(replay.record, authorized.record)
+})
+
+test("absent historical workspace paths are treated as legacy unknown", () => {
+  const fixture = reconciliationFixture()
+  delete fixture.state.runs[0].workspacePath
+  delete fixture.state.runs[1].workspacePath
+
+  const authorized = authorizedWorkspaceBranchReconciliation(fixture)
+
+  assert.equal(authorized?.isNew, true)
+  assert.equal(
+    authorized?.record.precedingInstructionId,
+    "production-day1-git-reconciliation-008",
+  )
+  assert.deepEqual(authorized?.record.interveningInstructionIds, [
+    issue63InterveningInstructionId,
+  ])
+})
+
+test("matching explicit historical workspace paths preserve continuity", () => {
+  const fixture = reconciliationFixture()
+  fixture.state.runs[0].workspacePath = issue63WorkspacePath
+  fixture.state.runs[1].workspacePath = issue63WorkspacePath
+
+  const authorized = authorizedWorkspaceBranchReconciliation(fixture)
+
+  assert.equal(authorized?.isNew, true)
+  assert.equal(
+    authorized?.record.precedingInstructionId,
+    "production-day1-git-reconciliation-008",
+  )
+  assert.deepEqual(authorized?.record.interveningInstructionIds, [
+    issue63InterveningInstructionId,
+  ])
+})
+
+test("mismatched explicit historical workspace path fails closed", () => {
+  const fixture = reconciliationFixture()
+  fixture.state.runs[0].workspacePath = "/workspaces/different"
+
+  assert.equal(authorizedWorkspaceBranchReconciliation(fixture), null)
+  assert.equal(fixture.state.branch, issue63ExpectedBranch)
+  assert.deepEqual(fixture.state.workspaceBranchReconciliations, [])
 })
 
 test("Issue #68/004 reconciles its reviewed clean branch idempotently", () => {
