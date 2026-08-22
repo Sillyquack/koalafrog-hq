@@ -574,7 +574,7 @@ test("Issue #63 skips stale 002, claims matching 003 once, and preserves task co
   )
 })
 
-test("repository runner recovers retryable Issue #63/010 without duplicate publication", async (t) => {
+test("repository runner reconciles connector-shaped retryable Issue #63/010 exactly once", async (t) => {
   const directory = await mkdtemp(
     path.join(os.tmpdir(), "koalafrog-repository-branch-reconciliation-"),
   )
@@ -594,6 +594,10 @@ test("repository runner recovers retryable Issue #63/010 without duplicate publi
   await store.save(state)
 
   const task = issue63ReconciliationTask()
+  task.issue.issue_number = 63
+  task.issue.url = issue63OriginUrl
+  delete task.issue.number
+  delete task.issue.html_url
   task.comments.push({
     id: 1,
     body: formatPickupPacket({
@@ -789,6 +793,16 @@ test("repository runner recovers retryable Issue #63/010 without duplicate publi
         "production-day1-git-reconciliation-resume-010",
     ).length,
     1,
+  )
+  const events = (await readFile(store.eventPath, "utf8"))
+    .trim()
+    .split("\n")
+    .map((line) => JSON.parse(line))
+  assert.equal(
+    events.filter(
+      (event) => event.type === "workspace_branch_reconciliation_rejected",
+    ).length,
+    0,
   )
   const claimRecord = JSON.parse(
     await readFile(

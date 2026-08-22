@@ -24,6 +24,7 @@ import {
   resultArtifactFromTurnResult,
   resultCheckNames,
 } from "./result-artifact.mjs"
+import { extractIssueNumber } from "./repository-discovery.mjs"
 import {
   recordTaskOrigin,
   redactForLog,
@@ -617,7 +618,7 @@ export function workspaceBranchReconciliationRejection({
       duplicateCurrentRunCount,
     })
   }
-  if (task.issue?.number !== state.task.originIssueNumber) {
+  if (extractIssueNumber(task.issue) !== state.task.originIssueNumber) {
     return diagnostic("top_task_origin_issue")
   }
   if (issueUrl === null) return diagnostic("top_origin_url_missing")
@@ -811,7 +812,7 @@ export function authorizedWorkspaceBranchReconciliation({
     !historyTail ||
     state.lastConsumedInstructionId !== historyTail.instructionId ||
     runs.some((run) => run.instructionId === instruction.instructionId) ||
-    task.issue?.number !== state.task.originIssueNumber ||
+    extractIssueNumber(task.issue) !== state.task.originIssueNumber ||
     issueUrl === null ||
     issueUrl !== state.task.originIssueUrl
   ) {
