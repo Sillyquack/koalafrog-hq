@@ -65,6 +65,7 @@ export async function ensureWorkspace({
   existingPath,
   existingBranch,
   fetchRemote = true,
+  reconcileBranch = null,
 }) {
   if (existingPath) {
     if (!(await exists(existingPath))) {
@@ -72,9 +73,38 @@ export async function ensureWorkspace({
     }
     const branch = await git(["branch", "--show-current"], existingPath)
     if (existingBranch && branch.stdout !== existingBranch) {
-      throw new Error(
-        `Workspace branch changed: expected ${existingBranch}, found ${branch.stdout}`,
-      )
+      const operationRefs = [
+        "CHERRY_PICK_HEAD",
+        "MERGE_HEAD",
+        "REVERT_HEAD",
+        "REBASE_HEAD",
+      ]
+      const [head, status, ...operationChecks] = await Promise.all([
+        git(["rev-parse", "HEAD"], existingPath),
+        git(["status", "--porcelain=v1", "-z"], existingPath, {
+          trim: false,
+        }),
+        ...operationRefs.map((ref) =>
+          git(["rev-parse", "--verify", "--quiet", ref], existingPath, {
+            allowFailure: true,
+          }),
+        ),
+      ])
+      const reconciled = await reconcileBranch?.({
+        path: existingPath,
+        expectedBranch: existingBranch,
+        actualBranch: branch.stdout,
+        head: head.stdout,
+        dirty: status.stdout !== "",
+        operationsInProgress: operationRefs.filter(
+          (_ref, index) => operationChecks[index].code === 0,
+        ),
+      })
+      if (reconciled !== true) {
+        throw new Error(
+          `Workspace branch changed: expected ${existingBranch}, found ${branch.stdout}`,
+        )
+      }
     }
     return { path: existingPath, branch: branch.stdout }
   }

@@ -18,6 +18,18 @@ import {
 } from "../src/state-store.mjs"
 import { recordInstructionTurnStarted } from "../src/turn-accounting.mjs"
 import { issue63CloseoutFinalMessage } from "./fixtures/issue-63-production-day1-review-closeout-004.mjs"
+import {
+  issue63ContinuationControl,
+  issue63ExpectedBranch,
+  issue63OriginUrl,
+  issue63PriorInstructionId,
+  issue63ReconciledBranch,
+  issue63ReconciledHead,
+  issue63ReconciliationTask,
+  issue63ThreadId,
+  issue63WorkspacePath,
+  prepareIssue63ReconciliationState,
+} from "./fixtures/issue-63-production-day1-git-reconciliation-resume-010.mjs"
 
 function controlBlock({
   action = "start",
@@ -165,6 +177,7 @@ test("schema-one Issue #53 state migrates without losing its active thread", asy
   assert.equal(migrated.workspacePath, "/tmp/existing-workspace")
   assert.equal(migrated.activeInstruction.instructionId, "active-002")
   assert.equal(migrated.activeInstruction.turnCount, 1)
+  assert.deepEqual(migrated.workspaceBranchReconciliations, [])
   assert.equal(
     JSON.parse(await readFile(store.statePath, "utf8")).schemaVersion,
     currentStateSchemaVersion,
@@ -1061,6 +1074,172 @@ test("restart publishes a persisted owner stop before returning to polling", asy
   assert.equal(recoveredState.activeInstruction, null)
   assert.equal(recoveredState.lastConsumedInstructionId, "owner-recovery-001")
   assert.equal(recoveredState.runs[0].status, "needs_owner")
+})
+
+test("Issue #63/010 reconciles the authorized branch once and survives restart", async (t) => {
+  const directory = await mkdtemp(
+    path.join(os.tmpdir(), "koalafrog-branch-reconciliation-restart-"),
+  )
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const storeOptions = {
+    stateDirectory: directory,
+    repository: "Sillyquack/koalafrog-hq",
+    issueNumber: 63,
+  }
+  const store = new StateStore(storeOptions)
+  const [instruction] = extractAgentControls(issue63ContinuationControl)
+  const state = prepareIssue63ReconciliationState(
+    await store.load(),
+    instruction,
+  )
+  await store.save(state)
+
+  const task = issue63ReconciliationTask()
+  const posted = []
+  const controlPlane = {
+    async fetchTask() {
+      return task
+    },
+    async postComment(body) {
+      posted.push(body)
+      task.comments.push({ body })
+    },
+  }
+  let resumeCalls = 0
+  let startThreadCalls = 0
+  let turnCalls = 0
+  const appServer = {
+    async start() {},
+    async resumeThread(threadId) {
+      resumeCalls += 1
+      assert.equal(threadId, issue63ThreadId)
+      return { thread: { id: threadId } }
+    },
+    async startThread() {
+      startThreadCalls += 1
+      return { thread: { id: "unexpected-new-thread" } }
+    },
+    async waitForMcpReady() {},
+    async runTurn({ onTurnStarted }) {
+      turnCalls += 1
+      await onTurnStarted("turn-production-day1-git-reconciliation-resume-010")
+      return {
+        status: "completed",
+        turn: {
+          id: "turn-production-day1-git-reconciliation-resume-010",
+          status: "completed",
+          items: [],
+        },
+        pendingOwnerRequest: null,
+        agentMessage: "needs_review\n\nAuthorized reconciliation continuation completed.",
+      }
+    },
+    async stop() {},
+  }
+  let reconciliationCallbacks = 0
+  const workspace = {
+    async ensureWorkspace({
+      existingPath,
+      existingBranch,
+      reconcileBranch,
+    }) {
+      assert.equal(existingPath, issue63WorkspacePath)
+      if (existingBranch === issue63ExpectedBranch) {
+        reconciliationCallbacks += 1
+        const accepted = await reconcileBranch({
+          path: issue63WorkspacePath,
+          expectedBranch: issue63ExpectedBranch,
+          actualBranch: issue63ReconciledBranch,
+          head: issue63ReconciledHead,
+          dirty: false,
+          operationsInProgress: [],
+        })
+        assert.equal(accepted, true)
+      } else {
+        assert.equal(existingBranch, issue63ReconciledBranch)
+      }
+      return { path: issue63WorkspacePath, branch: issue63ReconciledBranch }
+    },
+    async inspectWorkspace() {
+      return {
+        branch: issue63ReconciledBranch,
+        commits: [issue63ReconciledHead],
+        changedFiles: [],
+        dirty: false,
+      }
+    },
+    assertAllowedChanges() {},
+    async commitWorkspaceChanges() {},
+    async validateWorkspace() {
+      return { pass: true, detail: "" }
+    },
+  }
+  const config = { ...runtimeConfig(directory), issueNumber: 63 }
+  const first = new Orchestrator(config, {
+    appServer,
+    controlPlane,
+    store,
+    workspace,
+  })
+  const completed = await first.runOnce()
+  const restarted = new Orchestrator(config, {
+    appServer,
+    controlPlane,
+    store: new StateStore(storeOptions),
+    workspace,
+  })
+  const replay = await restarted.runOnce()
+
+  assert.equal(completed.status, "needs_review")
+  assert.equal(replay.status, "idle")
+  assert.equal(resumeCalls, 1)
+  assert.equal(startThreadCalls, 0)
+  assert.equal(turnCalls, 1)
+  assert.equal(reconciliationCallbacks, 1)
+  assert.equal(
+    posted.filter((body) => body.includes("agent_pickup:")).length,
+    1,
+  )
+  assert.equal(
+    posted.filter((body) => body.includes("agent_result:")).length,
+    1,
+  )
+
+  const persisted = await new StateStore(storeOptions).load()
+  assert.equal(persisted.threadId, issue63ThreadId)
+  assert.equal(persisted.workspacePath, issue63WorkspacePath)
+  assert.equal(persisted.branch, issue63ReconciledBranch)
+  assert.equal(persisted.workspaceBranchReconciliations.length, 1)
+  assert.equal(
+    persisted.workspaceBranchReconciliations[0].precedingInstructionId,
+    issue63PriorInstructionId,
+  )
+  assert.equal(
+    persisted.workspaceBranchReconciliations[0].continuationInstructionId,
+    "production-day1-git-reconciliation-resume-010",
+  )
+  assert.equal(
+    persisted.runs.filter(
+      (run) =>
+        run.instructionId ===
+        "production-day1-git-reconciliation-resume-010",
+    ).length,
+    1,
+  )
+  const events = (await readFile(store.eventPath, "utf8"))
+    .trim()
+    .split("\n")
+    .map((line) => JSON.parse(line))
+  assert.equal(
+    events.filter((event) => event.type === "workspace_branch_reconciled")
+      .length,
+    1,
+  )
+  assert.equal(
+    events.find((event) => event.type === "workspace_branch_reconciled")
+      .originIssueUrl,
+    issue63OriginUrl,
+  )
 })
 
 test("approval and input requests are classified as owner stops", () => {

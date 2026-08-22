@@ -99,6 +99,132 @@ function uniformChecks(status) {
   return Object.fromEntries(resultCheckNames.map((name) => [name, status]))
 }
 
+function taskIssueUrl(task) {
+  return task.issue?.html_url ?? task.issue?.display_url ?? task.issue?.url ?? null
+}
+
+function explicitlyAuthorizesBranchTransition(prompt, branch, head, finalMessage) {
+  if (
+    typeof prompt !== "string" ||
+    !prompt.includes(head) ||
+    !/\bowner\b[\s\S]{0,160}\bexplicit(?:ly)?\b[\s\S]{0,80}\b(?:approv(?:e|ed|es|al)|authoriz(?:e|ed|es|ation))\b/i.test(
+      prompt,
+    ) ||
+    !/\bstarting exactly from\b/i.test(prompt)
+  ) {
+    return false
+  }
+
+  if (prompt.includes(branch)) {
+    return /\b(?:create|switch|use)\b[\s\S]{0,160}\b(?:integration\s+)?branch\b/i.test(
+      prompt,
+    )
+  }
+
+  return Boolean(
+    typeof finalMessage === "string" &&
+      finalMessage.includes(branch) &&
+      /\bcreate\s*\/\s*switch\b[\s\S]{0,160}\bnew integration branch\b/i.test(
+        prompt,
+      ),
+  )
+}
+
+export function authorizedWorkspaceBranchReconciliation({
+  state,
+  instruction,
+  task,
+  workspace,
+  reconciledAt = new Date().toISOString(),
+}) {
+  const issueUrl = taskIssueUrl(task)
+  const controls = listAgentControls(task.issue, task.comments)
+  const priorRun = state.runs?.at(-1)
+  const priorControls = controls.filter(
+    (control) => control.instructionId === priorRun?.instructionId,
+  )
+  const currentControls = controls.filter(
+    (control) => control.instructionId === instruction?.instructionId,
+  )
+  const finalMessage = priorRun?.resultArtifact?.finalMessage ?? ""
+  const head = workspace?.head
+
+  if (
+    !state.activeInstruction ||
+    state.activeInstruction.instructionId !== instruction?.instructionId ||
+    instruction.action !== "continue" ||
+    instruction.taskState !== state.status ||
+    currentControls.length !== 1 ||
+    currentControls[0].action !== "continue" ||
+    currentControls[0].prompt !== instruction.prompt ||
+    !state.workspacePath ||
+    workspace?.path !== state.workspacePath ||
+    workspace.expectedBranch !== state.branch ||
+    !workspace.actualBranch ||
+    workspace.actualBranch === workspace.expectedBranch ||
+    !workspace.actualBranch.startsWith(
+      `agent/issue-${state.task.originIssueNumber}-`,
+    ) ||
+    workspace.dirty !== false ||
+    workspace.operationsInProgress?.length !== 0 ||
+    typeof head !== "string" ||
+    !/^[0-9a-f]{40}$/.test(head) ||
+    !priorRun ||
+    state.lastConsumedInstructionId !== priorRun.instructionId ||
+    priorRun.instructionId === instruction.instructionId ||
+    priorRun.threadId !== state.threadId ||
+    priorRun.branch !== workspace.actualBranch ||
+    priorRun.commits?.[0] !== head ||
+    priorRun.originIssueNumber !== state.task.originIssueNumber ||
+    priorRun.originIssueUrl !== state.task.originIssueUrl ||
+    issueUrl === null ||
+    issueUrl !== state.task.originIssueUrl ||
+    priorControls.length !== 1 ||
+    priorControls[0].action !== "continue" ||
+    !explicitlyAuthorizesBranchTransition(
+      priorControls[0].prompt,
+      workspace.actualBranch,
+      head,
+      finalMessage,
+    )
+  ) {
+    return null
+  }
+
+  const reconciliationId = [
+    "authorized-workspace-branch",
+    priorRun.instructionId,
+    instruction.instructionId,
+    head,
+  ].join(":")
+  const existing = (state.workspaceBranchReconciliations ?? []).find(
+    (record) => record.reconciliationId === reconciliationId,
+  )
+  const expectedRecord = {
+    reconciliationId,
+    precedingInstructionId: priorRun.instructionId,
+    continuationInstructionId: instruction.instructionId,
+    originIssueNumber: state.task.originIssueNumber,
+    originIssueUrl: state.task.originIssueUrl,
+    threadId: state.threadId,
+    workspacePath: state.workspacePath,
+    fromBranch: workspace.expectedBranch,
+    toBranch: workspace.actualBranch,
+    head,
+  }
+  if (existing) {
+    return Object.entries(expectedRecord).every(
+      ([key, value]) => existing[key] === value,
+    )
+      ? { record: existing, isNew: false }
+      : null
+  }
+  return {
+    record: { ...expectedRecord, reconciledAt },
+    isNew: true,
+  }
+}
+
 export function recordCompletedTurnResult(
   state,
   turnResult,
@@ -299,6 +425,30 @@ export class Orchestrator {
 
   async #save(state) {
     await this.store.save(state)
+  }
+
+  async #reconcileWorkspaceBranch(state, instruction, task, workspace) {
+    const authorized = authorizedWorkspaceBranchReconciliation({
+      state,
+      instruction,
+      task,
+      workspace,
+    })
+    if (!authorized) return false
+
+    state.workspaceBranchReconciliations ??= []
+    if (authorized.isNew) {
+      state.workspaceBranchReconciliations.push(authorized.record)
+    }
+    state.branch = authorized.record.toBranch
+    await this.#save(state)
+    if (authorized.isNew) {
+      await this.store.appendEvent({
+        type: "workspace_branch_reconciled",
+        ...authorized.record,
+      })
+    }
+    return true
   }
 
   async #completeInstruction(state, packet, comments) {
@@ -841,6 +991,13 @@ export class Orchestrator {
       existingPath: state.workspacePath,
       existingBranch: state.branch,
       fetchRemote: this.config.fetchRemote,
+      reconcileBranch: (workspaceState) =>
+        this.#reconcileWorkspaceBranch(
+          state,
+          instruction,
+          task,
+          workspaceState,
+        ),
     })
     state.workspacePath = workspace.path
     state.branch = workspace.branch

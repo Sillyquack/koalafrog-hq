@@ -14,8 +14,23 @@ import {
   recordPendingApprovalRequest,
   registerOwnerApprovalDecision,
 } from "../src/approval-decisions.mjs"
-import { selectNextInstruction } from "../src/control-plane.mjs"
+import {
+  extractAgentControls,
+  selectNextInstruction,
+} from "../src/control-plane.mjs"
+import { Orchestrator } from "../src/orchestrator.mjs"
 import { StateStore } from "../src/state-store.mjs"
+import {
+  issue63ContinuationControl,
+  issue63ExpectedBranch,
+  issue63OriginUrl,
+  issue63ReconciledBranch,
+  issue63ReconciledHead,
+  issue63ReconciliationTask,
+  issue63ThreadId,
+  issue63WorkspacePath,
+  prepareIssue63ReconciliationState,
+} from "./fixtures/issue-63-production-day1-git-reconciliation-resume-010.mjs"
 
 function controlBlock(
   instructionId,
@@ -555,6 +570,195 @@ test("Issue #63 skips stale 002, claims matching 003 once, and preserves task co
     ).length,
     1,
   )
+})
+
+test("repository runner claims the Issue #63/010 reconciled continuation exactly once", async (t) => {
+  const directory = await mkdtemp(
+    path.join(os.tmpdir(), "koalafrog-repository-branch-reconciliation-"),
+  )
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const storeOptions = {
+    stateDirectory: directory,
+    repository: "Sillyquack/koalafrog-hq",
+    issueNumber: 63,
+  }
+  const store = new StateStore(storeOptions)
+  const [instruction] = extractAgentControls(issue63ContinuationControl)
+  const state = prepareIssue63ReconciliationState(
+    await store.load(),
+    instruction,
+  )
+  state.task.lastObservedIssueUpdatedAt = "2026-08-22T05:10:00.000Z"
+  await store.save(state)
+
+  const task = issue63ReconciliationTask()
+  let postedCommentId = 1
+  const posted = []
+  const scanner = {
+    threadId: "repository-scanner-thread",
+    appServer: {
+      async callMcpTool(request) {
+        if (request.tool === "github.fetch_issue") {
+          return { structuredContent: { issue: task.issue } }
+        }
+        if (request.tool === "github.fetch_issue_comments") {
+          return { structuredContent: { comments: task.comments } }
+        }
+        if (request.tool === "github.add_comment_to_issue") {
+          const body = request.arguments.comment
+          posted.push(body)
+          task.comments.push({ id: postedCommentId, body })
+          postedCommentId += 1
+          return { structuredContent: { result: { id: postedCommentId } } }
+        }
+        throw new Error(`Unexpected MCP tool: ${request.tool}`)
+      },
+    },
+  }
+  let turns = 0
+  const appServer = {
+    async start() {},
+    async resumeThread(threadId) {
+      assert.equal(threadId, issue63ThreadId)
+      return { thread: { id: threadId } }
+    },
+    async startThread() {
+      throw new Error("Repository continuation must preserve the Codex thread")
+    },
+    async waitForMcpReady() {},
+    async runTurn({ onTurnStarted }) {
+      turns += 1
+      await onTurnStarted("turn-repository-git-reconciliation-resume-010")
+      return {
+        status: "completed",
+        turn: {
+          id: "turn-repository-git-reconciliation-resume-010",
+          status: "completed",
+          items: [],
+        },
+        pendingOwnerRequest: null,
+        agentMessage:
+          "needs_review\n\nRepository runner resumed the authorized continuation.",
+      }
+    },
+    async stop() {},
+  }
+  let reconciliationCallbacks = 0
+  const workspace = {
+    async ensureWorkspace({ existingBranch, reconcileBranch }) {
+      if (existingBranch === issue63ExpectedBranch) {
+        reconciliationCallbacks += 1
+        assert.equal(
+          await reconcileBranch({
+            path: issue63WorkspacePath,
+            expectedBranch: issue63ExpectedBranch,
+            actualBranch: issue63ReconciledBranch,
+            head: issue63ReconciledHead,
+            dirty: false,
+            operationsInProgress: [],
+          }),
+          true,
+        )
+      } else {
+        assert.equal(existingBranch, issue63ReconciledBranch)
+      }
+      return { path: issue63WorkspacePath, branch: issue63ReconciledBranch }
+    },
+    async inspectWorkspace() {
+      return {
+        branch: issue63ReconciledBranch,
+        commits: [issue63ReconciledHead],
+        changedFiles: [],
+        dirty: false,
+      }
+    },
+    assertAllowedChanges() {},
+    async commitWorkspaceChanges() {},
+    async validateWorkspace() {
+      return { pass: true, detail: "" }
+    },
+  }
+  class Issue63ReconciliationOrchestrator extends Orchestrator {
+    constructor(config, dependencies) {
+      super(config, { ...dependencies, appServer, workspace })
+    }
+  }
+  const config = {
+    repository: storeOptions.repository,
+    stateDirectory: directory,
+    checkoutPath: "/tmp/coordinating-checkout",
+    baseRef: "origin/main",
+    maxTurns: 12,
+    turnTimeoutMs: 1_000,
+    maxRetries: 0,
+    retryBaseMs: 1,
+    codexBinary: "codex",
+    model: null,
+    allowedPaths: [],
+    autoCommit: false,
+    fetchRemote: false,
+  }
+  const candidate = {
+    issueNumber: 63,
+    searchMatched: true,
+    updatedAt: task.issue.updated_at,
+  }
+
+  const claimed = await runRepositoryIssue(scanner, config, candidate, {
+    OrchestratorClass: Issue63ReconciliationOrchestrator,
+  })
+  const replay = await runRepositoryIssue(scanner, config, candidate, {
+    OrchestratorClass: Issue63ReconciliationOrchestrator,
+  })
+
+  assert.equal(claimed.status, "needs_review")
+  assert.equal(
+    claimed.instructionId,
+    "production-day1-git-reconciliation-resume-010",
+  )
+  assert.equal(claimed.originIssueUrl, issue63OriginUrl)
+  assert.equal(claimed.claimed, true)
+  assert.deepEqual(replay, {
+    issueNumber: 63,
+    status: "no_pending_agent_control",
+    claimed: false,
+  })
+  assert.equal(turns, 1)
+  assert.equal(reconciliationCallbacks, 1)
+  assert.equal(
+    posted.filter((body) => body.includes("agent_pickup:")).length,
+    1,
+  )
+  assert.equal(
+    posted.filter((body) => body.includes("agent_result:")).length,
+    1,
+  )
+  const persisted = await new StateStore(storeOptions).load()
+  assert.equal(persisted.threadId, issue63ThreadId)
+  assert.equal(persisted.workspacePath, issue63WorkspacePath)
+  assert.equal(persisted.branch, issue63ReconciledBranch)
+  assert.equal(persisted.workspaceBranchReconciliations.length, 1)
+  assert.equal(
+    persisted.runs.filter(
+      (run) =>
+        run.instructionId ===
+        "production-day1-git-reconciliation-resume-010",
+    ).length,
+    1,
+  )
+  const claimRecord = JSON.parse(
+    await readFile(
+      path.join(
+        directory,
+        "repository-queue",
+        "instructions",
+        "production-day1-git-reconciliation-resume-010.json",
+      ),
+      "utf8",
+    ),
+  )
+  assert.equal(claimRecord.status, "completed")
+  assert.equal(claimRecord.attempt, 1)
 })
 
 for (const [terminalStatus, issueNumber] of [
