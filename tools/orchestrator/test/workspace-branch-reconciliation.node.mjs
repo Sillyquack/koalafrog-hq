@@ -5,13 +5,18 @@ import os from "node:os"
 import path from "node:path"
 import test from "node:test"
 import { promisify } from "node:util"
-import { extractAgentControls } from "../src/control-plane.mjs"
+import {
+  extractAgentControls,
+  ownerGateReason,
+} from "../src/control-plane.mjs"
 import { authorizedWorkspaceBranchReconciliation } from "../src/orchestrator.mjs"
 import { initialState } from "../src/state-store.mjs"
 import { ensureWorkspace } from "../src/workspace.mjs"
 import {
   issue63ContinuationControl,
+  issue63DurableOwnerGateReason,
   issue63ExpectedBranch,
+  issue63InterveningControl,
   issue63InterveningInstructionId,
   issue63OriginUrl,
   issue63PriorRun,
@@ -62,6 +67,11 @@ function reconciliationFixture() {
 
 test("Issue #63/010 scans past the exact non-mutating 009 owner stop", () => {
   const fixture = reconciliationFixture()
+  const [interveningControl] = extractAgentControls(issue63InterveningControl)
+  assert.notEqual(
+    ownerGateReason(interveningControl),
+    issue63DurableOwnerGateReason,
+  )
   const authorized = authorizedWorkspaceBranchReconciliation({
     ...fixture,
     reconciledAt: "2026-08-22T05:11:00.000Z",
@@ -194,6 +204,39 @@ for (const [name, change] of [
   }],
   ["intervening turn execution", (fixture) => {
     fixture.state.runs[1].turnCount = 1
+  }],
+  ["unrelated durable owner-gate reason", (fixture) => {
+    const unrelated =
+      "The instruction requests an owner-gated action: Delete an unrelated production database."
+    fixture.state.runs[1].ownerRequest.reason = unrelated
+    fixture.state.runs[1].ownerGates = [unrelated]
+  }],
+  ["missing durable owner request", (fixture) => {
+    fixture.state.runs[1].ownerRequest = null
+  }],
+  ["mismatched durable owner-gate evidence", (fixture) => {
+    fixture.state.runs[1].ownerGates = [
+      "The instruction requests an owner-gated action: unrelated gate.",
+    ]
+  }],
+  ["non-ownerGate durable request", (fixture) => {
+    fixture.state.runs[1].ownerRequest.method =
+      "item/commandExecution/requestApproval"
+  }],
+  ["non-gated intervening control", (fixture) => {
+    fixture.task.comments[0].body = fixture.task.comments[0].body.replace(
+      /  prompt: \|\n[\s\S]*?\n```/,
+      "  prompt: |\n    Review the local fixture metadata without changing anything.\n```",
+    )
+  }],
+  ["changed owner-gate semantics", (fixture) => {
+    fixture.task.comments[0].body = fixture.task.comments[0].body.replace(
+      "owner_approval_required: false",
+      "owner_approval_required: true",
+    )
+  }],
+  ["ambiguous intervening controls", (fixture) => {
+    fixture.task.comments.push({ body: issue63InterveningControl })
   }],
   ["ambiguous transition sources", (fixture) => {
     fixture.state.runs.splice(1, 0, structuredClone(issue63PriorRun))
