@@ -137,6 +137,7 @@ function runHasWorkspaceContinuity(run, state) {
       run.originIssueNumber === state.task.originIssueNumber &&
       run.originIssueUrl === state.task.originIssueUrl &&
       (!Object.hasOwn(run, "workspacePath") ||
+        run.workspacePath === null ||
         run.workspacePath === state.workspacePath),
   )
 }
