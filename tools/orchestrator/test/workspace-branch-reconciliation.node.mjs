@@ -13,11 +13,14 @@ import { authorizedWorkspaceBranchReconciliation } from "../src/orchestrator.mjs
 import { initialState } from "../src/state-store.mjs"
 import { ensureWorkspace } from "../src/workspace.mjs"
 import {
+  issue63CleanWorkspaceEvidence,
   issue63ContinuationControl,
   issue63DurableOwnerGateReason,
   issue63ExpectedBranch,
+  issue63GitMetadataGate,
   issue63InterveningControl,
   issue63InterveningInstructionId,
+  issue63NoProductionMutations,
   issue63OriginUrl,
   issue63PriorRun,
   issue63ReconciledBranch,
@@ -67,9 +70,30 @@ function reconciliationFixture() {
 
 test("Issue #63/010 scans past the exact non-mutating 009 owner stop", () => {
   const fixture = reconciliationFixture()
+  const sourceRun = fixture.state.runs[0]
   assert.equal(fixture.state.workspacePath, issue63WorkspacePath)
-  assert.equal(fixture.state.runs[0].workspacePath, null)
+  assert.equal(sourceRun.workspacePath, null)
   assert.equal(fixture.state.runs[1].workspacePath, null)
+  assert.equal(sourceRun.ownerRequest, null)
+  assert.deepEqual(sourceRun.blockers, [
+    issue63CleanWorkspaceEvidence,
+    issue63GitMetadataGate,
+  ])
+  assert.deepEqual(sourceRun.ownerGates, [issue63GitMetadataGate])
+  assert.deepEqual(sourceRun.productionReadback, [
+    issue63NoProductionMutations,
+    issue63GitMetadataGate,
+  ])
+  assert.deepEqual(sourceRun.safetyFindings, [])
+  assert.equal(sourceRun.checks.diffCheck, "pass")
+  assert.equal(sourceRun.resultArtifact.turnStatus, "completed")
+  assert.equal(sourceRun.resultArtifact.checks.diffCheck.status, "fail")
+  assert.ok(
+    sourceRun.resultArtifact.checks.diffCheck.evidence.some(
+      ({ source, status }) =>
+        source === "command_execution" && status === "fail",
+    ),
+  )
   const [interveningControl] = extractAgentControls(issue63InterveningControl)
   assert.notEqual(
     ownerGateReason(interveningControl),
@@ -104,6 +128,15 @@ test("Issue #63/010 scans past the exact non-mutating 009 owner stop", () => {
   })
   assert.equal(replay.isNew, false)
   assert.equal(replay.record, authorized.record)
+  for (const broaderOperation of [
+    "cherryPick",
+    "push",
+    "pullRequest",
+    "migrationApproval",
+    "productionAuthorization",
+  ]) {
+    assert.equal(Object.hasOwn(authorized.record, broaderOperation), false)
+  }
 })
 
 test("absent historical workspace paths are treated as legacy unknown", () => {
@@ -200,7 +233,7 @@ for (const [name, change] of [
   ["dirty workspace drift", (fixture) => {
     fixture.workspace.dirty = true
   }],
-  ["in-progress Git operation", (fixture) => {
+  ["CHERRY_PICK_HEAD remains", (fixture) => {
     fixture.workspace.operationsInProgress = ["CHERRY_PICK_HEAD"]
   }],
   ["ambiguous duplicate authorization", (fixture) => {
@@ -221,6 +254,78 @@ for (const [name, change] of [
   }],
 ]) {
   test(`branch reconciliation fails closed for ${name}`, () => {
+    const fixture = reconciliationFixture()
+    change(fixture)
+    assert.equal(authorizedWorkspaceBranchReconciliation(fixture), null)
+    assert.equal(fixture.state.branch, issue63ExpectedBranch)
+    assert.deepEqual(fixture.state.workspaceBranchReconciliations, [])
+  })
+}
+
+for (const [name, change] of [
+  ["branch switch is not durably reported as completed", (fixture) => {
+    fixture.state.runs[0].resultArtifact.finalMessage =
+      fixture.state.runs[0].resultArtifact.finalMessage.replace(
+        `- Integration branch: \`${issue63ReconciledBranch}\``,
+        `- Intended integration branch: \`${issue63ReconciledBranch}\``,
+      )
+  }],
+  ["failure during a partially applied cherry-pick", (fixture) => {
+    fixture.state.runs[0].resultArtifact.finalMessage =
+      fixture.state.runs[0].resultArtifact.finalMessage.replace(
+        "**FAILED before application** because the sandbox denied creation of the linked worktree’s `index.lock`.",
+        "**FAILED during application** after partially applying the cherry-pick.",
+      )
+  }],
+  ["failure after cherry-pick application", (fixture) => {
+    fixture.state.runs[0].resultArtifact.finalMessage =
+      fixture.state.runs[0].resultArtifact.finalMessage.replace(
+        "**FAILED before application** because the sandbox denied creation of the linked worktree’s `index.lock`.",
+        "**FAILED after application** while validating the cherry-pick.",
+      )
+  }],
+  ["missing failure-before-application evidence", (fixture) => {
+    fixture.state.runs[0].resultArtifact.finalMessage =
+      fixture.state.runs[0].resultArtifact.finalMessage.replace(
+        /- Cherry-pick: .*\n/,
+        "",
+      )
+  }],
+  ["missing failed-command evidence", (fixture) => {
+    fixture.state.runs[0].resultArtifact.checks.diffCheck.evidence =
+      fixture.state.runs[0].resultArtifact.checks.diffCheck.evidence.filter(
+        ({ source }) => source !== "command_execution",
+      )
+  }],
+  ["failed command belongs only to an unrelated check", (fixture) => {
+    const artifact = fixture.state.runs[0].resultArtifact
+    const [failedCommand] = artifact.checks.diffCheck.evidence.splice(0, 1)
+    artifact.checks.diffCheck.status = "pass"
+    artifact.checks.tests.status = "fail"
+    artifact.checks.tests.evidence.push(failedCommand)
+  }],
+  ["nested result findings conflict with the durable run", (fixture) => {
+    fixture.state.runs[0].resultArtifact.findings.branchPushState[2] =
+      "Push: **SUCCEEDED**"
+  }],
+  ["ambiguous source-run tree mutation", (fixture) => {
+    fixture.state.runs[0].changedFiles = ["partially-applied-change.mjs"]
+  }],
+  ["conflicting source-run commit history", (fixture) => {
+    fixture.state.runs[0].commits.push("a".repeat(40))
+  }],
+  ["durable CHERRY_PICK_HEAD evidence", (fixture) => {
+    const conflictingEvidence =
+      "A `CHERRY_PICK_HEAD` remains after the failed cherry-pick."
+    fixture.state.runs[0].blockers[0] = conflictingEvidence
+    fixture.state.runs[0].resultArtifact.finalMessage =
+      fixture.state.runs[0].resultArtifact.finalMessage.replace(
+        issue63CleanWorkspaceEvidence,
+        conflictingEvidence,
+      )
+  }],
+]) {
+  test(`partial-operation provenance fails closed for ${name}`, () => {
     const fixture = reconciliationFixture()
     change(fixture)
     assert.equal(authorizedWorkspaceBranchReconciliation(fixture), null)
