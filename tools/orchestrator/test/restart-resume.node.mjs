@@ -1108,11 +1108,30 @@ test("Issue #63/010 reconciles the authorized branch once and survives restart",
   let resumeCalls = 0
   let startThreadCalls = 0
   let turnCalls = 0
+  const gitExecutionBoundary = {
+    instructionId: instruction.instructionId,
+    threadId: issue63ThreadId,
+    workspacePath: issue63WorkspacePath,
+    branch: issue63ReconciledBranch,
+    head: issue63ReconciledHead,
+    writablePaths: ["/coordinating/.git/worktrees/issue-63"],
+    commands: {
+      cherry_pick: [
+        "git -c core.hooksPath=/dev/null -c commit.gpgSign=false -c rerere.enabled=false cherry-pick a74079be88ec4a8b36b850f95dca791ff42e4e80",
+      ],
+      push: [`git push origin ${issue63ReconciledBranch}`],
+      pull_request: [
+        `gh pr create --base main --head ${issue63ReconciledBranch} --fill`,
+      ],
+      validation: ["git diff --check"],
+    },
+  }
   const appServer = {
     async start() {},
-    async resumeThread(threadId) {
+    async resumeThread(threadId, params) {
       resumeCalls += 1
       assert.equal(threadId, issue63ThreadId)
+      assert.equal(params.config["features.exec_permission_approvals"], true)
       return { thread: { id: threadId } }
     },
     async startThread() {
@@ -1120,8 +1139,10 @@ test("Issue #63/010 reconciles the authorized branch once and survives restart",
       return { thread: { id: "unexpected-new-thread" } }
     },
     async waitForMcpReady() {},
-    async runTurn({ onTurnStarted }) {
+    async runTurn({ onTurnStarted, approvalPolicy, prompt }) {
       turnCalls += 1
+      assert.equal(approvalPolicy, "on-request")
+      assert.match(prompt, /with_additional_permissions/)
       await onTurnStarted("turn-production-day1-git-reconciliation-resume-010")
       return {
         status: "completed",
@@ -1137,6 +1158,7 @@ test("Issue #63/010 reconciles the authorized branch once and survives restart",
     async stop() {},
   }
   let reconciliationCallbacks = 0
+  let boundaryResolutionCalls = 0
   const workspace = {
     async ensureWorkspace({
       existingPath,
@@ -1173,6 +1195,15 @@ test("Issue #63/010 reconciles the authorized branch once and survives restart",
     async validateWorkspace() {
       return { pass: true, detail: "" }
     },
+    async authorizedGitExecutionBoundary({ state, instruction: current }) {
+      boundaryResolutionCalls += 1
+      assert.equal(current.instructionId, instruction.instructionId)
+      assert.equal(state.workspaceBranchReconciliations.length, 1)
+      return gitExecutionBoundary
+    },
+    async gitExecutionBoundaryIsCurrent() {
+      return true
+    },
   }
   const config = { ...runtimeConfig(directory), issueNumber: 63 }
   const first = new Orchestrator(config, {
@@ -1196,6 +1227,7 @@ test("Issue #63/010 reconciles the authorized branch once and survives restart",
   assert.equal(startThreadCalls, 0)
   assert.equal(turnCalls, 1)
   assert.equal(reconciliationCallbacks, 1)
+  assert.equal(boundaryResolutionCalls, 1)
   assert.equal(
     posted.filter((body) => body.includes("agent_pickup:")).length,
     1,

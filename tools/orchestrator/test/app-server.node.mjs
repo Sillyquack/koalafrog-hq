@@ -175,6 +175,113 @@ test("a matched durable decision responds through requestApproval exactly once",
   assert.deepEqual(ownerStops, [])
 })
 
+test("a bounded turn exposes its exact command context without changing ordinary turn policy", async () => {
+  const bounded = new AppServerClient({ cwd: "/tmp/workspace" })
+  const requests = []
+  const responses = []
+  bounded.respond = (requestId, result) => {
+    responses.push({ requestId, result })
+    setTimeout(() => {
+      bounded.emit("item/completed", {
+        threadId: "thread-bounded",
+        turnId: "turn-bounded",
+        item: {
+          id: "exec-bounded",
+          type: "commandExecution",
+          status: "completed",
+          exitCode: 0,
+        },
+      })
+      bounded.emit("turn/completed", {
+        threadId: "thread-bounded",
+        turn: { id: "turn-bounded", status: "completed", items: [] },
+      })
+    }, 0)
+  }
+  bounded.request = async (method, params) => {
+    assert.equal(method, "turn/start")
+    requests.push(params)
+    setTimeout(() => {
+      bounded.emit("item/started", {
+        threadId: "thread-bounded",
+        turnId: "turn-bounded",
+        item: {
+          id: "exec-bounded",
+          type: "commandExecution",
+          source: "agent",
+          status: "inProgress",
+          cwd: "/tmp/workspace",
+          command: "git cherry-pick abcdef",
+        },
+      })
+      bounded.emit("server_request", {
+        id: 92,
+        method: "item/permissions/requestApproval",
+        params: {
+          threadId: "thread-bounded",
+          turnId: "turn-bounded",
+          itemId: "exec-bounded",
+          cwd: "/tmp/workspace",
+          permissions: { fileSystem: { write: ["/tmp/gitdir"] } },
+        },
+      })
+    }, 0)
+    return { turn: { id: "turn-bounded" } }
+  }
+
+  const result = await bounded.runTurn({
+    threadId: "thread-bounded",
+    prompt: "Run the exact bounded command.",
+    cwd: "/tmp/workspace",
+    timeoutMs: 1_000,
+    approvalPolicy: "on-request",
+    resolveApprovalRequest: async (request_, { commandExecution }) => {
+      assert.equal(request_.method, "item/permissions/requestApproval")
+      assert.equal(commandExecution.command, "git cherry-pick abcdef")
+      assert.equal(commandExecution.cwd, "/tmp/workspace")
+      return {
+        response: {
+          permissions: request_.details.permissions,
+          scope: "turn",
+        },
+      }
+    },
+  })
+  assert.equal(result.status, "completed")
+  assert.equal(requests[0].approvalPolicy, "on-request")
+  assert.deepEqual(responses, [
+    {
+      requestId: 92,
+      result: {
+        permissions: { fileSystem: { write: ["/tmp/gitdir"] } },
+        scope: "turn",
+      },
+    },
+  ])
+
+  const ordinary = new AppServerClient({ cwd: "/tmp/workspace" })
+  let ordinaryParams = null
+  ordinary.request = async (_method, params) => {
+    ordinaryParams = params
+    setTimeout(
+      () =>
+        ordinary.emit("turn/completed", {
+          threadId: "thread-ordinary",
+          turn: { id: "turn-ordinary", status: "completed", items: [] },
+        }),
+      0,
+    )
+    return { turn: { id: "turn-ordinary" } }
+  }
+  await ordinary.runTurn({
+    threadId: "thread-ordinary",
+    prompt: "Run an ordinary task.",
+    cwd: "/tmp/workspace",
+    timeoutMs: 1_000,
+  })
+  assert.equal(Object.hasOwn(ordinaryParams, "approvalPolicy"), false)
+})
+
 test("an unmatched command approval is persisted before cancel resolves its turn", async () => {
   const client = new AppServerClient({ cwd: "/tmp" })
   const order = []

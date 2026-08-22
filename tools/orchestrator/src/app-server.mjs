@@ -450,6 +450,7 @@ export class AppServerClient extends EventEmitter {
     prompt,
     cwd,
     timeoutMs,
+    approvalPolicy = null,
     onTurnStarted = () => {},
     onOwnerStop = () => {},
     resolveApprovalRequest = () => null,
@@ -467,6 +468,7 @@ export class AppServerClient extends EventEmitter {
     let timeoutInterruption = null
     let interruptedTurnCompletion = null
     const activeCommandExecutions = new Set()
+    const commandExecutionItems = new Map()
     const completedCommandExecutions = []
     const mcpToolCalls = new Map()
     const approvedItems = new Map()
@@ -529,6 +531,7 @@ export class AppServerClient extends EventEmitter {
       if (turnId && params?.turnId !== turnId) return
       if (params.item?.type === "commandExecution" && params.item.id) {
         activeCommandExecutions.add(params.item.id)
+        commandExecutionItems.set(params.item.id, params.item)
       }
       if (params.item?.type === "mcpToolCall") {
         mcpToolCalls.set(params.item.id, params.item)
@@ -556,6 +559,7 @@ export class AppServerClient extends EventEmitter {
       if (params.item?.type === "agentMessage") agentMessage = params.item.text ?? ""
       if (commandExecutionIsTerminal(params.item) && params.item.id) {
         activeCommandExecutions.delete(params.item.id)
+        commandExecutionItems.delete(params.item.id)
         completedCommandExecutions.push(compactCommandExecution(params.item))
       }
       if (params.item?.type === "mcpToolCall") mcpToolCalls.delete(params.item.id)
@@ -632,7 +636,11 @@ export class AppServerClient extends EventEmitter {
       let matchedResponse = null
       try {
         matchedResponse = ownerRequest
-          ? await resolveApprovalRequest(ownerRequest)
+          ? await resolveApprovalRequest(ownerRequest, {
+              commandExecution: ownerRequest.itemId
+                ? commandExecutionItems.get(ownerRequest.itemId) ?? null
+                : null,
+            })
           : null
       } catch (error) {
         await stopForOwner(message, {
@@ -716,6 +724,7 @@ export class AppServerClient extends EventEmitter {
           threadId,
           cwd,
           input: [{ type: "text", text: prompt, text_elements: [] }],
+          ...(approvalPolicy ? { approvalPolicy } : {}),
         },
         60_000,
       )

@@ -632,19 +632,82 @@ test("repository runner reconciles connector-shaped retryable Issue #63/010 exac
     },
   }
   let turns = 0
+  const gitExecutionBoundary = {
+    instructionId: instruction.instructionId,
+    threadId: issue63ThreadId,
+    workspacePath: issue63WorkspacePath,
+    branch: issue63ReconciledBranch,
+    head: issue63ReconciledHead,
+    writablePaths: ["/coordinating/.git/worktrees/issue-63"],
+    commands: {
+      cherry_pick: [
+        "git -c core.hooksPath=/dev/null -c commit.gpgSign=false -c rerere.enabled=false cherry-pick a74079be88ec4a8b36b850f95dca791ff42e4e80",
+      ],
+      push: [`git push origin ${issue63ReconciledBranch}`],
+      pull_request: [
+        `gh pr create --base main --head ${issue63ReconciledBranch} --fill`,
+      ],
+      validation: ["git diff --check"],
+    },
+  }
   const appServer = {
     async start() {},
-    async resumeThread(threadId) {
+    async resumeThread(threadId, params) {
       assert.equal(threadId, issue63ThreadId)
+      assert.equal(params.approvalPolicy, "on-request")
+      assert.equal(params.sandbox, "workspace-write")
+      assert.equal(params.config["features.exec_permission_approvals"], true)
       return { thread: { id: threadId } }
     },
     async startThread() {
       throw new Error("Repository continuation must preserve the Codex thread")
     },
     async waitForMcpReady() {},
-    async runTurn({ onTurnStarted }) {
+    async runTurn({
+      onTurnStarted,
+      approvalPolicy,
+      prompt,
+      resolveApprovalRequest,
+    }) {
       turns += 1
+      assert.equal(approvalPolicy, "on-request")
+      assert.match(prompt, /Orchestrator-managed Git execution boundary/)
+      assert.match(prompt, /with_additional_permissions/)
       await onTurnStarted("turn-repository-git-reconciliation-resume-010")
+      const command = gitExecutionBoundary.commands.cherry_pick[0]
+      const permissionGrant = await resolveApprovalRequest(
+        {
+          method: "item/permissions/requestApproval",
+          threadId: issue63ThreadId,
+          turnId: "turn-repository-git-reconciliation-resume-010",
+          itemId: "item-repository-cherry-pick",
+          details: {
+            cwd: issue63WorkspacePath,
+            permissions: {
+              fileSystem: {
+                write: [...gitExecutionBoundary.writablePaths],
+              },
+            },
+          },
+        },
+        {
+          commandExecution: {
+            id: "item-repository-cherry-pick",
+            type: "commandExecution",
+            source: "agent",
+            status: "inProgress",
+            cwd: issue63WorkspacePath,
+            command,
+          },
+        },
+      )
+      assert.deepEqual(permissionGrant.response, {
+        permissions: {
+          fileSystem: { write: gitExecutionBoundary.writablePaths },
+        },
+        scope: "turn",
+        strictAutoReview: true,
+      })
       return {
         status: "completed",
         turn: {
@@ -692,6 +755,16 @@ test("repository runner reconciles connector-shaped retryable Issue #63/010 exac
     async commitWorkspaceChanges() {},
     async validateWorkspace() {
       return { pass: true, detail: "" }
+    },
+    async authorizedGitExecutionBoundary({ state, instruction: current }) {
+      assert.equal(current.instructionId, instruction.instructionId)
+      assert.equal(state.workspaceBranchReconciliations.length, 1)
+      return gitExecutionBoundary
+    },
+    async gitExecutionBoundaryIsCurrent(boundary, action) {
+      assert.equal(boundary, gitExecutionBoundary)
+      assert.equal(action, "cherry_pick")
+      return true
     },
   }
   class Issue63ReconciliationOrchestrator extends Orchestrator {
@@ -803,6 +876,12 @@ test("repository runner reconciles connector-shaped retryable Issue #63/010 exac
       (event) => event.type === "workspace_branch_reconciliation_rejected",
     ).length,
     0,
+  )
+  assert.equal(
+    events.filter(
+      (event) => event.type === "git_execution_permission_granted",
+    ).length,
+    1,
   )
   const claimRecord = JSON.parse(
     await readFile(
