@@ -412,6 +412,355 @@ function transitionSource({ run, controls, state, workspace, head }) {
   return { run, control: matchingControls[0] }
 }
 
+const maximumReconciliationSourceDiagnostics = 12
+
+function safeReconciliationIdentifier(value, maximum = 255) {
+  return typeof value === "string" &&
+    value.length > 0 &&
+    value.length <= maximum &&
+    /^[A-Za-z0-9][A-Za-z0-9._/-]*$/.test(value)
+    ? value
+    : null
+}
+
+function reconciliationDiagnosticBase({ state, instruction, workspace }) {
+  return {
+    instructionId: safeReconciliationIdentifier(instruction?.instructionId),
+    expectedBranch: safeReconciliationIdentifier(workspace?.expectedBranch),
+    actualBranch: safeReconciliationIdentifier(workspace?.actualBranch),
+    head:
+      typeof workspace?.head === "string" &&
+      /^[0-9a-f]{40}$/.test(workspace.head)
+        ? workspace.head
+        : null,
+    runCount: Array.isArray(state?.runs) ? state.runs.length : 0,
+  }
+}
+
+function transitionSourceRejection({ run, controls, state, workspace, head }) {
+  let matchedConditions = 0
+  const reject = (code) => ({ code, matchedConditions })
+  if (!runHasWorkspaceContinuity(run, state)) {
+    return reject("source_workspace_continuity")
+  }
+  matchedConditions += 1
+  if (run.branch !== workspace.actualBranch) {
+    return reject("source_actual_branch")
+  }
+  matchedConditions += 1
+  if (!Array.isArray(run.commits)) return reject("source_commits_shape")
+  matchedConditions += 1
+  if (run.commits[0] !== head) return reject("source_head_proof")
+  matchedConditions += 1
+  if (!Number.isSafeInteger(run.turnCount) || run.turnCount < 1) {
+    return reject("source_turn_count")
+  }
+  matchedConditions += 1
+
+  const matchingControls = controls.filter(
+    (control) => control.instructionId === run.instructionId,
+  )
+  if (matchingControls.length !== 1) return reject("source_control_count")
+  matchedConditions += 1
+  if (matchingControls[0].action !== "continue") {
+    return reject("source_control_action")
+  }
+  matchedConditions += 1
+  if (matchingControls[0].ownerApprovalRequired) {
+    return reject("source_control_owner_approval_required")
+  }
+  matchedConditions += 1
+  if (
+    !explicitlyAuthorizesBranchTransition(
+      matchingControls[0].prompt,
+      workspace.actualBranch,
+      head,
+      run.resultArtifact?.finalMessage ?? "",
+    )
+  ) {
+    return reject("source_explicit_authorization")
+  }
+  matchedConditions += 1
+  if (
+    hasLaterGitFailureEvidence(run) &&
+    !provesBranchTransitionBeforeLaterFailure({
+      run,
+      branch: workspace.actualBranch,
+      head,
+    })
+  ) {
+    return reject("source_partial_operation_proof")
+  }
+  return null
+}
+
+function interveningRunRejection({ run, control, state, workspace }) {
+  const durableGate = run?.ownerRequest?.reason
+  if (!runHasWorkspaceContinuity(run, state)) {
+    return "intervening_workspace_continuity"
+  }
+  if (control?.action !== "continue") return "intervening_control_action"
+  if (!hasDurableOwnerGateBinding(control, durableGate)) {
+    return "intervening_owner_gate_binding"
+  }
+  if (run.status !== "needs_owner") return "intervening_status"
+  if (run.branch !== workspace.expectedBranch) return "intervening_branch"
+  if (!isEmptyArray(run.commits)) return "intervening_commits"
+  if (run.turnCount !== 0) return "intervening_turn_count"
+  if (run.resultArtifact !== null) return "intervening_result_artifact"
+  if (run.ownerRequest?.method !== "control-plane/ownerGate") {
+    return "intervening_owner_request_method"
+  }
+  if (!hasOnlyNotRunChecks(run.checks)) return "intervening_checks"
+  if (!isEmptyArray(run.blockers)) return "intervening_blockers"
+  if (
+    !Array.isArray(run.ownerGates) ||
+    run.ownerGates.length !== 1 ||
+    run.ownerGates[0] !== durableGate
+  ) {
+    return "intervening_owner_gates"
+  }
+  if (!isEmptyArray(run.productionReadback)) {
+    return "intervening_production_readback"
+  }
+  if (!isEmptyArray(run.safetyFindings)) {
+    return "intervening_safety_findings"
+  }
+  if (!isEmptyArray(run.branchPushState)) {
+    return "intervening_branch_push_state"
+  }
+  if (!hasNoChangedFileMutationEvidence(run)) {
+    return "intervening_changed_files"
+  }
+  return null
+}
+
+export function workspaceBranchReconciliationRejection({
+  state,
+  instruction,
+  task,
+  workspace,
+}) {
+  const diagnostic = (code, context = {}) => ({
+    code,
+    ...reconciliationDiagnosticBase({ state, instruction, workspace }),
+    ...context,
+  })
+  const issueUrl = taskIssueUrl(task)
+  const controls = listAgentControls(task.issue, task.comments)
+  const currentControls = controls.filter(
+    (control) => control.instructionId === instruction?.instructionId,
+  )
+  const head = workspace?.head
+  const runs = state.runs ?? []
+  const historyTail = runs.at(-1)
+
+  if (!state.activeInstruction) return diagnostic("top_active_instruction_missing")
+  if (state.activeInstruction.instructionId !== instruction?.instructionId) {
+    return diagnostic("top_active_instruction_mismatch")
+  }
+  if (instruction.action !== "continue") return diagnostic("top_instruction_action")
+  if (instruction.taskState !== state.status) return diagnostic("top_task_state")
+  if (currentControls.length !== 1) {
+    return diagnostic("top_current_control_count", {
+      currentControlCount: currentControls.length,
+    })
+  }
+  if (currentControls[0].action !== "continue") {
+    return diagnostic("top_current_control_action")
+  }
+  if (currentControls[0].prompt !== instruction.prompt) {
+    return diagnostic("top_current_control_prompt")
+  }
+  if (!state.workspacePath) return diagnostic("top_workspace_path_missing")
+  if (workspace?.path !== state.workspacePath) {
+    return diagnostic("top_workspace_path_mismatch")
+  }
+  if (workspace.expectedBranch !== state.branch) {
+    return diagnostic("top_expected_branch_mismatch")
+  }
+  if (!workspace.actualBranch) return diagnostic("top_actual_branch_missing")
+  if (workspace.actualBranch === workspace.expectedBranch) {
+    return diagnostic("top_branch_not_changed")
+  }
+  if (
+    !workspace.actualBranch.startsWith(
+      `agent/issue-${state.task.originIssueNumber}-`,
+    )
+  ) {
+    return diagnostic("top_branch_namespace")
+  }
+  if (workspace.dirty !== false) return diagnostic("top_workspace_dirty")
+  if (workspace.operationsInProgress?.length !== 0) {
+    return diagnostic("top_operations_in_progress", {
+      operationCount: Array.isArray(workspace.operationsInProgress)
+        ? workspace.operationsInProgress.length
+        : null,
+    })
+  }
+  if (typeof head !== "string" || !/^[0-9a-f]{40}$/.test(head)) {
+    return diagnostic("top_head_invalid")
+  }
+  if (!historyTail) return diagnostic("top_history_tail_missing")
+  if (state.lastConsumedInstructionId !== historyTail.instructionId) {
+    return diagnostic("top_last_consumed_mismatch", {
+      historyTailInstructionId: safeReconciliationIdentifier(
+        historyTail.instructionId,
+      ),
+    })
+  }
+  const duplicateCurrentRunCount = runs.filter(
+    (run) => run.instructionId === instruction.instructionId,
+  ).length
+  if (duplicateCurrentRunCount !== 0) {
+    return diagnostic("top_duplicate_current_run", {
+      duplicateCurrentRunCount,
+    })
+  }
+  if (task.issue?.number !== state.task.originIssueNumber) {
+    return diagnostic("top_task_origin_issue")
+  }
+  if (issueUrl === null) return diagnostic("top_origin_url_missing")
+  if (issueUrl !== state.task.originIssueUrl) {
+    return diagnostic("top_origin_url_mismatch")
+  }
+
+  const sources = []
+  const sourceRejections = []
+  for (let index = runs.length - 1; index >= 0; index -= 1) {
+    const run = runs[index]
+    const source = transitionSource({ run, controls, state, workspace, head })
+    if (source) {
+      sources.push({ ...source, index })
+      continue
+    }
+    const rejection = transitionSourceRejection({
+      run,
+      controls,
+      state,
+      workspace,
+      head,
+    })
+    sourceRejections.push({
+      instructionId: safeReconciliationIdentifier(run?.instructionId),
+      code: rejection?.code ?? "source_unclassified",
+      matchedConditions: rejection?.matchedConditions ?? 0,
+    })
+  }
+  if (sources.length === 0) {
+    const ranked = [...sourceRejections].sort(
+      (left, right) => right.matchedConditions - left.matchedConditions,
+    )
+    return diagnostic(ranked[0]?.code ?? "source_count_none", {
+      sourceCount: 0,
+      sourceCountCode: "source_count_none",
+      sourceInstructionId: ranked[0]?.instructionId ?? null,
+      sourceRejections: sourceRejections
+        .slice(0, maximumReconciliationSourceDiagnostics)
+        .map(({ instructionId, code }) => ({ instructionId, code })),
+      sourceRejectionsTruncated:
+        sourceRejections.length > maximumReconciliationSourceDiagnostics,
+    })
+  }
+  if (sources.length !== 1) {
+    return diagnostic("source_count_ambiguous", {
+      sourceCount: sources.length,
+      sourceInstructionIds: sources
+        .slice(0, maximumReconciliationSourceDiagnostics)
+        .map(({ run }) => safeReconciliationIdentifier(run.instructionId)),
+      sourceListTruncated:
+        sources.length > maximumReconciliationSourceDiagnostics,
+    })
+  }
+
+  const [{ run: sourceRun, index: sourceIndex }] = sources
+  const observedInstructionIds = new Set([sourceRun.instructionId])
+  for (const run of runs.slice(sourceIndex + 1)) {
+    const runInstructionId = safeReconciliationIdentifier(run.instructionId)
+    const matchingControls = controls.filter(
+      (control) => control.instructionId === run.instructionId,
+    )
+    if (observedInstructionIds.has(run.instructionId)) {
+      return diagnostic("intervening_duplicate_instruction", {
+        runInstructionId,
+      })
+    }
+    if (matchingControls.length !== 1) {
+      return diagnostic("intervening_control_count", {
+        runInstructionId,
+        matchingControlCount: matchingControls.length,
+      })
+    }
+    const rejection = interveningRunRejection({
+      run,
+      control: matchingControls[0],
+      state,
+      workspace,
+    })
+    if (rejection) {
+      return diagnostic(rejection, { runInstructionId })
+    }
+    observedInstructionIds.add(run.instructionId)
+  }
+
+  const reconciliationId = [
+    "authorized-workspace-branch",
+    sourceRun.instructionId,
+    instruction.instructionId,
+    head,
+  ].join(":")
+  const existing = (state.workspaceBranchReconciliations ?? []).find(
+    (record) => record.reconciliationId === reconciliationId,
+  )
+  if (!existing) return null
+  const expectedRecord = {
+    reconciliationId,
+    precedingInstructionId: sourceRun.instructionId,
+    interveningInstructionIds: runs
+      .slice(sourceIndex + 1)
+      .map((run) => run.instructionId),
+    continuationInstructionId: instruction.instructionId,
+    originIssueNumber: state.task.originIssueNumber,
+    originIssueUrl: state.task.originIssueUrl,
+    threadId: state.threadId,
+    workspacePath: state.workspacePath,
+    fromBranch: workspace.expectedBranch,
+    toBranch: workspace.actualBranch,
+    head,
+  }
+  return reconciliationRecordMatches(existing, expectedRecord)
+    ? null
+    : diagnostic("reconciliation_record_conflict")
+}
+
+export async function recordWorkspaceBranchReconciliationRejection({
+  store,
+  reconciliationInput,
+}) {
+  let rejection = {
+    code: "reconciliation_rejection_unclassified",
+    instructionId: safeReconciliationIdentifier(
+      reconciliationInput?.instruction?.instructionId,
+    ),
+  }
+  try {
+    rejection =
+      workspaceBranchReconciliationRejection(reconciliationInput) ?? rejection
+  } catch {
+    // Classification is best-effort and cannot affect reconciliation.
+  }
+  const event = {
+    type: "workspace_branch_reconciliation_rejected",
+    ...rejection,
+  }
+  try {
+    await store.appendEvent(event)
+  } catch {
+    // Diagnostic persistence must never change reconciliation acceptance.
+  }
+  return event
+}
+
 function reconciliationRecordMatches(existing, expected) {
   return Object.entries(expected).every(([key, value]) => {
     if (!Array.isArray(value)) return existing[key] === value
@@ -737,13 +1086,22 @@ export class Orchestrator {
   }
 
   async #reconcileWorkspaceBranch(state, instruction, task, workspace) {
-    const authorized = authorizedWorkspaceBranchReconciliation({
+    const reconciliationInput = {
       state,
       instruction,
       task,
       workspace,
-    })
-    if (!authorized) return false
+    }
+    const authorized = authorizedWorkspaceBranchReconciliation(
+      reconciliationInput,
+    )
+    if (!authorized) {
+      await recordWorkspaceBranchReconciliationRejection({
+        store: this.store,
+        reconciliationInput,
+      })
+      return false
+    }
 
     state.workspaceBranchReconciliations ??= []
     if (authorized.isNew) {
