@@ -154,6 +154,15 @@ function isEmptyArray(value) {
   return Array.isArray(value) && value.length === 0
 }
 
+function hasNoChangedFileMutationEvidence(run) {
+  return Boolean(
+    run &&
+      (!Object.hasOwn(run, "changedFiles") ||
+        run.changedFiles === null ||
+        isEmptyArray(run.changedFiles)),
+  )
+}
+
 const explicitOwnerGateReason =
   "The control-plane instruction explicitly requires owner approval."
 const classifiedOwnerGatePrefix =
@@ -220,7 +229,7 @@ function isProvablyNonMutatingRun({ run, control, state, workspace }) {
       isEmptyArray(run.productionReadback) &&
       isEmptyArray(run.safetyFindings) &&
       isEmptyArray(run.branchPushState) &&
-      (!Object.hasOwn(run, "changedFiles") || isEmptyArray(run.changedFiles)),
+      hasNoChangedFileMutationEvidence(run),
   )
 }
 
@@ -297,7 +306,7 @@ function provesBranchTransitionBeforeLaterFailure({ run, branch, head }) {
       Array.isArray(run.commits) &&
       run.commits.length === 1 &&
       run.commits[0] === head &&
-      (!Object.hasOwn(run, "changedFiles") || isEmptyArray(run.changedFiles)) &&
+      hasNoChangedFileMutationEvidence(run) &&
       checks &&
       Object.keys(checks).length === resultCheckNames.length &&
       checks.typecheck === "unknown" &&
