@@ -214,6 +214,65 @@ test("diagnostic events never include arbitrary prompts or secrets", async () =>
   assert.equal(JSON.stringify(event).length < 4_096, true)
 })
 
+for (const [name, shapeIssue] of [
+  ["connector issue_number", (issue) => {
+    delete issue.number
+    issue.issue_number = 63
+  }],
+  ["REST number", () => {}],
+  ["URL-only identity", (issue) => {
+    delete issue.number
+    delete issue.html_url
+    issue.url = issue63OriginUrl
+  }],
+]) {
+  test(`normalized ${name} preserves Issue #63 reconciliation`, () => {
+    const fixture = reconciliationFixture()
+    shapeIssue(fixture.task.issue)
+
+    const authorized = authorizedWorkspaceBranchReconciliation(fixture)
+
+    assert.equal(authorized?.isNew, true)
+    assert.equal(workspaceBranchReconciliationRejection(fixture), null)
+    assert.equal(
+      authorized?.record.precedingInstructionId,
+      "production-day1-git-reconciliation-008",
+    )
+  })
+}
+
+for (const [name, shapeIssue] of [
+  ["missing issue identity", (issue) => {
+    delete issue.number
+    delete issue.issue_number
+    delete issue.url
+    delete issue.html_url
+    delete issue.display_url
+  }],
+  ["malformed issue identity", (issue) => {
+    delete issue.number
+    issue.issue_number = "63"
+    issue.html_url = "https://github.com/Sillyquack/koalafrog-hq/issues/not-a-number"
+  }],
+  ["wrong issue number", (issue) => {
+    delete issue.number
+    issue.issue_number = 64
+  }],
+]) {
+  test(`normalized origin check rejects ${name}`, () => {
+    const fixture = reconciliationFixture()
+    shapeIssue(fixture.task.issue)
+
+    assert.equal(authorizedWorkspaceBranchReconciliation(fixture), null)
+    assert.equal(
+      workspaceBranchReconciliationRejection(fixture)?.code,
+      "top_task_origin_issue",
+    )
+    assert.equal(fixture.state.branch, issue63ExpectedBranch)
+    assert.deepEqual(fixture.state.workspaceBranchReconciliations, [])
+  })
+}
+
 test("absent historical workspace paths are treated as legacy unknown", () => {
   const fixture = reconciliationFixture()
   delete fixture.state.runs[0].workspacePath
