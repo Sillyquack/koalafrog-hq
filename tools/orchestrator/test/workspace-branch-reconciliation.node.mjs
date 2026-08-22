@@ -74,6 +74,8 @@ test("Issue #63/010 scans past the exact non-mutating 009 owner stop", () => {
   assert.equal(fixture.state.workspacePath, issue63WorkspacePath)
   assert.equal(sourceRun.workspacePath, null)
   assert.equal(fixture.state.runs[1].workspacePath, null)
+  assert.equal(sourceRun.changedFiles, null)
+  assert.equal(fixture.state.runs[1].changedFiles, null)
   assert.equal(sourceRun.ownerRequest, null)
   assert.deepEqual(sourceRun.blockers, [
     issue63CleanWorkspaceEvidence,
@@ -181,6 +183,29 @@ test("mismatched explicit historical workspace path fails closed", () => {
   assert.equal(fixture.state.branch, issue63ExpectedBranch)
   assert.deepEqual(fixture.state.workspaceBranchReconciliations, [])
 })
+
+for (const [name, setChangedFiles] of [
+  ["absent", (run) => delete run.changedFiles],
+  ["an explicit empty array", (run) => {
+    run.changedFiles = []
+  }],
+]) {
+  test(`historical changedFiles may be ${name}`, () => {
+    const fixture = reconciliationFixture()
+    for (const run of fixture.state.runs) setChangedFiles(run)
+
+    const authorized = authorizedWorkspaceBranchReconciliation(fixture)
+
+    assert.equal(authorized?.isNew, true)
+    assert.equal(
+      authorized?.record.precedingInstructionId,
+      "production-day1-git-reconciliation-008",
+    )
+    assert.deepEqual(authorized?.record.interveningInstructionIds, [
+      issue63InterveningInstructionId,
+    ])
+  })
+}
 
 test("Issue #68/004 reconciles its reviewed clean branch idempotently", () => {
   const [instruction] = extractAgentControls(issue68ContinuationControl)
@@ -311,6 +336,9 @@ for (const [name, change] of [
   ["ambiguous source-run tree mutation", (fixture) => {
     fixture.state.runs[0].changedFiles = ["partially-applied-change.mjs"]
   }],
+  ["malformed source-run changedFiles", (fixture) => {
+    fixture.state.runs[0].changedFiles = "unknown"
+  }],
   ["conflicting source-run commit history", (fixture) => {
     fixture.state.runs[0].commits.push("a".repeat(40))
   }],
@@ -337,6 +365,9 @@ for (const [name, change] of [
 for (const [name, change] of [
   ["mutable intervening run", (fixture) => {
     fixture.state.runs[1].changedFiles = ["unexpected-change.mjs"]
+  }],
+  ["malformed intervening changedFiles", (fixture) => {
+    fixture.state.runs[1].changedFiles = { legacy: true }
   }],
   ["conflicting intervening HEAD evidence", (fixture) => {
     fixture.state.runs[1].commits = ["a".repeat(40)]
