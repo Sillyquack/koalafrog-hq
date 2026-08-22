@@ -1,6 +1,7 @@
 # Koalafrog Agent Orchestration Bridge
 
-Status: bootstrap specification
+Status: repository-wide persistent runtime implemented; activation remains an
+explicit bounded owner operation
 
 ## Goal
 
@@ -22,6 +23,10 @@ Do not automate the Codex desktop GUI with mouse/keyboard as the primary mechani
    - Start with GitHub Issues for durable tasks because the Koalafrog repo already lives in GitHub and ChatGPT has direct GitHub access.
    - Task states should be represented explicitly and machine-readably.
    - Suggested states: `ready`, `running`, `needs_review`, `needs_owner`, `done`, `failed`.
+   - Consume only valid fenced `agent_control` blocks from open issues; never
+     infer a task from prose or accidentally consume a pull request.
+   - Claim each repository-wide instruction ID idempotently and route pickup
+     and result packets back to its originating issue.
 
 2. **Local orchestrator service**
    - Runs continuously on the Mac.
