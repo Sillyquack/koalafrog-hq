@@ -1,8 +1,10 @@
 import assert from "node:assert/strict"
-import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises"
+import { execFile } from "node:child_process"
+import { cp, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
 import test from "node:test"
+import { promisify } from "node:util"
 import {
   buildLaunchAgentPlist,
   installAndStartLaunchAgent,
@@ -15,6 +17,8 @@ import {
   planRuntimeRelease,
   planRuntimeReleaseFromCheckout,
 } from "../src/runtime-bundle.mjs"
+
+const execFileAsync = promisify(execFile)
 
 function fixture(root) {
   const stateDirectory = path.join(root, "state & logs")
@@ -70,14 +74,106 @@ test("service runtime release is deterministic, immutable, and outside a task wo
       (file) => file.relativePath === "src/result-artifact.mjs",
     ),
   )
+  assert.ok(
+    firstPlan.files.some(
+      (file) => file.relativePath === "src/git-execution-boundary.mjs",
+    ),
+  )
   assert.match(firstPlan.orchestratorScript, /runtime\/releases\/[a-f0-9]{64}\/bin\/repository-orchestrator\.mjs$/)
   assert.equal((await materializeRuntimeRelease(firstPlan)).status, "created")
   assert.equal((await materializeRuntimeRelease(secondPlan)).status, "unchanged")
+  assert.equal(
+    await readFile(
+      path.join(firstPlan.releaseDirectory, "src/git-execution-boundary.mjs"),
+      "utf8",
+    ),
+    await readFile(
+      path.join(sourceDirectory, "src/git-execution-boundary.mjs"),
+      "utf8",
+    ),
+  )
+  const started = await execFileAsync(
+    process.execPath,
+    [firstPlan.orchestratorScript, "help"],
+    {
+      cwd: firstPlan.releaseDirectory,
+      encoding: "utf8",
+    },
+  )
+  assert.match(started.stdout, /Repository orchestrator: scans all open issues/)
+  assert.doesNotMatch(started.stderr, /ERR_MODULE_NOT_FOUND/)
 
   await writeFile(firstPlan.orchestratorScript, "tampered\n")
   await assert.rejects(
     materializeRuntimeRelease(firstPlan),
     /immutable runtime was modified/,
+  )
+})
+
+test("runtime packaging discovers new modules, hashes them, and rejects an open local dependency", async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "koalafrog-runtime-closure-"))
+  t.after(() => rm(root, { recursive: true, force: true }))
+  const sourceDirectory = path.join(root, "orchestrator")
+  await cp(path.resolve("tools/orchestrator"), sourceDirectory, {
+    recursive: true,
+  })
+  const options = {
+    sourceDirectory,
+    stateDirectory: path.join(root, "state"),
+  }
+
+  const initial = await planRuntimeRelease(options)
+  const boundaryPath = path.join(
+    sourceDirectory,
+    "src",
+    "git-execution-boundary.mjs",
+  )
+  await writeFile(
+    boundaryPath,
+    `${await readFile(boundaryPath, "utf8")}\n// digest probe\n`,
+  )
+  const boundaryChanged = await planRuntimeRelease(options)
+  assert.notEqual(boundaryChanged.digest, initial.digest)
+  assert.notEqual(
+    boundaryChanged.files.find(
+      (file) => file.relativePath === "src/git-execution-boundary.mjs",
+    )?.digest,
+    initial.files.find(
+      (file) => file.relativePath === "src/git-execution-boundary.mjs",
+    )?.digest,
+  )
+
+  const orchestratorPath = path.join(
+    sourceDirectory,
+    "src",
+    "orchestrator.mjs",
+  )
+  const orchestratorContents = await readFile(orchestratorPath, "utf8")
+  const probePath = path.join(sourceDirectory, "src", "runtime-probe.mjs")
+  await writeFile(probePath, "export const packaged = true\n")
+  await writeFile(
+    orchestratorPath,
+    `${orchestratorContents}\nimport "./runtime-probe.mjs"\n`,
+  )
+  const expanded = await planRuntimeRelease(options)
+  assert.ok(
+    expanded.files.some(
+      (file) => file.relativePath === "src/runtime-probe.mjs",
+    ),
+  )
+  assert.notEqual(expanded.digest, boundaryChanged.digest)
+
+  await rm(probePath)
+  await assert.rejects(
+    planRuntimeRelease(options),
+    /Runtime local dependency is missing: src\/orchestrator\.mjs -> \.\/runtime-probe\.mjs/,
+  )
+
+  await writeFile(orchestratorPath, orchestratorContents)
+  await rm(boundaryPath)
+  await assert.rejects(
+    planRuntimeRelease(options),
+    /Runtime local dependency is missing: src\/orchestrator\.mjs -> \.\/git-execution-boundary\.mjs/,
   )
 })
 
