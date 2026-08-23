@@ -967,7 +967,7 @@ test("#63/014 exact normalization rejects mutation and combined push/PR conflict
   )
 })
 
-test("live-shaped #63/015 preserves the hidden structured and legacy fallback reasons", async (t) => {
+test("live-shaped #63/015 stays fail-closed without a complete command ledger", async (t) => {
   const setup = await fixture(t, { execution015: true })
   assert.equal(setup.boundary, null)
   assert.equal(
@@ -986,11 +986,54 @@ test("live-shaped #63/015 preserves the hidden structured and legacy fallback re
   )
   const live014 = setup.state.runs.at(-1)
   assert.equal(live014.instructionId, issue63DiagnosticInstructionId)
+  assert.equal(live014.branch, issue63ReconciledBranch)
+  assert.deepEqual(live014.commits, [setup.head])
+  assert.deepEqual(live014.changedFiles, issue63LiveChangedFiles)
   assert.deepEqual(live014.productionReadback, [])
   assert.deepEqual(live014.resultArtifact.findings.productionReadback, [])
-  assert.equal(live014.changedFiles.length, issue63LiveChangedFiles.length)
+  assert.deepEqual(
+    live014.resultArtifact.findings.branchPushState,
+    live014.branchPushState,
+  )
+  assert.equal(live014.turnCount, 1)
+  assert.equal(live014.resultArtifact.source, "completed_turn_final_message")
+  assert.equal(live014.resultArtifact.turnStatus, "completed")
   assert.equal(live014.checks.diffCheck, "pass")
   assert.equal(live014.resultArtifact.checks.diffCheck.status, "pass")
+  const commandEvidence =
+    live014.resultArtifact.checks.diffCheck.evidence.filter(
+      (evidence) => evidence.source === "command_execution",
+    )
+  assert.equal(commandEvidence.length, 1)
+  assert.deepEqual(Object.keys(commandEvidence[0]).sort(), [
+    "source",
+    "status",
+    "summary",
+  ])
+  assert.equal(commandEvidence[0].status, "pass")
+  assert.match(commandEvidence[0].summary, /git status --porcelain=v1/)
+  assert.match(
+    commandEvidence[0].summary,
+    new RegExp(`git rev-list --count ${setup.head}\\.\\.HEAD`),
+  )
+  for (const marker of [
+    "CHERRY_PICK_HEAD",
+    "MERGE_HEAD",
+    "REVERT_HEAD",
+    "REBASE_HEAD",
+  ]) {
+    assert.match(commandEvidence[0].summary, new RegExp(marker))
+  }
+  assert.match(commandEvidence[0].summary, /git diff --check/)
+  assert.match(commandEvidence[0].summary, /\(completed, exit 0\)/)
+  assert.equal(Object.hasOwn(live014, "commandExecutions"), false)
+  assert.equal(Object.hasOwn(live014.resultArtifact, "commands"), false)
+  assert.equal(
+    Object.hasOwn(live014.resultArtifact, "commandExecutions"),
+    false,
+  )
+  assert.equal(Object.hasOwn(commandEvidence[0], "stdout"), false)
+  assert.equal(Object.hasOwn(commandEvidence[0], "results"), false)
   assert.match(
     live014.resultArtifact.finalMessage,
     /No fallback path or mutation was attempted\./,
