@@ -33,9 +33,13 @@ import {
   issue63ExecutionInstructionId,
   issue63FailedExecutionRun,
   issue63FailedGrantRun,
+  issue63FailedHistoricalGrantRun,
   issue63HistoricalGrantControl,
   issue63HistoricalGrantInstructionId,
+  issue63HistoricalGrantRetryControl,
+  issue63HistoricalGrantRetryInstructionId,
   issue63InterveningRun,
+  issue63LiveChangedFiles,
   issue63OriginUrl,
   issue63PriorRun,
   issue63ReconciledBranch,
@@ -72,7 +76,7 @@ async function fileSnapshot(root) {
 
 async function fixture(
   t,
-  { execution011 = false, execution012 = false } = {},
+  { execution011 = false, execution012 = false, execution013 = false } = {},
 ) {
   const directory = await realpath(
     await mkdtemp(
@@ -145,10 +149,28 @@ async function fixture(
       "a74079be88ec4a8b36b850f95dca791ff42e4e80",
       cherryPickCommit,
     )
-  if (execution011 || execution012) task.comments.push({ body: executionControl })
-  if (execution012) task.comments.push({ body: historicalGrantControl })
+  const historicalGrantRetryControl = issue63HistoricalGrantRetryControl
+    .replaceAll(
+      "ec719153c8e726831d7e2b748067383ea7f4e314",
+      head,
+    )
+    .replaceAll(
+      "a74079be88ec4a8b36b850f95dca791ff42e4e80",
+      cherryPickCommit,
+    )
+  if (execution011 || execution012 || execution013) {
+    task.comments.push({ body: executionControl })
+  }
+  if (execution012 || execution013) {
+    task.comments.push({ body: historicalGrantControl })
+  }
+  if (execution013) {
+    task.comments.push({ body: historicalGrantRetryControl })
+  }
   const [instruction] = extractAgentControls(
-    execution012
+    execution013
+      ? historicalGrantRetryControl
+      : execution012
       ? historicalGrantControl
       : execution011
         ? executionControl
@@ -170,10 +192,7 @@ async function fixture(
   const receiptRun = structuredClone(sourceRun)
   receiptRun.instructionId = receiptInstruction.instructionId
   receiptRun.workspacePath = workspacePath
-  receiptRun.changedFiles = Array.from(
-    { length: 30 },
-    (_, index) => `reviewed/path-${String(index + 1).padStart(2, "0")}.ts`,
-  )
+  receiptRun.changedFiles = structuredClone(issue63LiveChangedFiles)
   receiptRun.resultArtifact = structuredClone(
     issue63FailedExecutionRun.resultArtifact,
   )
@@ -200,14 +219,48 @@ async function fixture(
         head,
       ),
     }))
+  const failedHistoricalGrantRun = structuredClone(
+    issue63FailedHistoricalGrantRun,
+  )
+  failedHistoricalGrantRun.workspacePath = workspacePath
+  failedHistoricalGrantRun.commits = [head]
+  failedHistoricalGrantRun.changedFiles = structuredClone(
+    receiptRun.changedFiles,
+  )
+  failedHistoricalGrantRun.resultArtifact.finalMessage =
+    failedHistoricalGrantRun.resultArtifact.finalMessage.replaceAll(
+      "ec719153c8e726831d7e2b748067383ea7f4e314",
+      head,
+    )
+  failedHistoricalGrantRun.resultArtifact.checks.diffCheck.evidence =
+    failedHistoricalGrantRun.resultArtifact.checks.diffCheck.evidence.map(
+      (evidence) => ({
+        ...evidence,
+        summary: evidence.summary.replaceAll(
+          "ec719153c8e726831d7e2b748067383ea7f4e314",
+          head,
+        ),
+      }),
+    )
   const state = {
-    status: execution011 || execution012 ? "needs_review" : "needs_owner",
+    status:
+      execution011 || execution012 || execution013
+        ? "needs_review"
+        : "needs_owner",
     task: { originIssueNumber: 63, originIssueUrl: issue63OriginUrl },
     threadId: issue63ThreadId,
     workspacePath,
     branch: issue63ReconciledBranch,
     activeInstruction: { ...instruction, phase: "selected" },
-    runs: execution012
+    runs: execution013
+      ? [
+          sourceRun,
+          structuredClone(issue63InterveningRun),
+          receiptRun,
+          failedGrantRun,
+          failedHistoricalGrantRun,
+        ]
+      : execution012
       ? [
           sourceRun,
           structuredClone(issue63InterveningRun),
@@ -221,7 +274,7 @@ async function fixture(
       {
         reconciliationId,
         precedingInstructionId: sourceRun.instructionId,
-        interveningInstructionIds: execution011 || execution012
+        interveningInstructionIds: execution011 || execution012 || execution013
           ? [issue63InterveningRun.instructionId]
           : [],
         continuationInstructionId: receiptInstruction.instructionId,
@@ -620,6 +673,231 @@ test("#63/012 structured historical proof fails closed on mutation and Git-state
         )
     }),
     "activation_historical_run_structured_final_message_conflict",
+  )
+})
+
+test("live-shaped #63/013 accepts the exact compact no-marker evidence through the 010 receipt", async (t) => {
+  const setup = await fixture(t, { execution013: true })
+  const {
+    boundary,
+    state,
+    workspacePath,
+    workspaceRoot,
+    checkoutPath,
+    head,
+  } = setup
+  assert.ok(boundary)
+  assert.equal(
+    boundary.instructionId,
+    issue63HistoricalGrantRetryInstructionId,
+  )
+  assert.equal(boundary.provenanceMode, "historical_reconciliation")
+  assert.equal(
+    boundary.reconciliationInstructionId,
+    issue63ContinuationInstructionId,
+  )
+  assert.deepEqual(boundary.interveningExecutionInstructionIds, [
+    issue63ContinuationInstructionId,
+    issue63ExecutionInstructionId,
+    issue63HistoricalGrantInstructionId,
+  ])
+  assert.equal(state.workspaceBranchReconciliations.length, 1)
+  const live012 = state.runs.at(-1)
+  assert.equal(
+    live012.instructionId,
+    issue63HistoricalGrantInstructionId,
+  )
+  assert.match(
+    live012.resultArtifact.finalMessage,
+    /Worktree: clean; zero commits above base; no Git operation markers/,
+  )
+  assert.match(
+    live012.resultArtifact.finalMessage,
+    /Grant evidence: no activation\/grant diagnostic was emitted; Git received `index\.lock: Operation not permitted`/,
+  )
+  assert.doesNotMatch(
+    live012.resultArtifact.finalMessage,
+    /In-progress Git markers: all absent/,
+  )
+
+  const selectedLock = path.join(boundary.gitDirectory, "index.lock")
+  assert.equal(gitExecutionPathIsCovered(boundary, selectedLock), true)
+  await writeFile(selectedLock, "bounded #63/013 lock\n")
+  assert.equal(await readFile(selectedLock, "utf8"), "bounded #63/013 lock\n")
+  await unlink(selectedLock)
+
+  const siblingWorkspace = path.join(
+    workspaceRoot,
+    "issue-64-historical-grant-013-negative-001",
+  )
+  await git(
+    checkoutPath,
+    "worktree",
+    "add",
+    "-b",
+    "agent/issue-64-historical-grant-013-negative-001",
+    siblingWorkspace,
+    head,
+  )
+  const siblingPointer = await readFile(path.join(siblingWorkspace, ".git"), "utf8")
+  const siblingGitDirectory = await realpath(
+    siblingPointer.trim().slice("gitdir: ".length),
+  )
+  const siblingLock = path.join(siblingGitDirectory, "index.lock")
+  assert.equal(gitExecutionPathIsCovered(boundary, siblingLock), false)
+
+  const exactRequest = permissionRequest(boundary)
+  exactRequest.request.turnId =
+    "turn-production-day1-git-reconciliation-execution-013"
+  assert.equal(
+    gitExecutionBoundaryRequestDecision({
+      boundary,
+      ...exactRequest,
+    }).value.action,
+    "cherry_pick",
+  )
+  const siblingRequest = structuredClone(exactRequest)
+  siblingRequest.request.details.permissions.fileSystem.write.push(siblingLock)
+  assert.equal(
+    gitExecutionBoundaryRequestDecision({
+      boundary,
+      ...siblingRequest,
+    }).rejection.code,
+    "request_filesystem_permissions",
+  )
+
+  const missingNoMarkerProof = structuredClone(state)
+  missingNoMarkerProof.runs.at(-1).resultArtifact.finalMessage =
+    missingNoMarkerProof.runs.at(-1).resultArtifact.finalMessage.replace(
+      "no Git operation markers",
+      "Git operation marker state unavailable",
+    )
+  let diagnostic = null
+  assert.equal(
+    await authorizedGitExecutionBoundary({
+      ...setup,
+      state: missingNoMarkerProof,
+      onDiagnostic: (value) => {
+        diagnostic = value
+      },
+    }),
+    null,
+  )
+  assert.equal(
+    diagnostic.code,
+    "activation_historical_run_index_lock_evidence",
+  )
+})
+
+test("#63/013 compact no-marker proof rejects every conflicting durable shape", async (t) => {
+  const setup = await fixture(t, { execution013: true })
+  const rejectionFor = async (mutate) => {
+    const state = structuredClone(setup.state)
+    mutate(state.runs.at(-1))
+    let diagnostic = null
+    assert.equal(
+      await authorizedGitExecutionBoundary({
+        ...setup,
+        state,
+        onDiagnostic: (value) => {
+          diagnostic = value
+        },
+      }),
+      null,
+    )
+    return diagnostic.code
+  }
+  const replaceFinal = (run, from, to) => {
+    run.resultArtifact.finalMessage =
+      run.resultArtifact.finalMessage.replace(from, to)
+  }
+
+  assert.equal(
+    await rejectionFor((run) =>
+      replaceFinal(
+        run,
+        "no Git operation markers",
+        "Git operation markers present",
+      ),
+    ),
+    "activation_historical_run_structured_final_message_conflict",
+  )
+  assert.equal(
+    await rejectionFor((run) =>
+      replaceFinal(run, "Worktree: clean", "Worktree: dirty"),
+    ),
+    "activation_historical_run_structured_final_message_conflict",
+  )
+  assert.equal(
+    await rejectionFor((run) =>
+      replaceFinal(run, "zero commits above base", "one commit above base"),
+    ),
+    "activation_historical_run_structured_final_message_conflict",
+  )
+  assert.equal(
+    await rejectionFor((run) => run.changedFiles.push("drifted/source.ts")),
+    "activation_historical_run_structured_changed_files_conflict",
+  )
+  assert.equal(
+    await rejectionFor((run) =>
+      replaceFinal(run, "Push: **NOT ATTEMPTED**", "Push: **ATTEMPTED**"),
+    ),
+    "activation_historical_run_structured_final_message_conflict",
+  )
+  assert.equal(
+    await rejectionFor((run) =>
+      replaceFinal(run, "PR: **NOT CREATED**", "PR: **CREATED**"),
+    ),
+    "activation_historical_run_structured_final_message_conflict",
+  )
+  assert.equal(
+    await rejectionFor((run) => {
+      run.productionReadback = ["A remote Git mutation was attempted."]
+      run.resultArtifact.findings.productionReadback = [
+        "A remote Git mutation was attempted.",
+      ]
+    }),
+    "activation_historical_run_structured_mutation_conflict",
+  )
+  assert.equal(
+    await rejectionFor((run) => {
+      run.branch = "agent/issue-63-wrong-branch"
+    }),
+    "activation_historical_run_branch",
+  )
+  assert.equal(
+    await rejectionFor((run) => {
+      run.commits = ["f".repeat(40)]
+    }),
+    "activation_historical_run_head_proof",
+  )
+  assert.equal(
+    await rejectionFor((run) => {
+      run.workspacePath = `${setup.workspacePath}-other`
+    }),
+    "activation_historical_run_workspace",
+  )
+  assert.equal(
+    await rejectionFor((run) =>
+      replaceFinal(
+        run,
+        issue63ReconciledBranch,
+        "agent/issue-63-contradictory-final-branch",
+      ),
+    ),
+    "activation_historical_run_structured_final_message_conflict",
+  )
+  assert.equal(
+    await rejectionFor((run) =>
+      replaceFinal(run, setup.head, "e".repeat(40)),
+    ),
+    "activation_historical_run_structured_final_message_conflict",
+  )
+  assert.equal(
+    await rejectionFor((run) => {
+      run.blockers.push("Contradictory nested finding.")
+    }),
+    "activation_historical_run_structured_findings_conflict",
   )
 })
 

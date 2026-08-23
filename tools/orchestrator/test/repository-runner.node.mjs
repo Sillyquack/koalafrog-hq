@@ -27,6 +27,9 @@ import {
   issue63ExpectedBranch,
   issue63HistoricalGrantControl,
   issue63HistoricalGrantInstructionId,
+  issue63HistoricalGrantRetryControl,
+  issue63HistoricalGrantRetryInstructionId,
+  issue63HistoricalGrantRetryTask,
   issue63HistoricalGrantTask,
   issue63OriginUrl,
   issue63ReconciledBranch,
@@ -35,6 +38,7 @@ import {
   issue63ThreadId,
   issue63WorkspacePath,
   prepareIssue63HistoricalGrantState,
+  prepareIssue63HistoricalGrantRetryState,
   prepareIssue63ReconciliationState,
 } from "./fixtures/issue-63-production-day1-git-reconciliation-resume-010.mjs"
 
@@ -902,9 +906,19 @@ test("repository runner reconciles connector-shaped retryable Issue #63/010 exac
   assert.equal(claimRecord.attempt, 2)
 })
 
-test("live-shaped Issue #63/012 grants once and remains idempotent after repository restart", async (t) => {
+async function assertHistoricalGrantRepositoryRestart(
+  t,
+  {
+    sequence,
+    control,
+    prepareState,
+    taskFactory,
+    instructionId,
+    interveningExecutionInstructionIds,
+  },
+) {
   const directory = await mkdtemp(
-    path.join(os.tmpdir(), "koalafrog-repository-git-execution-012-"),
+    path.join(os.tmpdir(), `koalafrog-repository-git-execution-${sequence}-`),
   )
   t.after(() => rm(directory, { recursive: true, force: true }))
   const storeOptions = {
@@ -913,14 +927,11 @@ test("live-shaped Issue #63/012 grants once and remains idempotent after reposit
     issueNumber: 63,
   }
   const store = new StateStore(storeOptions)
-  const [instruction] = extractAgentControls(issue63HistoricalGrantControl)
-  const state = prepareIssue63HistoricalGrantState(
-    await store.load(),
-    instruction,
-  )
+  const [instruction] = extractAgentControls(control)
+  const state = prepareState(await store.load(), instruction)
   await store.save(state)
 
-  const task = issue63HistoricalGrantTask()
+  const task = taskFactory()
   task.issue.issue_number = 63
   task.issue.url = issue63OriginUrl
   delete task.issue.number
@@ -928,7 +939,7 @@ test("live-shaped Issue #63/012 grants once and remains idempotent after reposit
   let postedCommentId = 1
   const posted = []
   const scanner = {
-    threadId: "repository-scanner-thread-012",
+    threadId: `repository-scanner-thread-${sequence}`,
     appServer: {
       async callMcpTool(request) {
         if (request.tool === "github.fetch_issue") {
@@ -950,7 +961,7 @@ test("live-shaped Issue #63/012 grants once and remains idempotent after reposit
   }
   const gitExecutionBoundary = {
     schemaVersion: 1,
-    instructionId: issue63HistoricalGrantInstructionId,
+    instructionId,
     threadId: issue63ThreadId,
     workspacePath: issue63WorkspacePath,
     branch: issue63ReconciledBranch,
@@ -960,10 +971,7 @@ test("live-shaped Issue #63/012 grants once and remains idempotent after reposit
       "activation_reconciliation_current_instruction_missing",
     reconciliationInstructionId:
       "production-day1-git-reconciliation-resume-010",
-    interveningExecutionInstructionIds: [
-      "production-day1-git-reconciliation-resume-010",
-      "production-day1-git-reconciliation-execution-011",
-    ],
+    interveningExecutionInstructionIds,
     writablePaths: ["/coordinating/.git/worktrees/issue-63"],
     commands: {
       cherry_pick: [
@@ -985,7 +993,7 @@ test("live-shaped Issue #63/012 grants once and remains idempotent after reposit
       return { thread: { id: threadId } }
     },
     async startThread() {
-      throw new Error("Issue #63/012 must preserve its Codex thread")
+      throw new Error(`Issue #63/${sequence} must preserve its Codex thread`)
     },
     async waitForMcpReady() {},
     async runTurn({
@@ -997,8 +1005,8 @@ test("live-shaped Issue #63/012 grants once and remains idempotent after reposit
       turns += 1
       assert.equal(approvalPolicy, "on-request")
       assert.match(prompt, /Orchestrator-managed Git execution boundary/)
-      const turnId = "turn-production-day1-git-reconciliation-execution-012"
-      const itemId = "item-production-day1-git-012"
+      const turnId = `turn-production-day1-git-reconciliation-execution-${sequence}`
+      const itemId = `item-production-day1-git-${sequence}`
       await onTurnStarted(turnId)
       const ownerRequest = {
         method: "item/permissions/requestApproval",
@@ -1042,8 +1050,7 @@ test("live-shaped Issue #63/012 grants once and remains idempotent after reposit
         status: "completed",
         turn: { id: turnId, status: "completed", items: [] },
         pendingOwnerRequest: null,
-        agentMessage:
-          "needs_review\n\nThe mocked #63/012 grant path completed without a live Git operation.",
+        agentMessage: `needs_review\n\nThe mocked #63/${sequence} grant path completed without a live Git operation.`,
       }
     },
     async stop() {},
@@ -1073,7 +1080,7 @@ test("live-shaped Issue #63/012 grants once and remains idempotent after reposit
     }) {
       assert.equal(
         currentInstruction.instructionId,
-        issue63HistoricalGrantInstructionId,
+        instructionId,
       )
       assert.equal(
         currentState.workspaceBranchReconciliations[0]
@@ -1126,7 +1133,7 @@ test("live-shaped Issue #63/012 grants once and remains idempotent after reposit
   })
 
   assert.equal(completed.status, "needs_review")
-  assert.equal(completed.instructionId, issue63HistoricalGrantInstructionId)
+  assert.equal(completed.instructionId, instructionId)
   assert.equal(restartedReplay.status, "no_pending_agent_control")
   assert.equal(turns, 1)
   assert.equal(
@@ -1167,13 +1174,42 @@ test("live-shaped Issue #63/012 grants once and remains idempotent after reposit
         directory,
         "repository-queue",
         "instructions",
-        `${issue63HistoricalGrantInstructionId}.json`,
+        `${instructionId}.json`,
       ),
       "utf8",
     ),
   )
   assert.equal(claimRecord.status, "completed")
   assert.equal(claimRecord.attempt, 1)
+}
+
+test("live-shaped Issue #63/012 grants once and remains idempotent after repository restart", async (t) => {
+  await assertHistoricalGrantRepositoryRestart(t, {
+    sequence: "012",
+    control: issue63HistoricalGrantControl,
+    prepareState: prepareIssue63HistoricalGrantState,
+    taskFactory: issue63HistoricalGrantTask,
+    instructionId: issue63HistoricalGrantInstructionId,
+    interveningExecutionInstructionIds: [
+      "production-day1-git-reconciliation-resume-010",
+      "production-day1-git-reconciliation-execution-011",
+    ],
+  })
+})
+
+test("live-shaped Issue #63/013 grants once and remains idempotent after repository restart", async (t) => {
+  await assertHistoricalGrantRepositoryRestart(t, {
+    sequence: "013",
+    control: issue63HistoricalGrantRetryControl,
+    prepareState: prepareIssue63HistoricalGrantRetryState,
+    taskFactory: issue63HistoricalGrantRetryTask,
+    instructionId: issue63HistoricalGrantRetryInstructionId,
+    interveningExecutionInstructionIds: [
+      "production-day1-git-reconciliation-resume-010",
+      "production-day1-git-reconciliation-execution-011",
+      "production-day1-git-reconciliation-execution-012",
+    ],
+  })
 })
 
 for (const [terminalStatus, issueNumber] of [

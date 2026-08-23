@@ -128,6 +128,7 @@ const durableFindingKeys = [
 const structuredNoMutationStatements = [
   "No source, production, migration, deployment, receipt, or remote Git mutation occurred.",
   "No deployment, migration, production write, receipt, or other external mutation occurred.",
+  "No alternate mechanism, production change, migration, deployment, receipt, or remote Git mutation was attempted.",
 ]
 
 function missingStructured(code) {
@@ -152,6 +153,16 @@ function sameStringArray(left, right) {
     Array.isArray(right) &&
     left.length === right.length &&
     left.every((entry, index) => entry === right[index])
+  )
+}
+
+function hasPositiveMutationEvidence(value) {
+  let unexplained = String(value)
+  for (const statement of structuredNoMutationStatements) {
+    unexplained = unexplained.replaceAll(statement, "")
+  }
+  return /\b(?:source|production|migration|deployment|receipt|remote Git)\b[^.]*\bmutation (?:occurred|was attempted)\b/i.test(
+    unexplained,
   )
 }
 
@@ -216,12 +227,7 @@ function structuredHistoricalPreApplicationDecision(
     return rejected(`${prefix}_structured_git_state_conflict`)
   }
   if (
-    allFindings.some(
-      (entry) =>
-        /\b(?:source|production|migration|deployment|receipt|remote Git)\b[^.]*\bmutation occurred\b/i.test(
-          entry,
-        ) && !/\bno\b/i.test(entry),
-    )
+    allFindings.some((entry) => hasPositiveMutationEvidence(entry))
   ) {
     return rejected(`${prefix}_structured_mutation_conflict`)
   }
@@ -295,12 +301,22 @@ function structuredHistoricalPreApplicationDecision(
       /Starting\/current HEAD:\s*`?([0-9a-f]{40})`?/gi,
     ),
   ].map((match) => match[1].toLowerCase())
+  const recordedBranches = [
+    ...finalMessage.matchAll(/^\s*-\s*Branch:\s*`([^`]+)`\s*$/gim),
+  ].map((match) => match[1])
   const markerStates = [
     ...finalMessage.matchAll(/In-progress Git markers:\s*([^\n]+)/gi),
   ].map((match) => match[1].trim().toLowerCase())
+  const compactNoMarkerEvidence =
+    /Worktree:\s*clean;\s*zero commits above base;\s*no Git operation markers\s*$/im.test(
+      finalMessage,
+    )
   if (
     (recordedHeads.length > 0 &&
       (recordedHeads.length !== 1 || recordedHeads[0] !== record.head)) ||
+    (recordedBranches.length > 0 &&
+      (recordedBranches.length !== 1 ||
+        recordedBranches[0] !== record.toBranch)) ||
     /Cherry-pick:\s*\*\*(?:SUCCEEDED|APPLIED|PARTIALLY APPLIED)/i.test(
       finalMessage,
     ) ||
@@ -308,7 +324,11 @@ function structuredHistoricalPreApplicationDecision(
       finalMessage,
     ) ||
     /Worktree:\s*(?:dirty|modified|has uncommitted)/i.test(finalMessage) ||
+    markerStates.length > 1 ||
     markerStates.some((state) => state !== "all absent") ||
+    /\bGit operation markers?\s*(?::|are)?\s*(?:present|remain|exist)/i.test(
+      finalMessage,
+    ) ||
     (/\b(?:CHERRY_PICK_HEAD|MERGE_HEAD|REVERT_HEAD|REBASE_HEAD)\b[^.\n]*\b(?:present|remains?|exists?)\b/i.test(
       finalMessage,
     ) &&
@@ -316,19 +336,21 @@ function structuredHistoricalPreApplicationDecision(
         finalMessage,
       )) ||
     /Commits above base:\s*`?[1-9][0-9]*`?/i.test(finalMessage) ||
+    /\b(?:[1-9][0-9]*|one|two|three|four|five)\s+commits?\s+above base\b/i.test(
+      finalMessage,
+    ) ||
     /Push:\s*\*\*(?!NOT ATTEMPTED)/i.test(finalMessage) ||
     /PR:\s*\*\*(?:CREATED|OPENED)/i.test(finalMessage) ||
-    /\b(?:source|production|migration|deployment|receipt|remote Git)\b[^.]*\bmutation occurred\b/i.test(
-      finalMessage.replaceAll(/\bNo\b[^.]*\bmutation occurred\b/gi, ""),
-    )
+    hasPositiveMutationEvidence(finalMessage)
   ) {
     return rejected(`${prefix}_structured_final_message_conflict`)
   }
   if (
     !/Cherry-pick:\s*\*\*FAILED before application\*\*/i.test(finalMessage) ||
     recordedHeads.length !== 1 ||
+    recordedBranches.length !== 1 ||
     !/Worktree:\s*clean[;,]\s*zero commits above base/i.test(finalMessage) ||
-    markerStates.length !== 1 ||
+    (markerStates.length !== 1 && !compactNoMarkerEvidence) ||
     !/PR:\s*\*\*NOT CREATED\*\*/i.test(finalMessage)
   ) {
     return missingStructured(`${prefix}_structured_pre_application_evidence`)
