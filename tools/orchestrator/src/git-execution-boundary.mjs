@@ -129,7 +129,12 @@ const structuredNoMutationStatements = [
   "No source, production, migration, deployment, receipt, or remote Git mutation occurred.",
   "No deployment, migration, production write, receipt, or other external mutation occurred.",
   "No alternate mechanism, production change, migration, deployment, receipt, or remote Git mutation was attempted.",
+  "No source, remote Git, production, migration, deployment, purchase, or receipt mutation occurred.",
 ]
+const structuredNoPushStatements = new Set([
+  "Push: **NOT ATTEMPTED**",
+  "Push/PR: **NOT ATTEMPTED**",
+])
 
 function missingStructured(code) {
   return { ...rejected(code), legacyEligible: true }
@@ -161,7 +166,7 @@ function hasPositiveMutationEvidence(value) {
   for (const statement of structuredNoMutationStatements) {
     unexplained = unexplained.replaceAll(statement, "")
   }
-  return /\b(?:source|production|migration|deployment|receipt|remote Git)\b[^.]*\bmutation (?:occurred|was attempted)\b/i.test(
+  return /\b(?:source|production|migration|deployment|purchase|receipt|remote Git)\b[^.]*\bmutation (?:occurred|was attempted)\b/i.test(
     unexplained,
   )
 }
@@ -252,13 +257,14 @@ function structuredHistoricalPreApplicationDecision(
   if (
     branchEvidence.some(
       (entry) =>
-        /\bPush:\s*\*\*(?!NOT ATTEMPTED)/i.test(entry) ||
+        (/^Push(?:\/PR)?:/i.test(entry) &&
+          !structuredNoPushStatements.has(entry)) ||
         /\b(?:pushed|push succeeded|remote branch created)\b/i.test(entry),
     )
   ) {
     return rejected(`${prefix}_structured_push_conflict`)
   }
-  if (!branchEvidence.some((entry) => /Push:\s*\*\*NOT ATTEMPTED\*\*/i.test(entry))) {
+  if (!branchEvidence.some((entry) => structuredNoPushStatements.has(entry))) {
     return missingStructured(`${prefix}_structured_push_evidence`)
   }
   if (
@@ -311,6 +317,10 @@ function structuredHistoricalPreApplicationDecision(
     /Worktree:\s*clean;\s*zero commits above base;\s*no Git operation markers\s*$/im.test(
       finalMessage,
     )
+  const combinedPushPrNotAttempted =
+    /^\s*-\s*Push\/PR:\s*\*\*NOT ATTEMPTED\*\*\s*$/im.test(
+      finalMessage,
+    )
   if (
     (recordedHeads.length > 0 &&
       (recordedHeads.length !== 1 || recordedHeads[0] !== record.head)) ||
@@ -339,7 +349,9 @@ function structuredHistoricalPreApplicationDecision(
     /\b(?:[1-9][0-9]*|one|two|three|four|five)\s+commits?\s+above base\b/i.test(
       finalMessage,
     ) ||
-    /Push:\s*\*\*(?!NOT ATTEMPTED)/i.test(finalMessage) ||
+    /Push(?:\/PR)?:\s*\*\*(?!NOT ATTEMPTED)/i.test(finalMessage) ||
+    (/^\s*-\s*Push\/PR:/im.test(finalMessage) &&
+      !combinedPushPrNotAttempted) ||
     /PR:\s*\*\*(?:CREATED|OPENED)/i.test(finalMessage) ||
     hasPositiveMutationEvidence(finalMessage)
   ) {
@@ -351,7 +363,8 @@ function structuredHistoricalPreApplicationDecision(
     recordedBranches.length !== 1 ||
     !/Worktree:\s*clean[;,]\s*zero commits above base/i.test(finalMessage) ||
     (markerStates.length !== 1 && !compactNoMarkerEvidence) ||
-    !/PR:\s*\*\*NOT CREATED\*\*/i.test(finalMessage)
+    (!/PR:\s*\*\*NOT CREATED\*\*/i.test(finalMessage) &&
+      !combinedPushPrNotAttempted)
   ) {
     return missingStructured(`${prefix}_structured_pre_application_evidence`)
   }

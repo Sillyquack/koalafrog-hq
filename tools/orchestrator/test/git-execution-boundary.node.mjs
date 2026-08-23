@@ -968,12 +968,19 @@ test("#63/013 compact no-marker proof rejects every conflicting durable shape", 
   )
 })
 
-test("live-shaped #63/014 exposes canonical fallback provenance and cumulative-branch drift without changing either rejection", async (t) => {
+test("live-shaped #63/014 accepts the exact non-mutating 010 through 013 tail and grants only its selected worktree", async (t) => {
   const setup = await fixture(t, { execution014: true })
-  assert.equal(setup.boundary, null)
+  const {
+    boundary,
+    checkoutPath,
+    head,
+    state,
+    workspaceRoot,
+  } = setup
+  assert.ok(boundary)
   assert.equal(setup.state.activeInstruction.instructionId, issue63DiagnosticInstructionId)
   assert.deepEqual(
-    setup.state.runs.slice(-4).map((run) => run.instructionId),
+    state.runs.slice(-4).map((run) => run.instructionId),
     [
       issue63ContinuationInstructionId,
       issue63ExecutionInstructionId,
@@ -981,37 +988,74 @@ test("live-shaped #63/014 exposes canonical fallback provenance and cumulative-b
       issue63HistoricalGrantRetryInstructionId,
     ],
   )
-  const live013 = setup.state.runs.at(-1)
+  assert.equal(boundary.instructionId, issue63DiagnosticInstructionId)
+  assert.equal(boundary.provenanceMode, "historical_reconciliation")
+  assert.equal(
+    boundary.reconciliationInstructionId,
+    issue63ContinuationInstructionId,
+  )
+  assert.deepEqual(boundary.interveningExecutionInstructionIds, [
+    issue63ContinuationInstructionId,
+    issue63ExecutionInstructionId,
+    issue63HistoricalGrantInstructionId,
+    issue63HistoricalGrantRetryInstructionId,
+  ])
+  assert.equal(state.workspaceBranchReconciliations.length, 1)
+
+  const live013 = state.runs.at(-1)
   assert.match(
     live013.productionReadback.at(-1),
     /No source, remote Git, production, migration, deployment, purchase, or receipt mutation occurred\./,
   )
-  assert.match(live013.branchPushState[1], /Push\/PR: \*\*NOT ATTEMPTED\*\*/)
+  assert.equal(live013.branchPushState[1], "Push/PR: **NOT ATTEMPTED**")
 
-  const liveState = structuredClone(setup.state)
-  liveState.runs.at(-1).resultArtifact.finalMessage +=
-    "\ncredential-value-must-not-be-emitted"
-  const liveDiagnostics = []
-  for (let attempt = 0; attempt < 2; attempt += 1) {
-    assert.equal(
-      await authorizedGitExecutionBoundary({
-        ...setup,
-        state: liveState,
-        onDiagnostic: (value) => liveDiagnostics.push(value),
-      }),
-      null,
-    )
-  }
-  assert.deepEqual(liveDiagnostics, [
-    { code: "activation_historical_run_structured_mutation_conflict" },
-    { code: "activation_historical_run_structured_mutation_conflict" },
-  ])
-  assert.doesNotMatch(
-    JSON.stringify(liveDiagnostics),
-    /credential-value-must-not-be-emitted/,
+  const selectedLock = path.join(boundary.gitDirectory, "index.lock")
+  assert.equal(gitExecutionPathIsCovered(boundary, selectedLock), true)
+  await writeFile(selectedLock, "bounded #63/014 lock\n")
+  assert.equal(await readFile(selectedLock, "utf8"), "bounded #63/014 lock\n")
+  await unlink(selectedLock)
+
+  const siblingWorkspace = path.join(
+    workspaceRoot,
+    "issue-64-diagnostic-014-negative-001",
+  )
+  await git(
+    checkoutPath,
+    "worktree",
+    "add",
+    "-b",
+    "agent/issue-64-diagnostic-014-negative-001",
+    siblingWorkspace,
+    head,
+  )
+  const siblingPointer = await readFile(path.join(siblingWorkspace, ".git"), "utf8")
+  const siblingGitDirectory = await realpath(
+    siblingPointer.trim().slice("gitdir: ".length),
+  )
+  const siblingLock = path.join(siblingGitDirectory, "index.lock")
+  assert.equal(gitExecutionPathIsCovered(boundary, siblingLock), false)
+
+  const exactRequest = permissionRequest(boundary)
+  exactRequest.request.turnId =
+    "turn-production-day1-git-reconciliation-execution-014"
+  assert.equal(
+    gitExecutionBoundaryRequestDecision({
+      boundary,
+      ...exactRequest,
+    }).value.action,
+    "cherry_pick",
+  )
+  const siblingRequest = structuredClone(exactRequest)
+  siblingRequest.request.details.permissions.fileSystem.write.push(siblingLock)
+  assert.equal(
+    gitExecutionBoundaryRequestDecision({
+      boundary,
+      ...siblingRequest,
+    }).rejection.code,
+    "request_filesystem_permissions",
   )
 
-  const canonicalFallbackState = structuredClone(setup.state)
+  const canonicalFallbackState = structuredClone(state)
   const canonicalFallbackRun = canonicalFallbackState.runs.at(-2)
   assert.equal(
     canonicalFallbackRun.instructionId,
@@ -1048,6 +1092,84 @@ test("live-shaped #63/014 exposes canonical fallback provenance and cumulative-b
     "proofMode",
     "structuredReason",
   ])
+})
+
+test("#63/014 exact normalization rejects positive mutation and combined push/PR drift", async (t) => {
+  const setup = await fixture(t, { execution014: true })
+  assert.ok(setup.boundary)
+  const rejectionFor = async (mutate) => {
+    const state = structuredClone(setup.state)
+    mutate(state.runs.at(-1))
+    let diagnostic = null
+    assert.equal(
+      await authorizedGitExecutionBoundary({
+        ...setup,
+        state,
+        onDiagnostic: (value) => {
+          diagnostic = value
+        },
+      }),
+      null,
+    )
+    return diagnostic
+  }
+
+  const mutationDiagnostic = await rejectionFor((run) => {
+    const mutation = "A source or remote Git mutation occurred."
+    run.productionReadback[1] = mutation
+    run.resultArtifact.findings.productionReadback[1] = mutation
+    run.resultArtifact.finalMessage += "\ncredential-value-must-not-be-emitted"
+  })
+  assert.deepEqual(mutationDiagnostic, {
+    code: "activation_historical_run_structured_mutation_conflict",
+  })
+  assert.doesNotMatch(
+    JSON.stringify(mutationDiagnostic),
+    /credential-value-must-not-be-emitted/,
+  )
+  assert.deepEqual(
+    await rejectionFor((run) => {
+      run.branchPushState[1] = "Push/PR: **ATTEMPTED**"
+      run.resultArtifact.findings.branchPushState[1] =
+        "Push/PR: **ATTEMPTED**"
+    }),
+    { code: "activation_historical_run_structured_push_conflict" },
+  )
+  assert.deepEqual(
+    await rejectionFor((run) => {
+      run.branchPushState[1] = "Push/PR: **UNKNOWN**"
+      run.resultArtifact.findings.branchPushState[1] = "Push/PR: **UNKNOWN**"
+    }),
+    { code: "activation_historical_run_structured_push_conflict" },
+  )
+  assert.deepEqual(
+    await rejectionFor((run) => {
+      run.resultArtifact.finalMessage =
+        run.resultArtifact.finalMessage.replace(
+          "Push/PR: **NOT ATTEMPTED**",
+          "Push/PR: **ATTEMPTED**",
+        )
+    }),
+    { code: "activation_historical_run_structured_final_message_conflict" },
+  )
+  assert.deepEqual(
+    await rejectionFor((run) => {
+      run.resultArtifact.finalMessage =
+        run.resultArtifact.finalMessage.replace(
+          "Push/PR: **NOT ATTEMPTED**",
+          "Push/PR: **NOT ATTEMPTED**; PR state unknown",
+        )
+    }),
+    { code: "activation_historical_run_structured_final_message_conflict" },
+  )
+  assert.deepEqual(
+    await rejectionFor((run) => {
+      const mutation = "A purchase mutation occurred."
+      run.productionReadback[1] = mutation
+      run.resultArtifact.findings.productionReadback[1] = mutation
+    }),
+    { code: "activation_historical_run_structured_mutation_conflict" },
+  )
 })
 
 test("#63/011 historical activation and request failures have exact bounded reason codes", async (t) => {
