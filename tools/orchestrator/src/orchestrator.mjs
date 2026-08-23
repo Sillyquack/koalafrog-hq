@@ -23,7 +23,7 @@ import {
   authorizedGitExecutionBoundary,
   gitExecutionBoundaryIsCurrent,
   gitExecutionBoundaryPrompt,
-  matchGitExecutionBoundaryRequest,
+  gitExecutionBoundaryRequestDecision,
 } from "./git-execution-boundary.mjs"
 import {
   checksFromResultArtifact,
@@ -1378,31 +1378,57 @@ export class Orchestrator {
           await this.#save(state)
         },
         resolveApprovalRequest: async (ownerRequest, requestContext = {}) => {
-          const boundaryStillCurrent = Boolean(
-            gitExecutionBoundary &&
-              state.activeInstruction?.instructionId ===
-                gitExecutionBoundary.instructionId &&
-              state.activeInstruction.phase === "turn_started" &&
-              state.activeInstruction.turnId === ownerRequest.turnId &&
-              state.threadId === gitExecutionBoundary.threadId &&
-              state.workspacePath === gitExecutionBoundary.workspacePath &&
-              state.branch === gitExecutionBoundary.branch,
-          )
-          const matchedGitGrant = boundaryStillCurrent
-            ? matchGitExecutionBoundaryRequest({
+          let gitGrantRejection = null
+          if (!gitExecutionBoundary) {
+            gitGrantRejection = { code: "grant_boundary_missing" }
+          } else if (
+            state.activeInstruction?.instructionId !==
+            gitExecutionBoundary.instructionId
+          ) {
+            gitGrantRejection = { code: "grant_active_instruction" }
+          } else if (state.activeInstruction.phase !== "turn_started") {
+            gitGrantRejection = { code: "grant_instruction_phase" }
+          } else if (state.activeInstruction.turnId !== ownerRequest.turnId) {
+            gitGrantRejection = { code: "grant_turn" }
+          } else if (state.threadId !== gitExecutionBoundary.threadId) {
+            gitGrantRejection = { code: "grant_thread" }
+          } else if (state.workspacePath !== gitExecutionBoundary.workspacePath) {
+            gitGrantRejection = { code: "grant_workspace" }
+          } else if (state.branch !== gitExecutionBoundary.branch) {
+            gitGrantRejection = { code: "grant_branch" }
+          }
+
+          const requestDecision = gitGrantRejection
+            ? null
+            : gitExecutionBoundaryRequestDecision({
                 boundary: gitExecutionBoundary,
                 request: ownerRequest,
                 commandExecution: requestContext.commandExecution,
               })
+          if (requestDecision && !requestDecision.accepted) {
+            gitGrantRejection = requestDecision.rejection
+          }
+
+          let currentBoundaryRejection = null
+          const matchedGitGrant = requestDecision?.accepted
+            ? requestDecision.value
             : null
-          const gitGrant =
-            matchedGitGrant &&
-            (await this.workspace.gitExecutionBoundaryIsCurrent(
-              gitExecutionBoundary,
-              matchedGitGrant.action,
-            ))
-              ? matchedGitGrant
-              : null
+          const boundaryIsCurrent = matchedGitGrant
+            ? await this.workspace.gitExecutionBoundaryIsCurrent(
+                gitExecutionBoundary,
+                matchedGitGrant.action,
+                (diagnostic) => {
+                  currentBoundaryRejection = diagnostic
+                },
+              )
+            : false
+          if (matchedGitGrant && !boundaryIsCurrent) {
+            gitGrantRejection = currentBoundaryRejection ?? {
+              code: "current_unclassified",
+              action: matchedGitGrant.action,
+            }
+          }
+          const gitGrant = boundaryIsCurrent ? matchedGitGrant : null
           if (gitGrant) {
             state.activeInstruction.gitExecutionPermissionGrants ??= []
             const duplicateAction =
@@ -1411,7 +1437,26 @@ export class Orchestrator {
                   grant.turnId === ownerRequest.turnId &&
                   grant.action === gitGrant.action,
               )
-            if (duplicateAction && gitGrant.action !== "validation") return null
+            if (duplicateAction && gitGrant.action !== "validation") {
+              if (duplicateAction.itemId === ownerRequest.itemId) {
+                return { response: gitGrant.response, decisionId: null }
+              }
+              gitGrantRejection = {
+                code: "grant_duplicate_action_conflict",
+                action: gitGrant.action,
+              }
+            }
+            if (gitGrantRejection) {
+              await this.store.appendEvent({
+                type: "git_execution_permission_rejected",
+                instructionId: instruction.instructionId,
+                issueNumber: state.task.originIssueNumber,
+                requestMethod: ownerRequest.method,
+                hasCommandContext: Boolean(requestContext.commandExecution),
+                ...gitGrantRejection,
+              })
+              return null
+            }
             state.activeInstruction.gitExecutionPermissionGrants.push({
               action: gitGrant.action,
               turnId: ownerRequest.turnId,
@@ -1431,6 +1476,16 @@ export class Orchestrator {
                   : 0,
             })
             return { response: gitGrant.response, decisionId: null }
+          }
+          if (gitExecutionBoundary && gitGrantRejection) {
+            await this.store.appendEvent({
+              type: "git_execution_permission_rejected",
+              instructionId: instruction.instructionId,
+              issueNumber: state.task.originIssueNumber,
+              requestMethod: ownerRequest.method,
+              hasCommandContext: Boolean(requestContext.commandExecution),
+              ...gitGrantRejection,
+            })
           }
           const consumed = consumeOwnerApprovalDecision({
             state,
@@ -1740,6 +1795,7 @@ export class Orchestrator {
     state.branch = workspace.branch
     await this.#save(state)
 
+    let gitExecutionBoundaryRejection = null
     const gitExecutionBoundary =
       await this.workspace.authorizedGitExecutionBoundary({
         state,
@@ -1750,7 +1806,38 @@ export class Orchestrator {
         checkoutPath: this.config.checkoutPath,
         repository: this.config.repository,
         baseRef: this.config.baseRef,
+        onDiagnostic: (diagnostic) => {
+          gitExecutionBoundaryRejection = diagnostic
+        },
       })
+    if (gitExecutionBoundary) {
+      await this.store.appendEvent({
+        type: "git_execution_boundary_activated",
+        code: "activation_accepted",
+        instructionId: instruction.instructionId,
+        issueNumber: state.task.originIssueNumber,
+        branch: state.branch,
+        head: gitExecutionBoundary.head,
+        provenanceMode:
+          gitExecutionBoundary.provenanceMode ?? "injected_boundary",
+        priorPredicateCode: gitExecutionBoundary.priorPredicateCode ?? null,
+        reconciliationInstructionId:
+          gitExecutionBoundary.reconciliationInstructionId ?? null,
+        interveningRunCount:
+          gitExecutionBoundary.interveningExecutionInstructionIds?.length ?? 0,
+        writablePathCount: gitExecutionBoundary.writablePaths.length,
+      })
+    } else {
+      await this.store.appendEvent({
+        type: "git_execution_boundary_rejected",
+        instructionId: instruction.instructionId,
+        issueNumber: state.task.originIssueNumber,
+        branch: state.branch,
+        ...(gitExecutionBoundaryRejection ?? {
+          code: "activation_unclassified",
+        }),
+      })
+    }
 
     await ensureTaskThread({
       appServer: this.appServer,

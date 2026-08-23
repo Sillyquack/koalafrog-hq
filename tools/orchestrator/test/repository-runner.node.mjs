@@ -25,12 +25,16 @@ import { StateStore } from "../src/state-store.mjs"
 import {
   issue63ContinuationControl,
   issue63ExpectedBranch,
+  issue63ExecutionControl,
+  issue63ExecutionInstructionId,
+  issue63ExecutionTask,
   issue63OriginUrl,
   issue63ReconciledBranch,
   issue63ReconciledHead,
   issue63ReconciliationTask,
   issue63ThreadId,
   issue63WorkspacePath,
+  prepareIssue63ExecutionState,
   prepareIssue63ReconciliationState,
 } from "./fixtures/issue-63-production-day1-git-reconciliation-resume-010.mjs"
 
@@ -896,6 +900,273 @@ test("repository runner reconciles connector-shaped retryable Issue #63/010 exac
   )
   assert.equal(claimRecord.status, "completed")
   assert.equal(claimRecord.attempt, 2)
+})
+
+test("live-shaped Issue #63/011 grants once and remains idempotent after repository restart", async (t) => {
+  const directory = await mkdtemp(
+    path.join(os.tmpdir(), "koalafrog-repository-git-execution-011-"),
+  )
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const storeOptions = {
+    stateDirectory: directory,
+    repository: "Sillyquack/koalafrog-hq",
+    issueNumber: 63,
+  }
+  const store = new StateStore(storeOptions)
+  const [instruction] = extractAgentControls(issue63ExecutionControl)
+  const state = prepareIssue63ExecutionState(await store.load(), instruction)
+  await store.save(state)
+
+  const task = issue63ExecutionTask()
+  task.issue.issue_number = 63
+  task.issue.url = issue63OriginUrl
+  delete task.issue.number
+  delete task.issue.html_url
+  let postedCommentId = 1
+  const posted = []
+  const scanner = {
+    threadId: "repository-scanner-thread-011",
+    appServer: {
+      async callMcpTool(request) {
+        if (request.tool === "github.fetch_issue") {
+          return { structuredContent: { issue: task.issue } }
+        }
+        if (request.tool === "github.fetch_issue_comments") {
+          return { structuredContent: { comments: task.comments } }
+        }
+        if (request.tool === "github.add_comment_to_issue") {
+          const body = request.arguments.comment
+          posted.push(body)
+          task.comments.push({ id: postedCommentId, body })
+          postedCommentId += 1
+          return { structuredContent: { result: { id: postedCommentId } } }
+        }
+        throw new Error(`Unexpected MCP tool: ${request.tool}`)
+      },
+    },
+  }
+  const gitExecutionBoundary = {
+    schemaVersion: 1,
+    instructionId: issue63ExecutionInstructionId,
+    threadId: issue63ThreadId,
+    workspacePath: issue63WorkspacePath,
+    branch: issue63ReconciledBranch,
+    head: issue63ReconciledHead,
+    provenanceMode: "historical_reconciliation",
+    priorPredicateCode:
+      "activation_reconciliation_current_instruction_missing",
+    reconciliationInstructionId:
+      "production-day1-git-reconciliation-resume-010",
+    interveningExecutionInstructionIds: [
+      "production-day1-git-reconciliation-resume-010",
+    ],
+    writablePaths: ["/coordinating/.git/worktrees/issue-63"],
+    commands: {
+      cherry_pick: [
+        "git -c core.hooksPath=/dev/null -c commit.gpgSign=false -c rerere.enabled=false cherry-pick a74079be88ec4a8b36b850f95dca791ff42e4e80",
+      ],
+      push: [`git push origin ${issue63ReconciledBranch}`],
+      pull_request: [
+        `gh pr create --base main --head ${issue63ReconciledBranch} --fill`,
+      ],
+      validation: ["git diff --check"],
+    },
+  }
+  let turns = 0
+  const appServer = {
+    async start() {},
+    async resumeThread(threadId, params) {
+      assert.equal(threadId, issue63ThreadId)
+      assert.equal(params.config["features.exec_permission_approvals"], true)
+      return { thread: { id: threadId } }
+    },
+    async startThread() {
+      throw new Error("Issue #63/011 must preserve its Codex thread")
+    },
+    async waitForMcpReady() {},
+    async runTurn({
+      onTurnStarted,
+      approvalPolicy,
+      prompt,
+      resolveApprovalRequest,
+    }) {
+      turns += 1
+      assert.equal(approvalPolicy, "on-request")
+      assert.match(prompt, /Orchestrator-managed Git execution boundary/)
+      const turnId = "turn-production-day1-git-reconciliation-execution-011"
+      const itemId = "item-production-day1-git-011"
+      await onTurnStarted(turnId)
+      const ownerRequest = {
+        method: "item/permissions/requestApproval",
+        threadId: issue63ThreadId,
+        turnId,
+        itemId,
+        details: {
+          cwd: issue63WorkspacePath,
+          permissions: {
+            fileSystem: { write: [...gitExecutionBoundary.writablePaths] },
+          },
+        },
+      }
+      const requestContext = {
+        commandExecution: {
+          id: itemId,
+          type: "commandExecution",
+          source: "agent",
+          status: "inProgress",
+          cwd: issue63WorkspacePath,
+          command: gitExecutionBoundary.commands.cherry_pick[0],
+        },
+      }
+      const firstGrant = await resolveApprovalRequest(
+        ownerRequest,
+        requestContext,
+      )
+      const replayedGrant = await resolveApprovalRequest(
+        ownerRequest,
+        requestContext,
+      )
+      assert.deepEqual(replayedGrant, firstGrant)
+      assert.deepEqual(firstGrant.response, {
+        permissions: {
+          fileSystem: { write: gitExecutionBoundary.writablePaths },
+        },
+        scope: "turn",
+        strictAutoReview: true,
+      })
+      return {
+        status: "completed",
+        turn: { id: turnId, status: "completed", items: [] },
+        pendingOwnerRequest: null,
+        agentMessage:
+          "needs_review\n\nThe mocked #63/011 grant path completed without a live Git operation.",
+      }
+    },
+    async stop() {},
+  }
+  const workspace = {
+    async ensureWorkspace({ existingPath, existingBranch }) {
+      assert.equal(existingPath, issue63WorkspacePath)
+      assert.equal(existingBranch, issue63ReconciledBranch)
+      return { path: existingPath, branch: existingBranch }
+    },
+    async inspectWorkspace() {
+      return {
+        branch: issue63ReconciledBranch,
+        commits: [issue63ReconciledHead],
+        changedFiles: [],
+        dirty: false,
+      }
+    },
+    assertAllowedChanges() {},
+    async commitWorkspaceChanges() {},
+    async validateWorkspace() {
+      return { pass: true, detail: "" }
+    },
+    async authorizedGitExecutionBoundary({
+      state: currentState,
+      instruction: currentInstruction,
+    }) {
+      assert.equal(currentInstruction.instructionId, issue63ExecutionInstructionId)
+      assert.equal(
+        currentState.workspaceBranchReconciliations[0]
+          .continuationInstructionId,
+        "production-day1-git-reconciliation-resume-010",
+      )
+      return gitExecutionBoundary
+    },
+    async gitExecutionBoundaryIsCurrent() {
+      return true
+    },
+  }
+  class Issue63ExecutionOrchestrator extends Orchestrator {
+    constructor(config, dependencies) {
+      super(config, { ...dependencies, appServer, workspace })
+    }
+  }
+  const config = {
+    repository: storeOptions.repository,
+    stateDirectory: directory,
+    checkoutPath: "/tmp/coordinating-checkout",
+    baseRef: "origin/main",
+    maxTurns: 12,
+    turnTimeoutMs: 1_000,
+    maxRetries: 0,
+    retryBaseMs: 1,
+    codexBinary: "codex",
+    model: null,
+    allowedPaths: [],
+    autoCommit: false,
+    fetchRemote: false,
+  }
+  const candidate = {
+    issueNumber: 63,
+    searchMatched: true,
+    updatedAt: task.issue.updated_at,
+  }
+  const claimStore = new QueueClaimStore({
+    stateDirectory: directory,
+    retryBaseMs: 1,
+  })
+
+  const completed = await runRepositoryIssue(scanner, config, candidate, {
+    OrchestratorClass: Issue63ExecutionOrchestrator,
+    claimStore,
+  })
+  const restartedReplay = await runRepositoryIssue(scanner, config, candidate, {
+    OrchestratorClass: Issue63ExecutionOrchestrator,
+    claimStore,
+  })
+
+  assert.equal(completed.status, "needs_review")
+  assert.equal(completed.instructionId, issue63ExecutionInstructionId)
+  assert.equal(restartedReplay.status, "no_pending_agent_control")
+  assert.equal(turns, 1)
+  assert.equal(
+    posted.filter((body) => body.includes("agent_result:")).length,
+    1,
+  )
+  const events = (await readFile(store.eventPath, "utf8"))
+    .trim()
+    .split("\n")
+    .map((line) => JSON.parse(line))
+  assert.equal(
+    events.filter(
+      (event) => event.type === "git_execution_boundary_activated",
+    ).length,
+    1,
+  )
+  assert.equal(
+    events.filter(
+      (event) => event.type === "git_execution_permission_granted",
+    ).length,
+    1,
+  )
+  assert.equal(
+    events.filter(
+      (event) => event.type === "git_execution_permission_rejected",
+    ).length,
+    0,
+  )
+  const diagnosticEvents = events.filter((event) =>
+    event.type.startsWith("git_execution_"),
+  )
+  const serializedDiagnostics = JSON.stringify(diagnosticEvents)
+  assert.doesNotMatch(serializedDiagnostics, /cherry-pick|with_additional_permissions/)
+  assert.doesNotMatch(serializedDiagnostics, /\/coordinating\/\.git\/worktrees/)
+  const claimRecord = JSON.parse(
+    await readFile(
+      path.join(
+        directory,
+        "repository-queue",
+        "instructions",
+        `${issue63ExecutionInstructionId}.json`,
+      ),
+      "utf8",
+    ),
+  )
+  assert.equal(claimRecord.status, "completed")
+  assert.equal(claimRecord.attempt, 1)
 })
 
 for (const [terminalStatus, issueNumber] of [
