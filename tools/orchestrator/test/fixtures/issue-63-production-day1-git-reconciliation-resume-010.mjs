@@ -17,6 +17,8 @@ export const issue63ContinuationInstructionId =
   "production-day1-git-reconciliation-resume-010"
 export const issue63ExecutionInstructionId =
   "production-day1-git-reconciliation-execution-011"
+export const issue63HistoricalGrantInstructionId =
+  "production-day1-git-reconciliation-execution-012"
 export const issue63DurableOwnerGateReason =
   "The instruction requests an owner-gated action: Supabase migration approval, deployment, production writes, Aromantic Supplier/Supplier Product provenance, and Aromantic receipt creation all remain explicitly outside scope and separately gated."
 export const issue63CleanWorkspaceEvidence =
@@ -82,6 +84,11 @@ agent_control:
 export const issue63ExecutionControl = issue63ContinuationControl
   .replace("task_state: needs_owner", "task_state: needs_review")
   .replace(issue63ContinuationInstructionId, issue63ExecutionInstructionId)
+
+export const issue63HistoricalGrantControl = issue63ExecutionControl.replace(
+  issue63ExecutionInstructionId,
+  issue63HistoricalGrantInstructionId,
+)
 
 export const issue63PriorRun = {
   instructionId: issue63PriorInstructionId,
@@ -286,6 +293,88 @@ The remaining gate is an orchestrator execution profile that actually permits wr
   completedAt: "2026-08-22T23:10:00.000Z",
 }
 
+const issue63LiveChangedFiles = structuredClone(
+  issue63FailedExecutionRun.changedFiles,
+)
+const issue63FailedGrantNoMutation =
+  "The runtime’s bounded profile still does not grant the required linked-worktree metadata write. No source, production, migration, deployment, receipt, or remote Git mutation occurred."
+const issue63FailedGrantBranchState = [
+  `Branch: \`${issue63ReconciledBranch}\``,
+  "Push: **NOT ATTEMPTED**",
+  issue63FailedGrantNoMutation,
+]
+
+export const issue63FailedGrantRun = {
+  ...structuredClone(issue63FailedExecutionRun),
+  instructionId: issue63ExecutionInstructionId,
+  changedFiles: issue63LiveChangedFiles,
+  blockers: [],
+  ownerGates: [],
+  productionReadback: [issue63FailedGrantNoMutation],
+  safetyFindings: [],
+  branchPushState: issue63FailedGrantBranchState,
+  checks: {
+    typecheck: "unknown",
+    lint: "unknown",
+    tests: "unknown",
+    cloudflareReadiness: "unknown",
+    build: "unknown",
+    diffCheck: "pass",
+  },
+  resultArtifact: {
+    ...structuredClone(issue63FailedExecutionRun.resultArtifact),
+    turnId: "01a036f1-63e7-76c2-a45e-f94ac89c1611",
+    finalMessage: `needs_review — bounded Git permission still failed.
+
+- Branch: \`${issue63ReconciledBranch}\`
+- Starting/current HEAD: \`${issue63ReconciledHead}\`
+- Current tree: \`2330f747713ce620c7927c2c505c622b40e18386\`
+- Reviewed target tree: \`60c53e071144b4803e6f77dd07c73085050e4c75\`
+- Lineage/tree preflight: **PASS**
+- Cherry-pick: **FAILED before application**
+- Permission evidence: \`index.lock: Operation not permitted\` at the linked-worktree Git metadata path
+- Worktree: clean, zero commits above base
+- In-progress Git markers: all absent
+- \`git diff --check\`: **PASS**
+- Typecheck/lint/tests/readiness/build: **NOT RUN** because reconciliation did not occur
+- Push: **NOT ATTEMPTED**
+- PR: **NOT CREATED**
+
+${issue63FailedGrantNoMutation}`,
+    checks: {
+      ...structuredClone(issue63FailedExecutionRun.resultArtifact.checks),
+      diffCheck: {
+        status: "pass",
+        evidence: [
+          {
+            source: "command_execution",
+            status: "pass",
+            summary: `/bin/zsh -lc "git status --porcelain=v1 --branch
+git branch --show-current
+git rev-parse HEAD
+git rev-list --count ${issue63ReconciledHead}..HEAD
+for marker in CHERRY_PICK_HEAD MERGE_HEAD REVERT_HEAD REBASE_HEAD; do git rev-parse --verify -q \"$marker\"; done
+git diff --check" (completed, exit 0)`,
+          },
+          {
+            source: "final_message",
+            status: "pass",
+            summary: "`git diff --check`: **PASS**",
+          },
+        ],
+      },
+    },
+    findings: {
+      blockers: [],
+      ownerGates: [],
+      productionReadback: [issue63FailedGrantNoMutation],
+      safetyFindings: [],
+      branchPushState: issue63FailedGrantBranchState,
+    },
+  },
+  completedAt: "2026-08-23T00:15:00.000Z",
+}
+
 export function issue63ReconciliationTask(comments = []) {
   return {
     issue: {
@@ -307,6 +396,13 @@ export function issue63ExecutionTask(comments = []) {
   const task = issue63ReconciliationTask()
   task.issue.updated_at = "2026-08-22T23:15:00.000Z"
   task.comments.push({ body: issue63ExecutionControl }, ...comments)
+  return task
+}
+
+export function issue63HistoricalGrantTask(comments = []) {
+  const task = issue63ExecutionTask()
+  task.issue.updated_at = "2026-08-23T00:20:00.000Z"
+  task.comments.push({ body: issue63HistoricalGrantControl }, ...comments)
   return task
 }
 
@@ -371,5 +467,19 @@ export function prepareIssue63ExecutionState(state, instruction) {
       reconciledAt: "2026-08-22T05:10:00.000Z",
     },
   ]
+  return state
+}
+
+export function prepareIssue63HistoricalGrantState(state, instruction) {
+  prepareIssue63ExecutionState(state, instruction)
+  state.lastConsumedInstructionId = issue63ExecutionInstructionId
+  state.activeInstruction = {
+    ...instruction,
+    phase: "selected",
+    attempts: 0,
+    turnCount: 0,
+    selectedAt: "2026-08-23T00:20:00.000Z",
+  }
+  state.runs.push(structuredClone(issue63FailedGrantRun))
   return state
 }
