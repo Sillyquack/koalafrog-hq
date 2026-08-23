@@ -50,6 +50,71 @@ function rejected(code, context = {}) {
   return { accepted: false, value: null, rejection: { code, ...context } }
 }
 
+class CheckpointProposalStageError extends Error {
+  constructor(stage, cause) {
+    super("Checkpoint proposal stage failed", { cause })
+    this.name = "CheckpointProposalStageError"
+    this.stage = stage
+  }
+}
+
+async function checkpointProposalStage(stage, operation) {
+  try {
+    return await operation()
+  } catch (error) {
+    if (error instanceof CheckpointProposalStageError) throw error
+    throw new CheckpointProposalStageError(stage, error)
+  }
+}
+
+function checkpointProposalExceptionDiagnostic(error) {
+  const staged = error instanceof CheckpointProposalStageError
+  const cause = staged ? error.cause : error
+  const stage = staged ? error.stage : "proposal_unclassified"
+  const rawCode = cause?.code
+  let reason = "unexpected_error"
+  let errorCode = null
+  if (rawCode === "ENOENT") {
+    reason =
+      (stage === "pull_request_lookup" && cause?.path === "gh") ||
+      (stage.endsWith("_lookup") && cause?.path === "git")
+        ? "executable_missing"
+        : "not_found"
+    errorCode = rawCode
+  } else if (rawCode === "EACCES" || rawCode === "EPERM") {
+    reason = "permission_denied"
+    errorCode = rawCode
+  } else if (rawCode === "ENOTDIR") {
+    reason = "path_type_invalid"
+    errorCode = rawCode
+  } else if (rawCode === "ELOOP") {
+    reason = "symlink_loop"
+    errorCode = rawCode
+  } else if (rawCode === "ENAMETOOLONG") {
+    reason = "path_invalid"
+    errorCode = rawCode
+  } else if (rawCode === "CHECKPOINT_INVALID_RESULT") {
+    reason = "invalid_result"
+    errorCode = rawCode
+  } else if (Number.isSafeInteger(rawCode)) {
+    reason = "command_failed"
+    errorCode = `exit_${rawCode}`
+  } else if (cause instanceof SyntaxError) {
+    reason = "invalid_json"
+  } else if (cause instanceof RangeError) {
+    reason = "invalid_time"
+  } else if (cause instanceof TypeError) {
+    reason = "invalid_input"
+  } else if (cause?.name === "DataCloneError") {
+    reason = "state_not_cloneable"
+  }
+  return {
+    stage,
+    reason,
+    ...(errorCode ? { errorCode } : {}),
+  }
+}
+
 function reportDecision(decision, onDiagnostic) {
   if (!decision.accepted && typeof onDiagnostic === "function") {
     onDiagnostic(decision.rejection)
@@ -101,7 +166,9 @@ async function githubPullRequestNumbers({ repository, branch, cwd }) {
         entry.number <= 0,
     )
   ) {
-    throw new Error("Malformed pull request lookup result")
+    const error = new Error("Malformed pull request lookup result")
+    error.code = "CHECKPOINT_INVALID_RESULT"
+    throw error
   }
   return parsed.map((entry) => entry.number)
 }
@@ -1357,10 +1424,14 @@ async function linkedWorktreeMetadataDecision({
   checkoutPath,
   record,
   cherryPickCommit,
+  stageOperation = async (_stage, operation) => operation(),
 }) {
-  const normalizedWorkspace = path.resolve(workspacePath)
-  const normalizedRoot = path.resolve(workspaceRoot)
-  const normalizedCheckout = path.resolve(checkoutPath)
+  const [normalizedWorkspace, normalizedRoot, normalizedCheckout] =
+    await stageOperation("metadata_path_normalization", () => [
+      path.resolve(workspacePath),
+      path.resolve(workspaceRoot),
+      path.resolve(checkoutPath),
+    ])
   if (
     workspacePath !== normalizedWorkspace ||
     workspaceRoot !== normalizedRoot ||
@@ -1379,16 +1450,36 @@ async function linkedWorktreeMetadataDecision({
   }
 
   if (
-    !(await regularPath(normalizedRoot, "directory")) ||
-    !(await regularPath(normalizedWorkspace, "directory")) ||
-    !(await regularPath(normalizedCheckout, "directory"))
+    !(await stageOperation("metadata_workspace_root_type", () =>
+      regularPath(normalizedRoot, "directory"),
+    ))
+  ) {
+    return rejected("activation_metadata_path_type")
+  }
+  if (
+    !(await stageOperation("metadata_workspace_type", () =>
+      regularPath(normalizedWorkspace, "directory"),
+    ))
+  ) {
+    return rejected("activation_metadata_path_type")
+  }
+  if (
+    !(await stageOperation("metadata_checkout_type", () =>
+      regularPath(normalizedCheckout, "directory"),
+    ))
   ) {
     return rejected("activation_metadata_path_type")
   }
   const [rootReal, workspaceReal, checkoutReal] = await Promise.all([
-    realpath(normalizedRoot),
-    realpath(normalizedWorkspace),
-    realpath(normalizedCheckout),
+    stageOperation("metadata_workspace_root_realpath", () =>
+      realpath(normalizedRoot),
+    ),
+    stageOperation("metadata_workspace_realpath", () =>
+      realpath(normalizedWorkspace),
+    ),
+    stageOperation("metadata_checkout_realpath", () =>
+      realpath(normalizedCheckout),
+    ),
   ])
   if (
     rootReal !== normalizedRoot ||
@@ -1402,12 +1493,22 @@ async function linkedWorktreeMetadataDecision({
   const workspaceGitFile = path.join(workspaceReal, ".git")
   const checkoutGitDirectory = path.join(checkoutReal, ".git")
   if (
-    !(await regularPath(workspaceGitFile, "file")) ||
-    !(await regularPath(checkoutGitDirectory, "directory"))
+    !(await stageOperation("metadata_workspace_git_file_type", () =>
+      regularPath(workspaceGitFile, "file"),
+    ))
   ) {
     return rejected("activation_metadata_git_path_type")
   }
-  const pointer = await readSmallFile(workspaceGitFile)
+  if (
+    !(await stageOperation("metadata_checkout_git_directory_type", () =>
+      regularPath(checkoutGitDirectory, "directory"),
+    ))
+  ) {
+    return rejected("activation_metadata_git_path_type")
+  }
+  const pointer = await stageOperation("metadata_workspace_git_pointer", () =>
+    readSmallFile(workspaceGitFile),
+  )
   const pointerMatch = pointer?.match(/^gitdir: ([^\r\n]+)\r?\n?$/)
   if (!pointerMatch) return rejected("activation_metadata_git_pointer")
   const pointerTarget = path.isAbsolute(pointerMatch[1])
@@ -1416,35 +1517,64 @@ async function linkedWorktreeMetadataDecision({
 
   const [gitDirectoryOutput, commonDirectoryOutput, checkoutCommonOutput] =
     await Promise.all([
-      git(["rev-parse", "--path-format=absolute", "--git-dir"], workspaceReal),
-      git(
-        ["rev-parse", "--path-format=absolute", "--git-common-dir"],
-        workspaceReal,
+      stageOperation("metadata_git_directory_lookup", () =>
+        git(
+          ["rev-parse", "--path-format=absolute", "--git-dir"],
+          workspaceReal,
+        ),
       ),
-      git(
-        ["rev-parse", "--path-format=absolute", "--git-common-dir"],
-        checkoutReal,
+      stageOperation("metadata_common_directory_lookup", () =>
+        git(
+          ["rev-parse", "--path-format=absolute", "--git-common-dir"],
+          workspaceReal,
+        ),
+      ),
+      stageOperation("metadata_checkout_common_directory_lookup", () =>
+        git(
+          ["rev-parse", "--path-format=absolute", "--git-common-dir"],
+          checkoutReal,
+        ),
       ),
     ])
   const [gitDirectory, commonDirectory, checkoutCommonDirectory] =
     await Promise.all([
-      realpath(gitDirectoryOutput),
-      realpath(commonDirectoryOutput),
-      realpath(checkoutCommonOutput),
+      stageOperation("metadata_git_directory_realpath", () =>
+        realpath(gitDirectoryOutput),
+      ),
+      stageOperation("metadata_common_directory_realpath", () =>
+        realpath(commonDirectoryOutput),
+      ),
+      stageOperation("metadata_checkout_common_directory_realpath", () =>
+        realpath(checkoutCommonOutput),
+      ),
     ])
   if (
     pointerTarget !== gitDirectory ||
     commonDirectory !== checkoutCommonDirectory ||
-    commonDirectory !== checkoutGitDirectory ||
-    !(await regularPath(gitDirectory, "directory")) ||
-    !(await regularPath(commonDirectory, "directory"))
+    commonDirectory !== checkoutGitDirectory
+  ) {
+    return rejected("activation_metadata_git_resolution")
+  }
+  if (
+    !(await stageOperation("metadata_git_directory_type", () =>
+      regularPath(gitDirectory, "directory"),
+    ))
+  ) {
+    return rejected("activation_metadata_git_resolution")
+  }
+  if (
+    !(await stageOperation("metadata_common_directory_type", () =>
+      regularPath(commonDirectory, "directory"),
+    ))
   ) {
     return rejected("activation_metadata_git_resolution")
   }
 
   const worktreesDirectory = path.join(commonDirectory, "worktrees")
   if (
-    !(await regularPath(worktreesDirectory, "directory")) ||
+    !(await stageOperation("metadata_worktrees_directory_type", () =>
+      regularPath(worktreesDirectory, "directory"),
+    )) ||
     path.dirname(gitDirectory) !== worktreesDirectory ||
     !exactPathWithin(worktreesDirectory, gitDirectory)
   ) {
@@ -1455,24 +1585,52 @@ async function linkedWorktreeMetadataDecision({
     return rejected("activation_metadata_worktree_name")
   }
 
-  const commonPointer = await readSmallFile(path.join(gitDirectory, "commondir"))
-  const workspacePointer = await readSmallFile(path.join(gitDirectory, "gitdir"))
+  const commonPointer = await stageOperation("metadata_common_pointer", () =>
+    readSmallFile(path.join(gitDirectory, "commondir")),
+  )
+  const workspacePointer = await stageOperation(
+    "metadata_workspace_back_pointer",
+    () => readSmallFile(path.join(gitDirectory, "gitdir")),
+  )
   if (
     commonPointer?.trim() !== "../.." ||
-    path.normalize(workspacePointer?.trim() ?? "") !== workspaceGitFile ||
-    (await realpath(path.resolve(gitDirectory, commonPointer.trim()))) !==
-      commonDirectory ||
-    (await realpath(path.normalize(workspacePointer.trim()))) !== workspaceGitFile
+    path.normalize(workspacePointer?.trim() ?? "") !== workspaceGitFile
   ) {
+    return rejected("activation_metadata_back_pointer")
+  }
+  const resolvedCommonPointer = await stageOperation(
+    "metadata_common_pointer_realpath",
+    () => realpath(path.resolve(gitDirectory, commonPointer?.trim() ?? "")),
+  )
+  if (resolvedCommonPointer !== commonDirectory) {
+    return rejected("activation_metadata_back_pointer")
+  }
+  const resolvedWorkspacePointer = await stageOperation(
+    "metadata_workspace_back_pointer_realpath",
+    () => realpath(path.normalize(workspacePointer?.trim() ?? "")),
+  )
+  if (resolvedWorkspacePointer !== workspaceGitFile) {
     return rejected("activation_metadata_back_pointer")
   }
 
   const [branch, head, status, branchHead, commitType] = await Promise.all([
-    git(["branch", "--show-current"], workspaceReal),
-    git(["rev-parse", "HEAD"], workspaceReal),
-    git(["status", "--porcelain=v1", "-z"], workspaceReal, { trim: false }),
-    git(["rev-parse", `refs/heads/${state.branch}`], workspaceReal),
-    git(["cat-file", "-t", `${cherryPickCommit}^{commit}`], workspaceReal),
+    stageOperation("metadata_branch_lookup", () =>
+      git(["branch", "--show-current"], workspaceReal),
+    ),
+    stageOperation("metadata_head_lookup", () =>
+      git(["rev-parse", "HEAD"], workspaceReal),
+    ),
+    stageOperation("metadata_status_lookup", () =>
+      git(["status", "--porcelain=v1", "-z"], workspaceReal, {
+        trim: false,
+      }),
+    ),
+    stageOperation("metadata_branch_head_lookup", () =>
+      git(["rev-parse", `refs/heads/${state.branch}`], workspaceReal),
+    ),
+    stageOperation("metadata_target_commit_lookup", () =>
+      git(["cat-file", "-t", `${cherryPickCommit}^{commit}`], workspaceReal),
+    ),
   ])
   if (branch !== state.branch) return rejected("activation_metadata_branch")
   if (head !== record.head) return rejected("activation_metadata_head")
@@ -1484,22 +1642,44 @@ async function linkedWorktreeMetadataDecision({
     return rejected("activation_metadata_target_commit")
   }
   for (const marker of gitOperationMarkers) {
-    if (await optionalPathExists(path.join(gitDirectory, marker))) {
+    if (
+      await stageOperation("metadata_operation_marker_lookup", () =>
+        optionalPathExists(path.join(gitDirectory, marker)),
+      )
+    ) {
       return rejected("activation_metadata_operation_marker")
     }
   }
   for (const directory of gitOperationDirectories) {
-    if (await optionalPathExists(path.join(gitDirectory, directory))) {
+    if (
+      await stageOperation("metadata_operation_directory_lookup", () =>
+        optionalPathExists(path.join(gitDirectory, directory)),
+      )
+    ) {
       return rejected("activation_metadata_operation_directory")
     }
   }
 
   const objectsDirectory = path.join(commonDirectory, "objects")
-  if (
-    !(await regularPath(objectsDirectory, "directory")) ||
-    (await treeContainsSymlink(gitDirectory)) ||
-    (await treeContainsSymlink(objectsDirectory))
-  ) {
+  const objectsIsDirectory = await stageOperation(
+    "metadata_objects_directory_type",
+    () => regularPath(objectsDirectory, "directory"),
+  )
+  if (!objectsIsDirectory) {
+    return rejected("activation_metadata_symlink_or_objects")
+  }
+  const gitDirectoryHasSymlink = await stageOperation(
+    "metadata_git_directory_symlink_scan",
+    () => treeContainsSymlink(gitDirectory),
+  )
+  if (gitDirectoryHasSymlink) {
+    return rejected("activation_metadata_symlink_or_objects")
+  }
+  const objectsHaveSymlink = await stageOperation(
+    "metadata_objects_symlink_scan",
+    () => treeContainsSymlink(objectsDirectory),
+  )
+  if (objectsHaveSymlink) {
     return rejected("activation_metadata_symlink_or_objects")
   }
   const branchRef = path.join(
@@ -1510,8 +1690,14 @@ async function linkedWorktreeMetadataDecision({
   )
   if (
     !exactPathWithin(path.join(commonDirectory, "refs", "heads"), branchRef) ||
-    !(await regularPath(branchRef, "file")) ||
-    (await readSmallFile(branchRef))?.trim() !== record.head
+    !(await stageOperation("metadata_branch_ref_type", () =>
+      regularPath(branchRef, "file"),
+    )) ||
+    (
+      await stageOperation("metadata_branch_ref_read", () =>
+        readSmallFile(branchRef),
+      )
+    )?.trim() !== record.head
   ) {
     return rejected("activation_metadata_branch_ref")
   }
@@ -1522,9 +1708,15 @@ async function linkedWorktreeMetadataDecision({
     "heads",
     ...state.branch.split("/"),
   )
+  const branchLogExists = await stageOperation(
+    "metadata_branch_log_lookup",
+    () => optionalPathExists(branchLog),
+  )
   if (
-    (await optionalPathExists(branchLog)) &&
-    !(await regularPath(branchLog, "file"))
+    branchLogExists &&
+    !(await stageOperation("metadata_branch_log_type", () =>
+      regularPath(branchLog, "file"),
+    ))
   ) {
     return rejected("activation_metadata_branch_log")
   }
@@ -1553,6 +1745,7 @@ async function checkpointFreshVerificationDecision({
   pullRequestLookup,
   context,
   expectedTree,
+  stageOperation = async (_stage, operation) => operation(),
 }) {
   const metadata = await linkedWorktreeMetadataDecision({
     state,
@@ -1561,6 +1754,7 @@ async function checkpointFreshVerificationDecision({
     checkoutPath,
     record: context.record,
     cherryPickCommit: context.cherryPickCommit,
+    stageOperation,
   })
   if (!metadata.accepted) return metadata
   if (!fullShaPattern.test(expectedTree ?? "")) {
@@ -1579,38 +1773,60 @@ async function checkpointFreshVerificationDecision({
     cherryPickTargetTree,
     pullRequestNumbers,
   ] = await Promise.all([
-      git(["rev-parse", "HEAD^{tree}"], workspacePath),
-      git(["rev-parse", baseRef], workspacePath),
-      git(["merge-base", baseRef, "HEAD"], workspacePath),
-      git(
-        ["rev-list", "--count", `${context.record.head}..HEAD`],
-        workspacePath,
+      stageOperation("current_tree_lookup", () =>
+        git(["rev-parse", "HEAD^{tree}"], workspacePath),
       ),
-      git(["diff", "--name-only", `${baseRef}...HEAD`], workspacePath),
-      git(
-        [
-          "ls-remote",
-          "--heads",
-          "origin",
-          `refs/heads/${checkpointBranch}`,
-        ],
-        workspacePath,
+      stageOperation("base_ref_lookup", () =>
+        git(["rev-parse", baseRef], workspacePath),
       ),
-      git(["diff", "--check"], workspacePath),
-      git(["rev-parse", `${context.cherryPickCommit}^`], workspacePath),
-      git(
-        ["rev-parse", `${context.cherryPickCommit}^1^{tree}`],
-        workspacePath,
+      stageOperation("merge_base_lookup", () =>
+        git(["merge-base", baseRef, "HEAD"], workspacePath),
       ),
-      git(
-        ["rev-parse", `${context.cherryPickCommit}^{tree}`],
-        workspacePath,
+      stageOperation("commits_above_reviewed_head_lookup", () =>
+        git(
+          ["rev-list", "--count", `${context.record.head}..HEAD`],
+          workspacePath,
+        ),
       ),
-      pullRequestLookup({
-        repository,
-        branch: checkpointBranch,
-        cwd: workspacePath,
-      }),
+      stageOperation("changed_files_lookup", () =>
+        git(["diff", "--name-only", `${baseRef}...HEAD`], workspacePath),
+      ),
+      stageOperation("remote_branch_lookup", () =>
+        git(
+          [
+            "ls-remote",
+            "--heads",
+            "origin",
+            `refs/heads/${checkpointBranch}`,
+          ],
+          workspacePath,
+        ),
+      ),
+      stageOperation("diff_check", () =>
+        git(["diff", "--check"], workspacePath),
+      ),
+      stageOperation("cherry_pick_parent_lookup", () =>
+        git(["rev-parse", `${context.cherryPickCommit}^`], workspacePath),
+      ),
+      stageOperation("cherry_pick_parent_tree_lookup", () =>
+        git(
+          ["rev-parse", `${context.cherryPickCommit}^1^{tree}`],
+          workspacePath,
+        ),
+      ),
+      stageOperation("cherry_pick_target_tree_lookup", () =>
+        git(
+          ["rev-parse", `${context.cherryPickCommit}^{tree}`],
+          workspacePath,
+        ),
+      ),
+      stageOperation("pull_request_lookup", () =>
+        pullRequestLookup({
+          repository,
+          branch: checkpointBranch,
+          cwd: workspacePath,
+        }),
+      ),
     ])
   if (tree !== expectedTree) return rejected("checkpoint_tree_drift")
   if (!fullShaPattern.test(baseCommit) || mergeBase !== baseCommit) {
@@ -1684,13 +1900,20 @@ export async function proposeGitReconciliationCheckpoint({
     if (repository !== "Sillyquack/koalafrog-hq") {
       return finish(rejected("checkpoint_repository"))
     }
-    const parsed = parseCheckpointProposalPrompt(instruction.prompt)
+    const parsed = await checkpointProposalStage("proposal_prompt_parse", () =>
+      parseCheckpointProposalPrompt(instruction.prompt),
+    )
     if (!parsed || parsed.malformed) {
       return finish(rejected("checkpoint_proposal_prompt"))
     }
-    const control = checkpointControlDecision({ state, instruction, task })
+    const control = await checkpointProposalStage("control_validation", () =>
+      checkpointControlDecision({ state, instruction, task }),
+    )
     if (!control.accepted) return finish(control)
-    const context = checkpointContextDecision({ state, task })
+    const context = await checkpointProposalStage(
+      "historical_tail_validation",
+      () => checkpointContextDecision({ state, task }),
+    )
     if (!context.accepted) return finish(context)
     if (
       parsed.reconciliationId !== context.value.record.reconciliationId ||
@@ -1709,8 +1932,18 @@ export async function proposeGitReconciliationCheckpoint({
       pullRequestLookup,
       context: context.value,
       expectedTree: parsed.tree,
+      stageOperation: checkpointProposalStage,
     })
     if (!fresh.accepted) return finish(fresh)
+
+    const changedFilesDigest = await checkpointProposalStage(
+      "changed_files_hash",
+      () => sha256(JSON.stringify(context.value.expectedChangedFiles)),
+    )
+    const proposalPromptDigest = await checkpointProposalStage(
+      "proposal_prompt_hash",
+      () => checkpointPromptDigest(instruction.prompt),
+    )
 
     const binding = {
       schemaVersion: 1,
@@ -1732,9 +1965,7 @@ export async function proposeGitReconciliationCheckpoint({
       cherryPickCommit: context.value.cherryPickCommit,
       cherryPickParent: fresh.value.cherryPickParent,
       cherryPickTargetTree: fresh.value.cherryPickTargetTree,
-      changedFilesDigest: sha256(
-        JSON.stringify(context.value.expectedChangedFiles),
-      ),
+      changedFilesDigest,
       changedFileCount: context.value.expectedChangedFiles.length,
       gitDirectory: fresh.value.metadata.gitDirectory,
       commonDirectory: fresh.value.metadata.commonDirectory,
@@ -1748,21 +1979,32 @@ export async function proposeGitReconciliationCheckpoint({
       },
       proposalControl: {
         instructionId: instruction.instructionId,
-        promptDigest: checkpointPromptDigest(instruction.prompt),
+        promptDigest: proposalPromptDigest,
       },
       ownerActivationRequired: true,
     }
-    binding.checkpointId = checkpointProposalId(binding)
+    binding.checkpointId = await checkpointProposalStage(
+      "checkpoint_id_hash",
+      () => checkpointProposalId(binding),
+    )
     const record = {
       ...binding,
-      createdAt: now.toISOString(),
+      createdAt: await checkpointProposalStage(
+        "checkpoint_timestamp_serialization",
+        () => now.toISOString(),
+      ),
     }
-    const checkpoints = state.gitReconciliationCheckpoints ?? []
+    const checkpoints = await checkpointProposalStage(
+      "checkpoint_state_validation",
+      () => state.gitReconciliationCheckpoints ?? [],
+    )
     if (!Array.isArray(checkpoints)) {
       return finish(rejected("checkpoint_records_invalid"))
     }
-    const proposals = checkpoints.filter(
-      (checkpoint) => checkpoint.kind === "proposal",
+    const proposals = await checkpointProposalStage(
+      "checkpoint_state_validation",
+      () =>
+        checkpoints.filter((checkpoint) => checkpoint.kind === "proposal"),
     )
     if (proposals.length > 1) {
       return finish(
@@ -1772,11 +2014,14 @@ export async function proposeGitReconciliationCheckpoint({
       )
     }
     if (proposals.length === 1) {
-      if (
-        proposals[0].checkpointId !== record.checkpointId ||
-        JSON.stringify(checkpointProposalBinding(proposals[0])) !==
-          JSON.stringify(checkpointProposalBinding(record))
-      ) {
+      const sameProposal = await checkpointProposalStage(
+        "checkpoint_record_comparison",
+        () =>
+          proposals[0].checkpointId === record.checkpointId &&
+          JSON.stringify(checkpointProposalBinding(proposals[0])) ===
+            JSON.stringify(checkpointProposalBinding(record)),
+      )
+      if (!sameProposal) {
         return finish(rejected("checkpoint_proposal_conflict"))
       }
       return accepted({
@@ -1792,7 +2037,7 @@ export async function proposeGitReconciliationCheckpoint({
   } catch (error) {
     return finish(
       rejected("checkpoint_proposal_exception", {
-        errorName: typeof error?.name === "string" ? error.name : "Error",
+        ...checkpointProposalExceptionDiagnostic(error),
       }),
     )
   }

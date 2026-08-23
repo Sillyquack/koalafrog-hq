@@ -348,6 +348,167 @@ ${prompt
   assert.equal(posted.filter((body) => body.includes("agent_result:")).length, 1)
 })
 
+test("proposal exception consumption emits one redacted stage event without a checkpoint or turn", async (t) => {
+  const directory = await mkdtemp(
+    path.join(os.tmpdir(), "koalafrog-checkpoint-exception-"),
+  )
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const storeOptions = {
+    stateDirectory: directory,
+    repository: "Sillyquack/koalafrog-hq",
+    issueNumber: 63,
+  }
+  const store = new StateStore(storeOptions)
+  const state = await store.load()
+  const head = "ec719153c8e726831d7e2b748067383ea7f4e314"
+  const tree = "2330f747713ce620c7927c2c505c622b40e18386"
+  const cherryPickCommit = "a74079be88ec4a8b36b850f95dca791ff42e4e80"
+  const reconciliationId =
+    `authorized-workspace-branch:production-day1-git-reconciliation-008:production-day1-git-reconciliation-resume-010:${head}`
+  const prompt = gitReconciliationCheckpointProposalPrompt({
+    reconciliationId,
+    head,
+    tree,
+    cherryPickCommit,
+  })
+  const instructionId =
+    "production-day1-git-reconciliation-checkpoint-proposal-diagnostic-017"
+  const control = `\`\`\`yaml
+agent_control:
+  action: continue
+  task_state: needs_review
+  instruction_id: ${instructionId}
+  max_turns: 4
+  owner_approval_required: false
+  prompt: |
+${prompt
+  .split("\n")
+  .map((line) => `    ${line}`)
+  .join("\n")}
+\`\`\``
+  state.status = "needs_review"
+  state.task.originIssueUrl = issue63OriginUrl
+  state.threadId = issue63ThreadId
+  state.workspacePath = issue63WorkspacePath
+  state.branch = issue63ReconciledBranch
+  state.runs.push({ instructionId: "historical-015", immutable: true })
+  await store.save(state)
+
+  const comments = [{ body: control }]
+  const posted = []
+  const controlPlane = {
+    async fetchTask() {
+      return {
+        issue: { issue_number: 63, html_url: issue63OriginUrl, body: "" },
+        comments,
+      }
+    },
+    async postComment(body) {
+      posted.push(body)
+      comments.push({ body })
+    },
+  }
+  let proposalCalls = 0
+  let boundaryCalls = 0
+  let turnCalls = 0
+  const workspace = {
+    ...fakeWorkspace(),
+    async ensureWorkspace() {
+      return { path: issue63WorkspacePath, branch: issue63ReconciledBranch }
+    },
+    async inspectWorkspace() {
+      return {
+        branch: issue63ReconciledBranch,
+        commits: [head],
+        changedFiles: ["fixture.txt"],
+      }
+    },
+    async proposeGitReconciliationCheckpoint(input) {
+      proposalCalls += 1
+      const diagnostic = {
+        code: "checkpoint_proposal_exception",
+        stage: "pull_request_lookup",
+        reason: "executable_missing",
+        errorCode: "ENOENT",
+        secret: "credential-secret-value",
+        path: "/sensitive/coordinating/repository",
+      }
+      input.onDiagnostic(diagnostic)
+      return { accepted: false, value: null, rejection: diagnostic }
+    },
+    async authorizedGitExecutionBoundary() {
+      boundaryCalls += 1
+      return null
+    },
+  }
+  const appServer = {
+    async start() {},
+    async stop() {},
+    async runTurn() {
+      turnCalls += 1
+      throw new Error("A rejected proposal must not start a Codex turn")
+    },
+  }
+  const config = { ...runtimeConfig(directory), issueNumber: 63 }
+  const orchestrator = new Orchestrator(config, {
+    appServer,
+    controlPlane,
+    store,
+    workspace,
+  })
+
+  const rejected = await orchestrator.runOnce()
+  assert.equal(rejected.status, "needs_review")
+  assert.equal(proposalCalls, 1)
+  assert.equal(boundaryCalls, 0)
+  assert.equal(turnCalls, 0)
+  assert.equal(posted.filter((body) => body.includes("agent_result:")).length, 1)
+  assert.equal(posted.some((body) => body.includes("agent_pickup:")), false)
+
+  const persisted = await new StateStore(storeOptions).load()
+  assert.deepEqual(persisted.gitReconciliationCheckpoints, [])
+  assert.deepEqual(persisted.runs[0], {
+    instructionId: "historical-015",
+    immutable: true,
+  })
+  assert.equal(persisted.runs.at(-1).instructionId, instructionId)
+  assert.equal(persisted.runs.at(-1).turnCount, 0)
+  assert.equal(persisted.lastConsumedInstructionId, instructionId)
+
+  const events = await readFile(store.eventPath, "utf8")
+  const event = events
+    .trim()
+    .split("\n")
+    .map((line) => JSON.parse(line))
+    .find((entry) => entry.type === "git_reconciliation_checkpoint_rejected")
+  assert.deepEqual(
+    {
+      type: event.type,
+      code: event.code,
+      stage: event.stage,
+      reason: event.reason,
+      errorCode: event.errorCode,
+      instructionId: event.instructionId,
+      issueNumber: event.issueNumber,
+      branch: event.branch,
+    },
+    {
+      type: "git_reconciliation_checkpoint_rejected",
+      code: "checkpoint_proposal_exception",
+      stage: "pull_request_lookup",
+      reason: "executable_missing",
+      errorCode: "ENOENT",
+      instructionId,
+      issueNumber: 63,
+      branch: issue63ReconciledBranch,
+    },
+  )
+  assert.doesNotMatch(events, /credential-secret-value|sensitive\/coordinating/)
+  assert.equal((await orchestrator.runOnce()).status, "idle")
+  assert.equal(proposalCalls, 1)
+  assert.equal(posted.filter((body) => body.includes("agent_result:")).length, 1)
+})
+
 test("restart resumes the persisted Codex thread instead of starting another", async () => {
   const calls = []
   const appServer = {

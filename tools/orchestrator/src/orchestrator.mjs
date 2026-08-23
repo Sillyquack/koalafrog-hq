@@ -109,6 +109,25 @@ function uniformChecks(status) {
   return Object.fromEntries(resultCheckNames.map((name) => [name, status]))
 }
 
+function checkpointProposalExceptionEventFields(diagnostic) {
+  if (diagnostic?.code !== "checkpoint_proposal_exception") return {}
+  const fields = {}
+  if (/^[a-z][a-z0-9_]{0,79}$/.test(diagnostic.stage ?? "")) {
+    fields.stage = diagnostic.stage
+  }
+  if (/^[a-z][a-z0-9_]{0,47}$/.test(diagnostic.reason ?? "")) {
+    fields.reason = diagnostic.reason
+  }
+  if (
+    /^(?:EACCES|ELOOP|ENAMETOOLONG|ENOENT|ENOTDIR|EPERM|CHECKPOINT_INVALID_RESULT|exit_[0-9]{1,3})$/.test(
+      diagnostic.errorCode ?? "",
+    )
+  ) {
+    fields.errorCode = diagnostic.errorCode
+  }
+  return fields
+}
+
 function taskIssueUrl(task) {
   return task.issue?.html_url ?? task.issue?.display_url ?? task.issue?.url ?? null
 }
@@ -1828,6 +1847,7 @@ export class Orchestrator {
         await this.store.appendEvent({
           type: "git_reconciliation_checkpoint_rejected",
           code,
+          ...checkpointProposalExceptionEventFields(checkpointRejection),
           instructionId: instruction.instructionId,
           issueNumber: state.task.originIssueNumber,
           branch: state.branch,

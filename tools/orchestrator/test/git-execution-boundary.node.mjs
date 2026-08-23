@@ -1533,6 +1533,112 @@ test("superseding checkpoint proposal fails closed on drift, conflicts, and ambi
   assert.equal(wrongTree.rejection.code, "checkpoint_tree_drift")
 })
 
+test("proposal exceptions expose only stable redacted stage diagnostics", async (t) => {
+  const setup = await checkpointSetup(t)
+  const invoke = async (overrides = {}) => {
+    const state = structuredClone(setup.state)
+    const before = JSON.stringify(state)
+    let diagnostic = null
+    const result = await proposeGitReconciliationCheckpoint({
+      ...setup,
+      state,
+      instruction: state.activeInstruction,
+      pullRequestLookup: async () => [],
+      ...overrides,
+      onDiagnostic: (value) => {
+        diagnostic = value
+      },
+    })
+    assert.equal(result.accepted, false)
+    assert.equal(result.value, null)
+    assert.equal(JSON.stringify(state), before)
+    assert.deepEqual(state.gitReconciliationCheckpoints, [])
+    assert.doesNotMatch(JSON.stringify(diagnostic), /credential-secret-value/)
+    return diagnostic
+  }
+
+  const missingExecutable = new Error("credential-secret-value")
+  missingExecutable.code = "ENOENT"
+  missingExecutable.path = "gh"
+  assert.deepEqual(
+    await invoke({
+      pullRequestLookup: async () => {
+        throw missingExecutable
+      },
+    }),
+    {
+      code: "checkpoint_proposal_exception",
+      stage: "pull_request_lookup",
+      reason: "executable_missing",
+      errorCode: "ENOENT",
+    },
+  )
+
+  assert.deepEqual(
+    await invoke({
+      pullRequestLookup: async () => {
+        throw new SyntaxError("credential-secret-value")
+      },
+    }),
+    {
+      code: "checkpoint_proposal_exception",
+      stage: "pull_request_lookup",
+      reason: "invalid_json",
+    },
+  )
+
+  const invalidResult = new Error("credential-secret-value")
+  invalidResult.code = "CHECKPOINT_INVALID_RESULT"
+  assert.deepEqual(
+    await invoke({
+      pullRequestLookup: async () => {
+        throw invalidResult
+      },
+    }),
+    {
+      code: "checkpoint_proposal_exception",
+      stage: "pull_request_lookup",
+      reason: "invalid_result",
+      errorCode: "CHECKPOINT_INVALID_RESULT",
+    },
+  )
+
+  const workspaceGitFile = path.join(setup.workspacePath, ".git")
+  const hiddenWorkspaceGitFile = path.join(setup.workspacePath, ".git.hidden")
+  await rename(workspaceGitFile, hiddenWorkspaceGitFile)
+  try {
+    assert.deepEqual(await invoke(), {
+      code: "checkpoint_proposal_exception",
+      stage: "metadata_workspace_git_file_type",
+      reason: "not_found",
+      errorCode: "ENOENT",
+    })
+  } finally {
+    await rename(hiddenWorkspaceGitFile, workspaceGitFile)
+  }
+
+  await git(setup.workspacePath, "remote", "rename", "origin", "unavailable")
+  try {
+    assert.deepEqual(
+      await invoke({ baseRef: setup.proposal.value.record.baseCommit }),
+      {
+        code: "checkpoint_proposal_exception",
+        stage: "remote_branch_lookup",
+        reason: "command_failed",
+        errorCode: "exit_128",
+      },
+    )
+  } finally {
+    await git(setup.workspacePath, "remote", "rename", "unavailable", "origin")
+  }
+
+  assert.deepEqual(await invoke({ now: new Date(Number.NaN) }), {
+    code: "checkpoint_proposal_exception",
+    stage: "checkpoint_timestamp_serialization",
+    reason: "invalid_time",
+  })
+})
+
 test("#63/011 historical activation and request failures have exact bounded reason codes", async (t) => {
   const setup = await fixture(t, { execution011: true })
   const rejectionFor = async (state) => {
