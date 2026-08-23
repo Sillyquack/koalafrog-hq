@@ -16,6 +16,21 @@ const gitOperationMarkers = [
 ]
 const gitOperationDirectories = ["rebase-merge", "rebase-apply", "sequencer"]
 
+function accepted(value, context = {}) {
+  return { accepted: true, value, context }
+}
+
+function rejected(code, context = {}) {
+  return { accepted: false, value: null, rejection: { code, ...context } }
+}
+
+function reportDecision(decision, onDiagnostic) {
+  if (!decision.accepted && typeof onDiagnostic === "function") {
+    onDiagnostic(decision.rejection)
+  }
+  return decision
+}
+
 async function git(args, cwd, { allowFailure = false, trim = true } = {}) {
   try {
     const result = await execFileAsync("git", args, {
@@ -103,53 +118,120 @@ function extractAuthorizedCherryPick(prompt, head) {
   return commits.length === 1 ? commits[0] : null
 }
 
-function sourceRunProvesPreApplicationGitFailure(run, record) {
+function preApplicationGitFailureDecision(
+  run,
+  record,
+  {
+    expectedInstructionId,
+    prefix,
+    state = null,
+    requireWorkspace = false,
+  },
+) {
   const finalMessage = run?.resultArtifact?.finalMessage
-  return Boolean(
-    run?.instructionId === record.precedingInstructionId &&
-      run.status === "needs_review" &&
-      run.branch === record.toBranch &&
-      Array.isArray(run.commits) &&
-      run.commits.length === 1 &&
-      run.commits[0] === record.head &&
-      run.resultArtifact?.source === "completed_turn_final_message" &&
-      run.resultArtifact?.turnStatus === "completed" &&
-      typeof finalMessage === "string" &&
-      /Cherry-pick:\s*\*\*FAILED before application\*\*/i.test(finalMessage) &&
-      /linked worktree(?:'|’|\s)s?\s*`index\.lock`/i.test(finalMessage) &&
-      /no `CHERRY_PICK_HEAD` remains[^\n]*worktree is clean/i.test(finalMessage) &&
-      /Push:\s*\*\*NOT ATTEMPTED\*\*/i.test(finalMessage),
-  )
+  if (run?.instructionId !== expectedInstructionId) {
+    return rejected(`${prefix}_instruction`)
+  }
+  if (run.status !== "needs_review") return rejected(`${prefix}_status`)
+  if (run.branch !== record.toBranch) return rejected(`${prefix}_branch`)
+  if (
+    !Array.isArray(run.commits) ||
+    run.commits.length !== 1 ||
+    run.commits[0] !== record.head
+  ) {
+    return rejected(`${prefix}_head_proof`, {
+      commitCount: Array.isArray(run.commits) ? run.commits.length : -1,
+    })
+  }
+  if (run.turnCount !== 1) return rejected(`${prefix}_turn_count`)
+  if (
+    state &&
+    (run.originIssueNumber !== state.task.originIssueNumber ||
+      run.originIssueUrl !== state.task.originIssueUrl ||
+      run.threadId !== state.threadId)
+  ) {
+    return rejected(`${prefix}_origin_thread`)
+  }
+  if (requireWorkspace && run.workspacePath !== state.workspacePath) {
+    return rejected(`${prefix}_workspace`)
+  }
+  if (run.ownerRequest != null) return rejected(`${prefix}_owner_request`)
+  if (
+    run.resultArtifact?.source !== "completed_turn_final_message" ||
+    run.resultArtifact?.turnStatus !== "completed"
+  ) {
+    return rejected(`${prefix}_artifact`)
+  }
+  if (typeof finalMessage !== "string") {
+    return rejected(`${prefix}_final_message`)
+  }
+  if (!/Cherry-pick:\s*\*\*FAILED before application\*\*/i.test(finalMessage)) {
+    return rejected(`${prefix}_failure_before_application`)
+  }
+  if (
+    !/linked worktree(?:'|’|\s)s?\s*`index\.lock`/i.test(finalMessage) &&
+    !/linked worktree\s+`\.git\/worktrees\/\.\.\.\/index\.lock`/i.test(
+      finalMessage,
+    )
+  ) {
+    return rejected(`${prefix}_index_lock_evidence`)
+  }
+  if (
+    !/no `CHERRY_PICK_HEAD` remains[^\n]*worktree is clean/i.test(finalMessage) &&
+    !/Worktree:\s*clean;\s*no `CHERRY_PICK_HEAD`;\s*zero commits above base/i.test(
+      finalMessage,
+    )
+  ) {
+    return rejected(`${prefix}_clean_no_operation_evidence`)
+  }
+  if (!/Push:\s*\*\*NOT ATTEMPTED\*\*/i.test(finalMessage)) {
+    return rejected(`${prefix}_push_not_attempted`)
+  }
+  return accepted(run)
 }
 
-function authorizationRecord({ state, instruction, task }) {
-  if (
-    !state?.activeInstruction ||
-    state.activeInstruction.instructionId !== instruction?.instructionId ||
-    !new Set(["selected", "thread_ready"]).has(state.activeInstruction.phase) ||
-    instruction.action !== "continue" ||
-    instruction.taskState !== state.status ||
-    instruction.ownerApprovalRequired ||
-    extractIssueNumber(task?.issue) !== state.task?.originIssueNumber ||
-    currentIssueUrl(task) !== state.task?.originIssueUrl
-  ) {
-    return null
+function authorizationDecision({ state, instruction, task }) {
+  if (!state?.activeInstruction) {
+    return rejected("activation_active_instruction_missing")
+  }
+  if (state.activeInstruction.instructionId !== instruction?.instructionId) {
+    return rejected("activation_instruction_id")
+  }
+  if (!new Set(["selected", "thread_ready"]).has(state.activeInstruction.phase)) {
+    return rejected("activation_instruction_phase")
+  }
+  if (instruction.action !== "continue") return rejected("activation_action")
+  if (instruction.taskState !== state.status) {
+    return rejected("activation_task_state")
+  }
+  if (instruction.ownerApprovalRequired) {
+    return rejected("activation_instruction_owner_gate")
+  }
+  if (extractIssueNumber(task?.issue) !== state.task?.originIssueNumber) {
+    return rejected("activation_origin_issue")
+  }
+  if (currentIssueUrl(task) !== state.task?.originIssueUrl) {
+    return rejected("activation_origin_url")
   }
   const controls = listAgentControls(task.issue, task.comments)
   const matches = controls.filter(
     (control) => control.instructionId === instruction.instructionId,
   )
-  if (
-    matches.length !== 1 ||
-    matches[0].action !== "continue" ||
-    matches[0].prompt !== instruction.prompt ||
-    matches[0].ownerApprovalRequired
-  ) {
-    return null
+  if (matches.length !== 1) {
+    return rejected("activation_control_count", { controlCount: matches.length })
   }
+  if (matches[0].action !== "continue") {
+    return rejected("activation_control_action")
+  }
+  if (matches[0].prompt !== instruction.prompt) {
+    return rejected("activation_control_prompt")
+  }
+  if (matches[0].ownerApprovalRequired) {
+    return rejected("activation_control_owner_gate")
+  }
+
   const records = (state.workspaceBranchReconciliations ?? []).filter(
     (record) =>
-      record.continuationInstructionId === instruction.instructionId &&
       record.originIssueNumber === state.task.originIssueNumber &&
       record.originIssueUrl === state.task.originIssueUrl &&
       record.threadId === state.threadId &&
@@ -157,32 +239,84 @@ function authorizationRecord({ state, instruction, task }) {
       record.toBranch === state.branch &&
       fullShaPattern.test(record.head ?? ""),
   )
-  if (records.length !== 1) return null
+  if (records.length !== 1) {
+    return rejected(
+      records.length === 0
+        ? "activation_reconciliation_record_none"
+        : "activation_reconciliation_record_ambiguous",
+      { recordCount: records.length },
+    )
+  }
   const record = records[0]
   const expectedId = [
     "authorized-workspace-branch",
     record.precedingInstructionId,
-    instruction.instructionId,
+    record.continuationInstructionId,
     record.head,
   ].join(":")
-  if (record.reconciliationId !== expectedId) return null
+  if (record.reconciliationId !== expectedId) {
+    return rejected("activation_reconciliation_id")
+  }
+
+  let provenanceMode = "current_instruction"
+  let interveningExecutionInstructionIds = []
+  if (record.continuationInstructionId !== instruction.instructionId) {
+    provenanceMode = "historical_reconciliation"
+    if ((state.runs ?? []).some((run) => run.instructionId === instruction.instructionId)) {
+      return rejected("activation_current_run_duplicate")
+    }
+    const receiptRuns = (state.runs ?? []).filter(
+      (run) => run.instructionId === record.continuationInstructionId,
+    )
+    if (receiptRuns.length !== 1) {
+      return rejected("activation_historical_receipt_run_count", {
+        runCount: receiptRuns.length,
+      })
+    }
+    const receiptIndex = state.runs.indexOf(receiptRuns[0])
+    const tail = state.runs.slice(receiptIndex)
+    if (new Set(tail.map((run) => run.instructionId)).size !== tail.length) {
+      return rejected("activation_historical_tail_duplicate")
+    }
+    for (const run of tail) {
+      const proof = preApplicationGitFailureDecision(run, record, {
+        expectedInstructionId: run.instructionId,
+        prefix: "activation_historical_run",
+        state,
+        requireWorkspace: true,
+      })
+      if (!proof.accepted) return proof
+    }
+    interveningExecutionInstructionIds = tail.map((run) => run.instructionId)
+  }
+
   const sourceRuns = (state.runs ?? []).filter(
     (run) => run.instructionId === record.precedingInstructionId,
   )
-  if (
-    sourceRuns.length !== 1 ||
-    !sourceRunProvesPreApplicationGitFailure(sourceRuns[0], record)
-  ) {
-    return null
+  if (sourceRuns.length !== 1) {
+    return rejected("activation_source_run_count", {
+      runCount: sourceRuns.length,
+    })
   }
+  const sourceProof = preApplicationGitFailureDecision(sourceRuns[0], record, {
+    expectedInstructionId: record.precedingInstructionId,
+    prefix: "activation_source_run",
+  })
+  if (!sourceProof.accepted) return sourceProof
   const cherryPickCommit = extractAuthorizedCherryPick(
     instruction.prompt,
     record.head,
   )
-  return cherryPickCommit ? { record, cherryPickCommit } : null
+  if (!cherryPickCommit) return rejected("activation_explicit_authorization")
+  return accepted({
+    record,
+    cherryPickCommit,
+    provenanceMode,
+    interveningExecutionInstructionIds,
+  })
 }
 
-async function linkedWorktreeMetadata({
+async function linkedWorktreeMetadataDecision({
   state,
   workspacePath,
   workspaceRoot,
@@ -207,7 +341,7 @@ async function linkedWorktreeMetadata({
       .split("/")
       .some((segment) => segment === "." || segment === "..")
   ) {
-    return null
+    return rejected("activation_metadata_path_shape")
   }
 
   if (
@@ -215,7 +349,7 @@ async function linkedWorktreeMetadata({
     !(await regularPath(normalizedWorkspace, "directory")) ||
     !(await regularPath(normalizedCheckout, "directory"))
   ) {
-    return null
+    return rejected("activation_metadata_path_type")
   }
   const [rootReal, workspaceReal, checkoutReal] = await Promise.all([
     realpath(normalizedRoot),
@@ -228,7 +362,7 @@ async function linkedWorktreeMetadata({
     checkoutReal !== normalizedCheckout ||
     !exactPathWithin(rootReal, workspaceReal)
   ) {
-    return null
+    return rejected("activation_metadata_realpath")
   }
 
   const workspaceGitFile = path.join(workspaceReal, ".git")
@@ -237,11 +371,11 @@ async function linkedWorktreeMetadata({
     !(await regularPath(workspaceGitFile, "file")) ||
     !(await regularPath(checkoutGitDirectory, "directory"))
   ) {
-    return null
+    return rejected("activation_metadata_git_path_type")
   }
   const pointer = await readSmallFile(workspaceGitFile)
   const pointerMatch = pointer?.match(/^gitdir: ([^\r\n]+)\r?\n?$/)
-  if (!pointerMatch) return null
+  if (!pointerMatch) return rejected("activation_metadata_git_pointer")
   const pointerTarget = path.isAbsolute(pointerMatch[1])
     ? path.normalize(pointerMatch[1])
     : path.resolve(workspaceReal, pointerMatch[1])
@@ -271,7 +405,7 @@ async function linkedWorktreeMetadata({
     !(await regularPath(gitDirectory, "directory")) ||
     !(await regularPath(commonDirectory, "directory"))
   ) {
-    return null
+    return rejected("activation_metadata_git_resolution")
   }
 
   const worktreesDirectory = path.join(commonDirectory, "worktrees")
@@ -280,10 +414,12 @@ async function linkedWorktreeMetadata({
     path.dirname(gitDirectory) !== worktreesDirectory ||
     !exactPathWithin(worktreesDirectory, gitDirectory)
   ) {
-    return null
+    return rejected("activation_metadata_worktree_boundary")
   }
   const worktreeName = path.basename(gitDirectory)
-  if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(worktreeName)) return null
+  if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(worktreeName)) {
+    return rejected("activation_metadata_worktree_name")
+  }
 
   const commonPointer = await readSmallFile(path.join(gitDirectory, "commondir"))
   const workspacePointer = await readSmallFile(path.join(gitDirectory, "gitdir"))
@@ -294,7 +430,7 @@ async function linkedWorktreeMetadata({
       commonDirectory ||
     (await realpath(path.normalize(workspacePointer.trim()))) !== workspaceGitFile
   ) {
-    return null
+    return rejected("activation_metadata_back_pointer")
   }
 
   const [branch, head, status, branchHead, commitType] = await Promise.all([
@@ -304,20 +440,24 @@ async function linkedWorktreeMetadata({
     git(["rev-parse", `refs/heads/${state.branch}`], workspaceReal),
     git(["cat-file", "-t", `${cherryPickCommit}^{commit}`], workspaceReal),
   ])
-  if (
-    branch !== state.branch ||
-    head !== record.head ||
-    branchHead !== record.head ||
-    status !== "" ||
-    commitType !== "commit"
-  ) {
-    return null
+  if (branch !== state.branch) return rejected("activation_metadata_branch")
+  if (head !== record.head) return rejected("activation_metadata_head")
+  if (branchHead !== record.head) {
+    return rejected("activation_metadata_branch_head")
+  }
+  if (status !== "") return rejected("activation_metadata_dirty")
+  if (commitType !== "commit") {
+    return rejected("activation_metadata_target_commit")
   }
   for (const marker of gitOperationMarkers) {
-    if (await optionalPathExists(path.join(gitDirectory, marker))) return null
+    if (await optionalPathExists(path.join(gitDirectory, marker))) {
+      return rejected("activation_metadata_operation_marker")
+    }
   }
   for (const directory of gitOperationDirectories) {
-    if (await optionalPathExists(path.join(gitDirectory, directory))) return null
+    if (await optionalPathExists(path.join(gitDirectory, directory))) {
+      return rejected("activation_metadata_operation_directory")
+    }
   }
 
   const objectsDirectory = path.join(commonDirectory, "objects")
@@ -326,7 +466,7 @@ async function linkedWorktreeMetadata({
     (await treeContainsSymlink(gitDirectory)) ||
     (await treeContainsSymlink(objectsDirectory))
   ) {
-    return null
+    return rejected("activation_metadata_symlink_or_objects")
   }
   const branchRef = path.join(
     commonDirectory,
@@ -339,7 +479,7 @@ async function linkedWorktreeMetadata({
     !(await regularPath(branchRef, "file")) ||
     (await readSmallFile(branchRef))?.trim() !== record.head
   ) {
-    return null
+    return rejected("activation_metadata_branch_ref")
   }
   const branchLog = path.join(
     commonDirectory,
@@ -352,10 +492,10 @@ async function linkedWorktreeMetadata({
     (await optionalPathExists(branchLog)) &&
     !(await regularPath(branchLog, "file"))
   ) {
-    return null
+    return rejected("activation_metadata_branch_log")
   }
 
-  return {
+  return accepted({
     gitDirectory,
     commonDirectory,
     writablePaths: [
@@ -366,7 +506,7 @@ async function linkedWorktreeMetadata({
       branchLog,
       `${branchLog}.lock`,
     ],
-  }
+  })
 }
 
 function exactGitCommands({ cherryPickCommit, branch, baseBranch }) {
@@ -445,20 +585,30 @@ export async function authorizedGitExecutionBoundary({
   checkoutPath,
   repository,
   baseRef,
+  onDiagnostic = null,
 }) {
   try {
-    const authorization = authorizationRecord({ state, instruction, task })
-    if (!authorization) return null
-    if (repository !== "Sillyquack/koalafrog-hq") return null
-    const metadata = await linkedWorktreeMetadata({
+    const authorization = authorizationDecision({ state, instruction, task })
+    if (!authorization.accepted) {
+      reportDecision(authorization, onDiagnostic)
+      return null
+    }
+    if (repository !== "Sillyquack/koalafrog-hq") {
+      reportDecision(rejected("activation_repository"), onDiagnostic)
+      return null
+    }
+    const metadata = await linkedWorktreeMetadataDecision({
       state,
       workspacePath,
       workspaceRoot,
       checkoutPath,
-      record: authorization.record,
-      cherryPickCommit: authorization.cherryPickCommit,
+      record: authorization.value.record,
+      cherryPickCommit: authorization.value.cherryPickCommit,
     })
-    if (!metadata) return null
+    if (!metadata.accepted) {
+      reportDecision(metadata, onDiagnostic)
+      return null
+    }
     const baseMatch = String(baseRef ?? "").match(
       /^origin\/([A-Za-z0-9._/-]+)$/,
     )
@@ -477,19 +627,34 @@ export async function authorizedGitExecutionBoundary({
       threadId: state.threadId,
       workspacePath,
       branch: state.branch,
-      head: authorization.record.head,
-      cherryPickCommit: authorization.cherryPickCommit,
-      gitDirectory: metadata.gitDirectory,
-      commonDirectory: metadata.commonDirectory,
-      writablePaths: metadata.writablePaths,
+      head: authorization.value.record.head,
+      cherryPickCommit: authorization.value.cherryPickCommit,
+      provenanceMode: authorization.value.provenanceMode,
+      priorPredicateCode:
+        authorization.value.provenanceMode === "historical_reconciliation"
+          ? "activation_reconciliation_current_instruction_missing"
+          : null,
+      reconciliationInstructionId:
+        authorization.value.record.continuationInstructionId,
+      interveningExecutionInstructionIds:
+        authorization.value.interveningExecutionInstructionIds,
+      gitDirectory: metadata.value.gitDirectory,
+      commonDirectory: metadata.value.commonDirectory,
+      writablePaths: metadata.value.writablePaths,
       repository,
       commands: exactGitCommands({
-        cherryPickCommit: authorization.cherryPickCommit,
+        cherryPickCommit: authorization.value.cherryPickCommit,
         branch: state.branch,
         baseBranch,
       }),
     }
-  } catch {
+  } catch (error) {
+    reportDecision(
+      rejected("activation_exception", {
+        errorName: typeof error?.name === "string" ? error.name : "Error",
+      }),
+      onDiagnostic,
+    )
     return null
   }
 }
@@ -506,43 +671,61 @@ export function gitExecutionBoundaryPrompt(boundary) {
 - Any different command or permission request will stop for owner review.`
 }
 
-export function matchGitExecutionBoundaryRequest({
+export function gitExecutionBoundaryRequestDecision({
   boundary,
   request,
   commandExecution,
 }) {
+  if (!boundary) return rejected("request_boundary_missing")
   if (
-    !boundary ||
     !new Set([
       "item/permissions/requestApproval",
       "item/commandExecution/requestApproval",
-    ]).has(request?.method) ||
-    request.threadId !== boundary.threadId ||
-    request.itemId !== commandExecution?.id ||
-    commandExecution?.type !== "commandExecution" ||
-    commandExecution?.source !== "agent" ||
-    commandExecution?.cwd !== boundary.workspacePath ||
-    request.details?.cwd !== boundary.workspacePath
+    ]).has(request?.method)
   ) {
-    return null
+    return rejected("request_method")
+  }
+  if (request.threadId !== boundary.threadId) {
+    return rejected("request_thread")
+  }
+  if (!commandExecution) return rejected("request_command_context_missing")
+  if (request.itemId !== commandExecution.id) {
+    return rejected("request_item_id")
+  }
+  if (commandExecution.type !== "commandExecution") {
+    return rejected("request_command_type")
+  }
+  if (commandExecution.source !== "agent") {
+    return rejected("request_command_source")
+  }
+  if (commandExecution.cwd !== boundary.workspacePath) {
+    return rejected("request_command_workspace")
+  }
+  if (request.details?.cwd !== boundary.workspacePath) {
+    return rejected("request_workspace")
   }
   const command = normalizedDisplayedCommand(commandExecution.command)
   const action = Object.entries(boundary.commands).find(([, commands]) =>
     commands.includes(command),
   )?.[0]
-  if (!action) return null
+  if (!action) return rejected("request_command_unrecognized")
   if (request.method === "item/commandExecution/requestApproval") {
-    if (
-      normalizedDisplayedCommand(request.details?.command) !== command ||
-      request.details?.cwd !== boundary.workspacePath ||
-      request.details?.reason != null ||
-      request.details?.networkApprovalContext != null ||
-      request.details?.proposedExecpolicyAmendment != null ||
-      request.details?.proposedNetworkPolicyAmendments != null
-    ) {
-      return null
+    if (normalizedDisplayedCommand(request.details?.command) !== command) {
+      return rejected("request_command_serialization", { action })
     }
-    return { action, response: { decision: "accept" } }
+    if (request.details?.reason != null) {
+      return rejected("request_command_reason", { action })
+    }
+    if (request.details?.networkApprovalContext != null) {
+      return rejected("request_command_network_context", { action })
+    }
+    if (request.details?.proposedExecpolicyAmendment != null) {
+      return rejected("request_command_exec_policy", { action })
+    }
+    if (request.details?.proposedNetworkPolicyAmendments != null) {
+      return rejected("request_command_network_policy", { action })
+    }
+    return accepted({ action, response: { decision: "accept" } })
   }
   const permissions = request.details?.permissions
   const matches =
@@ -550,45 +733,83 @@ export function matchGitExecutionBoundaryRequest({
       ? exactFilesystemWriteRequest(permissions, boundary.writablePaths)
       : new Set(["push", "pull_request"]).has(action) &&
         exactNetworkRequest(permissions)
-  if (!matches) return null
-  return {
+  if (!matches) {
+    return rejected(
+      action === "cherry_pick"
+        ? "request_filesystem_permissions"
+        : "request_network_permissions",
+      { action },
+    )
+  }
+  return accepted({
     action,
     response: {
       permissions,
       scope: "turn",
       strictAutoReview: true,
     },
-  }
+  })
 }
 
-export async function gitExecutionBoundaryIsCurrent(boundary, action) {
+export function matchGitExecutionBoundaryRequest(input) {
+  const decision = gitExecutionBoundaryRequestDecision(input)
+  return decision.accepted ? decision.value : null
+}
+
+export async function gitExecutionBoundaryIsCurrent(
+  boundary,
+  action,
+  onDiagnostic = null,
+) {
+  const fail = (code, context = {}) => {
+    reportDecision(rejected(code, context), onDiagnostic)
+    return false
+  }
   try {
+    if (!boundary) return fail("current_boundary_missing")
     if (
-      !boundary ||
       !new Set([
         "cherry_pick",
         "push",
         "pull_request",
         "validation",
-      ]).has(action) ||
-      (await realpath(boundary.workspacePath)) !== boundary.workspacePath ||
-      (await realpath(boundary.gitDirectory)) !== boundary.gitDirectory ||
-      (await realpath(boundary.commonDirectory)) !== boundary.commonDirectory ||
-      !(await regularPath(boundary.workspacePath, "directory")) ||
-      !(await regularPath(boundary.gitDirectory, "directory")) ||
-      !(await regularPath(boundary.commonDirectory, "directory")) ||
-      (await treeContainsSymlink(boundary.gitDirectory)) ||
-      (await treeContainsSymlink(path.join(boundary.commonDirectory, "objects")))
+      ]).has(action)
     ) {
-      return false
+      return fail("current_action")
+    }
+    if ((await realpath(boundary.workspacePath)) !== boundary.workspacePath) {
+      return fail("current_workspace_realpath", { action })
+    }
+    if ((await realpath(boundary.gitDirectory)) !== boundary.gitDirectory) {
+      return fail("current_gitdir_realpath", { action })
+    }
+    if ((await realpath(boundary.commonDirectory)) !== boundary.commonDirectory) {
+      return fail("current_common_dir_realpath", { action })
+    }
+    if (!(await regularPath(boundary.workspacePath, "directory"))) {
+      return fail("current_workspace_type", { action })
+    }
+    if (!(await regularPath(boundary.gitDirectory, "directory"))) {
+      return fail("current_gitdir_type", { action })
+    }
+    if (!(await regularPath(boundary.commonDirectory, "directory"))) {
+      return fail("current_common_dir_type", { action })
+    }
+    if (await treeContainsSymlink(boundary.gitDirectory)) {
+      return fail("current_gitdir_symlink", { action })
+    }
+    if (await treeContainsSymlink(path.join(boundary.commonDirectory, "objects"))) {
+      return fail("current_objects_symlink", { action })
     }
     const pointer = await readSmallFile(path.join(boundary.workspacePath, ".git"))
     const pointerMatch = pointer?.match(/^gitdir: ([^\r\n]+)\r?\n?$/)
-    if (!pointerMatch) return false
+    if (!pointerMatch) return fail("current_git_pointer", { action })
     const pointerTarget = path.isAbsolute(pointerMatch[1])
       ? path.normalize(pointerMatch[1])
       : path.resolve(boundary.workspacePath, pointerMatch[1])
-    if ((await realpath(pointerTarget)) !== boundary.gitDirectory) return false
+    if ((await realpath(pointerTarget)) !== boundary.gitDirectory) {
+      return fail("current_git_pointer_target", { action })
+    }
 
     const [branch, head, status, branchHead] = await Promise.all([
       git(["branch", "--show-current"], boundary.workspacePath),
@@ -601,20 +822,22 @@ export async function gitExecutionBoundaryIsCurrent(boundary, action) {
         boundary.workspacePath,
       ),
     ])
-    if (branch !== boundary.branch || status !== "" || branchHead !== head) {
-      return false
-    }
+    if (branch !== boundary.branch) return fail("current_branch", { action })
+    if (status !== "") return fail("current_dirty", { action })
+    if (branchHead !== head) return fail("current_branch_head", { action })
     for (const marker of gitOperationMarkers) {
       if (await optionalPathExists(path.join(boundary.gitDirectory, marker))) {
-        return false
+        return fail("current_operation_marker", { action })
       }
     }
     for (const directory of gitOperationDirectories) {
       if (await optionalPathExists(path.join(boundary.gitDirectory, directory))) {
-        return false
+        return fail("current_operation_directory", { action })
       }
     }
-    if (action === "cherry_pick") return head === boundary.head
+    if (action === "cherry_pick") {
+      return head === boundary.head || fail("current_cherry_pick_head", { action })
+    }
 
     const [parent, count, actualTree, reviewedTree] = await Promise.all([
       git(["rev-parse", "HEAD^"], boundary.workspacePath),
@@ -625,9 +848,15 @@ export async function gitExecutionBoundaryIsCurrent(boundary, action) {
         boundary.workspacePath,
       ),
     ])
-    return parent === boundary.head && count === "1" && actualTree === reviewedTree
-  } catch {
-    return false
+    if (parent !== boundary.head) return fail("current_result_parent", { action })
+    if (count !== "1") return fail("current_result_commit_count", { action })
+    if (actualTree !== reviewedTree) return fail("current_result_tree", { action })
+    return true
+  } catch (error) {
+    return fail("current_exception", {
+      action,
+      errorName: typeof error?.name === "string" ? error.name : "Error",
+    })
   }
 }
 

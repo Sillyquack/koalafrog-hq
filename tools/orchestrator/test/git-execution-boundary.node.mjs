@@ -23,10 +23,16 @@ import {
   gitExecutionBoundaryIsCurrent,
   gitExecutionBoundaryPrompt,
   gitExecutionPathIsCovered,
+  gitExecutionBoundaryRequestDecision,
   matchGitExecutionBoundaryRequest,
 } from "../src/git-execution-boundary.mjs"
 import {
   issue63ContinuationControl,
+  issue63ContinuationInstructionId,
+  issue63ExecutionControl,
+  issue63ExecutionInstructionId,
+  issue63FailedExecutionRun,
+  issue63InterveningRun,
   issue63OriginUrl,
   issue63PriorRun,
   issue63ReconciledBranch,
@@ -61,7 +67,7 @@ async function fileSnapshot(root) {
   return snapshot
 }
 
-async function fixture(t) {
+async function fixture(t, { execution011 = false } = {}) {
   const directory = await realpath(
     await mkdtemp(
       path.join(os.tmpdir(), "koalafrog-git-execution-boundary-"),
@@ -114,7 +120,20 @@ async function fixture(t) {
       ? { ...comment, body: continuationControl }
       : comment,
   )
-  const [instruction] = extractAgentControls(continuationControl)
+  const [receiptInstruction] = extractAgentControls(continuationControl)
+  const executionControl = issue63ExecutionControl
+    .replaceAll(
+      "ec719153c8e726831d7e2b748067383ea7f4e314",
+      head,
+    )
+    .replaceAll(
+      "a74079be88ec4a8b36b850f95dca791ff42e4e80",
+      cherryPickCommit,
+    )
+  if (execution011) task.comments.push({ body: executionControl })
+  const [instruction] = extractAgentControls(
+    execution011 ? executionControl : continuationControl,
+  )
   const sourceRun = structuredClone(issue63PriorRun)
   sourceRun.commits = [head]
   sourceRun.resultArtifact.finalMessage = sourceRun.resultArtifact.finalMessage
@@ -125,23 +144,43 @@ async function fixture(t) {
   const reconciliationId = [
     "authorized-workspace-branch",
     sourceRun.instructionId,
-    instruction.instructionId,
+    receiptInstruction.instructionId,
     head,
   ].join(":")
+  const receiptRun = structuredClone(sourceRun)
+  receiptRun.instructionId = receiptInstruction.instructionId
+  receiptRun.workspacePath = workspacePath
+  receiptRun.changedFiles = Array.from(
+    { length: 30 },
+    (_, index) => `reviewed/path-${String(index + 1).padStart(2, "0")}.ts`,
+  )
+  receiptRun.resultArtifact = structuredClone(
+    issue63FailedExecutionRun.resultArtifact,
+  )
+  receiptRun.resultArtifact.finalMessage =
+    receiptRun.resultArtifact.finalMessage.replaceAll(
+      "ec719153c8e726831d7e2b748067383ea7f4e314",
+      head,
+    )
+  receiptRun.completedAt = "2026-08-22T23:10:00.000Z"
   const state = {
-    status: "needs_owner",
+    status: execution011 ? "needs_review" : "needs_owner",
     task: { originIssueNumber: 63, originIssueUrl: issue63OriginUrl },
     threadId: issue63ThreadId,
     workspacePath,
     branch: issue63ReconciledBranch,
     activeInstruction: { ...instruction, phase: "selected" },
-    runs: [sourceRun],
+    runs: execution011
+      ? [sourceRun, structuredClone(issue63InterveningRun), receiptRun]
+      : [sourceRun],
     workspaceBranchReconciliations: [
       {
         reconciliationId,
         precedingInstructionId: sourceRun.instructionId,
-        interveningInstructionIds: [],
-        continuationInstructionId: instruction.instructionId,
+        interveningInstructionIds: execution011
+          ? [issue63InterveningRun.instructionId]
+          : [],
+        continuationInstructionId: receiptInstruction.instructionId,
         originIssueNumber: 63,
         originIssueUrl: issue63OriginUrl,
         threadId: issue63ThreadId,
@@ -304,6 +343,148 @@ test("live-shaped #63 linked worktree receives only its exact Git metadata bound
   for (const action of ["validation", "push", "pull_request"]) {
     assert.equal(await gitExecutionBoundaryIsCurrent(boundary, action), true)
   }
+})
+
+test("live-shaped #63/011 reuses the exact 010 receipt and grants only its selected worktree", async (t) => {
+  const setup = await fixture(t, { execution011: true })
+  const { boundary, state, workspacePath, workspaceRoot, checkoutPath, head } =
+    setup
+  assert.ok(boundary)
+  assert.equal(boundary.instructionId, issue63ExecutionInstructionId)
+  assert.equal(boundary.provenanceMode, "historical_reconciliation")
+  assert.equal(
+    boundary.priorPredicateCode,
+    "activation_reconciliation_current_instruction_missing",
+  )
+  assert.equal(
+    boundary.reconciliationInstructionId,
+    issue63ContinuationInstructionId,
+  )
+  assert.deepEqual(boundary.interveningExecutionInstructionIds, [
+    issue63ContinuationInstructionId,
+  ])
+  assert.equal(
+    state.workspaceBranchReconciliations.filter(
+      (record) =>
+        record.continuationInstructionId === issue63ExecutionInstructionId,
+    ).length,
+    0,
+  )
+
+  const indexLock = path.join(boundary.gitDirectory, "index.lock")
+  assert.equal(gitExecutionPathIsCovered(boundary, indexLock), true)
+  await writeFile(indexLock, "bounded test lock\n")
+  assert.equal(await readFile(indexLock, "utf8"), "bounded test lock\n")
+  await unlink(indexLock)
+
+  const siblingWorkspace = path.join(
+    workspaceRoot,
+    "issue-64-grant-path-negative-001",
+  )
+  await git(
+    checkoutPath,
+    "worktree",
+    "add",
+    "-b",
+    "agent/issue-64-grant-path-negative-001",
+    siblingWorkspace,
+    head,
+  )
+  const siblingPointer = await readFile(path.join(siblingWorkspace, ".git"), "utf8")
+  const siblingGitDirectory = await realpath(
+    siblingPointer.trim().slice("gitdir: ".length),
+  )
+  const siblingLock = path.join(siblingGitDirectory, "index.lock")
+  assert.equal(gitExecutionPathIsCovered(boundary, siblingLock), false)
+
+  const exactRequest = permissionRequest(boundary)
+  exactRequest.request.turnId = "turn-production-day1-git-reconciliation-execution-011"
+  const decision = gitExecutionBoundaryRequestDecision({
+    boundary,
+    ...exactRequest,
+  })
+  assert.equal(decision.accepted, true)
+  assert.equal(decision.value.action, "cherry_pick")
+
+  const siblingRequest = structuredClone(exactRequest)
+  siblingRequest.request.details.permissions.fileSystem.write.push(siblingLock)
+  const siblingDecision = gitExecutionBoundaryRequestDecision({
+    boundary,
+    ...siblingRequest,
+  })
+  assert.equal(siblingDecision.accepted, false)
+  assert.equal(siblingDecision.rejection.code, "request_filesystem_permissions")
+
+  await execFileAsync(
+    "/bin/zsh",
+    ["-lc", boundary.commands.cherry_pick[0]],
+    { cwd: workspacePath, encoding: "utf8" },
+  )
+  assert.equal(await git(workspacePath, "rev-parse", "HEAD^"), head)
+  assert.equal(
+    await git(workspacePath, "rev-parse", "HEAD^{tree}"),
+    await git(workspacePath, "rev-parse", `${setup.cherryPickCommit}^{tree}`),
+  )
+})
+
+test("#63/011 historical activation and request failures have exact bounded reason codes", async (t) => {
+  const setup = await fixture(t, { execution011: true })
+  const rejectionFor = async (state) => {
+    let diagnostic = null
+    const boundary = await authorizedGitExecutionBoundary({
+      ...setup,
+      state,
+      onDiagnostic: (value) => {
+        diagnostic = value
+      },
+    })
+    assert.equal(boundary, null)
+    return diagnostic
+  }
+
+  const wrongWorkspace = structuredClone(setup.state)
+  wrongWorkspace.runs.at(-1).workspacePath = `${setup.workspacePath}-other`
+  assert.equal(
+    (await rejectionFor(wrongWorkspace)).code,
+    "activation_historical_run_workspace",
+  )
+
+  const changedHead = structuredClone(setup.state)
+  changedHead.runs.at(-1).commits = ["f".repeat(40)]
+  assert.equal(
+    (await rejectionFor(changedHead)).code,
+    "activation_historical_run_head_proof",
+  )
+
+  const ambiguous = structuredClone(setup.state)
+  ambiguous.workspaceBranchReconciliations.push(
+    structuredClone(ambiguous.workspaceBranchReconciliations[0]),
+  )
+  assert.equal(
+    (await rejectionFor(ambiguous)).code,
+    "activation_reconciliation_record_ambiguous",
+  )
+
+  const exactRequest = permissionRequest(setup.boundary)
+  assert.equal(
+    gitExecutionBoundaryRequestDecision({
+      boundary: setup.boundary,
+      request: exactRequest.request,
+      commandExecution: null,
+    }).rejection.code,
+    "request_command_context_missing",
+  )
+  const malformedPermissions = structuredClone(exactRequest)
+  malformedPermissions.request.details.permissions = {
+    file_system: { write: setup.boundary.writablePaths },
+  }
+  assert.equal(
+    gitExecutionBoundaryRequestDecision({
+      boundary: setup.boundary,
+      ...malformedPermissions,
+    }).rejection.code,
+    "request_filesystem_permissions",
+  )
 })
 
 test("boundary rejects other worktrees, issues, path escapes, drift, and missing approval", async (t) => {

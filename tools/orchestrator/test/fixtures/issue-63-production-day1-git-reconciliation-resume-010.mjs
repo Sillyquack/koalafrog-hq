@@ -15,6 +15,8 @@ export const issue63InterveningInstructionId =
   "production-day1-git-reconciliation-metadata-009"
 export const issue63ContinuationInstructionId =
   "production-day1-git-reconciliation-resume-010"
+export const issue63ExecutionInstructionId =
+  "production-day1-git-reconciliation-execution-011"
 export const issue63DurableOwnerGateReason =
   "The instruction requests an owner-gated action: Supabase migration approval, deployment, production writes, Aromantic Supplier/Supplier Product provenance, and Aromantic receipt creation all remain explicitly outside scope and separately gated."
 export const issue63CleanWorkspaceEvidence =
@@ -76,6 +78,10 @@ agent_control:
 
     If the cherry-pick conflicts or lineage/tree verification does not match the reviewed plan, stop and return needs_review with the exact blocker.
 \`\`\``
+
+export const issue63ExecutionControl = issue63ContinuationControl
+  .replace("task_state: needs_owner", "task_state: needs_review")
+  .replace(issue63ContinuationInstructionId, issue63ExecutionInstructionId)
 
 export const issue63PriorRun = {
   instructionId: issue63PriorInstructionId,
@@ -252,6 +258,34 @@ export const issue63InterveningRun = {
   completedAt: "2026-08-22T05:04:00.000Z",
 }
 
+export const issue63FailedExecutionRun = {
+  ...structuredClone(issue63PriorRun),
+  instructionId: issue63ContinuationInstructionId,
+  workspacePath: issue63WorkspacePath,
+  changedFiles: Array.from(
+    { length: 30 },
+    (_, index) => `reviewed/path-${String(index + 1).padStart(2, "0")}.ts`,
+  ),
+  resultArtifact: {
+    ...structuredClone(issue63PriorRun.resultArtifact),
+    turnId: "01a03190-f7a4-7df2-9101-55c01425776d",
+    finalMessage: `needs_review — reconciliation blocked before cherry-pick.
+
+- Branch: \`${issue63ReconciledBranch}\`
+- Current HEAD: \`${issue63ReconciledHead}\`
+- Cherry-pick: **FAILED before application**
+- Exact blocker: sandbox denied creation of the linked worktree \`.git/worktrees/.../index.lock\`
+- Worktree: clean; no \`CHERRY_PICK_HEAD\`; zero commits above base
+- \`git diff --check\`: **PASS**
+- Typecheck/lint/tests/readiness/build: **NOT RUN**, because the required cherry-pick never began
+- Push: **NOT ATTEMPTED**
+- PR: **NOT CREATED**
+
+The remaining gate is an orchestrator execution profile that actually permits writes to this linked worktree’s external Git metadata. Owner intent is already explicit; no additional product authorization is needed. No deployment, migration, production write, receipt, or other external mutation occurred.`,
+  },
+  completedAt: "2026-08-22T23:10:00.000Z",
+}
+
 export function issue63ReconciliationTask(comments = []) {
   return {
     issue: {
@@ -267,6 +301,13 @@ export function issue63ReconciliationTask(comments = []) {
       ...comments,
     ],
   }
+}
+
+export function issue63ExecutionTask(comments = []) {
+  const task = issue63ReconciliationTask()
+  task.issue.updated_at = "2026-08-22T23:15:00.000Z"
+  task.comments.push({ body: issue63ExecutionControl }, ...comments)
+  return task
 }
 
 export function prepareIssue63ReconciliationState(state, instruction) {
@@ -286,6 +327,49 @@ export function prepareIssue63ReconciliationState(state, instruction) {
   state.runs = [
     structuredClone(issue63PriorRun),
     structuredClone(issue63InterveningRun),
+  ]
+  return state
+}
+
+export function prepareIssue63ExecutionState(state, instruction) {
+  state.status = "needs_review"
+  state.task.originIssueUrl = issue63OriginUrl
+  state.lastConsumedInstructionId = issue63ContinuationInstructionId
+  state.activeInstruction = {
+    ...instruction,
+    phase: "selected",
+    attempts: 0,
+    turnCount: 0,
+    selectedAt: "2026-08-22T23:15:00.000Z",
+  }
+  state.threadId = issue63ThreadId
+  state.workspacePath = issue63WorkspacePath
+  state.branch = issue63ReconciledBranch
+  state.runs = [
+    structuredClone(issue63PriorRun),
+    structuredClone(issue63InterveningRun),
+    structuredClone(issue63FailedExecutionRun),
+  ]
+  state.workspaceBranchReconciliations = [
+    {
+      reconciliationId: [
+        "authorized-workspace-branch",
+        issue63PriorInstructionId,
+        issue63ContinuationInstructionId,
+        issue63ReconciledHead,
+      ].join(":"),
+      precedingInstructionId: issue63PriorInstructionId,
+      interveningInstructionIds: [issue63InterveningInstructionId],
+      continuationInstructionId: issue63ContinuationInstructionId,
+      originIssueNumber: 63,
+      originIssueUrl: issue63OriginUrl,
+      threadId: issue63ThreadId,
+      workspacePath: issue63WorkspacePath,
+      fromBranch: issue63ExpectedBranch,
+      toBranch: issue63ReconciledBranch,
+      head: issue63ReconciledHead,
+      reconciledAt: "2026-08-22T05:10:00.000Z",
+    },
   ]
   return state
 }
