@@ -186,7 +186,7 @@ test("schema-one Issue #53 state migrates without losing its active thread", asy
   )
 })
 
-test("superseding checkpoint proposal is persisted and published once across restart", async (t) => {
+test("retried superseding checkpoint proposal preserves rejected attempts and publishes once across restart", async (t) => {
   const directory = await mkdtemp(path.join(os.tmpdir(), "koalafrog-checkpoint-"))
   t.after(() => rm(directory, { recursive: true, force: true }))
   const storeOptions = {
@@ -207,8 +207,12 @@ test("superseding checkpoint proposal is persisted and published once across res
     tree,
     cherryPickCommit,
   })
+  const priorProposalInstructionIds = [
+    "production-day1-git-reconciliation-checkpoint-proposal-016",
+    "production-day1-git-reconciliation-checkpoint-proposal-017",
+  ]
   const instructionId =
-    "production-day1-git-reconciliation-checkpoint-proposal-016"
+    "production-day1-git-reconciliation-checkpoint-proposal-018"
   const control = `\`\`\`yaml
 agent_control:
   action: continue
@@ -227,7 +231,22 @@ ${prompt
   state.threadId = issue63ThreadId
   state.workspacePath = issue63WorkspacePath
   state.branch = issue63ReconciledBranch
-  state.runs.push({ instructionId: "historical-015", immutable: true })
+  const immutableRuns = [
+    { instructionId: "historical-015", immutable: true },
+    {
+      instructionId: priorProposalInstructionIds[0],
+      status: "needs_review",
+      turnCount: 0,
+      blockers: ["checkpoint_proposal_exception"],
+    },
+    {
+      instructionId: priorProposalInstructionIds[1],
+      status: "needs_review",
+      turnCount: 0,
+      blockers: ["checkpoint_historical_tail_scope"],
+    },
+  ]
+  state.runs.push(...structuredClone(immutableRuns))
   await store.save(state)
 
   const comments = [{ body: control }]
@@ -254,6 +273,7 @@ ${prompt
     proposalInstructionId: instructionId,
     reconciliationId,
     supersededTailInstructionIds: ["historical-015"],
+    priorRejectedProposalInstructionIds: priorProposalInstructionIds,
     originIssueNumber: 63,
     originIssueUrl: issue63OriginUrl,
     threadId: issue63ThreadId,
@@ -326,10 +346,7 @@ ${prompt
     persisted.gitReconciliationCheckpoints[0].checkpointId,
     checkpointRecord.checkpointId,
   )
-  assert.deepEqual(persisted.runs[0], {
-    instructionId: "historical-015",
-    immutable: true,
-  })
+  assert.deepEqual(persisted.runs.slice(0, 3), immutableRuns)
   assert.equal(persisted.runs.at(-1).instructionId, instructionId)
   assert.equal(persisted.runs.at(-1).turnCount, 0)
   assert.equal(

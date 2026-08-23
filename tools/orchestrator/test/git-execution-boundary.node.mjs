@@ -598,6 +598,99 @@ async function checkpointSetup(t) {
   }
 }
 
+function selectCheckpointProposal(setup, instructionId, prompt) {
+  const body = checkpointControl({
+    instructionId,
+    taskState: "needs_review",
+    prompt,
+  })
+  setup.task.comments.push({ body })
+  const [instruction] = extractAgentControls(body)
+  setup.state.status = "needs_review"
+  setup.state.activeInstruction = { ...instruction, phase: "selected" }
+  return { body, instruction }
+}
+
+function appendRejectedCheckpointProposalAttempt(
+  setup,
+  {
+    instructionId,
+    blocker,
+    prompt = setup.proposalInstruction.prompt,
+    addControl = true,
+    completedAt = "2026-08-23T10:01:00.000Z",
+  },
+) {
+  if (addControl) selectCheckpointProposal(setup, instructionId, prompt)
+  const run = {
+    instructionId,
+    status: "needs_review",
+    threadId: issue63ThreadId,
+    workspacePath: setup.workspacePath,
+    branch: issue63ReconciledBranch,
+    commits: [setup.head],
+    changedFiles: structuredClone(issue63LiveChangedFiles),
+    turnCount: 0,
+    originIssueNumber: 63,
+    originIssueUrl: issue63OriginUrl,
+    ownerRequest: null,
+    checks: {
+      typecheck: "not_run",
+      lint: "not_run",
+      tests: "not_run",
+      cloudflareReadiness: "not_run",
+      build: "not_run",
+      diffCheck: "not_run",
+    },
+    blockers: [blocker],
+    ownerGates: [],
+    productionReadback: [],
+    safetyFindings: [],
+    branchPushState: [],
+    resultArtifact: null,
+    completedAt,
+  }
+  setup.state.runs.push(run)
+  return run
+}
+
+function appendAcceptedCheckpointProposalRun(setup, proposal) {
+  const ownerReason = gitReconciliationCheckpointOwnerReason(proposal)
+  const run = {
+    instructionId: proposal.proposalInstructionId,
+    status: "needs_owner",
+    threadId: issue63ThreadId,
+    workspacePath: setup.workspacePath,
+    branch: issue63ReconciledBranch,
+    commits: [setup.head],
+    changedFiles: structuredClone(issue63LiveChangedFiles),
+    turnCount: 0,
+    originIssueNumber: 63,
+    originIssueUrl: issue63OriginUrl,
+    ownerRequest: {
+      method: "control-plane/gitReconciliationCheckpointActivation",
+      reason: ownerReason,
+    },
+    checks: {
+      typecheck: "not_run",
+      lint: "not_run",
+      tests: "not_run",
+      cloudflareReadiness: "not_run",
+      build: "not_run",
+      diffCheck: "not_run",
+    },
+    blockers: [],
+    ownerGates: [ownerReason],
+    productionReadback: [],
+    safetyFindings: [],
+    branchPushState: [],
+    resultArtifact: null,
+    completedAt: "2026-08-23T10:03:00.000Z",
+  }
+  setup.state.runs.push(run)
+  return run
+}
+
 test("live-shaped #63 linked worktree receives only its exact Git metadata boundary", async (t) => {
   const setup = await fixture(t)
   const { boundary, workspacePath, checkoutPath } = setup
@@ -1238,6 +1331,7 @@ test("live-shaped #63/010-015 tail creates one immutable proposal and requires a
   assert.deepEqual(proposal.verification.operationMarkers, [])
   assert.equal(proposal.verification.remoteIntegrationBranch, "absent")
   assert.equal(proposal.verification.pullRequestCount, 0)
+  assert.deepEqual(proposal.priorRejectedProposalInstructionIds, [])
   assert.deepEqual(proposal.supersededTailInstructionIds.slice(-6), [
     issue63ContinuationInstructionId,
     issue63ExecutionInstructionId,
@@ -1382,6 +1476,363 @@ test("live-shaped #63/010-015 tail creates one immutable proposal and requires a
     null,
   )
   assert.equal(duplicateDiagnostic.code, "checkpoint_proposal_count")
+})
+
+test("live-shaped #63 proposal retries prove a separate immutable post-015 audit suffix", async (t) => {
+  const once = await checkpointSetup(t)
+  appendRejectedCheckpointProposalAttempt(once, {
+    instructionId: once.proposalInstruction.instructionId,
+    blocker: "checkpoint_proposal_exception",
+    addControl: false,
+  })
+  const proposal017 = selectCheckpointProposal(
+    once,
+    "production-day1-git-reconciliation-checkpoint-proposal-017",
+    once.proposalInstruction.prompt,
+  ).instruction
+  const onceHistory = JSON.stringify(once.state.runs)
+  const retry017 = await proposeGitReconciliationCheckpoint({
+    ...once,
+    state: once.state,
+    instruction: proposal017,
+    now: new Date("2026-08-23T10:02:00.000Z"),
+  })
+  assert.equal(retry017.accepted, true, JSON.stringify(retry017))
+  assert.deepEqual(retry017.value.record.supersededTailInstructionIds, [
+    issue63ContinuationInstructionId,
+    issue63ExecutionInstructionId,
+    issue63HistoricalGrantInstructionId,
+    issue63HistoricalGrantRetryInstructionId,
+    issue63DiagnosticInstructionId,
+    issue63FallbackDiagnosticInstructionId,
+  ])
+  assert.deepEqual(retry017.value.record.priorRejectedProposalInstructionIds, [
+    once.proposalInstruction.instructionId,
+  ])
+  assert.equal(JSON.stringify(once.state.runs), onceHistory)
+  assert.deepEqual(once.state.gitReconciliationCheckpoints, [])
+
+  const multiple = await checkpointSetup(t)
+  appendRejectedCheckpointProposalAttempt(multiple, {
+    instructionId: multiple.proposalInstruction.instructionId,
+    blocker: "checkpoint_proposal_exception",
+    addControl: false,
+  })
+  appendRejectedCheckpointProposalAttempt(multiple, {
+    instructionId:
+      "production-day1-git-reconciliation-checkpoint-proposal-017",
+    blocker: "checkpoint_historical_tail_scope",
+  })
+  const proposal018 = selectCheckpointProposal(
+    multiple,
+    "production-day1-git-reconciliation-checkpoint-proposal-018",
+    multiple.proposalInstruction.prompt,
+  ).instruction
+  const retry018 = await proposeGitReconciliationCheckpoint({
+    ...multiple,
+    state: multiple.state,
+    instruction: proposal018,
+    now: new Date("2026-08-23T10:03:00.000Z"),
+  })
+  assert.equal(retry018.accepted, true, JSON.stringify(retry018))
+  assert.deepEqual(
+    retry018.value.record.priorRejectedProposalInstructionIds,
+    [
+      multiple.proposalInstruction.instructionId,
+      "production-day1-git-reconciliation-checkpoint-proposal-017",
+    ],
+  )
+})
+
+test("post-015 proposal retry proof rejects unrelated, mutable, ambiguous, and malformed history", async (t) => {
+  const setup = await checkpointSetup(t)
+  appendRejectedCheckpointProposalAttempt(setup, {
+    instructionId: setup.proposalInstruction.instructionId,
+    blocker: "checkpoint_proposal_exception",
+    addControl: false,
+  })
+  const current = selectCheckpointProposal(
+    setup,
+    "production-day1-git-reconciliation-checkpoint-proposal-017",
+    setup.proposalInstruction.prompt,
+  ).instruction
+  const baselineState = structuredClone(setup.state)
+  const baselineTask = structuredClone(setup.task)
+  const attemptId = setup.proposalInstruction.instructionId
+  const invoke = async ({ mutateState = () => {}, mutateTask = () => {} }) => {
+    const state = structuredClone(baselineState)
+    const task = structuredClone(baselineTask)
+    mutateState(state)
+    mutateTask(task)
+    return proposeGitReconciliationCheckpoint({
+      ...setup,
+      state,
+      task,
+      instruction: state.activeInstruction,
+      now: new Date("2026-08-23T10:02:00.000Z"),
+    })
+  }
+  const replaceAttemptControl = (task, prompt, instructionId = attemptId) => {
+    const index = task.comments.findIndex((comment) =>
+      comment.body.includes(`instruction_id: ${attemptId}`),
+    )
+    task.comments[index] = {
+      body: checkpointControl({
+        instructionId,
+        taskState: "needs_review",
+        prompt,
+      }),
+    }
+  }
+
+  assert.equal(
+    (
+      await invoke({
+        mutateState: (state) => {
+          state.runs.at(-1).instructionId = "unrelated-intervening-run"
+        },
+      })
+    ).rejection.code,
+    "checkpoint_post_tail_control_count",
+  )
+  const changedBindingPrompt = gitReconciliationCheckpointProposalPrompt({
+    reconciliationId:
+      setup.state.workspaceBranchReconciliations[0].reconciliationId,
+    head: setup.head,
+    tree: setup.cherryPickCommit,
+    cherryPickCommit: setup.cherryPickCommit,
+  })
+  assert.equal(
+    (
+      await invoke({
+        mutateTask: (task) => replaceAttemptControl(task, changedBindingPrompt),
+      })
+    ).rejection.code,
+    "checkpoint_post_tail_control_binding",
+  )
+  assert.equal(
+    (
+      await invoke({
+        mutateTask: (task) => {
+          const duplicate = task.comments.find((comment) =>
+            comment.body.includes(`instruction_id: ${attemptId}`),
+          )
+          task.comments.push(structuredClone(duplicate))
+        },
+      })
+    ).rejection.code,
+    "checkpoint_post_tail_control_count",
+  )
+  assert.equal(
+    (
+      await invoke({
+        mutateState: (state) => {
+          state.runs.at(-1).branchPushState = ["Push: **ATTEMPTED**"]
+        },
+      })
+    ).rejection.code,
+    "checkpoint_post_tail_evidence",
+  )
+  assert.equal(
+    (
+      await invoke({
+        mutateState: (state) => {
+          state.runs.at(-1).turnCount = 1
+        },
+      })
+    ).rejection.code,
+    "checkpoint_post_tail_run_shape",
+  )
+  assert.equal(
+    (
+      await invoke({
+        mutateState: (state) => {
+          state.runs.at(-1).changedFiles = null
+        },
+      })
+    ).rejection.code,
+    "checkpoint_post_tail_run_shape",
+  )
+  assert.equal(
+    (
+      await invoke({
+        mutateState: (state) => {
+          state.runs.at(-1).blockers = []
+        },
+      })
+    ).rejection.code,
+    "checkpoint_post_tail_evidence",
+  )
+  assert.equal(
+    (
+      await invoke({
+        mutateState: (state) => {
+          state.gitReconciliationCheckpoints = [
+            {
+              kind: "proposal",
+              proposalInstructionId: attemptId,
+            },
+          ]
+        },
+      })
+    ).rejection.code,
+    "checkpoint_post_tail_record_conflict",
+  )
+  const activationPrompt = gitReconciliationCheckpointActivationPrompt({
+    checkpointId: `git-reconciliation-checkpoint:${"a".repeat(64)}`,
+    reconciliationId:
+      setup.state.workspaceBranchReconciliations[0].reconciliationId,
+    head: setup.head,
+    tree: setup.tree,
+    cherryPickCommit: setup.cherryPickCommit,
+  })
+  assert.equal(
+    (
+      await invoke({
+        mutateTask: (task) => replaceAttemptControl(task, activationPrompt),
+      })
+    ).rejection.code,
+    "checkpoint_post_tail_activation_attempt",
+  )
+  assert.equal(
+    (
+      await invoke({
+        mutateState: (state) => {
+          state.runs.at(-1).originIssueNumber = 64
+        },
+      })
+    ).rejection.code,
+    "checkpoint_post_tail_run_shape",
+  )
+})
+
+test("a retried proposal still requires one separate exact activation and grants only its selected worktree", async (t) => {
+  const setup = await checkpointSetup(t)
+  appendRejectedCheckpointProposalAttempt(setup, {
+    instructionId: setup.proposalInstruction.instructionId,
+    blocker: "checkpoint_proposal_exception",
+    addControl: false,
+  })
+  appendRejectedCheckpointProposalAttempt(setup, {
+    instructionId:
+      "production-day1-git-reconciliation-checkpoint-proposal-017",
+    blocker: "checkpoint_historical_tail_scope",
+  })
+  const proposalInstruction = selectCheckpointProposal(
+    setup,
+    "production-day1-git-reconciliation-checkpoint-proposal-018",
+    setup.proposalInstruction.prompt,
+  ).instruction
+  const immutableHistory = JSON.stringify(setup.state.runs)
+  const proposed = await proposeGitReconciliationCheckpoint({
+    ...setup,
+    state: setup.state,
+    instruction: proposalInstruction,
+    now: new Date("2026-08-23T10:03:00.000Z"),
+  })
+  assert.equal(proposed.accepted, true, JSON.stringify(proposed))
+  const proposal = proposed.value.record
+  setup.state.gitReconciliationCheckpoints.push(proposal)
+  appendAcceptedCheckpointProposalRun(setup, proposal)
+
+  const activationInstructionId =
+    "production-day1-git-reconciliation-checkpoint-activation-019"
+  const activationPrompt = gitReconciliationCheckpointActivationPrompt({
+    checkpointId: proposal.checkpointId,
+    reconciliationId: proposal.reconciliationId,
+    head: proposal.head,
+    tree: proposal.tree,
+    cherryPickCommit: proposal.cherryPickCommit,
+  })
+  const activationBody = checkpointControl({
+    instructionId: activationInstructionId,
+    taskState: "needs_owner",
+    prompt: activationPrompt,
+  })
+  setup.task.comments.push({ body: activationBody })
+  const [activationInstruction] = extractAgentControls(activationBody)
+  setup.state.status = "needs_owner"
+  setup.state.activeInstruction = {
+    ...activationInstruction,
+    phase: "selected",
+  }
+  const activationInput = {
+    ...setup,
+    state: setup.state,
+    instruction: activationInstruction,
+  }
+  const boundary = await authorizedGitExecutionBoundary(activationInput)
+  assert.ok(boundary)
+  assert.equal(boundary.checkpointId, proposal.checkpointId)
+  assert.equal(boundary.checkpointActivationIsNew, true)
+  assert.deepEqual(proposal.priorRejectedProposalInstructionIds, [
+    setup.proposalInstruction.instructionId,
+    "production-day1-git-reconciliation-checkpoint-proposal-017",
+  ])
+  assert.equal(
+    gitExecutionPathIsCovered(
+      boundary,
+      path.join(boundary.gitDirectory, "index.lock"),
+    ),
+    true,
+  )
+  const sibling = path.join(
+    boundary.commonDirectory,
+    "worktrees",
+    "issue-63-sibling",
+    "index.lock",
+  )
+  assert.equal(gitExecutionPathIsCovered(boundary, sibling), false)
+  assert.equal(JSON.stringify(setup.state.runs.slice(0, -1)), immutableHistory)
+
+  const rejectedAttemptProposal = setup.proposal.value.record
+  const oldActivationPrompt = gitReconciliationCheckpointActivationPrompt({
+    checkpointId: rejectedAttemptProposal.checkpointId,
+    reconciliationId: rejectedAttemptProposal.reconciliationId,
+    head: rejectedAttemptProposal.head,
+    tree: rejectedAttemptProposal.tree,
+    cherryPickCommit: rejectedAttemptProposal.cherryPickCommit,
+  })
+  const oldActivationBody = checkpointControl({
+    instructionId:
+      "production-day1-git-reconciliation-checkpoint-activation-old-020",
+    taskState: "needs_owner",
+    prompt: oldActivationPrompt,
+  })
+  const oldTask = structuredClone(setup.task)
+  oldTask.comments.push({ body: oldActivationBody })
+  const [oldActivationInstruction] = extractAgentControls(oldActivationBody)
+  const oldState = structuredClone(setup.state)
+  oldState.gitReconciliationCheckpoints = [rejectedAttemptProposal]
+  oldState.activeInstruction = {
+    ...oldActivationInstruction,
+    phase: "selected",
+  }
+  let oldDiagnostic = null
+  assert.equal(
+    await authorizedGitExecutionBoundary({
+      ...setup,
+      state: oldState,
+      task: oldTask,
+      instruction: oldActivationInstruction,
+      onDiagnostic: (diagnostic) => {
+        oldDiagnostic = diagnostic
+      },
+    }),
+    null,
+  )
+  assert.equal(oldDiagnostic.code, "checkpoint_post_tail_run_count")
+
+  boundary.checkpointActivation.activatedAt =
+    "2026-08-23T10:04:00.000Z"
+  setup.state.gitReconciliationCheckpoints.push(boundary.checkpointActivation)
+  const restarted = await authorizedGitExecutionBoundary({
+    ...activationInput,
+    state: structuredClone(setup.state),
+  })
+  assert.ok(restarted)
+  assert.equal(restarted.checkpointActivationIsNew, false)
+  assert.equal(setup.state.gitReconciliationCheckpoints.length, 2)
 })
 
 test("superseding checkpoint proposal fails closed on drift, conflicts, and ambiguity", async (t) => {
