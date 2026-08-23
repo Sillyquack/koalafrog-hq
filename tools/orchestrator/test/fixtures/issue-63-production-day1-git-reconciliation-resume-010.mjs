@@ -23,6 +23,8 @@ export const issue63HistoricalGrantRetryInstructionId =
   "production-day1-git-reconciliation-execution-013"
 export const issue63DiagnosticInstructionId =
   "production-day1-git-reconciliation-execution-014"
+export const issue63FallbackDiagnosticInstructionId =
+  "production-day1-git-reconciliation-execution-015"
 export const issue63DurableOwnerGateReason =
   "The instruction requests an owner-gated action: Supabase migration approval, deployment, production writes, Aromantic Supplier/Supplier Product provenance, and Aromantic receipt creation all remain explicitly outside scope and separately gated."
 export const issue63CleanWorkspaceEvidence =
@@ -103,6 +105,11 @@ export const issue63HistoricalGrantRetryControl =
 export const issue63DiagnosticControl = issue63HistoricalGrantRetryControl.replace(
   issue63HistoricalGrantRetryInstructionId,
   issue63DiagnosticInstructionId,
+)
+
+export const issue63FallbackDiagnosticControl = issue63DiagnosticControl.replace(
+  issue63DiagnosticInstructionId,
+  issue63FallbackDiagnosticInstructionId,
 )
 
 export const issue63PriorRun = {
@@ -531,6 +538,50 @@ ${issue63DiagnosticNoMutation}`,
     },
   },
   completedAt: "2026-08-23T07:10:00.000Z",
+}
+
+const issue63FallbackDiagnosticBranchState = [
+  `Branch/current HEAD: \`${issue63ReconciledBranch}\` at \`${issue63ReconciledHead}\``,
+  "Workspace/origin/branch/lineage preflight: **PASS**",
+  "Push/PR: **NOT ATTEMPTED**",
+]
+
+export const issue63FailedFallbackDiagnosticRun = {
+  ...structuredClone(issue63FailedDiagnosticRun),
+  instructionId: issue63DiagnosticInstructionId,
+  changedFiles: structuredClone(issue63LiveChangedFiles),
+  productionReadback: [],
+  branchPushState: issue63FallbackDiagnosticBranchState,
+  resultArtifact: {
+    ...structuredClone(issue63FailedDiagnosticRun.resultArtifact),
+    capturedAt: "2026-08-23T07:40:45.444Z",
+    turnId: "01a02d8f-b5b8-75e0-bde5-31712e1780fb",
+    finalMessage: `needs_review — post-refresh bounded grant acceptance failed.
+
+- Branch/current HEAD: \`${issue63ReconciledBranch}\` at \`${issue63ReconciledHead}\`
+- Current tree: \`2330f747713ce620c7927c2c505c622b40e18386\`
+- Expected reviewed tree: \`60c53e071144b4803e6f77dd07c73085050e4c75\`
+- Workspace/origin/branch/lineage preflight: **PASS**
+- Worktree: clean; zero commits above base
+- Git markers and rebase/sequencer state: all absent
+- Structured-proof activation: **NOT EMITTED**
+- Runtime reason code: **MISSING**
+- Observed failure: linked-worktree \`index.lock: Operation not permitted\`
+- Cherry-pick: **FAILED before application**
+- \`git diff --check\`: **PASS**
+- Typecheck/lint/tests/readiness/build: **NOT RUN**
+- Push/PR: **NOT ATTEMPTED**
+
+The runtime produced neither permitted diagnostic outcome: no bounded historical-proof grant and no explicit fail-closed reason code. No fallback path or mutation was attempted.`,
+    findings: {
+      blockers: [],
+      ownerGates: [],
+      productionReadback: [],
+      safetyFindings: [],
+      branchPushState: issue63FallbackDiagnosticBranchState,
+    },
+  },
+  completedAt: "2026-08-23T07:40:47.338Z",
 }
 
 export function issue63ReconciliationTask(comments = []) {

@@ -35,8 +35,11 @@ import {
   issue63ExecutionInstructionId,
   issue63FailedDiagnosticRun,
   issue63FailedExecutionRun,
+  issue63FailedFallbackDiagnosticRun,
   issue63FailedGrantRun,
   issue63FailedHistoricalGrantRun,
+  issue63FallbackDiagnosticControl,
+  issue63FallbackDiagnosticInstructionId,
   issue63HistoricalGrantControl,
   issue63HistoricalGrantInstructionId,
   issue63HistoricalGrantRetryControl,
@@ -84,6 +87,7 @@ async function fixture(
     execution012 = false,
     execution013 = false,
     execution014 = false,
+    execution015 = false,
   } = {},
 ) {
   const directory = await realpath(
@@ -175,26 +179,46 @@ async function fixture(
       "a74079be88ec4a8b36b850f95dca791ff42e4e80",
       cherryPickCommit,
     )
-  if (execution011 || execution012 || execution013 || execution014) {
+  const fallbackDiagnosticControl = issue63FallbackDiagnosticControl
+    .replaceAll(
+      "ec719153c8e726831d7e2b748067383ea7f4e314",
+      head,
+    )
+    .replaceAll(
+      "a74079be88ec4a8b36b850f95dca791ff42e4e80",
+      cherryPickCommit,
+    )
+  if (
+    execution011 ||
+    execution012 ||
+    execution013 ||
+    execution014 ||
+    execution015
+  ) {
     task.comments.push({ body: executionControl })
   }
-  if (execution012 || execution013 || execution014) {
+  if (execution012 || execution013 || execution014 || execution015) {
     task.comments.push({ body: historicalGrantControl })
   }
-  if (execution013 || execution014) {
+  if (execution013 || execution014 || execution015) {
     task.comments.push({ body: historicalGrantRetryControl })
   }
-  if (execution014) task.comments.push({ body: diagnosticControl })
+  if (execution014 || execution015) {
+    task.comments.push({ body: diagnosticControl })
+  }
+  if (execution015) task.comments.push({ body: fallbackDiagnosticControl })
   const [instruction] = extractAgentControls(
-    execution014
-      ? diagnosticControl
-      : execution013
-        ? historicalGrantRetryControl
-        : execution012
-          ? historicalGrantControl
-          : execution011
-            ? executionControl
-            : continuationControl,
+    execution015
+      ? fallbackDiagnosticControl
+      : execution014
+        ? diagnosticControl
+        : execution013
+          ? historicalGrantRetryControl
+          : execution012
+            ? historicalGrantControl
+            : execution011
+              ? executionControl
+              : continuationControl,
   )
   const sourceRun = structuredClone(issue63PriorRun)
   sourceRun.commits = [head]
@@ -281,9 +305,45 @@ async function fixture(
         ),
       }),
     )
+  const failedFallbackDiagnosticRun = structuredClone(
+    issue63FailedFallbackDiagnosticRun,
+  )
+  failedFallbackDiagnosticRun.workspacePath = workspacePath
+  failedFallbackDiagnosticRun.commits = [head]
+  failedFallbackDiagnosticRun.changedFiles = structuredClone(
+    receiptRun.changedFiles,
+  )
+  failedFallbackDiagnosticRun.branchPushState =
+    failedFallbackDiagnosticRun.branchPushState.map((entry) =>
+      entry.replaceAll(
+        "ec719153c8e726831d7e2b748067383ea7f4e314",
+        head,
+      ),
+    )
+  failedFallbackDiagnosticRun.resultArtifact.finalMessage =
+    failedFallbackDiagnosticRun.resultArtifact.finalMessage.replaceAll(
+      "ec719153c8e726831d7e2b748067383ea7f4e314",
+      head,
+    )
+  failedFallbackDiagnosticRun.resultArtifact.findings.branchPushState =
+    structuredClone(failedFallbackDiagnosticRun.branchPushState)
+  failedFallbackDiagnosticRun.resultArtifact.checks.diffCheck.evidence =
+    failedFallbackDiagnosticRun.resultArtifact.checks.diffCheck.evidence.map(
+      (evidence) => ({
+        ...evidence,
+        summary: evidence.summary.replaceAll(
+          "ec719153c8e726831d7e2b748067383ea7f4e314",
+          head,
+        ),
+      }),
+    )
   const state = {
     status:
-      execution011 || execution012 || execution013 || execution014
+      execution011 ||
+      execution012 ||
+      execution013 ||
+      execution014 ||
+      execution015
         ? "needs_review"
         : "needs_owner",
     task: { originIssueNumber: 63, originIssueUrl: issue63OriginUrl },
@@ -291,7 +351,7 @@ async function fixture(
     workspacePath,
     branch: issue63ReconciledBranch,
     activeInstruction: { ...instruction, phase: "selected" },
-    runs: execution014
+    runs: execution015
       ? [
           sourceRun,
           structuredClone(issue63InterveningRun),
@@ -299,31 +359,45 @@ async function fixture(
           failedGrantRun,
           failedHistoricalGrantRun,
           failedDiagnosticRun,
+          failedFallbackDiagnosticRun,
         ]
-      : execution013
+      : execution014
         ? [
             sourceRun,
             structuredClone(issue63InterveningRun),
             receiptRun,
             failedGrantRun,
             failedHistoricalGrantRun,
+            failedDiagnosticRun,
           ]
-        : execution012
+        : execution013
           ? [
               sourceRun,
               structuredClone(issue63InterveningRun),
               receiptRun,
               failedGrantRun,
+              failedHistoricalGrantRun,
             ]
-          : execution011
-            ? [sourceRun, structuredClone(issue63InterveningRun), receiptRun]
-            : [sourceRun],
+          : execution012
+            ? [
+                sourceRun,
+                structuredClone(issue63InterveningRun),
+                receiptRun,
+                failedGrantRun,
+              ]
+            : execution011
+              ? [sourceRun, structuredClone(issue63InterveningRun), receiptRun]
+              : [sourceRun],
     workspaceBranchReconciliations: [
       {
         reconciliationId,
         precedingInstructionId: sourceRun.instructionId,
         interveningInstructionIds:
-          execution011 || execution012 || execution013 || execution014
+          execution011 ||
+          execution012 ||
+          execution013 ||
+          execution014 ||
+          execution015
           ? [issue63InterveningRun.instructionId]
           : [],
         continuationInstructionId: receiptInstruction.instructionId,
@@ -890,6 +964,75 @@ test("#63/014 exact normalization rejects mutation and combined push/PR conflict
         )
     }),
     { code: "activation_historical_run_structured_final_message_conflict" },
+  )
+})
+
+test("live-shaped #63/015 preserves the hidden structured and legacy fallback reasons", async (t) => {
+  const setup = await fixture(t, { execution015: true })
+  assert.equal(setup.boundary, null)
+  assert.equal(
+    setup.state.activeInstruction.instructionId,
+    issue63FallbackDiagnosticInstructionId,
+  )
+  assert.deepEqual(
+    setup.state.runs.slice(-5).map((run) => run.instructionId),
+    [
+      issue63ContinuationInstructionId,
+      issue63ExecutionInstructionId,
+      issue63HistoricalGrantInstructionId,
+      issue63HistoricalGrantRetryInstructionId,
+      issue63DiagnosticInstructionId,
+    ],
+  )
+  const live014 = setup.state.runs.at(-1)
+  assert.equal(live014.instructionId, issue63DiagnosticInstructionId)
+  assert.deepEqual(live014.productionReadback, [])
+  assert.deepEqual(live014.resultArtifact.findings.productionReadback, [])
+  assert.equal(live014.changedFiles.length, issue63LiveChangedFiles.length)
+  assert.equal(live014.checks.diffCheck, "pass")
+  assert.equal(live014.resultArtifact.checks.diffCheck.status, "pass")
+  assert.match(
+    live014.resultArtifact.finalMessage,
+    /No fallback path or mutation was attempted\./,
+  )
+  assert.match(
+    live014.resultArtifact.finalMessage,
+    /linked-worktree `index\.lock: Operation not permitted`/,
+  )
+
+  const state = structuredClone(setup.state)
+  state.runs.at(-1).resultArtifact.finalMessage +=
+    "\ncredential-value-must-not-be-emitted"
+  const diagnostics = []
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    assert.equal(
+      await authorizedGitExecutionBoundary({
+        ...setup,
+        state,
+        onDiagnostic: (value) => diagnostics.push(value),
+      }),
+      null,
+    )
+  }
+  assert.deepEqual(diagnostics, [
+    {
+      code: "activation_historical_run_index_lock_evidence",
+      structuredReason:
+        "activation_historical_run_structured_no_mutation_evidence",
+      legacyReason: "activation_historical_run_index_lock_evidence",
+      proofMode: "legacy_fallback",
+    },
+    {
+      code: "activation_historical_run_index_lock_evidence",
+      structuredReason:
+        "activation_historical_run_structured_no_mutation_evidence",
+      legacyReason: "activation_historical_run_index_lock_evidence",
+      proofMode: "legacy_fallback",
+    },
+  ])
+  assert.doesNotMatch(
+    JSON.stringify(diagnostics),
+    /credential-value-must-not-be-emitted/,
   )
 })
 
