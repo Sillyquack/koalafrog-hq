@@ -29,9 +29,12 @@ import {
 import {
   issue63ContinuationControl,
   issue63ContinuationInstructionId,
+  issue63DiagnosticControl,
+  issue63DiagnosticInstructionId,
   issue63ExecutionControl,
   issue63ExecutionInstructionId,
   issue63FailedExecutionRun,
+  issue63FailedDiagnosticRun,
   issue63FailedGrantRun,
   issue63FailedHistoricalGrantRun,
   issue63HistoricalGrantControl,
@@ -76,7 +79,12 @@ async function fileSnapshot(root) {
 
 async function fixture(
   t,
-  { execution011 = false, execution012 = false, execution013 = false } = {},
+  {
+    execution011 = false,
+    execution012 = false,
+    execution013 = false,
+    execution014 = false,
+  } = {},
 ) {
   const directory = await realpath(
     await mkdtemp(
@@ -158,17 +166,29 @@ async function fixture(
       "a74079be88ec4a8b36b850f95dca791ff42e4e80",
       cherryPickCommit,
     )
-  if (execution011 || execution012 || execution013) {
+  const diagnosticControl = issue63DiagnosticControl
+    .replaceAll(
+      "ec719153c8e726831d7e2b748067383ea7f4e314",
+      head,
+    )
+    .replaceAll(
+      "a74079be88ec4a8b36b850f95dca791ff42e4e80",
+      cherryPickCommit,
+    )
+  if (execution011 || execution012 || execution013 || execution014) {
     task.comments.push({ body: executionControl })
   }
-  if (execution012 || execution013) {
+  if (execution012 || execution013 || execution014) {
     task.comments.push({ body: historicalGrantControl })
   }
-  if (execution013) {
+  if (execution013 || execution014) {
     task.comments.push({ body: historicalGrantRetryControl })
   }
+  if (execution014) task.comments.push({ body: diagnosticControl })
   const [instruction] = extractAgentControls(
-    execution013
+    execution014
+      ? diagnosticControl
+      : execution013
       ? historicalGrantRetryControl
       : execution012
       ? historicalGrantControl
@@ -242,9 +262,28 @@ async function fixture(
         ),
       }),
     )
+  const failedDiagnosticRun = structuredClone(issue63FailedDiagnosticRun)
+  failedDiagnosticRun.workspacePath = workspacePath
+  failedDiagnosticRun.commits = [head]
+  failedDiagnosticRun.changedFiles = structuredClone(receiptRun.changedFiles)
+  failedDiagnosticRun.resultArtifact.finalMessage =
+    failedDiagnosticRun.resultArtifact.finalMessage.replaceAll(
+      "ec719153c8e726831d7e2b748067383ea7f4e314",
+      head,
+    )
+  failedDiagnosticRun.resultArtifact.checks.diffCheck.evidence =
+    failedDiagnosticRun.resultArtifact.checks.diffCheck.evidence.map(
+      (evidence) => ({
+        ...evidence,
+        summary: evidence.summary.replaceAll(
+          "ec719153c8e726831d7e2b748067383ea7f4e314",
+          head,
+        ),
+      }),
+    )
   const state = {
     status:
-      execution011 || execution012 || execution013
+      execution011 || execution012 || execution013 || execution014
         ? "needs_review"
         : "needs_owner",
     task: { originIssueNumber: 63, originIssueUrl: issue63OriginUrl },
@@ -252,7 +291,16 @@ async function fixture(
     workspacePath,
     branch: issue63ReconciledBranch,
     activeInstruction: { ...instruction, phase: "selected" },
-    runs: execution013
+    runs: execution014
+      ? [
+          sourceRun,
+          structuredClone(issue63InterveningRun),
+          receiptRun,
+          failedGrantRun,
+          failedHistoricalGrantRun,
+          failedDiagnosticRun,
+        ]
+      : execution013
       ? [
           sourceRun,
           structuredClone(issue63InterveningRun),
@@ -274,9 +322,10 @@ async function fixture(
       {
         reconciliationId,
         precedingInstructionId: sourceRun.instructionId,
-        interveningInstructionIds: execution011 || execution012 || execution013
-          ? [issue63InterveningRun.instructionId]
-          : [],
+        interveningInstructionIds:
+          execution011 || execution012 || execution013 || execution014
+            ? [issue63InterveningRun.instructionId]
+            : [],
         continuationInstructionId: receiptInstruction.instructionId,
         originIssueNumber: 63,
         originIssueUrl: issue63OriginUrl,
@@ -612,6 +661,15 @@ test("live-shaped #63/012 accepts structured 011 pre-application evidence withou
     rejection.code,
     "activation_historical_run_index_lock_evidence",
   )
+  assert.equal(
+    rejection.structuredReason,
+    "activation_historical_run_structured_findings_missing",
+  )
+  assert.equal(
+    rejection.legacyReason,
+    "activation_historical_run_index_lock_evidence",
+  )
+  assert.equal(rejection.proofMode, "legacy_fallback")
   assert.doesNotMatch(JSON.stringify(rejection), /private-token-must-not-appear/)
 })
 
@@ -787,6 +845,15 @@ test("live-shaped #63/013 accepts the exact compact no-marker evidence through t
     diagnostic.code,
     "activation_historical_run_index_lock_evidence",
   )
+  assert.equal(
+    diagnostic.structuredReason,
+    "activation_historical_run_structured_pre_application_evidence",
+  )
+  assert.equal(
+    diagnostic.legacyReason,
+    "activation_historical_run_index_lock_evidence",
+  )
+  assert.equal(diagnostic.proofMode, "legacy_fallback")
 })
 
 test("#63/013 compact no-marker proof rejects every conflicting durable shape", async (t) => {
@@ -899,6 +966,88 @@ test("#63/013 compact no-marker proof rejects every conflicting durable shape", 
     }),
     "activation_historical_run_structured_findings_conflict",
   )
+})
+
+test("live-shaped #63/014 exposes canonical fallback provenance and cumulative-branch drift without changing either rejection", async (t) => {
+  const setup = await fixture(t, { execution014: true })
+  assert.equal(setup.boundary, null)
+  assert.equal(setup.state.activeInstruction.instructionId, issue63DiagnosticInstructionId)
+  assert.deepEqual(
+    setup.state.runs.slice(-4).map((run) => run.instructionId),
+    [
+      issue63ContinuationInstructionId,
+      issue63ExecutionInstructionId,
+      issue63HistoricalGrantInstructionId,
+      issue63HistoricalGrantRetryInstructionId,
+    ],
+  )
+  const live013 = setup.state.runs.at(-1)
+  assert.match(
+    live013.productionReadback.at(-1),
+    /No source, remote Git, production, migration, deployment, purchase, or receipt mutation occurred\./,
+  )
+  assert.match(live013.branchPushState[1], /Push\/PR: \*\*NOT ATTEMPTED\*\*/)
+
+  const liveState = structuredClone(setup.state)
+  liveState.runs.at(-1).resultArtifact.finalMessage +=
+    "\ncredential-value-must-not-be-emitted"
+  const liveDiagnostics = []
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    assert.equal(
+      await authorizedGitExecutionBoundary({
+        ...setup,
+        state: liveState,
+        onDiagnostic: (value) => liveDiagnostics.push(value),
+      }),
+      null,
+    )
+  }
+  assert.deepEqual(liveDiagnostics, [
+    { code: "activation_historical_run_structured_mutation_conflict" },
+    { code: "activation_historical_run_structured_mutation_conflict" },
+  ])
+  assert.doesNotMatch(
+    JSON.stringify(liveDiagnostics),
+    /credential-value-must-not-be-emitted/,
+  )
+
+  const canonicalFallbackState = structuredClone(setup.state)
+  const canonicalFallbackRun = canonicalFallbackState.runs.at(-2)
+  assert.equal(
+    canonicalFallbackRun.instructionId,
+    issue63HistoricalGrantInstructionId,
+  )
+  canonicalFallbackRun.productionReadback = []
+  canonicalFallbackRun.branchPushState =
+    canonicalFallbackRun.branchPushState.slice(0, 3)
+  canonicalFallbackRun.resultArtifact.findings.productionReadback =
+    structuredClone(canonicalFallbackRun.productionReadback)
+  canonicalFallbackRun.resultArtifact.findings.branchPushState =
+    structuredClone(canonicalFallbackRun.branchPushState)
+  let fallbackDiagnostic = null
+  assert.equal(
+    await authorizedGitExecutionBoundary({
+      ...setup,
+      state: canonicalFallbackState,
+      onDiagnostic: (value) => {
+        fallbackDiagnostic = value
+      },
+    }),
+    null,
+  )
+  assert.deepEqual(fallbackDiagnostic, {
+    code: "activation_historical_run_index_lock_evidence",
+    structuredReason:
+      "activation_historical_run_structured_no_mutation_evidence",
+    legacyReason: "activation_historical_run_index_lock_evidence",
+    proofMode: "legacy_fallback",
+  })
+  assert.deepEqual(Object.keys(fallbackDiagnostic).sort(), [
+    "code",
+    "legacyReason",
+    "proofMode",
+    "structuredReason",
+  ])
 })
 
 test("#63/011 historical activation and request failures have exact bounded reason codes", async (t) => {

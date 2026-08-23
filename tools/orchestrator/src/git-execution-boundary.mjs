@@ -433,6 +433,7 @@ function preApplicationGitFailureDecision(
   ) {
     return rejected(`${prefix}_artifact`)
   }
+  let structuredFallback = null
   if (allowStructured) {
     const structured = structuredHistoricalPreApplicationDecision(
       run,
@@ -441,8 +442,19 @@ function preApplicationGitFailureDecision(
       prefix,
     )
     if (structured.accepted || !structured.legacyEligible) return structured
+    structuredFallback = structured
   }
-  return legacyPreApplicationGitFailureDecision(run, prefix)
+  const legacy = legacyPreApplicationGitFailureDecision(run, prefix)
+  if (!structuredFallback || legacy.accepted) return legacy
+  return {
+    ...legacy,
+    rejection: {
+      ...legacy.rejection,
+      structuredReason: structuredFallback.rejection.code,
+      legacyReason: legacy.rejection.code,
+      proofMode: "legacy_fallback",
+    },
+  }
 }
 
 function authorizationDecision({ state, instruction, task }) {

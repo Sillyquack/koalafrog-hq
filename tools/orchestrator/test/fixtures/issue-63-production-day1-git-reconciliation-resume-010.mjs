@@ -21,6 +21,8 @@ export const issue63HistoricalGrantInstructionId =
   "production-day1-git-reconciliation-execution-012"
 export const issue63HistoricalGrantRetryInstructionId =
   "production-day1-git-reconciliation-execution-013"
+export const issue63DiagnosticInstructionId =
+  "production-day1-git-reconciliation-execution-014"
 export const issue63DurableOwnerGateReason =
   "The instruction requests an owner-gated action: Supabase migration approval, deployment, production writes, Aromantic Supplier/Supplier Product provenance, and Aromantic receipt creation all remain explicitly outside scope and separately gated."
 export const issue63CleanWorkspaceEvidence =
@@ -97,6 +99,11 @@ export const issue63HistoricalGrantRetryControl =
     issue63HistoricalGrantInstructionId,
     issue63HistoricalGrantRetryInstructionId,
   )
+
+export const issue63DiagnosticControl = issue63HistoricalGrantRetryControl.replace(
+  issue63HistoricalGrantRetryInstructionId,
+  issue63DiagnosticInstructionId,
+)
 
 export const issue63PriorRun = {
   instructionId: issue63PriorInstructionId,
@@ -478,6 +485,54 @@ git diff --check" (completed, exit 0)`,
   completedAt: "2026-08-23T05:20:50.430Z",
 }
 
+const issue63DiagnosticNoMutation =
+  "The remaining gate is successful runtime activation of the structured historical 010 grant for this exact linked-worktree metadata path. No source, remote Git, production, migration, deployment, purchase, or receipt mutation occurred."
+const issue63DiagnosticProductionReadback = [
+  "Historical receipt/proof evidence: no activation, grant, reason, or proof-mode diagnostic was emitted",
+  issue63DiagnosticNoMutation,
+]
+const issue63DiagnosticBranchState = [
+  `Branch: \`${issue63ReconciledBranch}\``,
+  "Push/PR: **NOT ATTEMPTED**",
+  issue63DiagnosticNoMutation,
+]
+
+export const issue63FailedDiagnosticRun = {
+  ...structuredClone(issue63FailedHistoricalGrantRun),
+  instructionId: issue63HistoricalGrantRetryInstructionId,
+  changedFiles: structuredClone(issue63LiveChangedFiles),
+  productionReadback: issue63DiagnosticProductionReadback,
+  branchPushState: issue63DiagnosticBranchState,
+  resultArtifact: {
+    ...structuredClone(issue63FailedHistoricalGrantRun.resultArtifact),
+    turnId: "01a03f36-b083-77d1-b4cf-af30f77bf865",
+    finalMessage: `needs_review — structured historical grant still did not activate.
+
+- Branch: \`${issue63ReconciledBranch}\`
+- Starting/current HEAD: \`${issue63ReconciledHead}\`
+- Current tree: \`2330f747713ce620c7927c2c505c622b40e18386\`
+- Expected reviewed tree: \`60c53e071144b4803e6f77dd07c73085050e4c75\`
+- Workspace/origin/lineage/tree preflight: **PASS**
+- Cherry-pick: **FAILED before application**
+- Historical receipt/proof evidence: no activation, grant, reason, or proof-mode diagnostic was emitted
+- Failure: linked-worktree \`index.lock: Operation not permitted\`
+- Worktree: clean; zero commits above base; no Git operation markers
+- \`git diff --check\`: **PASS**
+- Typecheck/lint/tests/readiness/build: **NOT RUN**
+- Push/PR: **NOT ATTEMPTED**
+
+${issue63DiagnosticNoMutation}`,
+    findings: {
+      blockers: [],
+      ownerGates: [],
+      productionReadback: issue63DiagnosticProductionReadback,
+      safetyFindings: [],
+      branchPushState: issue63DiagnosticBranchState,
+    },
+  },
+  completedAt: "2026-08-23T07:10:00.000Z",
+}
+
 export function issue63ReconciliationTask(comments = []) {
   return {
     issue: {
@@ -513,6 +568,13 @@ export function issue63HistoricalGrantRetryTask(comments = []) {
   const task = issue63HistoricalGrantTask()
   task.issue.updated_at = "2026-08-23T05:30:00.000Z"
   task.comments.push({ body: issue63HistoricalGrantRetryControl }, ...comments)
+  return task
+}
+
+export function issue63DiagnosticTask(comments = []) {
+  const task = issue63HistoricalGrantRetryTask()
+  task.issue.updated_at = "2026-08-23T07:15:00.000Z"
+  task.comments.push({ body: issue63DiagnosticControl }, ...comments)
   return task
 }
 
@@ -605,5 +667,19 @@ export function prepareIssue63HistoricalGrantRetryState(state, instruction) {
     selectedAt: "2026-08-23T05:30:00.000Z",
   }
   state.runs.push(structuredClone(issue63FailedHistoricalGrantRun))
+  return state
+}
+
+export function prepareIssue63DiagnosticState(state, instruction) {
+  prepareIssue63HistoricalGrantRetryState(state, instruction)
+  state.lastConsumedInstructionId = issue63HistoricalGrantRetryInstructionId
+  state.activeInstruction = {
+    ...instruction,
+    phase: "selected",
+    attempts: 0,
+    turnCount: 0,
+    selectedAt: "2026-08-23T07:15:00.000Z",
+  }
+  state.runs.push(structuredClone(issue63FailedDiagnosticRun))
   return state
 }
