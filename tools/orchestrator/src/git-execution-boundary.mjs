@@ -1,4 +1,5 @@
 import { execFile } from "node:child_process"
+import { createHash } from "node:crypto"
 import { lstat, readFile, readdir, realpath } from "node:fs/promises"
 import path from "node:path"
 import { promisify } from "node:util"
@@ -15,6 +16,31 @@ const gitOperationMarkers = [
   "REBASE_HEAD",
 ]
 const gitOperationDirectories = ["rebase-merge", "rebase-apply", "sequencer"]
+const checkpointIssueNumber = 63
+const checkpointBranch =
+  "agent/issue-63-production-day1-integration-001"
+const checkpointProposalPrefix =
+  "Create only a read-only superseding Git reconciliation checkpoint proposal for Issue #63."
+const checkpointActivationPrefix =
+  "The owner explicitly approves activation of superseding Git reconciliation checkpoint"
+const checkpointOperationScope =
+  "issue-63-reviewed-integration-branch-cherry-pick"
+const checkpointPrecedingInstructionId =
+  "production-day1-git-reconciliation-008"
+const checkpointReceiptInstructionId =
+  "production-day1-git-reconciliation-resume-010"
+const checkpointHistoricalTailInstructionIds = [
+  checkpointReceiptInstructionId,
+  "production-day1-git-reconciliation-execution-011",
+  "production-day1-git-reconciliation-execution-012",
+  "production-day1-git-reconciliation-execution-013",
+  "production-day1-git-reconciliation-execution-014",
+  "production-day1-git-reconciliation-execution-015",
+]
+const checkpointNegatedMutationStatements = [
+  "No fallback path or mutation was attempted.",
+  "No fallback, source change, remote Git mutation, deployment, migration, receipt, or production action occurred.",
+]
 
 function accepted(value, context = {}) {
   return { accepted: true, value, context }
@@ -43,6 +69,41 @@ async function git(args, cwd, { allowFailure = false, trim = true } = {}) {
     if (allowFailure) return null
     throw error
   }
+}
+
+async function githubPullRequestNumbers({ repository, branch, cwd }) {
+  const result = await execFileAsync(
+    "gh",
+    [
+      "pr",
+      "list",
+      "--repo",
+      repository,
+      "--state",
+      "all",
+      "--head",
+      branch,
+      "--json",
+      "number",
+      "--limit",
+      "2",
+    ],
+    { cwd, encoding: "utf8", maxBuffer: 1024 * 1024 },
+  )
+  const parsed = JSON.parse(result.stdout)
+  if (
+    !Array.isArray(parsed) ||
+    parsed.some(
+      (entry) =>
+        !entry ||
+        Object.keys(entry).length !== 1 ||
+        !Number.isSafeInteger(entry.number) ||
+        entry.number <= 0,
+    )
+  ) {
+    throw new Error("Malformed pull request lookup result")
+  }
+  return parsed.map((entry) => entry.number)
 }
 
 async function regularPath(target, type) {
@@ -94,6 +155,95 @@ function currentIssueUrl(task) {
     task?.issue?.url ??
     null
   )
+}
+
+function sha256(value) {
+  return createHash("sha256").update(value).digest("hex")
+}
+
+export function gitReconciliationCheckpointProposalPrompt({
+  reconciliationId,
+  head,
+  tree,
+  cherryPickCommit,
+}) {
+  return `${checkpointProposalPrefix}
+
+This proposal must not activate a grant or execute any Git mutation.
+
+Exact reviewed binding:
+- reconciliation receipt: \`${reconciliationId}\`
+- branch: \`${checkpointBranch}\`
+- HEAD: \`${head}\`
+- tree: \`${tree}\`
+- cherry-pick only: \`${cherryPickCommit}\`
+
+Verify the current linked worktree read-only, preserve all prior history, and create one immutable proposal record. Activation requires a later explicit owner control naming the resulting checkpoint ID.`
+}
+
+export function gitReconciliationCheckpointActivationPrompt({
+  checkpointId,
+  reconciliationId,
+  head,
+  tree,
+  cherryPickCommit,
+}) {
+  return `${checkpointActivationPrefix} \`${checkpointId}\`.
+
+The owner explicitly approves the exact linked-worktree Git metadata writes required for this checkpoint and no broader filesystem access.
+
+Exact reviewed binding:
+- reconciliation receipt: \`${reconciliationId}\`
+- branch: \`${checkpointBranch}\`
+- starting exactly from HEAD: \`${head}\`
+- tree: \`${tree}\`
+- cherry-pick only \`${cherryPickCommit}\`
+
+Execute only this approved Git path:
+1. activate only the selected linked-worktree metadata boundary;
+2. cherry-pick only \`${cherryPickCommit}\`;
+3. run the established complete validation suite;
+4. if and only if validation is green, push the new integration branch normally and open a PR for review;
+5. stop at review.
+
+Do not merge, deploy, migrate, write production data, purchase, create receipts, or access sibling worktree metadata.`
+}
+
+function parseCheckpointProposalPrompt(prompt) {
+  if (typeof prompt !== "string" || !prompt.startsWith(checkpointProposalPrefix)) {
+    return null
+  }
+  const reconciliationId = prompt.match(
+    /^- reconciliation receipt: `([^`]+)`$/m,
+  )?.[1]
+  const head = prompt.match(/^- HEAD: `([0-9a-f]{40})`$/m)?.[1]
+  const tree = prompt.match(/^- tree: `([0-9a-f]{40})`$/m)?.[1]
+  const cherryPickCommit = prompt.match(
+    /^- cherry-pick only: `([0-9a-f]{40})`$/m,
+  )?.[1]
+  if (!reconciliationId || !head || !tree || !cherryPickCommit) {
+    return { malformed: true }
+  }
+  const value = { reconciliationId, head, tree, cherryPickCommit }
+  return prompt === gitReconciliationCheckpointProposalPrompt(value)
+    ? value
+    : { malformed: true }
+}
+
+function checkpointPromptDigest(prompt) {
+  return sha256(`git-reconciliation-checkpoint-prompt-v1\n${prompt}`)
+}
+
+export function gitReconciliationCheckpointInstructionKind(instruction) {
+  const prompt = instruction?.prompt
+  if (typeof prompt !== "string") return null
+  if (prompt.startsWith(checkpointProposalPrefix)) return "proposal"
+  if (prompt.startsWith(checkpointActivationPrefix)) return "activation"
+  return null
+}
+
+export function gitReconciliationCheckpointOwnerReason(checkpoint) {
+  return `Explicit owner activation is required for superseding Git reconciliation checkpoint ${checkpoint.checkpointId}, bound to branch ${checkpoint.branch} at HEAD ${checkpoint.head} and tree ${checkpoint.tree}.`
 }
 
 function extractAuthorizedCherryPick(prompt, head) {
@@ -455,7 +605,617 @@ function preApplicationGitFailureDecision(
   }
 }
 
+function checkpointHistoricalContradictionDecision(
+  run,
+  record,
+  expectedChangedFiles,
+) {
+  if (
+    run?.status !== "needs_review" ||
+    run.branch !== record.toBranch ||
+    !Array.isArray(run.commits) ||
+    run.commits.length !== 1 ||
+    run.commits[0] !== record.head ||
+    run.turnCount !== 1 ||
+    run.ownerRequest != null ||
+    run.resultArtifact?.source !== "completed_turn_final_message" ||
+    run.resultArtifact?.turnStatus !== "completed"
+  ) {
+    return rejected("checkpoint_historical_run_shape", {
+      instructionId: run?.instructionId ?? null,
+    })
+  }
+  const audit = structuredClone(run)
+  const findings = audit.resultArtifact?.findings
+  const changedFiles = normalizedChangedFiles(run.changedFiles)
+  if (
+    changedFiles.status !== "valid" ||
+    !sameStringArray(changedFiles.files, expectedChangedFiles)
+  ) {
+    return rejected("checkpoint_historical_changed_files", {
+      instructionId: run.instructionId,
+    })
+  }
+  if (!findings || typeof findings !== "object") {
+    return rejected("checkpoint_historical_findings_missing", {
+      instructionId: run.instructionId,
+    })
+  }
+  for (const key of durableFindingKeys) {
+    if (
+      !Array.isArray(audit[key]) ||
+      !Array.isArray(findings[key]) ||
+      JSON.stringify(audit[key]) !== JSON.stringify(findings[key]) ||
+      audit[key].some(
+        (entry) => typeof entry !== "string" || entry.length === 0,
+      )
+    ) {
+      return rejected("checkpoint_historical_findings_shape", {
+        instructionId: run.instructionId,
+        finding: key,
+      })
+    }
+  }
+
+  const finalMessage = audit.resultArtifact.finalMessage
+  if (typeof finalMessage !== "string") {
+    return rejected("checkpoint_historical_final_message", {
+      instructionId: run.instructionId,
+    })
+  }
+  const allEvidence = [
+    ...durableFindingKeys.flatMap((key) => audit[key]),
+    finalMessage,
+  ]
+  const operationPresent = allEvidence.some(
+    (entry) =>
+      /\b(?:CHERRY_PICK_HEAD|MERGE_HEAD|REVERT_HEAD|REBASE_HEAD)\b[^.\n]*\b(?:present|remains?|exists?)\b/i.test(
+        entry,
+      ) &&
+      !/\bno\s+`?(?:CHERRY_PICK_HEAD|MERGE_HEAD|REVERT_HEAD|REBASE_HEAD)`?/i.test(
+        entry,
+      ) &&
+      !/\ball absent\b/i.test(entry),
+  )
+  if (
+    operationPresent ||
+    allEvidence.some((entry) =>
+      /\bworktree\b[^.\n]*\b(?:dirty|modified|uncommitted)\b/i.test(entry),
+    ) ||
+    /Commits above base:\s*`?[1-9][0-9]*`?/i.test(finalMessage) ||
+    /Cherry-pick:\s*\*\*(?:SUCCEEDED|APPLIED|PARTIALLY APPLIED)/i.test(
+      finalMessage,
+    ) ||
+    /Cherry-pick:[^\n]*\b(?:during|after|partial(?:ly)?)\b[^\n]*\bapplication\b/i.test(
+      finalMessage,
+    )
+  ) {
+    return rejected("checkpoint_historical_git_state_conflict", {
+      instructionId: run.instructionId,
+    })
+  }
+
+  const withoutKnownNegation = (value) => {
+    let normalized = String(value)
+    for (const statement of [
+      ...structuredNoMutationStatements,
+      ...checkpointNegatedMutationStatements,
+    ]) {
+      normalized = normalized.replaceAll(statement, "")
+    }
+    return normalized
+  }
+  const unexplainedMutationEvidence = allEvidence.map(withoutKnownNegation)
+  if (
+    unexplainedMutationEvidence.some((entry) =>
+      hasPositiveMutationEvidence(entry),
+    )
+  ) {
+    return rejected("checkpoint_historical_mutation_conflict", {
+      instructionId: run.instructionId,
+    })
+  }
+  if (
+    unexplainedMutationEvidence.some((entry) =>
+      /\bmutation\b|\b(?:source change|production (?:write|action)|migration|deployment|purchase|receipts?|remote Git)\b[^.\n]{0,80}\b(?:occurred|attempted|completed|succeeded|unknown|status)\b/i.test(
+        entry,
+      ),
+    )
+  ) {
+    return rejected("checkpoint_historical_mutation_ambiguous", {
+      instructionId: run.instructionId,
+    })
+  }
+
+  if (
+    audit.branchPushState.some(
+      (entry) =>
+        (/^Push(?:\/PR)?:/i.test(entry) &&
+          !structuredNoPushStatements.has(entry)) ||
+        /\b(?:pushed|push succeeded|remote branch created)\b/i.test(entry),
+    ) ||
+    allEvidence.some((entry) =>
+      /\bPR:\s*\*\*(?:CREATED|OPENED|ATTEMPTED)/i.test(entry),
+    ) ||
+    /Push(?:\/PR)?:\s*\*\*(?!NOT ATTEMPTED)/i.test(finalMessage)
+  ) {
+    return rejected("checkpoint_historical_push_pr_conflict", {
+      instructionId: run.instructionId,
+    })
+  }
+  if (
+    !audit.branchPushState.some((entry) =>
+      structuredNoPushStatements.has(entry),
+    ) ||
+    !/Cherry-pick:\s*\*\*FAILED before application\*\*/i.test(finalMessage) ||
+    !/Worktree:\s*clean[;,]\s*(?:no `CHERRY_PICK_HEAD`;\s*)?zero commits above base/i.test(
+      finalMessage,
+    )
+  ) {
+    return rejected("checkpoint_historical_incomplete_safe_stop", {
+      instructionId: run.instructionId,
+    })
+  }
+
+  const diffCheck = audit.resultArtifact?.checks?.diffCheck
+  const commandEvidence = diffCheck?.evidence?.filter(
+    (evidence) =>
+      evidence?.source === "command_execution" &&
+      evidence.status === "pass" &&
+      typeof evidence.summary === "string",
+  )
+  if (
+    audit.checks?.diffCheck !== "pass" ||
+    diffCheck?.status !== "pass" ||
+    !Array.isArray(commandEvidence) ||
+    commandEvidence.length !== 1 ||
+    !commandEvidence[0].summary.includes("git diff --check") ||
+    (!commandEvidence[0].summary.includes("git status --porcelain=v1") &&
+      !commandEvidence[0].summary.includes("git status --short --branch")) ||
+    !commandEvidence[0].summary.includes(
+      `git rev-list --count ${record.head}..HEAD`,
+    ) ||
+    !/\(completed, exit 0\)/i.test(commandEvidence[0].summary)
+  ) {
+    return rejected("checkpoint_historical_command_evidence", {
+      instructionId: run.instructionId,
+    })
+  }
+  return accepted(run)
+}
+
+function checkpointContextDecision({
+  state,
+  task,
+  expectedTailInstructionIds = null,
+}) {
+  if (
+    state?.task?.originIssueNumber !== checkpointIssueNumber ||
+    extractIssueNumber(task?.issue) !== checkpointIssueNumber ||
+    currentIssueUrl(task) !== state.task.originIssueUrl ||
+    state.branch !== checkpointBranch ||
+    typeof state.threadId !== "string" ||
+    !state.threadId ||
+    typeof state.workspacePath !== "string" ||
+    !state.workspacePath
+  ) {
+    return rejected("checkpoint_origin_thread_workspace")
+  }
+  const records = (state.workspaceBranchReconciliations ?? []).filter(
+    (record) =>
+      record.originIssueNumber === checkpointIssueNumber &&
+      record.originIssueUrl === state.task.originIssueUrl &&
+      record.threadId === state.threadId &&
+      record.workspacePath === state.workspacePath &&
+      record.toBranch === checkpointBranch &&
+      record.precedingInstructionId === checkpointPrecedingInstructionId &&
+      record.continuationInstructionId === checkpointReceiptInstructionId &&
+      record.head &&
+      fullShaPattern.test(record.head),
+  )
+  if (records.length !== 1) {
+    return rejected("checkpoint_reconciliation_record_count", {
+      recordCount: records.length,
+    })
+  }
+  const record = records[0]
+  const expectedId = [
+    "authorized-workspace-branch",
+    record.precedingInstructionId,
+    record.continuationInstructionId,
+    record.head,
+  ].join(":")
+  if (record.reconciliationId !== expectedId) {
+    return rejected("checkpoint_reconciliation_id")
+  }
+  const controls = listAgentControls(task.issue, task.comments)
+  const receiptControls = controls.filter(
+    (control) => control.instructionId === record.continuationInstructionId,
+  )
+  if (receiptControls.length !== 1) {
+    return rejected("checkpoint_receipt_control_count", {
+      controlCount: receiptControls.length,
+    })
+  }
+  const cherryPickCommit = extractAuthorizedCherryPick(
+    receiptControls[0].prompt,
+    record.head,
+  )
+  if (!cherryPickCommit) return rejected("checkpoint_reviewed_scope")
+  const receiptRuns = (state.runs ?? []).filter(
+    (run) => run.instructionId === record.continuationInstructionId,
+  )
+  if (receiptRuns.length !== 1) {
+    return rejected("checkpoint_receipt_run_count", {
+      runCount: receiptRuns.length,
+    })
+  }
+  const receiptIndex = state.runs.indexOf(receiptRuns[0])
+  const completeTail = state.runs.slice(receiptIndex)
+  const tail = expectedTailInstructionIds
+    ? completeTail.slice(0, expectedTailInstructionIds.length)
+    : completeTail
+  if (
+    tail.length === 0 ||
+    new Set(tail.map((run) => run.instructionId)).size !== tail.length ||
+    (expectedTailInstructionIds &&
+      !sameStringArray(
+        tail.map((run) => run.instructionId),
+        expectedTailInstructionIds,
+      ))
+  ) {
+    return rejected("checkpoint_historical_tail_ambiguous")
+  }
+  if (
+    !sameStringArray(
+      tail.map((run) => run.instructionId),
+      checkpointHistoricalTailInstructionIds,
+    )
+  ) {
+    return rejected("checkpoint_historical_tail_scope")
+  }
+  const receiptChangedFiles = normalizedChangedFiles(receiptRuns[0].changedFiles)
+  if (receiptChangedFiles.status !== "valid") {
+    return rejected("checkpoint_changed_files_missing_or_invalid")
+  }
+  for (const run of tail) {
+    if (
+      run.originIssueNumber !== checkpointIssueNumber ||
+      run.originIssueUrl !== state.task.originIssueUrl ||
+      run.threadId !== state.threadId ||
+      run.workspacePath !== state.workspacePath
+    ) {
+      return rejected("checkpoint_historical_origin_thread_workspace", {
+        instructionId: run.instructionId,
+      })
+    }
+    const contradiction = checkpointHistoricalContradictionDecision(
+      run,
+      record,
+      receiptChangedFiles.files,
+    )
+    if (!contradiction.accepted) return contradiction
+  }
+  return accepted({
+    record,
+    cherryPickCommit,
+    expectedChangedFiles: receiptChangedFiles.files,
+    supersededTailInstructionIds: tail.map((run) => run.instructionId),
+    laterRuns: completeTail.slice(tail.length),
+  })
+}
+
+function checkpointControlDecision({ state, instruction, task }) {
+  if (
+    !state?.activeInstruction ||
+    state.activeInstruction.instructionId !== instruction?.instructionId ||
+    !new Set(["selected", "thread_ready"]).has(state.activeInstruction.phase) ||
+    instruction.action !== "continue" ||
+    instruction.taskState !== state.status ||
+    instruction.ownerApprovalRequired
+  ) {
+    return rejected("checkpoint_instruction")
+  }
+  const controls = listAgentControls(task.issue, task.comments).filter(
+    (control) => control.instructionId === instruction.instructionId,
+  )
+  if (
+    controls.length !== 1 ||
+    controls[0].action !== "continue" ||
+    controls[0].prompt !== instruction.prompt ||
+    controls[0].ownerApprovalRequired
+  ) {
+    return rejected("checkpoint_control", { controlCount: controls.length })
+  }
+  return accepted(controls[0])
+}
+
+function checkpointProposalBinding(record) {
+  if (!record || record.kind !== "proposal") return null
+  return {
+    schemaVersion: record.schemaVersion,
+    kind: record.kind,
+    checkpointId: record.checkpointId,
+    operationScope: record.operationScope,
+    proposalInstructionId: record.proposalInstructionId,
+    reconciliationId: record.reconciliationId,
+    supersededTailInstructionIds: record.supersededTailInstructionIds,
+    originIssueNumber: record.originIssueNumber,
+    originIssueUrl: record.originIssueUrl,
+    threadId: record.threadId,
+    workspacePath: record.workspacePath,
+    branch: record.branch,
+    head: record.head,
+    tree: record.tree,
+    baseCommit: record.baseCommit,
+    cherryPickCommit: record.cherryPickCommit,
+    cherryPickParent: record.cherryPickParent,
+    cherryPickTargetTree: record.cherryPickTargetTree,
+    changedFilesDigest: record.changedFilesDigest,
+    changedFileCount: record.changedFileCount,
+    gitDirectory: record.gitDirectory,
+    commonDirectory: record.commonDirectory,
+    verification: record.verification,
+    proposalControl: record.proposalControl,
+    ownerActivationRequired: record.ownerActivationRequired,
+  }
+}
+
+function checkpointProposalId(binding) {
+  return `git-reconciliation-checkpoint:${sha256(
+    JSON.stringify({
+      version: 1,
+      operationScope: binding.operationScope,
+      proposalInstructionId: binding.proposalInstructionId,
+      reconciliationId: binding.reconciliationId,
+      supersededTailInstructionIds: binding.supersededTailInstructionIds,
+      originIssueNumber: binding.originIssueNumber,
+      originIssueUrl: binding.originIssueUrl,
+      threadId: binding.threadId,
+      workspacePath: binding.workspacePath,
+      branch: binding.branch,
+      head: binding.head,
+      tree: binding.tree,
+      baseCommit: binding.baseCommit,
+      cherryPickCommit: binding.cherryPickCommit,
+      cherryPickParent: binding.cherryPickParent,
+      cherryPickTargetTree: binding.cherryPickTargetTree,
+      changedFilesDigest: binding.changedFilesDigest,
+      gitDirectory: binding.gitDirectory,
+      commonDirectory: binding.commonDirectory,
+      proposalControl: binding.proposalControl,
+    }),
+  )}`
+}
+
+function checkpointActivationDecision({ state, instruction, task }) {
+  const control = checkpointControlDecision({ state, instruction, task })
+  if (!control.accepted) return control
+  const checkpointId = instruction.prompt.match(
+    /^The owner explicitly approves activation of superseding Git reconciliation checkpoint `(git-reconciliation-checkpoint:[0-9a-f]{64})`\.$/m,
+  )?.[1]
+  if (!checkpointId) return rejected("checkpoint_activation_prompt")
+
+  const checkpoints = state.gitReconciliationCheckpoints
+  if (!Array.isArray(checkpoints)) {
+    return rejected("checkpoint_records_missing")
+  }
+  const proposals = checkpoints.filter((record) => record.kind === "proposal")
+  const matches = proposals.filter(
+    (record) => record.checkpointId === checkpointId,
+  )
+  if (proposals.length !== 1 || matches.length !== 1) {
+    return rejected("checkpoint_proposal_count", {
+      proposalCount: proposals.length,
+      matchingProposalCount: matches.length,
+    })
+  }
+  const proposal = matches[0]
+  if (
+    proposal.schemaVersion !== 1 ||
+    proposal.operationScope !== checkpointOperationScope ||
+    proposal.ownerActivationRequired !== true ||
+    proposal.originIssueNumber !== checkpointIssueNumber ||
+    proposal.originIssueUrl !== state.task.originIssueUrl ||
+    proposal.threadId !== state.threadId ||
+    proposal.workspacePath !== state.workspacePath ||
+    proposal.branch !== state.branch ||
+    proposal.branch !== checkpointBranch ||
+    !fullShaPattern.test(proposal.head ?? "") ||
+    !fullShaPattern.test(proposal.tree ?? "") ||
+    !fullShaPattern.test(proposal.baseCommit ?? "") ||
+    !fullShaPattern.test(proposal.cherryPickCommit ?? "") ||
+    !fullShaPattern.test(proposal.cherryPickParent ?? "") ||
+    !fullShaPattern.test(proposal.cherryPickTargetTree ?? "") ||
+    typeof proposal.proposalControl?.promptDigest !== "string" ||
+    checkpointProposalId(proposal) !== proposal.checkpointId ||
+    !Number.isFinite(Date.parse(proposal.createdAt ?? ""))
+  ) {
+    return rejected("checkpoint_proposal_binding")
+  }
+  const proposalControls = listAgentControls(task.issue, task.comments).filter(
+    (candidate) =>
+      candidate.instructionId === proposal.proposalInstructionId,
+  )
+  if (
+    proposalControls.length !== 1 ||
+    proposalControls[0].action !== "continue" ||
+    proposalControls[0].ownerApprovalRequired ||
+    checkpointPromptDigest(proposalControls[0].prompt) !==
+      proposal.proposalControl.promptDigest ||
+    parseCheckpointProposalPrompt(proposalControls[0].prompt)?.malformed ||
+    !parseCheckpointProposalPrompt(proposalControls[0].prompt)
+  ) {
+    return rejected("checkpoint_proposal_control_binding", {
+      controlCount: proposalControls.length,
+    })
+  }
+  const expectedPrompt = gitReconciliationCheckpointActivationPrompt({
+    checkpointId,
+    reconciliationId: proposal.reconciliationId,
+    head: proposal.head,
+    tree: proposal.tree,
+    cherryPickCommit: proposal.cherryPickCommit,
+  })
+  if (instruction.prompt !== expectedPrompt) {
+    return rejected("checkpoint_activation_prompt_binding")
+  }
+
+  const context = checkpointContextDecision({
+    state,
+    task,
+    expectedTailInstructionIds: proposal.supersededTailInstructionIds,
+  })
+  if (!context.accepted) return context
+  if (
+    context.value.record.reconciliationId !== proposal.reconciliationId ||
+    context.value.record.head !== proposal.head ||
+    context.value.cherryPickCommit !== proposal.cherryPickCommit ||
+    sha256(JSON.stringify(context.value.expectedChangedFiles)) !==
+      proposal.changedFilesDigest ||
+    context.value.expectedChangedFiles.length !== proposal.changedFileCount
+  ) {
+    return rejected("checkpoint_current_context_binding")
+  }
+  if (
+    context.value.laterRuns.length !== 1 ||
+    context.value.laterRuns[0].instructionId !==
+      proposal.proposalInstructionId
+  ) {
+    return rejected("checkpoint_post_tail_run_count", {
+      runCount: context.value.laterRuns.length,
+    })
+  }
+  const proposalRun = context.value.laterRuns[0]
+  const ownerReason = gitReconciliationCheckpointOwnerReason(proposal)
+  const proposalChangedFiles = normalizedChangedFiles(proposalRun.changedFiles)
+  if (
+    proposalRun.status !== "needs_owner" ||
+    proposalRun.turnCount !== 0 ||
+    proposalRun.branch !== proposal.branch ||
+    proposalRun.originIssueNumber !== proposal.originIssueNumber ||
+    proposalRun.originIssueUrl !== proposal.originIssueUrl ||
+    proposalRun.threadId !== proposal.threadId ||
+    proposalRun.workspacePath !== proposal.workspacePath ||
+    proposalRun.resultArtifact !== null ||
+    proposalRun.ownerRequest?.method !==
+      "control-plane/gitReconciliationCheckpointActivation" ||
+    proposalRun.ownerRequest?.reason !== ownerReason ||
+    !sameStringArray(proposalRun.ownerGates, [ownerReason]) ||
+    proposalChangedFiles.status !== "valid" ||
+    sha256(JSON.stringify(proposalChangedFiles.files)) !==
+      proposal.changedFilesDigest ||
+    !Array.isArray(proposalRun.commits) ||
+    !proposalRun.commits.includes(proposal.head) ||
+    !proposalRun.checks ||
+    Object.keys(proposalRun.checks).length !== 6 ||
+    Object.values(proposalRun.checks).some((status) => status !== "not_run") ||
+    !Array.isArray(proposalRun.blockers) ||
+    proposalRun.blockers.length !== 0 ||
+    !Array.isArray(proposalRun.productionReadback) ||
+    proposalRun.productionReadback.length !== 0 ||
+    !Array.isArray(proposalRun.safetyFindings) ||
+    proposalRun.safetyFindings.length !== 0 ||
+    !Array.isArray(proposalRun.branchPushState) ||
+    proposalRun.branchPushState.length !== 0
+  ) {
+    return rejected("checkpoint_proposal_run_binding")
+  }
+
+  const activationPromptDigest = checkpointPromptDigest(instruction.prompt)
+  if (
+    (state.runs ?? []).some(
+      (run) => run.instructionId === instruction.instructionId,
+    )
+  ) {
+    return rejected("checkpoint_activation_current_run_duplicate")
+  }
+  const activationId = `git-reconciliation-checkpoint-activation:${sha256(
+    JSON.stringify({
+      checkpointId,
+      instructionId: instruction.instructionId,
+      promptDigest: activationPromptDigest,
+    }),
+  )}`
+  const activationRecords = checkpoints.filter(
+    (record) => record.kind === "activation",
+  )
+  if (checkpoints.length !== proposals.length + activationRecords.length) {
+    return rejected("checkpoint_record_kind")
+  }
+  const matchingActivations = activationRecords.filter(
+    (record) => record.checkpointId === checkpointId,
+  )
+  if (matchingActivations.length > 1 || activationRecords.length > 1) {
+    return rejected("checkpoint_activation_record_ambiguous", {
+      activationCount: activationRecords.length,
+      matchingActivationCount: matchingActivations.length,
+    })
+  }
+  let activationRecord = matchingActivations[0] ?? null
+  let isNew = false
+  if (activationRecord) {
+    if (
+      activationRecord.schemaVersion !== 1 ||
+      activationRecord.activationId !== activationId ||
+      activationRecord.activationInstructionId !== instruction.instructionId ||
+      activationRecord.activationPromptDigest !== activationPromptDigest ||
+      activationRecord.operationScope !== checkpointOperationScope ||
+      activationRecord.originIssueNumber !== proposal.originIssueNumber ||
+      activationRecord.threadId !== proposal.threadId ||
+      activationRecord.workspacePath !== proposal.workspacePath ||
+      activationRecord.branch !== proposal.branch ||
+      activationRecord.head !== proposal.head ||
+      activationRecord.tree !== proposal.tree ||
+      activationRecord.cherryPickCommit !== proposal.cherryPickCommit ||
+      activationRecord.cherryPickParent !== proposal.cherryPickParent ||
+      activationRecord.cherryPickTargetTree !==
+        proposal.cherryPickTargetTree ||
+      !Number.isFinite(Date.parse(activationRecord.activatedAt ?? ""))
+    ) {
+      return rejected("checkpoint_activation_record_conflict")
+    }
+  } else {
+    isNew = true
+    activationRecord = {
+      schemaVersion: 1,
+      kind: "activation",
+      activationId,
+      checkpointId,
+      operationScope: checkpointOperationScope,
+      activationInstructionId: instruction.instructionId,
+      activationPromptDigest,
+      originIssueNumber: proposal.originIssueNumber,
+      originIssueUrl: proposal.originIssueUrl,
+      threadId: proposal.threadId,
+      workspacePath: proposal.workspacePath,
+      branch: proposal.branch,
+      head: proposal.head,
+      tree: proposal.tree,
+      cherryPickCommit: proposal.cherryPickCommit,
+      cherryPickParent: proposal.cherryPickParent,
+      cherryPickTargetTree: proposal.cherryPickTargetTree,
+      activatedAt: null,
+    }
+  }
+  return accepted({
+    record: context.value.record,
+    cherryPickCommit: context.value.cherryPickCommit,
+    provenanceMode: "superseding_checkpoint",
+    interveningExecutionInstructionIds:
+      context.value.supersededTailInstructionIds,
+    checkpointProposal: proposal,
+    checkpointActivation: activationRecord,
+    checkpointActivationIsNew: isNew,
+  })
+}
+
 function authorizationDecision({ state, instruction, task }) {
+  if (
+    gitReconciliationCheckpointInstructionKind(instruction) === "activation"
+  ) {
+    return checkpointActivationDecision({ state, instruction, task })
+  }
   if (!state?.activeInstruction) {
     return rejected("activation_active_instruction_missing")
   }
@@ -783,6 +1543,261 @@ async function linkedWorktreeMetadataDecision({
   })
 }
 
+async function checkpointFreshVerificationDecision({
+  state,
+  workspacePath,
+  workspaceRoot,
+  checkoutPath,
+  baseRef,
+  repository,
+  pullRequestLookup,
+  context,
+  expectedTree,
+}) {
+  const metadata = await linkedWorktreeMetadataDecision({
+    state,
+    workspacePath,
+    workspaceRoot,
+    checkoutPath,
+    record: context.record,
+    cherryPickCommit: context.cherryPickCommit,
+  })
+  if (!metadata.accepted) return metadata
+  if (!fullShaPattern.test(expectedTree ?? "")) {
+    return rejected("checkpoint_tree_invalid")
+  }
+  const [
+    tree,
+    baseCommit,
+    mergeBase,
+    commitsAboveHead,
+    changedFiles,
+    remote,
+    diffCheck,
+    cherryPickParent,
+    cherryPickParentTree,
+    cherryPickTargetTree,
+    pullRequestNumbers,
+  ] = await Promise.all([
+      git(["rev-parse", "HEAD^{tree}"], workspacePath),
+      git(["rev-parse", baseRef], workspacePath),
+      git(["merge-base", baseRef, "HEAD"], workspacePath),
+      git(
+        ["rev-list", "--count", `${context.record.head}..HEAD`],
+        workspacePath,
+      ),
+      git(["diff", "--name-only", `${baseRef}...HEAD`], workspacePath),
+      git(
+        [
+          "ls-remote",
+          "--heads",
+          "origin",
+          `refs/heads/${checkpointBranch}`,
+        ],
+        workspacePath,
+      ),
+      git(["diff", "--check"], workspacePath),
+      git(["rev-parse", `${context.cherryPickCommit}^`], workspacePath),
+      git(
+        ["rev-parse", `${context.cherryPickCommit}^1^{tree}`],
+        workspacePath,
+      ),
+      git(
+        ["rev-parse", `${context.cherryPickCommit}^{tree}`],
+        workspacePath,
+      ),
+      pullRequestLookup({
+        repository,
+        branch: checkpointBranch,
+        cwd: workspacePath,
+      }),
+    ])
+  if (tree !== expectedTree) return rejected("checkpoint_tree_drift")
+  if (!fullShaPattern.test(baseCommit) || mergeBase !== baseCommit) {
+    return rejected("checkpoint_lineage")
+  }
+  if (commitsAboveHead !== "0") {
+    return rejected("checkpoint_commits_above_reviewed_head")
+  }
+  if (
+    diffCheck !== "" ||
+    !fullShaPattern.test(cherryPickParent) ||
+    cherryPickParentTree !== tree ||
+    !fullShaPattern.test(cherryPickTargetTree) ||
+    cherryPickTargetTree === tree
+  ) {
+    return rejected("checkpoint_reviewed_commit_lineage")
+  }
+  const actualChangedFiles = changedFiles.split("\n").filter(Boolean).sort()
+  if (!sameStringArray(actualChangedFiles, context.expectedChangedFiles)) {
+    return rejected("checkpoint_changed_files_drift", {
+      changedFileCount: actualChangedFiles.length,
+      expectedChangedFileCount: context.expectedChangedFiles.length,
+    })
+  }
+  if (remote !== "") {
+    return rejected("checkpoint_remote_branch_present")
+  }
+  if (!Array.isArray(pullRequestNumbers) || pullRequestNumbers.length !== 0) {
+    return rejected("checkpoint_pull_request_present", {
+      pullRequestCount: Array.isArray(pullRequestNumbers)
+        ? pullRequestNumbers.length
+        : -1,
+    })
+  }
+  return accepted({
+    metadata: metadata.value,
+    tree,
+    baseCommit,
+    mergeBase,
+    cherryPickParent,
+    cherryPickTargetTree,
+    commitsAboveReviewedHead: 0,
+    changedFiles: actualChangedFiles,
+    remoteIntegrationBranch: "absent",
+    pullRequestCount: 0,
+    dirty: false,
+    operationMarkers: [],
+  })
+}
+
+export async function proposeGitReconciliationCheckpoint({
+  state,
+  instruction,
+  task,
+  workspacePath,
+  workspaceRoot,
+  checkoutPath,
+  repository,
+  baseRef,
+  now = new Date(),
+  pullRequestLookup = githubPullRequestNumbers,
+  onDiagnostic = null,
+}) {
+  if (
+    gitReconciliationCheckpointInstructionKind(instruction) !== "proposal"
+  ) {
+    return null
+  }
+  const finish = (decision) => reportDecision(decision, onDiagnostic)
+  try {
+    if (repository !== "Sillyquack/koalafrog-hq") {
+      return finish(rejected("checkpoint_repository"))
+    }
+    const parsed = parseCheckpointProposalPrompt(instruction.prompt)
+    if (!parsed || parsed.malformed) {
+      return finish(rejected("checkpoint_proposal_prompt"))
+    }
+    const control = checkpointControlDecision({ state, instruction, task })
+    if (!control.accepted) return finish(control)
+    const context = checkpointContextDecision({ state, task })
+    if (!context.accepted) return finish(context)
+    if (
+      parsed.reconciliationId !== context.value.record.reconciliationId ||
+      parsed.head !== context.value.record.head ||
+      parsed.cherryPickCommit !== context.value.cherryPickCommit
+    ) {
+      return finish(rejected("checkpoint_proposal_scope_binding"))
+    }
+    const fresh = await checkpointFreshVerificationDecision({
+      state,
+      workspacePath,
+      workspaceRoot,
+      checkoutPath,
+      baseRef,
+      repository,
+      pullRequestLookup,
+      context: context.value,
+      expectedTree: parsed.tree,
+    })
+    if (!fresh.accepted) return finish(fresh)
+
+    const binding = {
+      schemaVersion: 1,
+      kind: "proposal",
+      checkpointId: null,
+      operationScope: checkpointOperationScope,
+      proposalInstructionId: instruction.instructionId,
+      reconciliationId: context.value.record.reconciliationId,
+      supersededTailInstructionIds:
+        context.value.supersededTailInstructionIds,
+      originIssueNumber: checkpointIssueNumber,
+      originIssueUrl: state.task.originIssueUrl,
+      threadId: state.threadId,
+      workspacePath: state.workspacePath,
+      branch: state.branch,
+      head: context.value.record.head,
+      tree: fresh.value.tree,
+      baseCommit: fresh.value.baseCommit,
+      cherryPickCommit: context.value.cherryPickCommit,
+      cherryPickParent: fresh.value.cherryPickParent,
+      cherryPickTargetTree: fresh.value.cherryPickTargetTree,
+      changedFilesDigest: sha256(
+        JSON.stringify(context.value.expectedChangedFiles),
+      ),
+      changedFileCount: context.value.expectedChangedFiles.length,
+      gitDirectory: fresh.value.metadata.gitDirectory,
+      commonDirectory: fresh.value.metadata.commonDirectory,
+      verification: {
+        dirty: false,
+        commitsAboveReviewedHead: 0,
+        mergeBase: fresh.value.mergeBase,
+        operationMarkers: [],
+        remoteIntegrationBranch: "absent",
+        pullRequestCount: 0,
+      },
+      proposalControl: {
+        instructionId: instruction.instructionId,
+        promptDigest: checkpointPromptDigest(instruction.prompt),
+      },
+      ownerActivationRequired: true,
+    }
+    binding.checkpointId = checkpointProposalId(binding)
+    const record = {
+      ...binding,
+      createdAt: now.toISOString(),
+    }
+    const checkpoints = state.gitReconciliationCheckpoints ?? []
+    if (!Array.isArray(checkpoints)) {
+      return finish(rejected("checkpoint_records_invalid"))
+    }
+    const proposals = checkpoints.filter(
+      (checkpoint) => checkpoint.kind === "proposal",
+    )
+    if (proposals.length > 1) {
+      return finish(
+        rejected("checkpoint_proposal_ambiguous", {
+          proposalCount: proposals.length,
+        }),
+      )
+    }
+    if (proposals.length === 1) {
+      if (
+        proposals[0].checkpointId !== record.checkpointId ||
+        JSON.stringify(checkpointProposalBinding(proposals[0])) !==
+          JSON.stringify(checkpointProposalBinding(record))
+      ) {
+        return finish(rejected("checkpoint_proposal_conflict"))
+      }
+      return accepted({
+        record: proposals[0],
+        isNew: false,
+        verification: fresh.value,
+      })
+    }
+    if (checkpoints.length !== 0) {
+      return finish(rejected("checkpoint_record_without_proposal"))
+    }
+    return accepted({ record, isNew: true, verification: fresh.value })
+  } catch (error) {
+    return finish(
+      rejected("checkpoint_proposal_exception", {
+        errorName: typeof error?.name === "string" ? error.name : "Error",
+      }),
+    )
+  }
+}
+
 function exactGitCommands({ cherryPickCommit, branch, baseBranch }) {
   const cherryPick = `git -c core.hooksPath=/dev/null -c commit.gpgSign=false -c rerere.enabled=false cherry-pick ${cherryPickCommit}`
   return {
@@ -859,6 +1874,7 @@ export async function authorizedGitExecutionBoundary({
   checkoutPath,
   repository,
   baseRef,
+  pullRequestLookup = githubPullRequestNumbers,
   onDiagnostic = null,
 }) {
   try {
@@ -882,6 +1898,66 @@ export async function authorizedGitExecutionBoundary({
     if (!metadata.accepted) {
       reportDecision(metadata, onDiagnostic)
       return null
+    }
+    if (authorization.value.provenanceMode === "superseding_checkpoint") {
+      const proposal = authorization.value.checkpointProposal
+      const context = {
+        record: authorization.value.record,
+        cherryPickCommit: authorization.value.cherryPickCommit,
+        expectedChangedFiles: null,
+      }
+      const changedFiles = normalizedChangedFiles(
+        state.runs.find(
+          (run) =>
+            run.instructionId ===
+            authorization.value.record.continuationInstructionId,
+        )?.changedFiles,
+      )
+      if (changedFiles.status !== "valid") {
+        reportDecision(
+          rejected("checkpoint_activation_changed_files"),
+          onDiagnostic,
+        )
+        return null
+      }
+      context.expectedChangedFiles = changedFiles.files
+      const fresh = await checkpointFreshVerificationDecision({
+        state,
+        workspacePath,
+        workspaceRoot,
+        checkoutPath,
+        baseRef,
+        repository,
+        pullRequestLookup,
+        context,
+        expectedTree: proposal.tree,
+      })
+      if (!fresh.accepted) {
+        reportDecision(fresh, onDiagnostic)
+        return null
+      }
+      if (
+        proposal.baseCommit !== fresh.value.baseCommit ||
+        proposal.cherryPickParent !== fresh.value.cherryPickParent ||
+        proposal.cherryPickTargetTree !== fresh.value.cherryPickTargetTree ||
+        proposal.verification?.mergeBase !== fresh.value.mergeBase ||
+        proposal.verification?.commitsAboveReviewedHead !== 0 ||
+        proposal.verification?.remoteIntegrationBranch !== "absent" ||
+        proposal.verification?.pullRequestCount !== 0 ||
+        proposal.verification?.dirty !== false ||
+        !sameStringArray(proposal.verification?.operationMarkers, []) ||
+        proposal.gitDirectory !== fresh.value.metadata.gitDirectory ||
+        proposal.commonDirectory !== fresh.value.metadata.commonDirectory ||
+        proposal.changedFilesDigest !==
+          sha256(JSON.stringify(fresh.value.changedFiles)) ||
+        proposal.changedFileCount !== fresh.value.changedFiles.length
+      ) {
+        reportDecision(
+          rejected("checkpoint_activation_fresh_binding"),
+          onDiagnostic,
+        )
+        return null
+      }
     }
     const baseMatch = String(baseRef ?? "").match(
       /^origin\/([A-Za-z0-9._/-]+)$/,
@@ -907,11 +1983,19 @@ export async function authorizedGitExecutionBoundary({
       priorPredicateCode:
         authorization.value.provenanceMode === "historical_reconciliation"
           ? "activation_reconciliation_current_instruction_missing"
-          : null,
+          : authorization.value.provenanceMode === "superseding_checkpoint"
+            ? "activation_historical_run_structured_no_mutation_evidence"
+            : null,
       reconciliationInstructionId:
         authorization.value.record.continuationInstructionId,
       interveningExecutionInstructionIds:
         authorization.value.interveningExecutionInstructionIds,
+      checkpointId:
+        authorization.value.checkpointProposal?.checkpointId ?? null,
+      checkpointActivation:
+        authorization.value.checkpointActivation ?? null,
+      checkpointActivationIsNew:
+        authorization.value.checkpointActivationIsNew ?? false,
       gitDirectory: metadata.value.gitDirectory,
       commonDirectory: metadata.value.commonDirectory,
       writablePaths: metadata.value.writablePaths,

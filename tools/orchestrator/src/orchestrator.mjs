@@ -24,6 +24,9 @@ import {
   gitExecutionBoundaryIsCurrent,
   gitExecutionBoundaryPrompt,
   gitExecutionBoundaryRequestDecision,
+  gitReconciliationCheckpointInstructionKind,
+  gitReconciliationCheckpointOwnerReason,
+  proposeGitReconciliationCheckpoint,
 } from "./git-execution-boundary.mjs"
 import {
   checksFromResultArtifact,
@@ -1064,6 +1067,7 @@ export class Orchestrator {
       validateWorkspace,
       authorizedGitExecutionBoundary,
       gitExecutionBoundaryIsCurrent,
+      proposeGitReconciliationCheckpoint,
       ...dependencies.workspace,
     }
     this.controlThreadId = null
@@ -1741,7 +1745,12 @@ export class Orchestrator {
       return { status: "stopped", instructionId: instruction.instructionId }
     }
 
-    const gate = ownerGateReason(instruction)
+    const checkpointInstructionKind =
+      gitReconciliationCheckpointInstructionKind(instruction)
+    const gate =
+      checkpointInstructionKind === "proposal"
+        ? null
+        : ownerGateReason(instruction)
     if (gate) {
       const packet = {
         instructionId: instruction.instructionId,
@@ -1795,6 +1804,115 @@ export class Orchestrator {
     state.branch = workspace.branch
     await this.#save(state)
 
+    if (checkpointInstructionKind === "proposal") {
+      let checkpointRejection = null
+      const proposal = await this.workspace.proposeGitReconciliationCheckpoint({
+        state,
+        instruction,
+        task,
+        workspacePath: state.workspacePath,
+        workspaceRoot: path.join(this.store.directory, "workspaces"),
+        checkoutPath: this.config.checkoutPath,
+        repository: this.config.repository,
+        baseRef: this.config.baseRef,
+        onDiagnostic: (diagnostic) => {
+          checkpointRejection = diagnostic
+        },
+      })
+      const workspaceState = await this.workspace.inspectWorkspace(
+        state.workspacePath,
+        this.config.baseRef,
+      )
+      if (!proposal?.accepted) {
+        const code = checkpointRejection?.code ?? "checkpoint_unclassified"
+        await this.store.appendEvent({
+          type: "git_reconciliation_checkpoint_rejected",
+          code,
+          instructionId: instruction.instructionId,
+          issueNumber: state.task.originIssueNumber,
+          branch: state.branch,
+        })
+        const packet = {
+          instructionId: instruction.instructionId,
+          originIssueNumber: state.task.originIssueNumber,
+          originIssueUrl: state.task.originIssueUrl,
+          codexThreadId: state.threadId,
+          status: "needs_review",
+          branch: workspaceState.branch,
+          commits: workspaceState.commits,
+          changedFiles: workspaceState.changedFiles,
+          checks: uniformChecks("not_run"),
+          ownerQuestion: null,
+          ownerRequest: null,
+          blockers: [code],
+          ownerGates: [],
+          productionReadback: [],
+          safetyFindings: [],
+          branchPushState: [],
+          resultArtifact: null,
+          detail: `Superseding checkpoint proposal failed closed with ${code}.`,
+        }
+        await this.#completeInstruction(state, packet, task.comments)
+        return {
+          status: "needs_review",
+          instructionId: instruction.instructionId,
+          ownerRequest: null,
+        }
+      }
+
+      state.gitReconciliationCheckpoints ??= []
+      if (proposal.value.isNew) {
+        state.gitReconciliationCheckpoints.push(proposal.value.record)
+        await this.#save(state)
+        await this.store.appendEvent({
+          type: "git_reconciliation_checkpoint_proposed",
+          code: "checkpoint_proposal_accepted",
+          checkpointId: proposal.value.record.checkpointId,
+          instructionId: instruction.instructionId,
+          issueNumber: state.task.originIssueNumber,
+          branch: state.branch,
+          head: proposal.value.record.head,
+          tree: proposal.value.record.tree,
+          supersededRunCount:
+            proposal.value.record.supersededTailInstructionIds.length,
+        })
+      }
+      const ownerReason = gitReconciliationCheckpointOwnerReason(
+        proposal.value.record,
+      )
+      const ownerRequest = compactOwnerRequest({
+        method: "control-plane/gitReconciliationCheckpointActivation",
+        reason: ownerReason,
+      })
+      const packet = {
+        instructionId: instruction.instructionId,
+        originIssueNumber: state.task.originIssueNumber,
+        originIssueUrl: state.task.originIssueUrl,
+        codexThreadId: state.threadId,
+        status: "needs_owner",
+        branch: workspaceState.branch,
+        commits: workspaceState.commits,
+        changedFiles: workspaceState.changedFiles,
+        checks: uniformChecks("not_run"),
+        ownerQuestion: ownerReason,
+        ownerRequest,
+        blockers: [],
+        ownerGates: [ownerReason],
+        productionReadback: [],
+        safetyFindings: [],
+        branchPushState: [],
+        resultArtifact: null,
+        detail:
+          "Fresh verification created one immutable proposal; no Git grant or mutation was activated.",
+      }
+      await this.#completeInstruction(state, packet, task.comments)
+      return {
+        status: "needs_owner",
+        instructionId: instruction.instructionId,
+        ownerRequest,
+      }
+    }
+
     let gitExecutionBoundaryRejection = null
     const gitExecutionBoundary =
       await this.workspace.authorizedGitExecutionBoundary({
@@ -1810,6 +1928,26 @@ export class Orchestrator {
           gitExecutionBoundaryRejection = diagnostic
         },
       })
+    if (gitExecutionBoundary?.checkpointActivation) {
+      state.gitReconciliationCheckpoints ??= []
+      if (gitExecutionBoundary.checkpointActivationIsNew) {
+        gitExecutionBoundary.checkpointActivation.activatedAt =
+          new Date().toISOString()
+        state.gitReconciliationCheckpoints.push(
+          gitExecutionBoundary.checkpointActivation,
+        )
+        await this.#save(state)
+        await this.store.appendEvent({
+          type: "git_reconciliation_checkpoint_activated",
+          code: "checkpoint_activation_accepted",
+          checkpointId: gitExecutionBoundary.checkpointId,
+          instructionId: instruction.instructionId,
+          issueNumber: state.task.originIssueNumber,
+          branch: state.branch,
+          head: gitExecutionBoundary.head,
+        })
+      }
+    }
     if (gitExecutionBoundary) {
       await this.store.appendEvent({
         type: "git_execution_boundary_activated",
@@ -1826,6 +1964,7 @@ export class Orchestrator {
         interveningRunCount:
           gitExecutionBoundary.interveningExecutionInstructionIds?.length ?? 0,
         writablePathCount: gitExecutionBoundary.writablePaths.length,
+        checkpointId: gitExecutionBoundary.checkpointId ?? null,
       })
     } else {
       await this.store.appendEvent({

@@ -25,6 +25,10 @@ import {
   gitExecutionPathIsCovered,
   gitExecutionBoundaryRequestDecision,
   matchGitExecutionBoundaryRequest,
+  gitReconciliationCheckpointActivationPrompt,
+  gitReconciliationCheckpointOwnerReason,
+  gitReconciliationCheckpointProposalPrompt,
+  proposeGitReconciliationCheckpoint,
 } from "../src/git-execution-boundary.mjs"
 import {
   issue63ContinuationControl,
@@ -110,6 +114,17 @@ async function fixture(
   await writeFile(path.join(checkoutPath, "fixture.txt"), "base\n")
   await git(checkoutPath, "add", "fixture.txt")
   await git(checkoutPath, "commit", "-m", "base")
+  const remotePath = path.join(directory, "remote.git")
+  await git(directory, "init", "--bare", remotePath)
+  await git(checkoutPath, "remote", "add", "origin", remotePath)
+  await git(checkoutPath, "push", "origin", "main")
+  for (const file of issue63LiveChangedFiles) {
+    const target = path.join(checkoutPath, file)
+    await mkdir(path.dirname(target), { recursive: true })
+    await writeFile(target, `${file}\n`)
+  }
+  await git(checkoutPath, "add", ".")
+  await git(checkoutPath, "commit", "-m", "integration head")
   const head = await git(checkoutPath, "rev-parse", "HEAD")
   await git(checkoutPath, "switch", "-c", "reviewed-source")
   await writeFile(path.join(checkoutPath, "fixture.txt"), "base\nreviewed\n")
@@ -245,6 +260,40 @@ async function fixture(
       "ec719153c8e726831d7e2b748067383ea7f4e314",
       head,
     )
+  receiptRun.resultArtifact.checks.diffCheck = structuredClone(
+    issue63FailedGrantRun.resultArtifact.checks.diffCheck,
+  )
+  receiptRun.resultArtifact.checks.diffCheck.evidence =
+    receiptRun.resultArtifact.checks.diffCheck.evidence.map((evidence) => ({
+      ...evidence,
+      summary: evidence.summary.replaceAll(
+        "ec719153c8e726831d7e2b748067383ea7f4e314",
+        head,
+      ),
+    }))
+  const receiptGate =
+    "The remaining gate is an orchestrator execution profile that actually permits writes to this linked worktree’s external Git metadata. Owner intent is already explicit; no additional product authorization is needed. No deployment, migration, production write, receipt, or other external mutation occurred."
+  receiptRun.blockers = [
+    "needs_review — reconciliation blocked before cherry-pick.",
+    "Exact blocker: sandbox denied creation of the linked worktree `.git/worktrees/.../index.lock`",
+  ]
+  receiptRun.ownerGates = [receiptGate]
+  receiptRun.productionReadback = [receiptGate]
+  receiptRun.safetyFindings = [receiptGate]
+  receiptRun.branchPushState = [
+    `Branch: \`${issue63ReconciledBranch}\``,
+    "Remote integration ref: absent",
+    "Push: **NOT ATTEMPTED**",
+  ]
+  for (const key of [
+    "blockers",
+    "ownerGates",
+    "productionReadback",
+    "safetyFindings",
+    "branchPushState",
+  ]) {
+    receiptRun.resultArtifact.findings[key] = structuredClone(receiptRun[key])
+  }
   receiptRun.completedAt = "2026-08-22T23:10:00.000Z"
   const failedGrantRun = structuredClone(issue63FailedGrantRun)
   failedGrantRun.workspacePath = workspacePath
@@ -421,6 +470,7 @@ async function fixture(
     checkoutPath,
     repository: "Sillyquack/koalafrog-hq",
     baseRef: "origin/main",
+    pullRequestLookup: async () => [],
   }
   return {
     ...input,
@@ -453,6 +503,98 @@ function permissionRequest(boundary, action = "cherry_pick") {
       cwd: boundary.workspacePath,
       command,
     },
+  }
+}
+
+function checkpointControl({ instructionId, taskState, prompt }) {
+  const indentedPrompt = prompt
+    .split("\n")
+    .map((line) => `    ${line}`)
+    .join("\n")
+  return `\`\`\`yaml
+agent_control:
+  action: continue
+  task_state: ${taskState}
+  instruction_id: ${instructionId}
+  max_turns: 8
+  owner_approval_required: false
+  prompt: |
+${indentedPrompt}
+\`\`\``
+}
+
+function appendLive015Run(setup) {
+  const run = structuredClone(setup.state.runs.at(-1))
+  const noMutation =
+    "Remaining gate: the runtime must actually select and expose the canonical historical-proof grant for this linked-worktree metadata boundary. No fallback, source change, remote Git mutation, deployment, migration, receipt, or production action occurred."
+  run.instructionId = issue63FallbackDiagnosticInstructionId
+  run.productionReadback = [noMutation]
+  run.branchPushState = [
+    `Branch/current HEAD: \`${issue63ReconciledBranch}\` at \`${setup.head}\``,
+    "Push/PR: **NOT ATTEMPTED**",
+    noMutation,
+  ]
+  run.resultArtifact.findings.productionReadback =
+    structuredClone(run.productionReadback)
+  run.resultArtifact.findings.branchPushState = structuredClone(
+    run.branchPushState,
+  )
+  run.resultArtifact.finalMessage = `needs_review — canonical structured grant still did not activate.
+
+- Branch/current HEAD: \`${issue63ReconciledBranch}\` at \`${setup.head}\`
+- Worktree: clean; zero commits above base
+- Git operation/rebase/sequencer markers: all absent
+- Bounded metadata grant: **NOT ACTIVATED**
+- Cherry-pick: **FAILED before application**
+- Exact failure: linked-worktree \`index.lock: Operation not permitted\`
+- \`git diff --check\`: **PASS**
+- Push/PR: **NOT ATTEMPTED**
+
+${noMutation}`
+  run.completedAt = "2026-08-23T09:45:00.000Z"
+  setup.state.runs.push(run)
+  return run
+}
+
+async function checkpointSetup(t) {
+  const setup = await fixture(t, { execution015: true })
+  appendLive015Run(setup)
+  const tree = await git(setup.workspacePath, "rev-parse", "HEAD^{tree}")
+  const record = setup.state.workspaceBranchReconciliations[0]
+  const proposalInstructionId =
+    "production-day1-git-reconciliation-checkpoint-proposal-016"
+  const proposalPrompt = gitReconciliationCheckpointProposalPrompt({
+    reconciliationId: record.reconciliationId,
+    head: setup.head,
+    tree,
+    cherryPickCommit: setup.cherryPickCommit,
+  })
+  const proposalBody = checkpointControl({
+    instructionId: proposalInstructionId,
+    taskState: "needs_review",
+    prompt: proposalPrompt,
+  })
+  setup.task.comments.push({ body: proposalBody })
+  const [proposalInstruction] = extractAgentControls(proposalBody)
+  setup.state.status = "needs_review"
+  setup.state.activeInstruction = {
+    ...proposalInstruction,
+    phase: "selected",
+  }
+  setup.state.gitReconciliationCheckpoints = []
+  const input = {
+    ...setup,
+    instruction: proposalInstruction,
+    state: setup.state,
+    now: new Date("2026-08-23T10:00:00.000Z"),
+  }
+  const proposal = await proposeGitReconciliationCheckpoint(input)
+  return {
+    ...setup,
+    tree,
+    proposalBody,
+    proposalInstruction,
+    proposal,
   }
 }
 
@@ -1077,6 +1219,318 @@ test("live-shaped #63/015 stays fail-closed without a complete command ledger", 
     JSON.stringify(diagnostics),
     /credential-value-must-not-be-emitted/,
   )
+})
+
+test("live-shaped #63/010-015 tail creates one immutable proposal and requires a separate exact activation", async (t) => {
+  const setup = await checkpointSetup(t)
+  assert.equal(setup.proposal.accepted, true, JSON.stringify(setup.proposal))
+  assert.equal(setup.proposal.value.isNew, true)
+  const proposal = setup.proposal.value.record
+  assert.equal(proposal.kind, "proposal")
+  assert.equal(proposal.originIssueNumber, 63)
+  assert.equal(proposal.branch, issue63ReconciledBranch)
+  assert.equal(proposal.head, setup.head)
+  assert.equal(proposal.tree, setup.tree)
+  assert.equal(proposal.cherryPickCommit, setup.cherryPickCommit)
+  assert.equal(proposal.ownerActivationRequired, true)
+  assert.equal(proposal.verification.dirty, false)
+  assert.equal(proposal.verification.commitsAboveReviewedHead, 0)
+  assert.deepEqual(proposal.verification.operationMarkers, [])
+  assert.equal(proposal.verification.remoteIntegrationBranch, "absent")
+  assert.equal(proposal.verification.pullRequestCount, 0)
+  assert.deepEqual(proposal.supersededTailInstructionIds.slice(-6), [
+    issue63ContinuationInstructionId,
+    issue63ExecutionInstructionId,
+    issue63HistoricalGrantInstructionId,
+    issue63HistoricalGrantRetryInstructionId,
+    issue63DiagnosticInstructionId,
+    issue63FallbackDiagnosticInstructionId,
+  ])
+  const immutableTail = JSON.stringify(setup.state.runs)
+  setup.state.gitReconciliationCheckpoints.push(proposal)
+
+  const ownerReason = gitReconciliationCheckpointOwnerReason(proposal)
+  setup.state.runs.push({
+    instructionId: proposal.proposalInstructionId,
+    status: "needs_owner",
+    threadId: issue63ThreadId,
+    workspacePath: setup.workspacePath,
+    branch: issue63ReconciledBranch,
+    commits: [setup.head],
+    changedFiles: structuredClone(issue63LiveChangedFiles),
+    turnCount: 0,
+    originIssueNumber: 63,
+    originIssueUrl: issue63OriginUrl,
+    ownerRequest: {
+      method: "control-plane/gitReconciliationCheckpointActivation",
+      reason: ownerReason,
+    },
+    checks: {
+      typecheck: "not_run",
+      lint: "not_run",
+      tests: "not_run",
+      cloudflareReadiness: "not_run",
+      build: "not_run",
+      diffCheck: "not_run",
+    },
+    blockers: [],
+    ownerGates: [ownerReason],
+    productionReadback: [],
+    safetyFindings: [],
+    branchPushState: [],
+    resultArtifact: null,
+    completedAt: "2026-08-23T10:00:01.000Z",
+  })
+  const activationInstructionId =
+    "production-day1-git-reconciliation-checkpoint-activation-017"
+  const activationPrompt = gitReconciliationCheckpointActivationPrompt({
+    checkpointId: proposal.checkpointId,
+    reconciliationId: proposal.reconciliationId,
+    head: proposal.head,
+    tree: proposal.tree,
+    cherryPickCommit: proposal.cherryPickCommit,
+  })
+  const activationBody = checkpointControl({
+    instructionId: activationInstructionId,
+    taskState: "needs_owner",
+    prompt: activationPrompt,
+  })
+  setup.task.comments.push({ body: activationBody })
+  const [activationInstruction] = extractAgentControls(activationBody)
+  setup.state.status = "needs_owner"
+  setup.state.activeInstruction = {
+    ...activationInstruction,
+    phase: "selected",
+  }
+  const activationInput = {
+    ...setup,
+    state: setup.state,
+    instruction: activationInstruction,
+  }
+  const boundary = await authorizedGitExecutionBoundary(activationInput)
+  assert.ok(boundary)
+  assert.equal(boundary.provenanceMode, "superseding_checkpoint")
+  assert.equal(boundary.checkpointId, proposal.checkpointId)
+  assert.equal(boundary.checkpointActivationIsNew, true)
+  assert.equal(
+    gitExecutionPathIsCovered(
+      boundary,
+      path.join(boundary.gitDirectory, "index.lock"),
+    ),
+    true,
+  )
+  const sibling = path.join(
+    boundary.commonDirectory,
+    "worktrees",
+    "issue-63-sibling",
+    "index.lock",
+  )
+  assert.equal(gitExecutionPathIsCovered(boundary, sibling), false)
+  assert.equal(
+    matchGitExecutionBoundaryRequest({
+      boundary,
+      ...permissionRequest(boundary),
+    }).action,
+    "cherry_pick",
+  )
+  const broadened = permissionRequest(boundary)
+  broadened.request.details.permissions.fileSystem.write.push(sibling)
+  assert.equal(
+    gitExecutionBoundaryRequestDecision({ boundary, ...broadened }).rejection
+      .code,
+    "request_filesystem_permissions",
+  )
+  const unrelated = permissionRequest(boundary)
+  unrelated.commandExecution.command = "git status"
+  assert.equal(
+    gitExecutionBoundaryRequestDecision({ boundary, ...unrelated }).rejection
+      .code,
+    "request_command_unrecognized",
+  )
+
+  boundary.checkpointActivation.activatedAt =
+    "2026-08-23T10:01:00.000Z"
+  setup.state.gitReconciliationCheckpoints.push(
+    boundary.checkpointActivation,
+  )
+  const restartedState = structuredClone(setup.state)
+  const restarted = await authorizedGitExecutionBoundary({
+    ...activationInput,
+    state: restartedState,
+  })
+  assert.ok(restarted)
+  assert.equal(restarted.checkpointActivationIsNew, false)
+  assert.equal(restarted.checkpointId, proposal.checkpointId)
+  assert.equal(restartedState.gitReconciliationCheckpoints.length, 2)
+  assert.equal(JSON.stringify(setup.state.runs.slice(0, -1)), immutableTail)
+
+  const duplicateState = structuredClone(restartedState)
+  duplicateState.gitReconciliationCheckpoints.splice(
+    1,
+    0,
+    structuredClone(proposal),
+  )
+  let duplicateDiagnostic = null
+  assert.equal(
+    await authorizedGitExecutionBoundary({
+      ...activationInput,
+      state: duplicateState,
+      onDiagnostic: (diagnostic) => {
+        duplicateDiagnostic = diagnostic
+      },
+    }),
+    null,
+  )
+  assert.equal(duplicateDiagnostic.code, "checkpoint_proposal_count")
+})
+
+test("superseding checkpoint proposal fails closed on drift, conflicts, and ambiguity", async (t) => {
+  const setup = await checkpointSetup(t)
+  assert.equal(setup.proposal.accepted, true, JSON.stringify(setup.proposal))
+  const baselineState = structuredClone(setup.state)
+  const rejectionFor = async (mutateState, mutateInput = () => {}) => {
+    const state = structuredClone(baselineState)
+    mutateState(state)
+    const input = {
+      ...setup,
+      state,
+      instruction: state.activeInstruction,
+      now: new Date("2026-08-23T10:00:00.000Z"),
+    }
+    mutateInput(input)
+    return proposeGitReconciliationCheckpoint(input)
+  }
+
+  assert.equal(
+    (await rejectionFor((state) => {
+      state.task.originIssueNumber = 64
+    })).rejection.code,
+    "checkpoint_origin_thread_workspace",
+  )
+  assert.equal(
+    (await rejectionFor((state) => {
+      state.threadId = "other-thread"
+    })).rejection.code,
+    "checkpoint_reconciliation_record_count",
+  )
+  assert.equal(
+    (await rejectionFor((state) => {
+      state.workspacePath = `${state.workspacePath}-other`
+    })).rejection.code,
+    "checkpoint_reconciliation_record_count",
+  )
+  assert.equal(
+    (await rejectionFor((state) => {
+      state.branch = "agent/issue-63-wrong-branch"
+    })).rejection.code,
+    "checkpoint_origin_thread_workspace",
+  )
+  assert.equal(
+    (await rejectionFor((state) => {
+      state.runs.at(-1).instructionId = "unexpected-tail-015"
+    })).rejection.code,
+    "checkpoint_historical_tail_scope",
+  )
+  assert.equal(
+    (await rejectionFor((state) => {
+      state.runs.at(-2).changedFiles = "unknown"
+    })).rejection.code,
+    "checkpoint_historical_changed_files",
+  )
+  assert.equal(
+    (await rejectionFor((state) => {
+      const run = state.runs.at(-2)
+      run.branchPushState[1] = "Push/PR: **UNKNOWN**"
+      run.resultArtifact.findings.branchPushState[1] =
+        "Push/PR: **UNKNOWN**"
+    })).rejection.code,
+    "checkpoint_historical_push_pr_conflict",
+  )
+  assert.equal(
+    (await rejectionFor((state) => {
+      const run = state.runs.at(-2)
+      const mutation = "A production mutation occurred."
+      run.productionReadback = [mutation]
+      run.resultArtifact.findings.productionReadback = [mutation]
+    })).rejection.code,
+    "checkpoint_historical_mutation_conflict",
+  )
+  assert.equal(
+    (await rejectionFor((state) => {
+      const run = state.runs.at(-2)
+      const ambiguity = "Production mutation status is unknown."
+      run.productionReadback = [ambiguity]
+      run.resultArtifact.findings.productionReadback = [ambiguity]
+    })).rejection.code,
+    "checkpoint_historical_mutation_ambiguous",
+  )
+  assert.equal(
+    (
+      await rejectionFor(
+        () => {},
+        (input) => {
+          input.pullRequestLookup = async () => [63]
+        },
+      )
+    ).rejection.code,
+    "checkpoint_pull_request_present",
+  )
+  assert.equal(
+    (await rejectionFor((state) => {
+      state.gitReconciliationCheckpoints = [
+        setup.proposal.value.record,
+        structuredClone(setup.proposal.value.record),
+      ]
+    })).rejection.code,
+    "checkpoint_proposal_ambiguous",
+  )
+
+  await writeFile(path.join(setup.workspacePath, "dirty.txt"), "dirty\n")
+  assert.equal(
+    (await rejectionFor(() => {})).rejection.code,
+    "activation_metadata_dirty",
+  )
+  await unlink(path.join(setup.workspacePath, "dirty.txt"))
+  const gitPointer = await readFile(
+    path.join(setup.workspacePath, ".git"),
+    "utf8",
+  )
+  const gitDirectory = await realpath(gitPointer.trim().slice(8))
+  await writeFile(path.join(gitDirectory, "CHERRY_PICK_HEAD"), `${setup.head}\n`)
+  assert.equal(
+    (await rejectionFor(() => {})).rejection.code,
+    "activation_metadata_operation_marker",
+  )
+  await unlink(path.join(gitDirectory, "CHERRY_PICK_HEAD"))
+
+  const wrongTreeState = structuredClone(baselineState)
+  const wrongPrompt = gitReconciliationCheckpointProposalPrompt({
+    reconciliationId:
+      wrongTreeState.workspaceBranchReconciliations[0].reconciliationId,
+    head: setup.head,
+    tree: setup.cherryPickCommit,
+    cherryPickCommit: setup.cherryPickCommit,
+  })
+  const wrongBody = checkpointControl({
+    instructionId: wrongTreeState.activeInstruction.instructionId,
+    taskState: "needs_review",
+    prompt: wrongPrompt,
+  })
+  setup.task.comments = setup.task.comments.filter(
+    (comment) => !comment.body.includes(setup.proposalInstruction.instructionId),
+  )
+  setup.task.comments.push({ body: wrongBody })
+  const [wrongInstruction] = extractAgentControls(wrongBody)
+  wrongTreeState.activeInstruction = {
+    ...wrongInstruction,
+    phase: "selected",
+  }
+  const wrongTree = await proposeGitReconciliationCheckpoint({
+    ...setup,
+    state: wrongTreeState,
+    instruction: wrongInstruction,
+  })
+  assert.equal(wrongTree.rejection.code, "checkpoint_tree_drift")
 })
 
 test("#63/011 historical activation and request failures have exact bounded reason codes", async (t) => {

@@ -5,6 +5,7 @@ import path from "node:path"
 import test from "node:test"
 import { AppServerClient, classifyServerRequest } from "../src/app-server.mjs"
 import { extractAgentControls, shouldConsumeInstruction } from "../src/control-plane.mjs"
+import { gitReconciliationCheckpointProposalPrompt } from "../src/git-execution-boundary.mjs"
 import {
   beginInstruction,
   ensureTaskThread,
@@ -178,10 +179,173 @@ test("schema-one Issue #53 state migrates without losing its active thread", asy
   assert.equal(migrated.activeInstruction.instructionId, "active-002")
   assert.equal(migrated.activeInstruction.turnCount, 1)
   assert.deepEqual(migrated.workspaceBranchReconciliations, [])
+  assert.deepEqual(migrated.gitReconciliationCheckpoints, [])
   assert.equal(
     JSON.parse(await readFile(store.statePath, "utf8")).schemaVersion,
     currentStateSchemaVersion,
   )
+})
+
+test("superseding checkpoint proposal is persisted and published once across restart", async (t) => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "koalafrog-checkpoint-"))
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const storeOptions = {
+    stateDirectory: directory,
+    repository: "Sillyquack/koalafrog-hq",
+    issueNumber: 63,
+  }
+  const store = new StateStore(storeOptions)
+  const state = await store.load()
+  const head = "ec719153c8e726831d7e2b748067383ea7f4e314"
+  const tree = "2330f747713ce620c7927c2c505c622b40e18386"
+  const cherryPickCommit = "a74079be88ec4a8b36b850f95dca791ff42e4e80"
+  const reconciliationId =
+    `authorized-workspace-branch:production-day1-git-reconciliation-008:production-day1-git-reconciliation-resume-010:${head}`
+  const prompt = gitReconciliationCheckpointProposalPrompt({
+    reconciliationId,
+    head,
+    tree,
+    cherryPickCommit,
+  })
+  const instructionId =
+    "production-day1-git-reconciliation-checkpoint-proposal-016"
+  const control = `\`\`\`yaml
+agent_control:
+  action: continue
+  task_state: needs_review
+  instruction_id: ${instructionId}
+  max_turns: 4
+  owner_approval_required: false
+  prompt: |
+${prompt
+  .split("\n")
+  .map((line) => `    ${line}`)
+  .join("\n")}
+\`\`\``
+  state.status = "needs_review"
+  state.task.originIssueUrl = issue63OriginUrl
+  state.threadId = issue63ThreadId
+  state.workspacePath = issue63WorkspacePath
+  state.branch = issue63ReconciledBranch
+  state.runs.push({ instructionId: "historical-015", immutable: true })
+  await store.save(state)
+
+  const comments = [{ body: control }]
+  const posted = []
+  const controlPlane = {
+    async fetchTask() {
+      return {
+        issue: { issue_number: 63, html_url: issue63OriginUrl, body: "" },
+        comments,
+      }
+    },
+    async postComment(body) {
+      posted.push(body)
+      comments.push({ body })
+    },
+  }
+  let proposalCalls = 0
+  let turnCalls = 0
+  const checkpointRecord = {
+    schemaVersion: 1,
+    kind: "proposal",
+    checkpointId: `git-reconciliation-checkpoint:${"a".repeat(64)}`,
+    operationScope: "issue-63-reviewed-integration-branch-cherry-pick",
+    proposalInstructionId: instructionId,
+    reconciliationId,
+    supersededTailInstructionIds: ["historical-015"],
+    originIssueNumber: 63,
+    originIssueUrl: issue63OriginUrl,
+    threadId: issue63ThreadId,
+    workspacePath: issue63WorkspacePath,
+    branch: issue63ReconciledBranch,
+    head,
+    tree,
+    baseCommit: "b".repeat(40),
+    cherryPickCommit,
+    changedFilesDigest: "c".repeat(64),
+    changedFileCount: 1,
+    gitDirectory: "/coordinator/.git/worktrees/issue-63",
+    commonDirectory: "/coordinator/.git",
+    verification: {
+      dirty: false,
+      commitsAboveReviewedHead: 0,
+      mergeBase: "b".repeat(40),
+      operationMarkers: [],
+      remoteIntegrationBranch: "absent",
+    },
+    proposalControl: { instructionId, promptDigest: "d".repeat(64) },
+    ownerActivationRequired: true,
+    createdAt: "2026-08-23T10:00:00.000Z",
+  }
+  const workspace = {
+    ...fakeWorkspace(),
+    async ensureWorkspace() {
+      return { path: issue63WorkspacePath, branch: issue63ReconciledBranch }
+    },
+    async inspectWorkspace() {
+      return {
+        branch: issue63ReconciledBranch,
+        commits: [head],
+        changedFiles: ["fixture.txt"],
+      }
+    },
+    async proposeGitReconciliationCheckpoint() {
+      proposalCalls += 1
+      return {
+        accepted: true,
+        value: { record: checkpointRecord, isNew: true },
+      }
+    },
+  }
+  const appServer = {
+    async start() {},
+    async stop() {},
+    async runTurn() {
+      turnCalls += 1
+      throw new Error("A proposal must not start a Codex turn")
+    },
+  }
+  const config = { ...runtimeConfig(directory), issueNumber: 63 }
+  const first = new Orchestrator(config, {
+    appServer,
+    controlPlane,
+    store,
+    workspace,
+  })
+  const proposed = await first.runOnce()
+  assert.equal(proposed.status, "needs_owner")
+  assert.equal(proposalCalls, 1)
+  assert.equal(turnCalls, 0)
+  assert.equal(posted.filter((body) => body.includes("agent_result:")).length, 1)
+  assert.equal(posted.some((body) => body.includes("agent_pickup:")), false)
+
+  const persisted = await new StateStore(storeOptions).load()
+  assert.equal(persisted.gitReconciliationCheckpoints.length, 1)
+  assert.equal(
+    persisted.gitReconciliationCheckpoints[0].checkpointId,
+    checkpointRecord.checkpointId,
+  )
+  assert.deepEqual(persisted.runs[0], {
+    instructionId: "historical-015",
+    immutable: true,
+  })
+  assert.equal(persisted.runs.at(-1).instructionId, instructionId)
+  assert.equal(persisted.runs.at(-1).turnCount, 0)
+  assert.equal(
+    persisted.runs.at(-1).ownerRequest.method,
+    "control-plane/gitReconciliationCheckpointActivation",
+  )
+
+  const restarted = new Orchestrator(config, {
+    appServer,
+    controlPlane,
+    store: new StateStore(storeOptions),
+    workspace,
+  })
+  assert.equal((await restarted.runOnce()).status, "idle")
+  assert.equal(proposalCalls, 1)
+  assert.equal(posted.filter((body) => body.includes("agent_result:")).length, 1)
 })
 
 test("restart resumes the persisted Codex thread instead of starting another", async () => {

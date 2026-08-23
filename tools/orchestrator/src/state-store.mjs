@@ -3,7 +3,7 @@ import path from "node:path"
 import { recoverPendingApprovalRequestsFromEvents } from "./approval-decisions.mjs"
 import { normalizeTurnAccounting } from "./turn-accounting.mjs"
 
-export const currentStateSchemaVersion = 6
+export const currentStateSchemaVersion = 7
 
 function redactString(value) {
   return value
@@ -78,6 +78,7 @@ export function initialState({ repository, issueNumber, issueUrl = null }) {
     ownerApprovalDecisions: [],
     pendingApprovalRequests: [],
     workspaceBranchReconciliations: [],
+    gitReconciliationCheckpoints: [],
     runs: [],
     updatedAt: new Date().toISOString(),
   }
@@ -106,8 +107,12 @@ export function migrateState(state, { repository, issueNumber }) {
     state.schemaVersion = 5
   }
   if (state.schemaVersion === 5) {
-    state.schemaVersion = currentStateSchemaVersion
+    state.schemaVersion = 6
     state.workspaceBranchReconciliations ??= []
+  }
+  if (state.schemaVersion === 6) {
+    state.schemaVersion = currentStateSchemaVersion
+    state.gitReconciliationCheckpoints ??= []
   }
   if (state.schemaVersion !== currentStateSchemaVersion) {
     throw new Error(`Unsupported state schema: ${state.schemaVersion}`)
@@ -127,6 +132,7 @@ export function migrateState(state, { repository, issueNumber }) {
   state.ownerApprovalDecisions ??= []
   state.pendingApprovalRequests ??= []
   state.workspaceBranchReconciliations ??= []
+  state.gitReconciliationCheckpoints ??= []
   return normalizeTurnAccounting(state)
 }
 
