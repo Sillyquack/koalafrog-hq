@@ -118,6 +118,254 @@ function extractAuthorizedCherryPick(prompt, head) {
   return commits.length === 1 ? commits[0] : null
 }
 
+const durableFindingKeys = [
+  "blockers",
+  "ownerGates",
+  "productionReadback",
+  "safetyFindings",
+  "branchPushState",
+]
+const structuredNoMutationStatements = [
+  "No source, production, migration, deployment, receipt, or remote Git mutation occurred.",
+  "No deployment, migration, production write, receipt, or other external mutation occurred.",
+]
+
+function missingStructured(code) {
+  return { ...rejected(code), legacyEligible: true }
+}
+
+function normalizedChangedFiles(value) {
+  if (value == null) return { status: "missing", files: null }
+  if (
+    !Array.isArray(value) ||
+    value.some((entry) => typeof entry !== "string" || !entry.length) ||
+    new Set(value).size !== value.length
+  ) {
+    return { status: "invalid", files: null }
+  }
+  return { status: "valid", files: [...value].sort() }
+}
+
+function sameStringArray(left, right) {
+  return (
+    Array.isArray(left) &&
+    Array.isArray(right) &&
+    left.length === right.length &&
+    left.every((entry, index) => entry === right[index])
+  )
+}
+
+function structuredHistoricalPreApplicationDecision(
+  run,
+  record,
+  expectedChangedFiles,
+  prefix,
+) {
+  const changedFiles = normalizedChangedFiles(run.changedFiles)
+  if (changedFiles.status === "missing" || expectedChangedFiles == null) {
+    return missingStructured(`${prefix}_structured_changed_files_missing`)
+  }
+  if (changedFiles.status !== "valid") {
+    return rejected(`${prefix}_structured_changed_files_invalid`)
+  }
+  if (!sameStringArray(changedFiles.files, expectedChangedFiles)) {
+    return rejected(`${prefix}_structured_changed_files_conflict`, {
+      changedFileCount: changedFiles.files.length,
+      expectedChangedFileCount: expectedChangedFiles.length,
+    })
+  }
+
+  const findings = run.resultArtifact?.findings
+  if (!findings || typeof findings !== "object") {
+    return missingStructured(`${prefix}_structured_findings_missing`)
+  }
+  for (const key of durableFindingKeys) {
+    if (!Array.isArray(run[key]) || !Array.isArray(findings[key])) {
+      return missingStructured(`${prefix}_structured_findings_shape`)
+    }
+    if (JSON.stringify(run[key]) !== JSON.stringify(findings[key])) {
+      return rejected(`${prefix}_structured_findings_conflict`)
+    }
+    if (
+      run[key].some(
+        (entry) => typeof entry !== "string" || entry.length === 0,
+      )
+    ) {
+      return rejected(`${prefix}_structured_findings_invalid`)
+    }
+  }
+
+  const allFindings = durableFindingKeys.flatMap((key) => run[key])
+  if (
+    allFindings.some(
+      (entry) => {
+        const dirty =
+          /\bworktree\b[^.]*\b(?:dirty|modified|uncommitted)\b/i.test(entry)
+        const operationPresent =
+          /\b(?:CHERRY_PICK_HEAD|MERGE_HEAD|REVERT_HEAD|REBASE_HEAD)\b[^.]*\b(?:present|remains?|exists?)\b/i.test(
+            entry,
+          ) &&
+          !/\bno\s+`?(?:CHERRY_PICK_HEAD|MERGE_HEAD|REVERT_HEAD|REBASE_HEAD)`?/i.test(
+            entry,
+          ) &&
+          !/\ball absent\b/i.test(entry)
+        return dirty || operationPresent
+      },
+    )
+  ) {
+    return rejected(`${prefix}_structured_git_state_conflict`)
+  }
+  if (
+    allFindings.some(
+      (entry) =>
+        /\b(?:source|production|migration|deployment|receipt|remote Git)\b[^.]*\bmutation occurred\b/i.test(
+          entry,
+        ) && !/\bno\b/i.test(entry),
+    )
+  ) {
+    return rejected(`${prefix}_structured_mutation_conflict`)
+  }
+  if (
+    ![...run.productionReadback, ...run.safetyFindings].some(
+      (entry) =>
+        structuredNoMutationStatements.some((statement) =>
+          entry.includes(statement),
+        ),
+    )
+  ) {
+    return missingStructured(`${prefix}_structured_no_mutation_evidence`)
+  }
+
+  const branchEvidence = run.branchPushState
+  if (
+    !branchEvidence.includes(`Branch: \`${record.toBranch}\``) &&
+    !branchEvidence.includes(`Integration branch: \`${record.toBranch}\``)
+  ) {
+    return missingStructured(`${prefix}_structured_branch_evidence`)
+  }
+  if (
+    branchEvidence.some(
+      (entry) =>
+        /\bPush:\s*\*\*(?!NOT ATTEMPTED)/i.test(entry) ||
+        /\b(?:pushed|push succeeded|remote branch created)\b/i.test(entry),
+    )
+  ) {
+    return rejected(`${prefix}_structured_push_conflict`)
+  }
+  if (!branchEvidence.some((entry) => /Push:\s*\*\*NOT ATTEMPTED\*\*/i.test(entry))) {
+    return missingStructured(`${prefix}_structured_push_evidence`)
+  }
+  if (
+    allFindings.some((entry) => /\bPR:\s*\*\*(?:CREATED|OPENED)/i.test(entry))
+  ) {
+    return rejected(`${prefix}_structured_pr_conflict`)
+  }
+
+  const diffCheck = run.resultArtifact?.checks?.diffCheck
+  const commandEvidence = diffCheck?.evidence?.find(
+    (evidence) =>
+      evidence?.source === "command_execution" &&
+      evidence.status === "pass" &&
+      typeof evidence.summary === "string",
+  )
+  const commandSummary = commandEvidence?.summary ?? ""
+  if (
+    run.checks?.diffCheck !== "pass" ||
+    diffCheck?.status !== "pass" ||
+    !commandEvidence
+  ) {
+    return missingStructured(`${prefix}_structured_check_evidence`)
+  }
+  if (
+    !commandSummary.includes("git diff --check") ||
+    !commandSummary.includes("git status --porcelain=v1") ||
+    !commandSummary.includes(`git rev-list --count ${record.head}..HEAD`) ||
+    !gitOperationMarkers.every((marker) => commandSummary.includes(marker)) ||
+    !/\(completed, exit 0\)/i.test(commandSummary)
+  ) {
+    return missingStructured(`${prefix}_structured_git_state_evidence`)
+  }
+
+  const finalMessage = run.resultArtifact?.finalMessage
+  if (typeof finalMessage !== "string") {
+    return missingStructured(`${prefix}_structured_pre_application_evidence`)
+  }
+  const recordedHeads = [
+    ...finalMessage.matchAll(
+      /Starting\/current HEAD:\s*`?([0-9a-f]{40})`?/gi,
+    ),
+  ].map((match) => match[1].toLowerCase())
+  const markerStates = [
+    ...finalMessage.matchAll(/In-progress Git markers:\s*([^\n]+)/gi),
+  ].map((match) => match[1].trim().toLowerCase())
+  if (
+    (recordedHeads.length > 0 &&
+      (recordedHeads.length !== 1 || recordedHeads[0] !== record.head)) ||
+    /Cherry-pick:\s*\*\*(?:SUCCEEDED|APPLIED|PARTIALLY APPLIED)/i.test(
+      finalMessage,
+    ) ||
+    /Cherry-pick:[^\n]*\b(?:during|after|partial(?:ly)?)\b[^\n]*\bapplication\b/i.test(
+      finalMessage,
+    ) ||
+    /Worktree:\s*(?:dirty|modified|has uncommitted)/i.test(finalMessage) ||
+    markerStates.some((state) => state !== "all absent") ||
+    (/\b(?:CHERRY_PICK_HEAD|MERGE_HEAD|REVERT_HEAD|REBASE_HEAD)\b[^.\n]*\b(?:present|remains?|exists?)\b/i.test(
+      finalMessage,
+    ) &&
+      !/\bno\s+`?(?:CHERRY_PICK_HEAD|MERGE_HEAD|REVERT_HEAD|REBASE_HEAD)`?/i.test(
+        finalMessage,
+      )) ||
+    /Commits above base:\s*`?[1-9][0-9]*`?/i.test(finalMessage) ||
+    /Push:\s*\*\*(?!NOT ATTEMPTED)/i.test(finalMessage) ||
+    /PR:\s*\*\*(?:CREATED|OPENED)/i.test(finalMessage) ||
+    /\b(?:source|production|migration|deployment|receipt|remote Git)\b[^.]*\bmutation occurred\b/i.test(
+      finalMessage.replaceAll(/\bNo\b[^.]*\bmutation occurred\b/gi, ""),
+    )
+  ) {
+    return rejected(`${prefix}_structured_final_message_conflict`)
+  }
+  if (
+    !/Cherry-pick:\s*\*\*FAILED before application\*\*/i.test(finalMessage) ||
+    recordedHeads.length !== 1 ||
+    !/Worktree:\s*clean[;,]\s*zero commits above base/i.test(finalMessage) ||
+    markerStates.length !== 1 ||
+    !/PR:\s*\*\*NOT CREATED\*\*/i.test(finalMessage)
+  ) {
+    return missingStructured(`${prefix}_structured_pre_application_evidence`)
+  }
+  return accepted(run, { proofMode: "structured" })
+}
+
+function legacyPreApplicationGitFailureDecision(run, prefix) {
+  const finalMessage = run?.resultArtifact?.finalMessage
+  if (typeof finalMessage !== "string") {
+    return rejected(`${prefix}_final_message`)
+  }
+  if (!/Cherry-pick:\s*\*\*FAILED before application\*\*/i.test(finalMessage)) {
+    return rejected(`${prefix}_failure_before_application`)
+  }
+  if (
+    !/linked worktree(?:'|’|\s)s?\s*`index\.lock`/i.test(finalMessage) &&
+    !/linked worktree\s+`\.git\/worktrees\/\.\.\.\/index\.lock`/i.test(
+      finalMessage,
+    )
+  ) {
+    return rejected(`${prefix}_index_lock_evidence`)
+  }
+  if (
+    !/no `CHERRY_PICK_HEAD` remains[^\n]*worktree is clean/i.test(finalMessage) &&
+    !/Worktree:\s*clean;\s*no `CHERRY_PICK_HEAD`;\s*zero commits above base/i.test(
+      finalMessage,
+    )
+  ) {
+    return rejected(`${prefix}_clean_no_operation_evidence`)
+  }
+  if (!/Push:\s*\*\*NOT ATTEMPTED\*\*/i.test(finalMessage)) {
+    return rejected(`${prefix}_push_not_attempted`)
+  }
+  return accepted(run, { proofMode: "legacy_final_message" })
+}
+
 function preApplicationGitFailureDecision(
   run,
   record,
@@ -126,9 +374,10 @@ function preApplicationGitFailureDecision(
     prefix,
     state = null,
     requireWorkspace = false,
+    expectedChangedFiles = null,
+    allowStructured = false,
   },
 ) {
-  const finalMessage = run?.resultArtifact?.finalMessage
   if (run?.instructionId !== expectedInstructionId) {
     return rejected(`${prefix}_instruction`)
   }
@@ -162,32 +411,16 @@ function preApplicationGitFailureDecision(
   ) {
     return rejected(`${prefix}_artifact`)
   }
-  if (typeof finalMessage !== "string") {
-    return rejected(`${prefix}_final_message`)
-  }
-  if (!/Cherry-pick:\s*\*\*FAILED before application\*\*/i.test(finalMessage)) {
-    return rejected(`${prefix}_failure_before_application`)
-  }
-  if (
-    !/linked worktree(?:'|’|\s)s?\s*`index\.lock`/i.test(finalMessage) &&
-    !/linked worktree\s+`\.git\/worktrees\/\.\.\.\/index\.lock`/i.test(
-      finalMessage,
+  if (allowStructured) {
+    const structured = structuredHistoricalPreApplicationDecision(
+      run,
+      record,
+      expectedChangedFiles,
+      prefix,
     )
-  ) {
-    return rejected(`${prefix}_index_lock_evidence`)
+    if (structured.accepted || !structured.legacyEligible) return structured
   }
-  if (
-    !/no `CHERRY_PICK_HEAD` remains[^\n]*worktree is clean/i.test(finalMessage) &&
-    !/Worktree:\s*clean;\s*no `CHERRY_PICK_HEAD`;\s*zero commits above base/i.test(
-      finalMessage,
-    )
-  ) {
-    return rejected(`${prefix}_clean_no_operation_evidence`)
-  }
-  if (!/Push:\s*\*\*NOT ATTEMPTED\*\*/i.test(finalMessage)) {
-    return rejected(`${prefix}_push_not_attempted`)
-  }
-  return accepted(run)
+  return legacyPreApplicationGitFailureDecision(run, prefix)
 }
 
 function authorizationDecision({ state, instruction, task }) {
@@ -278,12 +511,21 @@ function authorizationDecision({ state, instruction, task }) {
     if (new Set(tail.map((run) => run.instructionId)).size !== tail.length) {
       return rejected("activation_historical_tail_duplicate")
     }
+    const receiptChangedFiles = normalizedChangedFiles(
+      receiptRuns[0].changedFiles,
+    )
+    const expectedChangedFiles =
+      receiptChangedFiles.status === "valid"
+        ? receiptChangedFiles.files
+        : null
     for (const run of tail) {
       const proof = preApplicationGitFailureDecision(run, record, {
         expectedInstructionId: run.instructionId,
         prefix: "activation_historical_run",
         state,
         requireWorkspace: true,
+        expectedChangedFiles,
+        allowStructured: true,
       })
       if (!proof.accepted) return proof
     }
