@@ -914,18 +914,43 @@ function rejectedCheckpointProposalTailDecision({
       })
     }
     const parsed = parseCheckpointProposalPrompt(control.prompt)
-    if (
-      control.action !== "continue" ||
-      control.taskState !== "needs_review" ||
-      control.ownerApprovalRequired ||
-      !parsed ||
-      parsed.malformed ||
-      parsed.reconciliationId !== expectedBinding.reconciliationId ||
-      parsed.head !== expectedBinding.head ||
-      parsed.tree !== expectedBinding.tree ||
-      parsed.cherryPickCommit !== expectedBinding.cherryPickCommit
-    ) {
-      return rejected("checkpoint_post_tail_control_binding", {
+    if (control.action !== "continue") {
+      return rejected("checkpoint_post_tail_control_action", {
+        instructionId: run.instructionId,
+      })
+    }
+    if (control.taskState !== "needs_review") {
+      return rejected("checkpoint_post_tail_control_task_state", {
+        instructionId: run.instructionId,
+      })
+    }
+    if (control.ownerApprovalRequired) {
+      return rejected("checkpoint_post_tail_control_owner_approval", {
+        instructionId: run.instructionId,
+      })
+    }
+    if (!parsed || parsed.malformed) {
+      return rejected("checkpoint_post_tail_control_prompt", {
+        instructionId: run.instructionId,
+      })
+    }
+    if (parsed.reconciliationId !== expectedBinding.reconciliationId) {
+      return rejected("checkpoint_post_tail_control_reconciliation", {
+        instructionId: run.instructionId,
+      })
+    }
+    if (parsed.head !== expectedBinding.head) {
+      return rejected("checkpoint_post_tail_control_head", {
+        instructionId: run.instructionId,
+      })
+    }
+    if (parsed.tree !== expectedBinding.tree) {
+      return rejected("checkpoint_post_tail_control_tree", {
+        instructionId: run.instructionId,
+      })
+    }
+    if (parsed.cherryPickCommit !== expectedBinding.cherryPickCommit) {
+      return rejected("checkpoint_post_tail_control_cherry_pick", {
         instructionId: run.instructionId,
       })
     }
