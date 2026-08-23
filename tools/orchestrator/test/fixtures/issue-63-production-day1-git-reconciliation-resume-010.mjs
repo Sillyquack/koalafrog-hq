@@ -19,6 +19,10 @@ export const issue63ExecutionInstructionId =
   "production-day1-git-reconciliation-execution-011"
 export const issue63HistoricalGrantInstructionId =
   "production-day1-git-reconciliation-execution-012"
+export const issue63HistoricalGrantRetryInstructionId =
+  "production-day1-git-reconciliation-execution-013"
+export const issue63DiagnosticInstructionId =
+  "production-day1-git-reconciliation-execution-014"
 export const issue63DurableOwnerGateReason =
   "The instruction requests an owner-gated action: Supabase migration approval, deployment, production writes, Aromantic Supplier/Supplier Product provenance, and Aromantic receipt creation all remain explicitly outside scope and separately gated."
 export const issue63CleanWorkspaceEvidence =
@@ -88,6 +92,17 @@ export const issue63ExecutionControl = issue63ContinuationControl
 export const issue63HistoricalGrantControl = issue63ExecutionControl.replace(
   issue63ExecutionInstructionId,
   issue63HistoricalGrantInstructionId,
+)
+
+export const issue63HistoricalGrantRetryControl =
+  issue63HistoricalGrantControl.replace(
+    issue63HistoricalGrantInstructionId,
+    issue63HistoricalGrantRetryInstructionId,
+  )
+
+export const issue63DiagnosticControl = issue63HistoricalGrantRetryControl.replace(
+  issue63HistoricalGrantRetryInstructionId,
+  issue63DiagnosticInstructionId,
 )
 
 export const issue63PriorRun = {
@@ -265,14 +280,44 @@ export const issue63InterveningRun = {
   completedAt: "2026-08-22T05:04:00.000Z",
 }
 
+export const issue63LiveChangedFiles = [
+  "docs/generated/hosted-migration-rehearsal-manifest.json",
+  "src/data/formulaSeed.ts",
+  "src/features/formulas/EquipmentPreparationSurfaces.test.ts",
+  "src/features/formulas/FormulaDetailPage.test.ts",
+  "src/features/formulas/FormulaDetailPage.tsx",
+  "src/features/formulas/FormulaEquipmentRequirementsMigration.test.ts",
+  "src/features/formulas/components/EquipmentPreparationChecklist.tsx",
+  "src/features/formulas/components/EquipmentRequirementsPanel.tsx",
+  "src/features/formulas/data/formulaRepository.ts",
+  "src/features/formulas/domain/equipmentRequirements.test.ts",
+  "src/features/formulas/domain/equipmentRequirements.ts",
+  "src/features/formulas/domain/formulaLogic.test.ts",
+  "src/features/formulas/domain/formulaLogic.ts",
+  "src/features/formulas/state/FormulaDataContext.tsx",
+  "src/features/lab/LabBatchDetailPage.tsx",
+  "src/features/procurement/EquipmentPage.tsx",
+  "src/features/procurement/domain/equipmentCatalog.ts",
+  "src/features/procurement/domain/procurement.ts",
+  "src/features/product-studio/BeardOilStudioPage.tsx",
+  "src/features/product-studio/domain/productStudio.ts",
+  "src/features/production/ProductionRunDetailPage.tsx",
+  "src/platform/actions/workspaceActionExecutor.test.ts",
+  "src/platform/actions/workspaceActions.ts",
+  "src/platform/migration/v9Migration.ts",
+  "src/platform/repository/relationalMigration.integration.test.ts",
+  "src/platform/repository/supabaseWorkspaceRepository.test.ts",
+  "src/platform/repository/supabaseWorkspaceRepository.ts",
+  "src/styles/index.css",
+  "src/types/domain.ts",
+  "supabase/migrations/20260821121840_formula_equipment_requirements_v1.sql",
+]
+
 export const issue63FailedExecutionRun = {
   ...structuredClone(issue63PriorRun),
   instructionId: issue63ContinuationInstructionId,
   workspacePath: issue63WorkspacePath,
-  changedFiles: Array.from(
-    { length: 30 },
-    (_, index) => `reviewed/path-${String(index + 1).padStart(2, "0")}.ts`,
-  ),
+  changedFiles: structuredClone(issue63LiveChangedFiles),
   resultArtifact: {
     ...structuredClone(issue63PriorRun.resultArtifact),
     turnId: "01a03190-f7a4-7df2-9101-55c01425776d",
@@ -293,9 +338,6 @@ The remaining gate is an orchestrator execution profile that actually permits wr
   completedAt: "2026-08-22T23:10:00.000Z",
 }
 
-const issue63LiveChangedFiles = structuredClone(
-  issue63FailedExecutionRun.changedFiles,
-)
 const issue63FailedGrantNoMutation =
   "The runtime’s bounded profile still does not grant the required linked-worktree metadata write. No source, production, migration, deployment, receipt, or remote Git mutation occurred."
 const issue63FailedGrantBranchState = [
@@ -373,6 +415,122 @@ git diff --check" (completed, exit 0)`,
     },
   },
   completedAt: "2026-08-23T00:15:00.000Z",
+}
+
+const issue63FailedHistoricalGrantNoMutation =
+  "Remaining gate: the orchestrator must successfully associate and activate the historical 010 receipt for this exact linked-worktree metadata path. No alternate mechanism, production change, migration, deployment, receipt, or remote Git mutation was attempted."
+const issue63FailedHistoricalGrantBranchState = [
+  `Branch: \`${issue63ReconciledBranch}\``,
+  "Workspace, origin, branch, lineage and tree preflight: **PASS**",
+  "Push: **NOT ATTEMPTED**",
+  issue63FailedHistoricalGrantNoMutation,
+]
+
+export const issue63FailedHistoricalGrantRun = {
+  ...structuredClone(issue63FailedGrantRun),
+  instructionId: issue63HistoricalGrantInstructionId,
+  changedFiles: structuredClone(issue63LiveChangedFiles),
+  productionReadback: [issue63FailedHistoricalGrantNoMutation],
+  branchPushState: issue63FailedHistoricalGrantBranchState,
+  resultArtifact: {
+    ...structuredClone(issue63FailedGrantRun.resultArtifact),
+    turnId: "01a03bd0-6d46-77d0-b252-0b1e2307b2b2",
+    finalMessage: `needs_review — historical bounded grant still did not activate.
+
+- Branch: \`${issue63ReconciledBranch}\`
+- Starting/current HEAD: \`${issue63ReconciledHead}\`
+- Current tree: \`2330f747713ce620c7927c2c505c622b40e18386\`
+- Expected reviewed tree: \`60c53e071144b4803e6f77dd07c73085050e4c75\`
+- Workspace, origin, branch, lineage and tree preflight: **PASS**
+- Cherry-pick: **FAILED before application**
+- Grant evidence: no activation/grant diagnostic was emitted; Git received \`index.lock: Operation not permitted\`
+- Worktree: clean; zero commits above base; no Git operation markers
+- \`git diff --check\`: **PASS**
+- Typecheck/lint/tests/readiness/build: **NOT RUN**
+- Push: **NOT ATTEMPTED**
+- PR: **NOT CREATED**
+
+${issue63FailedHistoricalGrantNoMutation}`,
+    checks: {
+      ...structuredClone(issue63FailedGrantRun.resultArtifact.checks),
+      diffCheck: {
+        status: "pass",
+        evidence: [
+          {
+            source: "command_execution",
+            status: "pass",
+            summary: `/bin/zsh -lc "git status --porcelain=v1 --branch
+git branch --show-current
+git rev-parse HEAD
+git rev-list --count ${issue63ReconciledHead}..HEAD
+for marker in CHERRY_PICK_HEAD MERGE_HEAD REVERT_HEAD REBASE_HEAD; do git rev-parse --verify -q \"$marker\"; done
+git diff --check" (completed, exit 0)`,
+          },
+          {
+            source: "final_message",
+            status: "pass",
+            summary: "`git diff --check`: **PASS**",
+          },
+        ],
+      },
+    },
+    findings: {
+      blockers: [],
+      ownerGates: [],
+      productionReadback: [issue63FailedHistoricalGrantNoMutation],
+      safetyFindings: [],
+      branchPushState: issue63FailedHistoricalGrantBranchState,
+    },
+  },
+  completedAt: "2026-08-23T05:20:50.430Z",
+}
+
+const issue63DiagnosticNoMutation =
+  "The remaining gate is successful runtime activation of the structured historical 010 grant for this exact linked-worktree metadata path. No source, remote Git, production, migration, deployment, purchase, or receipt mutation occurred."
+const issue63DiagnosticProductionReadback = [
+  "Historical receipt/proof evidence: no activation, grant, reason, or proof-mode diagnostic was emitted",
+  issue63DiagnosticNoMutation,
+]
+const issue63DiagnosticBranchState = [
+  `Branch: \`${issue63ReconciledBranch}\``,
+  "Push/PR: **NOT ATTEMPTED**",
+  issue63DiagnosticNoMutation,
+]
+
+export const issue63FailedDiagnosticRun = {
+  ...structuredClone(issue63FailedHistoricalGrantRun),
+  instructionId: issue63HistoricalGrantRetryInstructionId,
+  changedFiles: structuredClone(issue63LiveChangedFiles),
+  productionReadback: issue63DiagnosticProductionReadback,
+  branchPushState: issue63DiagnosticBranchState,
+  resultArtifact: {
+    ...structuredClone(issue63FailedHistoricalGrantRun.resultArtifact),
+    turnId: "01a03f36-b083-77d1-b4cf-af30f77bf865",
+    finalMessage: `needs_review — structured historical grant still did not activate.
+
+- Branch: \`${issue63ReconciledBranch}\`
+- Starting/current HEAD: \`${issue63ReconciledHead}\`
+- Current tree: \`2330f747713ce620c7927c2c505c622b40e18386\`
+- Expected reviewed tree: \`60c53e071144b4803e6f77dd07c73085050e4c75\`
+- Workspace/origin/lineage/tree preflight: **PASS**
+- Cherry-pick: **FAILED before application**
+- Historical receipt/proof evidence: no activation, grant, reason, or proof-mode diagnostic was emitted
+- Failure: linked-worktree \`index.lock: Operation not permitted\`
+- Worktree: clean; zero commits above base; no Git operation markers
+- \`git diff --check\`: **PASS**
+- Typecheck/lint/tests/readiness/build: **NOT RUN**
+- Push/PR: **NOT ATTEMPTED**
+
+${issue63DiagnosticNoMutation}`,
+    findings: {
+      blockers: [],
+      ownerGates: [],
+      productionReadback: issue63DiagnosticProductionReadback,
+      safetyFindings: [],
+      branchPushState: issue63DiagnosticBranchState,
+    },
+  },
+  completedAt: "2026-08-23T07:10:00.000Z",
 }
 
 export function issue63ReconciliationTask(comments = []) {

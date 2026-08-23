@@ -29,13 +29,20 @@ import {
 import {
   issue63ContinuationControl,
   issue63ContinuationInstructionId,
+  issue63DiagnosticControl,
+  issue63DiagnosticInstructionId,
   issue63ExecutionControl,
   issue63ExecutionInstructionId,
+  issue63FailedDiagnosticRun,
   issue63FailedExecutionRun,
   issue63FailedGrantRun,
+  issue63FailedHistoricalGrantRun,
   issue63HistoricalGrantControl,
   issue63HistoricalGrantInstructionId,
+  issue63HistoricalGrantRetryControl,
+  issue63HistoricalGrantRetryInstructionId,
   issue63InterveningRun,
+  issue63LiveChangedFiles,
   issue63OriginUrl,
   issue63PriorRun,
   issue63ReconciledBranch,
@@ -72,7 +79,12 @@ async function fileSnapshot(root) {
 
 async function fixture(
   t,
-  { execution011 = false, execution012 = false } = {},
+  {
+    execution011 = false,
+    execution012 = false,
+    execution013 = false,
+    execution014 = false,
+  } = {},
 ) {
   const directory = await realpath(
     await mkdtemp(
@@ -145,14 +157,44 @@ async function fixture(
       "a74079be88ec4a8b36b850f95dca791ff42e4e80",
       cherryPickCommit,
     )
-  if (execution011 || execution012) task.comments.push({ body: executionControl })
-  if (execution012) task.comments.push({ body: historicalGrantControl })
+  const historicalGrantRetryControl = issue63HistoricalGrantRetryControl
+    .replaceAll(
+      "ec719153c8e726831d7e2b748067383ea7f4e314",
+      head,
+    )
+    .replaceAll(
+      "a74079be88ec4a8b36b850f95dca791ff42e4e80",
+      cherryPickCommit,
+    )
+  const diagnosticControl = issue63DiagnosticControl
+    .replaceAll(
+      "ec719153c8e726831d7e2b748067383ea7f4e314",
+      head,
+    )
+    .replaceAll(
+      "a74079be88ec4a8b36b850f95dca791ff42e4e80",
+      cherryPickCommit,
+    )
+  if (execution011 || execution012 || execution013 || execution014) {
+    task.comments.push({ body: executionControl })
+  }
+  if (execution012 || execution013 || execution014) {
+    task.comments.push({ body: historicalGrantControl })
+  }
+  if (execution013 || execution014) {
+    task.comments.push({ body: historicalGrantRetryControl })
+  }
+  if (execution014) task.comments.push({ body: diagnosticControl })
   const [instruction] = extractAgentControls(
-    execution012
-      ? historicalGrantControl
-      : execution011
-        ? executionControl
-        : continuationControl,
+    execution014
+      ? diagnosticControl
+      : execution013
+        ? historicalGrantRetryControl
+        : execution012
+          ? historicalGrantControl
+          : execution011
+            ? executionControl
+            : continuationControl,
   )
   const sourceRun = structuredClone(issue63PriorRun)
   sourceRun.commits = [head]
@@ -170,10 +212,7 @@ async function fixture(
   const receiptRun = structuredClone(sourceRun)
   receiptRun.instructionId = receiptInstruction.instructionId
   receiptRun.workspacePath = workspacePath
-  receiptRun.changedFiles = Array.from(
-    { length: 30 },
-    (_, index) => `reviewed/path-${String(index + 1).padStart(2, "0")}.ts`,
-  )
+  receiptRun.changedFiles = structuredClone(issue63LiveChangedFiles)
   receiptRun.resultArtifact = structuredClone(
     issue63FailedExecutionRun.resultArtifact,
   )
@@ -200,28 +239,91 @@ async function fixture(
         head,
       ),
     }))
+  const failedHistoricalGrantRun = structuredClone(
+    issue63FailedHistoricalGrantRun,
+  )
+  failedHistoricalGrantRun.workspacePath = workspacePath
+  failedHistoricalGrantRun.commits = [head]
+  failedHistoricalGrantRun.changedFiles = structuredClone(
+    receiptRun.changedFiles,
+  )
+  failedHistoricalGrantRun.resultArtifact.finalMessage =
+    failedHistoricalGrantRun.resultArtifact.finalMessage.replaceAll(
+      "ec719153c8e726831d7e2b748067383ea7f4e314",
+      head,
+    )
+  failedHistoricalGrantRun.resultArtifact.checks.diffCheck.evidence =
+    failedHistoricalGrantRun.resultArtifact.checks.diffCheck.evidence.map(
+      (evidence) => ({
+        ...evidence,
+        summary: evidence.summary.replaceAll(
+          "ec719153c8e726831d7e2b748067383ea7f4e314",
+          head,
+        ),
+      }),
+    )
+  const failedDiagnosticRun = structuredClone(issue63FailedDiagnosticRun)
+  failedDiagnosticRun.workspacePath = workspacePath
+  failedDiagnosticRun.commits = [head]
+  failedDiagnosticRun.changedFiles = structuredClone(receiptRun.changedFiles)
+  failedDiagnosticRun.resultArtifact.finalMessage =
+    failedDiagnosticRun.resultArtifact.finalMessage.replaceAll(
+      "ec719153c8e726831d7e2b748067383ea7f4e314",
+      head,
+    )
+  failedDiagnosticRun.resultArtifact.checks.diffCheck.evidence =
+    failedDiagnosticRun.resultArtifact.checks.diffCheck.evidence.map(
+      (evidence) => ({
+        ...evidence,
+        summary: evidence.summary.replaceAll(
+          "ec719153c8e726831d7e2b748067383ea7f4e314",
+          head,
+        ),
+      }),
+    )
   const state = {
-    status: execution011 || execution012 ? "needs_review" : "needs_owner",
+    status:
+      execution011 || execution012 || execution013 || execution014
+        ? "needs_review"
+        : "needs_owner",
     task: { originIssueNumber: 63, originIssueUrl: issue63OriginUrl },
     threadId: issue63ThreadId,
     workspacePath,
     branch: issue63ReconciledBranch,
     activeInstruction: { ...instruction, phase: "selected" },
-    runs: execution012
+    runs: execution014
       ? [
           sourceRun,
           structuredClone(issue63InterveningRun),
           receiptRun,
           failedGrantRun,
+          failedHistoricalGrantRun,
+          failedDiagnosticRun,
         ]
-      : execution011
-        ? [sourceRun, structuredClone(issue63InterveningRun), receiptRun]
-        : [sourceRun],
+      : execution013
+        ? [
+            sourceRun,
+            structuredClone(issue63InterveningRun),
+            receiptRun,
+            failedGrantRun,
+            failedHistoricalGrantRun,
+          ]
+        : execution012
+          ? [
+              sourceRun,
+              structuredClone(issue63InterveningRun),
+              receiptRun,
+              failedGrantRun,
+            ]
+          : execution011
+            ? [sourceRun, structuredClone(issue63InterveningRun), receiptRun]
+            : [sourceRun],
     workspaceBranchReconciliations: [
       {
         reconciliationId,
         precedingInstructionId: sourceRun.instructionId,
-        interveningInstructionIds: execution011 || execution012
+        interveningInstructionIds:
+          execution011 || execution012 || execution013 || execution014
           ? [issue63InterveningRun.instructionId]
           : [],
         continuationInstructionId: receiptInstruction.instructionId,
@@ -620,6 +722,174 @@ test("#63/012 structured historical proof fails closed on mutation and Git-state
         )
     }),
     "activation_historical_run_structured_final_message_conflict",
+  )
+})
+
+test("live-shaped #63/014 grants only the selected worktree through the exact 010 to 013 tail", async (t) => {
+  const setup = await fixture(t, { execution014: true })
+  const {
+    boundary,
+    checkoutPath,
+    head,
+    state,
+    workspaceRoot,
+  } = setup
+  assert.ok(boundary)
+  assert.equal(boundary.instructionId, issue63DiagnosticInstructionId)
+  assert.equal(boundary.provenanceMode, "historical_reconciliation")
+  assert.equal(
+    boundary.reconciliationInstructionId,
+    issue63ContinuationInstructionId,
+  )
+  assert.deepEqual(boundary.interveningExecutionInstructionIds, [
+    issue63ContinuationInstructionId,
+    issue63ExecutionInstructionId,
+    issue63HistoricalGrantInstructionId,
+    issue63HistoricalGrantRetryInstructionId,
+  ])
+  assert.equal(state.workspaceBranchReconciliations.length, 1)
+  assert.deepEqual(
+    state.runs.slice(-4).map((run) => run.instructionId),
+    [
+      issue63ContinuationInstructionId,
+      issue63ExecutionInstructionId,
+      issue63HistoricalGrantInstructionId,
+      issue63HistoricalGrantRetryInstructionId,
+    ],
+  )
+
+  const live012 = state.runs.at(-2)
+  assert.match(
+    live012.productionReadback[0],
+    /No alternate mechanism, production change, migration, deployment, receipt, or remote Git mutation was attempted\./,
+  )
+  assert.match(
+    live012.resultArtifact.finalMessage,
+    /Worktree: clean; zero commits above base; no Git operation markers/,
+  )
+  const live013 = state.runs.at(-1)
+  assert.match(
+    live013.productionReadback.at(-1),
+    /No source, remote Git, production, migration, deployment, purchase, or receipt mutation occurred\./,
+  )
+  assert.equal(live013.branchPushState[1], "Push/PR: **NOT ATTEMPTED**")
+
+  const selectedLock = path.join(boundary.gitDirectory, "index.lock")
+  assert.equal(gitExecutionPathIsCovered(boundary, selectedLock), true)
+  await writeFile(selectedLock, "bounded #63/014 lock\n")
+  assert.equal(await readFile(selectedLock, "utf8"), "bounded #63/014 lock\n")
+  await unlink(selectedLock)
+
+  const siblingWorkspace = path.join(
+    workspaceRoot,
+    "issue-64-diagnostic-014-negative-001",
+  )
+  await git(
+    checkoutPath,
+    "worktree",
+    "add",
+    "-b",
+    "agent/issue-64-diagnostic-014-negative-001",
+    siblingWorkspace,
+    head,
+  )
+  const siblingPointer = await readFile(path.join(siblingWorkspace, ".git"), "utf8")
+  const siblingGitDirectory = await realpath(
+    siblingPointer.trim().slice("gitdir: ".length),
+  )
+  const siblingLock = path.join(siblingGitDirectory, "index.lock")
+  assert.equal(gitExecutionPathIsCovered(boundary, siblingLock), false)
+
+  const exactRequest = permissionRequest(boundary)
+  exactRequest.request.turnId =
+    "turn-production-day1-git-reconciliation-execution-014"
+  const exactDecision = gitExecutionBoundaryRequestDecision({
+    boundary,
+    ...exactRequest,
+  })
+  assert.equal(exactDecision.accepted, true)
+  assert.equal(exactDecision.value.action, "cherry_pick")
+  const siblingRequest = structuredClone(exactRequest)
+  siblingRequest.request.details.permissions.fileSystem.write.push(siblingLock)
+  assert.equal(
+    gitExecutionBoundaryRequestDecision({
+      boundary,
+      ...siblingRequest,
+    }).rejection.code,
+    "request_filesystem_permissions",
+  )
+})
+
+test("#63/014 exact normalization rejects mutation and combined push/PR conflicts", async (t) => {
+  const setup = await fixture(t, { execution014: true })
+  assert.ok(setup.boundary)
+  const rejectionFor = async (mutate) => {
+    const state = structuredClone(setup.state)
+    mutate(state.runs.at(-1))
+    let diagnostic = null
+    assert.equal(
+      await authorizedGitExecutionBoundary({
+        ...setup,
+        state,
+        onDiagnostic: (value) => {
+          diagnostic = value
+        },
+      }),
+      null,
+    )
+    return diagnostic
+  }
+
+  const mutationDiagnostic = await rejectionFor((run) => {
+    const mutation = "A source or remote Git mutation occurred."
+    run.productionReadback[1] = mutation
+    run.resultArtifact.findings.productionReadback[1] = mutation
+    run.resultArtifact.finalMessage += "\ncredential-value-must-not-be-emitted"
+  })
+  assert.deepEqual(mutationDiagnostic, {
+    code: "activation_historical_run_structured_mutation_conflict",
+  })
+  assert.doesNotMatch(
+    JSON.stringify(mutationDiagnostic),
+    /credential-value-must-not-be-emitted/,
+  )
+  assert.deepEqual(
+    await rejectionFor((run) => {
+      const mutation = "A purchase mutation occurred."
+      run.productionReadback[1] = mutation
+      run.resultArtifact.findings.productionReadback[1] = mutation
+    }),
+    { code: "activation_historical_run_structured_mutation_conflict" },
+  )
+  for (const status of ["ATTEMPTED", "UNKNOWN"]) {
+    assert.deepEqual(
+      await rejectionFor((run) => {
+        run.branchPushState[1] = `Push/PR: **${status}**`
+        run.resultArtifact.findings.branchPushState[1] =
+          `Push/PR: **${status}**`
+      }),
+      { code: "activation_historical_run_structured_push_conflict" },
+    )
+  }
+  assert.deepEqual(
+    await rejectionFor((run) => {
+      run.resultArtifact.finalMessage =
+        run.resultArtifact.finalMessage.replace(
+          "Push/PR: **NOT ATTEMPTED**",
+          "Push/PR: **ATTEMPTED**",
+        )
+    }),
+    { code: "activation_historical_run_structured_final_message_conflict" },
+  )
+  assert.deepEqual(
+    await rejectionFor((run) => {
+      run.resultArtifact.finalMessage =
+        run.resultArtifact.finalMessage.replace(
+          "Push/PR: **NOT ATTEMPTED**",
+          "Push/PR: **NOT ATTEMPTED**; PR state unknown",
+        )
+    }),
+    { code: "activation_historical_run_structured_final_message_conflict" },
   )
 })
 
