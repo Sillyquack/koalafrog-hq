@@ -771,6 +771,69 @@ async function checkpointGenerationSetup(t) {
   }
 }
 
+async function checkpointGenerationRetrySetup(t) {
+  const setup = await checkpointGenerationSetup(t)
+  const record = setup.state.workspaceBranchReconciliations[0]
+  appendRejectedCheckpointProposalAttempt(setup, {
+    instructionId: setup.generationInstruction.instructionId,
+    blocker: "checkpoint_proposal_exception",
+    addControl: false,
+    completedAt: "2026-08-23T18:41:22.347Z",
+  })
+  const proposal020Prompt =
+    gitReconciliationCheckpointGenerationProposalPrompt({
+      reconciliationId: record.continuationInstructionId,
+      head: setup.head,
+      tree: setup.tree,
+      cherryPickCommit: setup.cherryPickCommit,
+    })
+  const proposal020 = selectCheckpointProposal(
+    setup,
+    "production-day1-git-reconciliation-checkpoint-generation-proposal-020",
+    proposal020Prompt,
+  ).instruction
+  appendRejectedCheckpointProposalAttempt(setup, {
+    instructionId: proposal020.instructionId,
+    blocker: "checkpoint_proposal_scope_binding",
+    addControl: false,
+    completedAt: "2026-08-23T19:16:18.942Z",
+  })
+  const proposal021Prompt =
+    gitReconciliationCheckpointGenerationProposalPrompt({
+      reconciliationId: record.reconciliationId,
+      head: setup.head,
+      tree: setup.tree,
+      cherryPickCommit: setup.cherryPickCommit,
+    })
+  const proposal021 = selectCheckpointProposal(
+    setup,
+    "production-day1-git-reconciliation-checkpoint-generation-proposal-021",
+    proposal021Prompt,
+  ).instruction
+  const immutableHistory = JSON.stringify(setup.state.runs)
+  const proposal = await proposeGitReconciliationCheckpoint({
+    ...setup,
+    state: setup.state,
+    instruction: proposal021,
+    now: new Date("2026-08-23T19:30:00.000Z"),
+  })
+  return {
+    ...setup,
+    proposal019Diagnostic: {
+      code: "checkpoint_proposal_exception",
+      stage: "pull_request_lookup",
+      reason: "executable_missing",
+      errorCode: "ENOENT",
+    },
+    proposal020,
+    proposal020Prompt,
+    proposal021,
+    proposal021Prompt,
+    immutableRetryHistory: immutableHistory,
+    generationRetryProposal: proposal,
+  }
+}
+
 test("live-shaped #63 linked worktree receives only its exact Git metadata boundary", async (t) => {
   const setup = await fixture(t)
   const { boundary, workspacePath, checkoutPath } = setup
@@ -1989,6 +2052,370 @@ test("generation audit fails closed on post-tail mutation, ambiguity, activation
       })
     ).rejection.code,
     "checkpoint_generation_audit_record_conflict",
+  )
+})
+
+test("exact live #63/010-020 history preserves failed generation attempts and creates one fresh retry", async (t) => {
+  const setup = await checkpointGenerationRetrySetup(t)
+  const record = setup.state.workspaceBranchReconciliations[0]
+  assert.deepEqual(
+    setup.state.runs.slice(-5).map((run) => ({
+      instructionId: run.instructionId,
+      blockers: run.blockers,
+      turnCount: run.turnCount,
+    })),
+    [
+      {
+        instructionId:
+          "production-day1-git-reconciliation-checkpoint-proposal-016",
+        blockers: ["checkpoint_proposal_exception"],
+        turnCount: 0,
+      },
+      {
+        instructionId:
+          "production-day1-git-reconciliation-checkpoint-proposal-017",
+        blockers: ["checkpoint_historical_tail_scope"],
+        turnCount: 0,
+      },
+      {
+        instructionId:
+          "production-day1-git-reconciliation-checkpoint-proposal-018",
+        blockers: ["checkpoint_post_tail_control_binding"],
+        turnCount: 0,
+      },
+      {
+        instructionId:
+          "production-day1-git-reconciliation-checkpoint-generation-proposal-019",
+        blockers: ["checkpoint_proposal_exception"],
+        turnCount: 0,
+      },
+      {
+        instructionId:
+          "production-day1-git-reconciliation-checkpoint-generation-proposal-020",
+        blockers: ["checkpoint_proposal_scope_binding"],
+        turnCount: 0,
+      },
+    ],
+  )
+  assert.deepEqual(setup.proposal019Diagnostic, {
+    code: "checkpoint_proposal_exception",
+    stage: "pull_request_lookup",
+    reason: "executable_missing",
+    errorCode: "ENOENT",
+  })
+  const proposal020Receipt = setup.proposal020Prompt.match(
+    /^- reconciliation receipt: `([^`]+)`$/m,
+  )?.[1]
+  assert.equal(proposal020Receipt, record.continuationInstructionId)
+  assert.notEqual(proposal020Receipt, record.reconciliationId)
+
+  assert.equal(
+    setup.generationRetryProposal.accepted,
+    true,
+    JSON.stringify(setup.generationRetryProposal),
+  )
+  const proposal = setup.generationRetryProposal.value.record
+  assert.equal(proposal.reconciliationId, record.reconciliationId)
+  assert.deepEqual(proposal.rejectedProposalAudit.instructionIds, [
+    "production-day1-git-reconciliation-checkpoint-proposal-016",
+    "production-day1-git-reconciliation-checkpoint-proposal-017",
+    "production-day1-git-reconciliation-checkpoint-proposal-018",
+    "production-day1-git-reconciliation-checkpoint-generation-proposal-019",
+    "production-day1-git-reconciliation-checkpoint-generation-proposal-020",
+  ])
+  assert.deepEqual(
+    proposal.rejectedProposalAudit.attempts.slice(-2).map((attempt) => ({
+      instructionId: attempt.instructionId,
+      rejectionCode: attempt.rejectionCode,
+      reconciliationId: attempt.reconciliationId,
+    })),
+    [
+      {
+        instructionId:
+          "production-day1-git-reconciliation-checkpoint-generation-proposal-019",
+        rejectionCode: "checkpoint_proposal_exception",
+        reconciliationId: record.reconciliationId,
+      },
+      {
+        instructionId:
+          "production-day1-git-reconciliation-checkpoint-generation-proposal-020",
+        rejectionCode: "checkpoint_proposal_scope_binding",
+        reconciliationId: record.continuationInstructionId,
+      },
+    ],
+  )
+  assert.equal(JSON.stringify(setup.state.runs), setup.immutableRetryHistory)
+  assert.deepEqual(setup.state.gitReconciliationCheckpoints, [])
+
+  setup.state.gitReconciliationCheckpoints.push(proposal)
+  appendAcceptedCheckpointProposalRun(setup, proposal)
+  const activationPrompt = gitReconciliationCheckpointActivationPrompt({
+    checkpointId: proposal.checkpointId,
+    reconciliationId: proposal.reconciliationId,
+    head: proposal.head,
+    tree: proposal.tree,
+    cherryPickCommit: proposal.cherryPickCommit,
+    generation: proposal.generation,
+    generationId: proposal.generationId,
+  })
+  const activationBody = checkpointControl({
+    instructionId:
+      "production-day1-git-reconciliation-checkpoint-generation-activation-022",
+    taskState: "needs_owner",
+    prompt: activationPrompt,
+  })
+  setup.task.comments.push({ body: activationBody })
+  const [activationInstruction] = extractAgentControls(activationBody)
+  setup.state.status = "needs_owner"
+  setup.state.activeInstruction = {
+    ...activationInstruction,
+    phase: "selected",
+  }
+  const activationInput = {
+    ...setup,
+    state: setup.state,
+    instruction: activationInstruction,
+  }
+  const boundary = await authorizedGitExecutionBoundary(activationInput)
+  assert.ok(boundary)
+  assert.equal(boundary.checkpointActivationIsNew, true)
+  assert.equal(
+    gitExecutionPathIsCovered(
+      boundary,
+      path.join(boundary.gitDirectory, "index.lock"),
+    ),
+    true,
+  )
+  assert.equal(
+    gitExecutionPathIsCovered(
+      boundary,
+      path.join(
+        boundary.commonDirectory,
+        "worktrees",
+        "issue-63-sibling",
+        "index.lock",
+      ),
+    ),
+    false,
+  )
+  boundary.checkpointActivation.activatedAt = "2026-08-23T19:31:00.000Z"
+  setup.state.gitReconciliationCheckpoints.push(boundary.checkpointActivation)
+  const restarted = await authorizedGitExecutionBoundary({
+    ...activationInput,
+    state: structuredClone(setup.state),
+  })
+  assert.ok(restarted)
+  assert.equal(restarted.checkpointActivationIsNew, false)
+  assert.equal(
+    JSON.stringify(setup.state.runs.slice(0, -1)),
+    setup.immutableRetryHistory,
+  )
+})
+
+test("generation retry audit rejects changed scope, mutation, ambiguous controls, and non-proposal history", async (t) => {
+  const setup = await checkpointGenerationRetrySetup(t)
+  assert.equal(setup.generationRetryProposal.accepted, true)
+  const baselineState = structuredClone(setup.state)
+  const baselineTask = structuredClone(setup.task)
+  const runFor = (state, suffix) =>
+    state.runs.find((run) => run.instructionId.endsWith(suffix))
+  const commentIndexFor = (task, instructionId) =>
+    task.comments.findIndex((comment) =>
+      comment.body.includes(`instruction_id: ${instructionId}`),
+    )
+  const invoke = async ({ mutateState = () => {}, mutateTask = () => {} }) => {
+    const state = structuredClone(baselineState)
+    const task = structuredClone(baselineTask)
+    mutateState(state)
+    mutateTask(task, state)
+    return proposeGitReconciliationCheckpoint({
+      ...setup,
+      state,
+      task,
+      instruction: state.activeInstruction,
+      now: new Date("2026-08-23T19:30:00.000Z"),
+    })
+  }
+  assert.equal(
+    (
+      await invoke({
+        mutateState: (state) => {
+          runFor(state, "019").turnCount = 1
+        },
+      })
+    ).rejection.code,
+    "checkpoint_generation_audit_run_shape",
+  )
+  assert.equal(
+    (
+      await invoke({
+        mutateState: (state) => {
+          runFor(state, "019").commits.push("f".repeat(40))
+        },
+      })
+    ).rejection.code,
+    "checkpoint_generation_audit_run_shape",
+  )
+  assert.equal(
+    (
+      await invoke({
+        mutateState: (state) => {
+          runFor(state, "019").blockers = ["checkpoint_tree_drift"]
+        },
+      })
+    ).rejection.code,
+    "checkpoint_generation_audit_evidence",
+  )
+  assert.equal(
+    (
+      await invoke({
+        mutateState: (state) => {
+          runFor(state, "019").blockers = []
+        },
+      })
+    ).rejection.code,
+    "checkpoint_generation_audit_evidence",
+  )
+  assert.equal(
+    (
+      await invoke({
+        mutateState: (state) => {
+          runFor(state, "019").status = "needs_owner"
+        },
+      })
+    ).rejection.code,
+    "checkpoint_generation_audit_run_shape",
+  )
+  assert.equal(
+    (
+      await invoke({
+        mutateState: (state) => {
+          runFor(state, "019").resultArtifact = { status: "unknown" }
+        },
+      })
+    ).rejection.code,
+    "checkpoint_generation_audit_run_shape",
+  )
+  assert.equal(
+    (
+      await invoke({
+        mutateState: (state) => {
+          state.runs.push({
+            ...structuredClone(runFor(state, "020")),
+            instructionId: "unrelated-post-generation-run",
+          })
+        },
+      })
+    ).rejection.code,
+    "checkpoint_generation_audit_scope",
+  )
+  const proposal019Id =
+    "production-day1-git-reconciliation-checkpoint-generation-proposal-019"
+  assert.equal(
+    (
+      await invoke({
+        mutateTask: (task) => {
+          const index = commentIndexFor(task, proposal019Id)
+          task.comments.push(structuredClone(task.comments[index]))
+        },
+      })
+    ).rejection.code,
+    "checkpoint_generation_audit_control_count",
+  )
+  assert.equal(
+    (
+      await invoke({
+        mutateTask: (task) => {
+          const index = commentIndexFor(task, proposal019Id)
+          const activationPrompt = gitReconciliationCheckpointActivationPrompt({
+            checkpointId: `git-reconciliation-checkpoint:${"a".repeat(64)}`,
+            reconciliationId:
+              setup.state.workspaceBranchReconciliations[0].reconciliationId,
+            head: setup.head,
+            tree: setup.tree,
+            cherryPickCommit: setup.cherryPickCommit,
+          })
+          task.comments[index] = {
+            body: checkpointControl({
+              instructionId: proposal019Id,
+              taskState: "needs_review",
+              prompt: activationPrompt,
+            }),
+          }
+        },
+      })
+    ).rejection.code,
+    "checkpoint_generation_audit_control_binding",
+  )
+  assert.equal(
+    (
+      await invoke({
+        mutateTask: (task) => {
+          const index = commentIndexFor(task, proposal019Id)
+          task.comments[index].body = task.comments[index].body.replace(
+            setup.tree,
+            "f".repeat(40),
+          )
+        },
+      })
+    ).rejection.code,
+    "checkpoint_generation_audit_control_binding",
+  )
+  assert.equal(
+    (
+      await invoke({
+        mutateTask: (task) => {
+          const proposal020Id =
+            "production-day1-git-reconciliation-checkpoint-generation-proposal-020"
+          const index = commentIndexFor(task, proposal020Id)
+          task.comments[index].body = task.comments[index].body.replace(
+            "production-day1-git-reconciliation-resume-010",
+            "unrelated-reconciliation-receipt",
+          )
+        },
+      })
+    ).rejection.code,
+    "checkpoint_generation_audit_control_binding",
+  )
+  assert.equal(
+    (
+      await invoke({
+        mutateState: (state) => {
+          state.gitReconciliationCheckpoints.push({
+            kind: "proposal",
+            proposalInstructionId: proposal019Id,
+          })
+        },
+      })
+    ).rejection.code,
+    "checkpoint_generation_audit_record_conflict",
+  )
+  assert.equal(
+    (
+      await invoke({
+        mutateTask: (task, state) => {
+          const currentId = state.activeInstruction.instructionId
+          const index = commentIndexFor(task, currentId)
+          const prompt = gitReconciliationCheckpointGenerationProposalPrompt({
+            reconciliationId:
+              setup.state.workspaceBranchReconciliations[0].reconciliationId,
+            head: "f".repeat(40),
+            tree: setup.tree,
+            cherryPickCommit: setup.cherryPickCommit,
+          })
+          task.comments[index] = {
+            body: checkpointControl({
+              instructionId: currentId,
+              taskState: "needs_review",
+              prompt,
+            }),
+          }
+          const [instruction] = extractAgentControls(task.comments[index].body)
+          state.activeInstruction = { ...instruction, phase: "selected" }
+        },
+      })
+    ).rejection.code,
+    "checkpoint_proposal_scope_binding",
   )
 })
 

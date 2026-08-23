@@ -53,6 +53,10 @@ const checkpointGenerationAuditRejectionCodes = new Map([
     "checkpoint_post_tail_control_binding",
   ],
 ])
+const checkpointGenerationRetryRejectionCodes = new Set([
+  "checkpoint_proposal_exception",
+  "checkpoint_proposal_scope_binding",
+])
 const retryableCheckpointProposalRejectionCodes = new Set([
   "checkpoint_proposal_exception",
   "checkpoint_historical_tail_scope",
@@ -1125,20 +1129,44 @@ function checkpointGenerationAuditDigest(attempts) {
   )
 }
 
+function checkpointReconciliationReferenceMatches(value, record) {
+  return (
+    value === record.reconciliationId ||
+    value === record.continuationInstructionId
+  )
+}
+
 function checkpointGenerationAuditDecision({
   state,
   task,
   runs,
   record,
   expectedChangedFiles,
+  expectedBinding,
   currentInstructionId = null,
 }) {
+  const instructionIds = Array.isArray(runs)
+    ? runs.map((run) => run?.instructionId)
+    : []
+  const baseInstructionIds = instructionIds.slice(
+    0,
+    checkpointGenerationAuditInstructionIds.length,
+  )
+  const retryInstructionIds = instructionIds.slice(
+    checkpointGenerationAuditInstructionIds.length,
+  )
   if (
     !Array.isArray(runs) ||
     !sameStringArray(
-      runs.map((run) => run?.instructionId),
+      baseInstructionIds,
       checkpointGenerationAuditInstructionIds,
     ) ||
+    retryInstructionIds.some(
+      (instructionId, index) =>
+        instructionId !==
+        `production-day1-git-reconciliation-checkpoint-generation-proposal-${String(19 + index).padStart(3, "0")}`,
+    ) ||
+    new Set(instructionIds).size !== instructionIds.length ||
     (currentInstructionId &&
       runs.some((run) => run.instructionId === currentInstructionId))
   ) {
@@ -1157,7 +1185,9 @@ function checkpointGenerationAuditDecision({
     "typecheck",
   ]
   const attempts = []
-  for (const run of runs) {
+  for (const [index, run] of runs.entries()) {
+    const legacyAttempt =
+      index < checkpointGenerationAuditInstructionIds.length
     const matchingControls = controls.filter(
       (control) => control.instructionId === run.instructionId,
     )
@@ -1171,20 +1201,34 @@ function checkpointGenerationAuditDecision({
     const parsed = parseCheckpointProposalPrompt(control.prompt)
     if (
       gitReconciliationCheckpointInstructionKind(control) !== "proposal" ||
-      parsed?.generation != null ||
       !parsed ||
       parsed.malformed ||
       control.action !== "continue" ||
       control.taskState !== "needs_review" ||
       control.ownerApprovalRequired ||
-      parsed.reconciliationId !== record.reconciliationId ||
-      parsed.head !== record.head ||
+      (legacyAttempt
+        ? parsed.generation != null ||
+          parsed.reconciliationId !== record.reconciliationId ||
+          parsed.head !== record.head ||
+          !fullShaPattern.test(parsed.tree)
+        : parsed.generation !== checkpointGeneration ||
+          !sameStringArray(
+            parsed.auditInstructionIds,
+            checkpointGenerationAuditInstructionIds,
+          ) ||
+          !checkpointReconciliationReferenceMatches(
+            parsed.reconciliationId,
+            record,
+          ) ||
+          parsed.head !== expectedBinding.head ||
+          parsed.tree !== expectedBinding.tree) ||
       parsed.cherryPickCommit !== checkpointGenerationAuditCherryPickCommit({
         state,
         task,
         record,
       }) ||
-      !fullShaPattern.test(parsed.tree)
+      (!legacyAttempt &&
+        parsed.cherryPickCommit !== expectedBinding.cherryPickCommit)
     ) {
       return rejected("checkpoint_generation_audit_control_binding", {
         instructionId: run.instructionId,
@@ -1192,9 +1236,11 @@ function checkpointGenerationAuditDecision({
     }
 
     const changedFiles = normalizedChangedFiles(run.changedFiles)
-    const rejectionCode = checkpointGenerationAuditRejectionCodes.get(
-      run.instructionId,
-    )
+    const rejectionCode = legacyAttempt
+      ? checkpointGenerationAuditRejectionCodes.get(run.instructionId)
+      : Array.isArray(run.blockers) && run.blockers.length === 1
+        ? run.blockers[0]
+        : null
     if (
       run.status !== "needs_review" ||
       run.turnCount !== 0 ||
@@ -1221,6 +1267,10 @@ function checkpointGenerationAuditDecision({
     }
     if (
       !rejectionCode ||
+      (!legacyAttempt &&
+        (!checkpointGenerationRetryRejectionCodes.has(rejectionCode) ||
+          (rejectionCode === "checkpoint_proposal_scope_binding" &&
+            parsed.reconciliationId !== record.continuationInstructionId))) ||
       !sameStringArray(run.blockers, [rejectionCode]) ||
       !sameStringArray(run.ownerGates, []) ||
       !sameStringArray(run.productionReadback, []) ||
@@ -1273,19 +1323,19 @@ function checkpointGenerationAuditDecision({
   if (!Array.isArray(checkpoints)) {
     return rejected("checkpoint_records_invalid")
   }
-  const instructionIds = new Set(checkpointGenerationAuditInstructionIds)
+  const instructionIdSet = new Set(instructionIds)
   if (
     checkpoints.some(
       (checkpoint) =>
-        instructionIds.has(checkpoint?.proposalInstructionId) ||
-        instructionIds.has(checkpoint?.activationInstructionId),
+        instructionIdSet.has(checkpoint?.proposalInstructionId) ||
+        instructionIdSet.has(checkpoint?.activationInstructionId),
     )
   ) {
     return rejected("checkpoint_generation_audit_record_conflict")
   }
   const audit = {
     schemaVersion: 1,
-    instructionIds: [...checkpointGenerationAuditInstructionIds],
+    instructionIds,
     attempts,
   }
   audit.digest = checkpointGenerationAuditDigest(attempts)
@@ -1523,15 +1573,31 @@ function checkpointGenerationId(binding) {
 }
 
 function validCheckpointGenerationAudit(audit) {
+  const instructionIds = Array.isArray(audit?.instructionIds)
+    ? audit.instructionIds
+    : []
+  const baseInstructionIds = instructionIds.slice(
+    0,
+    checkpointGenerationAuditInstructionIds.length,
+  )
+  const retryInstructionIds = instructionIds.slice(
+    checkpointGenerationAuditInstructionIds.length,
+  )
   if (
     !audit ||
     audit.schemaVersion !== 1 ||
     !sameStringArray(
-      audit.instructionIds,
+      baseInstructionIds,
       checkpointGenerationAuditInstructionIds,
     ) ||
+    retryInstructionIds.some(
+      (instructionId, index) =>
+        instructionId !==
+        `production-day1-git-reconciliation-checkpoint-generation-proposal-${String(19 + index).padStart(3, "0")}`,
+    ) ||
+    new Set(instructionIds).size !== instructionIds.length ||
     !Array.isArray(audit.attempts) ||
-    audit.attempts.length !== checkpointGenerationAuditInstructionIds.length ||
+    audit.attempts.length !== instructionIds.length ||
     typeof audit.digest !== "string" ||
     !/^[0-9a-f]{64}$/.test(audit.digest) ||
     checkpointGenerationAuditDigest(audit.attempts) !== audit.digest
@@ -1551,9 +1617,13 @@ function validCheckpointGenerationAudit(audit) {
         "runBindingDigest",
         "tree",
       ]) &&
-      attempt.instructionId === checkpointGenerationAuditInstructionIds[index] &&
-      attempt.rejectionCode ===
-        checkpointGenerationAuditRejectionCodes.get(attempt.instructionId) &&
+      attempt.instructionId === instructionIds[index] &&
+      (index < checkpointGenerationAuditInstructionIds.length
+        ? attempt.rejectionCode ===
+          checkpointGenerationAuditRejectionCodes.get(attempt.instructionId)
+        : checkpointGenerationRetryRejectionCodes.has(
+            attempt.rejectionCode,
+          )) &&
       typeof attempt.reconciliationId === "string" &&
       fullShaPattern.test(attempt.head ?? "") &&
       fullShaPattern.test(attempt.tree ?? "") &&
@@ -1671,7 +1741,7 @@ function checkpointActivationDecision({ state, instruction, task }) {
       !validCheckpointGenerationAudit(proposal.rejectedProposalAudit) ||
       !sameStringArray(
         proposal.priorRejectedProposalInstructionIds,
-        checkpointGenerationAuditInstructionIds,
+        proposal.rejectedProposalAudit?.instructionIds,
       ) ||
       checkpointGenerationId(proposal) !== proposal.generationId)
   ) {
@@ -1702,7 +1772,16 @@ function checkpointActivationDecision({ state, instruction, task }) {
       proposal.proposalControl.promptDigest ||
     parsedProposalControl?.malformed ||
     !parsedProposalControl ||
-    parsedProposalControl.reconciliationId !== proposal.reconciliationId ||
+    (generationProposal
+      ? !checkpointReconciliationReferenceMatches(
+          parsedProposalControl.reconciliationId,
+          {
+            reconciliationId: proposal.reconciliationId,
+            continuationInstructionId: checkpointReceiptInstructionId,
+          },
+        )
+      : parsedProposalControl.reconciliationId !==
+        proposal.reconciliationId) ||
     parsedProposalControl.head !== proposal.head ||
     parsedProposalControl.tree !== proposal.tree ||
     parsedProposalControl.cherryPickCommit !== proposal.cherryPickCommit ||
@@ -1776,6 +1855,11 @@ function checkpointActivationDecision({ state, instruction, task }) {
         runs: context.value.laterRuns.slice(0, -1),
         record: context.value.record,
         expectedChangedFiles: context.value.expectedChangedFiles,
+        expectedBinding: {
+          head: proposal.head,
+          tree: proposal.tree,
+          cherryPickCommit: proposal.cherryPickCommit,
+        },
         currentInstructionId: proposal.proposalInstructionId,
       })
     : rejectedCheckpointProposalTailDecision({
@@ -2588,14 +2672,20 @@ export async function proposeGitReconciliationCheckpoint({
       () => checkpointContextDecision({ state, task }),
     )
     if (!context.accepted) return finish(context)
+    const generationProposal = parsed.generation === checkpointGeneration
     if (
-      parsed.reconciliationId !== context.value.record.reconciliationId ||
+      (generationProposal
+        ? !checkpointReconciliationReferenceMatches(
+            parsed.reconciliationId,
+            context.value.record,
+          )
+        : parsed.reconciliationId !==
+          context.value.record.reconciliationId) ||
       parsed.head !== context.value.record.head ||
       parsed.cherryPickCommit !== context.value.cherryPickCommit
     ) {
       return finish(rejected("checkpoint_proposal_scope_binding"))
     }
-    const generationProposal = parsed.generation === checkpointGeneration
     const priorAttempts = generationProposal
       ? checkpointGenerationAuditDecision({
           state,
@@ -2603,6 +2693,7 @@ export async function proposeGitReconciliationCheckpoint({
           runs: context.value.laterRuns,
           record: context.value.record,
           expectedChangedFiles: context.value.expectedChangedFiles,
+          expectedBinding: parsed,
           currentInstructionId: instruction.instructionId,
         })
       : rejectedCheckpointProposalTailDecision({
