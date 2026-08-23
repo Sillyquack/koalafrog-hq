@@ -24,8 +24,10 @@ import {
   gitExecutionBoundaryIsCurrent,
   gitExecutionBoundaryPrompt,
   gitExecutionBoundaryRequestDecision,
+  executeGitReconciliationCheckpointMutation,
   gitReconciliationCheckpointInstructionKind,
   gitReconciliationCheckpointOwnerReason,
+  prepareGitReconciliationCheckpointExecution,
   proposeGitReconciliationCheckpoint,
 } from "./git-execution-boundary.mjs"
 import {
@@ -1086,6 +1088,8 @@ export class Orchestrator {
       validateWorkspace,
       authorizedGitExecutionBoundary,
       gitExecutionBoundaryIsCurrent,
+      executeGitReconciliationCheckpointMutation,
+      prepareGitReconciliationCheckpointExecution,
       proposeGitReconciliationCheckpoint,
       ...dependencies.workspace,
     }
@@ -1767,7 +1771,7 @@ export class Orchestrator {
     const checkpointInstructionKind =
       gitReconciliationCheckpointInstructionKind(instruction)
     const gate =
-      checkpointInstructionKind === "proposal"
+      new Set(["proposal", "execution"]).has(checkpointInstructionKind)
         ? null
         : ownerGateReason(instruction)
     if (gate) {
@@ -1934,6 +1938,157 @@ export class Orchestrator {
         status: "needs_owner",
         instructionId: instruction.instructionId,
         ownerRequest,
+      }
+    }
+
+    if (checkpointInstructionKind === "execution") {
+      let executionRejection = null
+      const prepare = () =>
+        this.workspace.prepareGitReconciliationCheckpointExecution({
+          state,
+          instruction,
+          task,
+          workspacePath: state.workspacePath,
+          workspaceRoot: path.join(this.store.directory, "workspaces"),
+          checkoutPath: this.config.checkoutPath,
+          repository: this.config.repository,
+          baseRef: this.config.baseRef,
+          onDiagnostic: (diagnostic) => {
+            executionRejection = diagnostic
+          },
+        })
+      let plan = await prepare()
+      if (plan?.accepted && plan.value.isNewIntent) {
+        state.gitReconciliationCheckpoints ??= []
+        state.gitReconciliationCheckpoints.push(plan.value.record)
+        await this.#save(state)
+        await this.store.appendEvent({
+          type: "git_reconciliation_checkpoint_execution_intended",
+          code: "managed_execution_intent_persisted",
+          instructionId: instruction.instructionId,
+          issueNumber: state.task.originIssueNumber,
+          branch: state.branch,
+          head: plan.value.record.head,
+          checkpointId: plan.value.record.checkpointId,
+          generation: plan.value.record.generation,
+          generationId: plan.value.record.generationId,
+          executionId: plan.value.record.executionId,
+        })
+        executionRejection = null
+        plan = await prepare()
+      }
+      if (plan?.accepted && plan.value.mode === "execute") {
+        const executed =
+          await this.workspace.executeGitReconciliationCheckpointMutation({
+            plan: plan.value,
+          })
+        if (!executed.accepted) {
+          executionRejection = executed.rejection
+          plan = executed
+        } else {
+          executionRejection = null
+          plan = await prepare()
+        }
+      }
+      if (
+        plan?.accepted &&
+        plan.value.mode === "recover" &&
+        plan.value.isNewReceipt
+      ) {
+        state.gitReconciliationCheckpoints.push(plan.value.receipt)
+        await this.#save(state)
+        await this.store.appendEvent({
+          type: "git_reconciliation_checkpoint_execution_completed",
+          code: "managed_execution_receipt_persisted",
+          instructionId: instruction.instructionId,
+          issueNumber: state.task.originIssueNumber,
+          branch: state.branch,
+          parentHead: plan.value.receipt.parentHead,
+          head: plan.value.receipt.head,
+          checkpointId: plan.value.receipt.checkpointId,
+          generation: plan.value.receipt.generation,
+          generationId: plan.value.receipt.generationId,
+          executionId: plan.value.receipt.executionId,
+          receiptId: plan.value.receipt.receiptId,
+        })
+        executionRejection = null
+        plan = await prepare()
+      }
+      const workspaceState = await this.workspace.inspectWorkspace(
+        state.workspacePath,
+        this.config.baseRef,
+      )
+      if (!plan?.accepted || plan.value.mode !== "complete") {
+        const code =
+          executionRejection?.code ??
+          plan?.rejection?.code ??
+          "managed_execution_unclassified"
+        await this.store.appendEvent({
+          type: "git_reconciliation_checkpoint_execution_rejected",
+          code,
+          instructionId: instruction.instructionId,
+          issueNumber: state.task.originIssueNumber,
+          branch: state.branch,
+        })
+        const packet = {
+          instructionId: instruction.instructionId,
+          originIssueNumber: state.task.originIssueNumber,
+          originIssueUrl: state.task.originIssueUrl,
+          codexThreadId: state.threadId,
+          status: "needs_review",
+          branch: workspaceState.branch,
+          commits: workspaceState.commits,
+          changedFiles: workspaceState.changedFiles,
+          checks: uniformChecks("not_run"),
+          ownerQuestion: null,
+          ownerRequest: null,
+          blockers: [code],
+          ownerGates: [],
+          productionReadback: [],
+          safetyFindings: [],
+          branchPushState: [],
+          resultArtifact: null,
+          detail: `Managed checkpoint execution failed closed with ${code}.`,
+        }
+        await this.#completeInstruction(state, packet, task.comments)
+        return {
+          status: "needs_review",
+          instructionId: instruction.instructionId,
+          ownerRequest: null,
+        }
+      }
+
+      const checks = uniformChecks("not_run")
+      checks.diffCheck = "pass"
+      const packet = {
+        instructionId: instruction.instructionId,
+        originIssueNumber: state.task.originIssueNumber,
+        originIssueUrl: state.task.originIssueUrl,
+        codexThreadId: state.threadId,
+        status: "needs_review",
+        branch: workspaceState.branch,
+        commits: workspaceState.commits,
+        changedFiles: workspaceState.changedFiles,
+        checks,
+        ownerQuestion: null,
+        ownerRequest: null,
+        blockers: [],
+        ownerGates: [],
+        productionReadback: [],
+        safetyFindings: [],
+        branchPushState: [
+          `Branch/current HEAD: \`${workspaceState.branch}\` at \`${plan.value.receipt.head}\``,
+          "Push/PR: **NOT ATTEMPTED**",
+        ],
+        resultArtifact: null,
+        detail:
+          "The runtime executed and verified exactly one checkpoint-bound cherry-pick, persisted its immutable receipt, started no Codex turn, and stopped before push or PR.",
+      }
+      await this.#completeInstruction(state, packet, task.comments)
+      return {
+        status: "needs_review",
+        instructionId: instruction.instructionId,
+        ownerRequest: null,
       }
     }
 

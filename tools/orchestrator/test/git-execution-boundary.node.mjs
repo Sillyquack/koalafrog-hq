@@ -20,6 +20,7 @@ import { promisify } from "node:util"
 import { extractAgentControls } from "../src/control-plane.mjs"
 import {
   authorizedGitExecutionBoundary,
+  executeGitReconciliationCheckpointMutation,
   gitExecutionBoundaryIsCurrent,
   gitExecutionBoundaryPrompt,
   gitExecutionPathIsCovered,
@@ -27,9 +28,11 @@ import {
   matchGitExecutionBoundaryRequest,
   gitReconciliationCheckpointActivationPrompt,
   gitReconciliationCheckpointGenerationProposalPrompt,
+  gitReconciliationCheckpointManagedExecutionPrompt,
   gitReconciliationCheckpointOwnerReason,
   gitReconciliationCheckpointProposalPrompt,
   proposeGitReconciliationCheckpoint,
+  prepareGitReconciliationCheckpointExecution,
 } from "../src/git-execution-boundary.mjs"
 import {
   issue63ContinuationControl,
@@ -507,7 +510,12 @@ function permissionRequest(boundary, action = "cherry_pick") {
   }
 }
 
-function checkpointControl({ instructionId, taskState, prompt }) {
+function checkpointControl({
+  instructionId,
+  taskState,
+  prompt,
+  ownerApprovalRequired = false,
+}) {
   const indentedPrompt = prompt
     .split("\n")
     .map((line) => `    ${line}`)
@@ -518,7 +526,7 @@ agent_control:
   task_state: ${taskState}
   instruction_id: ${instructionId}
   max_turns: 8
-  owner_approval_required: false
+  owner_approval_required: ${ownerApprovalRequired}
   prompt: |
 ${indentedPrompt}
 \`\`\``
@@ -3378,4 +3386,299 @@ test("boundary rejects actual branch and HEAD drift independently", async (t) =>
   await git(setup.workspacePath, "add", "head-drift.txt")
   await git(setup.workspacePath, "commit", "-m", "unreviewed head drift")
   assert.equal(await authorizedGitExecutionBoundary(setup), null)
+})
+
+async function managedExecutionSetup(t) {
+  const setup = await checkpointGenerationRetrySetup(t)
+  assert.equal(setup.generationRetryProposal.accepted, true)
+  const proposal = setup.generationRetryProposal.value.record
+  setup.state.gitReconciliationCheckpoints.push(proposal)
+  appendAcceptedCheckpointProposalRun(setup, proposal)
+  const activationPrompt = gitReconciliationCheckpointActivationPrompt({
+    checkpointId: proposal.checkpointId,
+    reconciliationId: proposal.reconciliationId,
+    head: proposal.head,
+    tree: proposal.tree,
+    cherryPickCommit: proposal.cherryPickCommit,
+    generation: proposal.generation,
+    generationId: proposal.generationId,
+  }).replace(
+    `- reconciliation receipt: \`${proposal.reconciliationId}\``,
+    `- reconciliation receipt: \`${setup.state.workspaceBranchReconciliations[0].continuationInstructionId}\``,
+  )
+  const appendActivationAttempt = ({
+    instructionId,
+    turnCount,
+    status,
+    ownerApprovalRequired = false,
+  }) => {
+    const activationBody = checkpointControl({
+      instructionId,
+      taskState: "needs_owner",
+      prompt: activationPrompt,
+      ownerApprovalRequired,
+    })
+    setup.task.comments.push({ body: activationBody })
+    setup.state.runs.push({
+      instructionId,
+      status,
+      threadId: issue63ThreadId,
+      workspacePath: setup.workspacePath,
+      branch: issue63ReconciledBranch,
+      commits: turnCount === 0 ? [] : [setup.head],
+      changedFiles:
+        turnCount === 0 ? [] : structuredClone(issue63LiveChangedFiles),
+      turnCount,
+      originIssueNumber: 63,
+      originIssueUrl: issue63OriginUrl,
+      ownerRequest:
+        ownerApprovalRequired
+          ? {
+              method: "control-plane/ownerGate",
+              reason:
+                "The control-plane instruction explicitly requires owner approval.",
+            }
+          : null,
+      checks: {
+        typecheck: "not_run",
+        lint: "not_run",
+        tests: "not_run",
+        cloudflareReadiness: "not_run",
+        build: "not_run",
+        diffCheck: turnCount === 0 ? "not_run" : "pass",
+      },
+      blockers: [],
+      ownerGates:
+        ownerApprovalRequired
+          ? ["The control-plane instruction explicitly requires owner approval."]
+          : [],
+      productionReadback: [],
+      safetyFindings: [],
+      branchPushState:
+        turnCount === 0
+          ? []
+          : [
+              `Branch/current HEAD: \`${issue63ReconciledBranch}\` at \`${setup.head}\``,
+              "Live remote foundation: **PASS**",
+              "Push/PR: **NOT ATTEMPTED**",
+            ],
+      resultArtifact: turnCount === 0 ? null : { status: "completed" },
+      completedAt:
+        turnCount === 0
+          ? "2026-08-23T19:46:42.895Z"
+          : "2026-08-23T19:52:30.531Z",
+    })
+  }
+  appendActivationAttempt({
+    instructionId:
+      "production-day1-git-reconciliation-checkpoint-generation-activation-022",
+    turnCount: 0,
+    status: "needs_owner",
+    ownerApprovalRequired: true,
+  })
+  appendActivationAttempt({
+    instructionId:
+      "production-day1-git-reconciliation-checkpoint-generation-activation-023",
+    turnCount: 1,
+    status: "needs_review",
+  })
+  const prompt = gitReconciliationCheckpointManagedExecutionPrompt({
+    checkpointId: proposal.checkpointId,
+    generationId: proposal.generationId,
+    reconciliationId: proposal.reconciliationId,
+    head: proposal.head,
+    tree: proposal.tree,
+    cherryPickCommit: proposal.cherryPickCommit,
+  })
+  const body = checkpointControl({
+    instructionId:
+      "production-day1-git-reconciliation-checkpoint-generation-execution-024",
+    taskState: "needs_review",
+    prompt,
+  })
+  setup.task.comments.push({ body })
+  const [instruction] = extractAgentControls(body)
+  setup.state.status = "needs_review"
+  setup.state.activeInstruction = { ...instruction, phase: "selected" }
+  return {
+    ...setup,
+    proposal,
+    prompt,
+    instruction,
+    input: {
+      ...setup,
+      state: setup.state,
+      instruction,
+      pullRequestLookup: async () => [],
+      now: new Date("2026-08-23T20:30:00.000Z"),
+    },
+  }
+}
+
+test("managed checkpoint execution writes only the selected linked worktree and recovers exactly once", async (t) => {
+  const setup = await managedExecutionSetup(t)
+  const siblingPath = path.join(
+    path.dirname(setup.workspacePath),
+    "issue-63-sibling",
+  )
+  await git(
+    setup.checkoutPath,
+    "worktree",
+    "add",
+    "-b",
+    "agent/issue-63-sibling",
+    siblingPath,
+    setup.head,
+  )
+  const siblingPointer = await readFile(path.join(siblingPath, ".git"), "utf8")
+  const siblingGitDirectory = await realpath(
+    siblingPointer.trim().slice("gitdir: ".length),
+  )
+  const siblingBefore = await fileSnapshot(siblingGitDirectory)
+
+  const initial = await prepareGitReconciliationCheckpointExecution(setup.input)
+  assert.equal(initial.accepted, true)
+  assert.equal(initial.value.mode, "execute")
+  assert.equal(initial.value.isNewIntent, true)
+  assert.equal(initial.value.record.checkpointId, setup.proposal.checkpointId)
+  assert.equal(initial.value.record.generationId, setup.proposal.generationId)
+  assert.equal(initial.value.record.gitDirectory, setup.proposal.gitDirectory)
+  assert.notEqual(initial.value.record.gitDirectory, siblingGitDirectory)
+
+  setup.state.gitReconciliationCheckpoints.push(initial.value.record)
+  const persisted = await prepareGitReconciliationCheckpointExecution(setup.input)
+  assert.equal(persisted.accepted, true)
+  assert.equal(persisted.value.mode, "execute")
+  assert.equal(persisted.value.isNewIntent, false)
+  const executed = await executeGitReconciliationCheckpointMutation({
+    plan: persisted.value,
+  })
+  assert.equal(executed.accepted, true)
+
+  const recovered = await prepareGitReconciliationCheckpointExecution(setup.input)
+  assert.equal(recovered.accepted, true, JSON.stringify(recovered))
+  assert.equal(recovered.value.mode, "recover")
+  assert.equal(recovered.value.isNewReceipt, true)
+  assert.equal(recovered.value.receipt.parentHead, setup.head)
+  assert.equal(recovered.value.receipt.tree, setup.proposal.cherryPickTargetTree)
+  assert.equal(await git(setup.workspacePath, "rev-list", "--count", `${setup.head}..HEAD`), "1")
+  setup.state.gitReconciliationCheckpoints.push(recovered.value.receipt)
+
+  const replay = await prepareGitReconciliationCheckpointExecution(setup.input)
+  assert.equal(replay.accepted, true)
+  assert.equal(replay.value.mode, "complete")
+  assert.equal(replay.value.isNewReceipt, false)
+  assert.equal(
+    setup.state.gitReconciliationCheckpoints.filter(
+      (record) => record.kind === "execution_intent",
+    ).length,
+    1,
+  )
+  assert.equal(
+    setup.state.gitReconciliationCheckpoints.filter(
+      (record) => record.kind === "execution_receipt",
+    ).length,
+    1,
+  )
+  assert.deepEqual(await fileSnapshot(siblingGitDirectory), siblingBefore)
+})
+
+test("managed execution rejects tampered plans, destination drift, and ambiguous records", async (t) => {
+  await t.test("tampered plan", async (t) => {
+    const setup = await managedExecutionSetup(t)
+    const prepared = await prepareGitReconciliationCheckpointExecution(setup.input)
+    const tampered = structuredClone(prepared.value)
+    tampered.record.cherryPickCommit = "f".repeat(40)
+    const result = await executeGitReconciliationCheckpointMutation({
+      plan: tampered,
+      execute: () => {
+        throw new Error("must not execute")
+      },
+    })
+    assert.equal(result.rejection.code, "managed_execution_plan_binding")
+    assert.equal(await git(setup.workspacePath, "rev-parse", "HEAD"), setup.head)
+  })
+
+  await t.test("dirty destination", async (t) => {
+    const setup = await managedExecutionSetup(t)
+    await writeFile(path.join(setup.workspacePath, "unreviewed.txt"), "drift\n")
+    const result = await prepareGitReconciliationCheckpointExecution(setup.input)
+    assert.equal(result.accepted, false)
+    assert.equal(result.rejection.code, "activation_metadata_dirty")
+  })
+
+  await t.test("ambiguous intent", async (t) => {
+    const setup = await managedExecutionSetup(t)
+    const prepared = await prepareGitReconciliationCheckpointExecution(setup.input)
+    setup.state.gitReconciliationCheckpoints.push(
+      prepared.value.record,
+      { ...prepared.value.record, executionId: "conflict" },
+    )
+    const result = await prepareGitReconciliationCheckpointExecution(setup.input)
+    assert.equal(result.accepted, false)
+    assert.equal(result.rejection.code, "managed_execution_record_ambiguous")
+  })
+
+  await t.test("manipulated prior owner gate", async (t) => {
+    const setup = await managedExecutionSetup(t)
+    const ownerGateRun = setup.state.runs.find((run) =>
+      run.instructionId.endsWith("activation-022"),
+    )
+    ownerGateRun.ownerRequest.reason = "different durable owner gate"
+    const result = await prepareGitReconciliationCheckpointExecution(setup.input)
+    assert.equal(result.accepted, false)
+    assert.equal(
+      result.rejection.code,
+      "managed_execution_post_proposal_binding",
+    )
+  })
+})
+
+test("managed execution fails closed on source, binding, remote, and replay drift", async (t) => {
+  await t.test("checkpoint and generation binding", async (t) => {
+    const setup = await managedExecutionSetup(t)
+    const comment = setup.task.comments.at(-1)
+    comment.body = comment.body.replace(setup.proposal.generationId, `git-reconciliation-checkpoint-generation:${"f".repeat(64)}`)
+    const [instruction] = extractAgentControls(comment.body)
+    setup.state.activeInstruction = { ...instruction, phase: "selected" }
+    const result = await prepareGitReconciliationCheckpointExecution({
+      ...setup.input,
+      instruction,
+    })
+    assert.equal(result.accepted, false)
+    assert.equal(result.rejection.code, "managed_execution_proposal_binding")
+  })
+
+  await t.test("source binding", async (t) => {
+    const setup = await managedExecutionSetup(t)
+    setup.state.gitReconciliationCheckpoints[0].cherryPickTargetTree = "f".repeat(40)
+    const result = await prepareGitReconciliationCheckpointExecution(setup.input)
+    assert.equal(result.accepted, false)
+    assert.equal(result.rejection.code, "managed_execution_proposal_binding")
+  })
+
+  await t.test("remote changes after persisted intent", async (t) => {
+    const setup = await managedExecutionSetup(t)
+    const prepared = await prepareGitReconciliationCheckpointExecution(setup.input)
+    setup.state.gitReconciliationCheckpoints.push(prepared.value.record)
+    await git(
+      setup.workspacePath,
+      "push",
+      "origin",
+      `HEAD:refs/heads/${issue63ReconciledBranch}`,
+    )
+    const result = await prepareGitReconciliationCheckpointExecution(setup.input)
+    assert.equal(result.accepted, false)
+    assert.equal(result.rejection.code, "checkpoint_remote_branch_present")
+  })
+
+  await t.test("state changes after persisted intent", async (t) => {
+    const setup = await managedExecutionSetup(t)
+    const prepared = await prepareGitReconciliationCheckpointExecution(setup.input)
+    setup.state.gitReconciliationCheckpoints.push(prepared.value.record)
+    setup.state.threadId = "different-thread"
+    const result = await prepareGitReconciliationCheckpointExecution(setup.input)
+    assert.equal(result.accepted, false)
+    assert.equal(result.rejection.code, "managed_execution_proposal_binding")
+  })
 })

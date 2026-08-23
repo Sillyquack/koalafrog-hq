@@ -25,6 +25,8 @@ const checkpointGenerationProposalPrefix =
   "Create only a read-only superseding Git reconciliation checkpoint generation 2 proposal for Issue #63."
 const checkpointActivationPrefix =
   "The owner explicitly approves activation of superseding Git reconciliation checkpoint"
+const checkpointManagedExecutionPrefix =
+  "The owner explicitly approves one orchestrator-managed execution of superseding Git reconciliation checkpoint"
 const checkpointOperationScope =
   "issue-63-reviewed-integration-branch-cherry-pick"
 const checkpointPrecedingInstructionId =
@@ -344,6 +346,28 @@ Execute only this approved Git path:
 Do not merge, deploy, migrate, write production data, purchase, create receipts, or access sibling worktree metadata.`
 }
 
+export function gitReconciliationCheckpointManagedExecutionPrompt({
+  checkpointId,
+  generationId,
+  reconciliationId,
+  head,
+  tree,
+  cherryPickCommit,
+}) {
+  return `${checkpointManagedExecutionPrefix} \`${checkpointId}\` in generation \`${generationId}\`.
+
+This control authorizes only the orchestrator runtime, not Codex, to execute one exact Git cherry-pick after a fresh fail-closed verification. It does not authorize a push, PR, merge, deployment, migration, production write, purchase, receipt, or any sibling-worktree access.
+
+Exact reviewed binding:
+- reconciliation receipt: \`${reconciliationId}\`
+- branch: \`${checkpointBranch}\`
+- starting exactly from HEAD: \`${head}\`
+- tree: \`${tree}\`
+- cherry-pick only: \`${cherryPickCommit}\`
+
+The runtime must persist an immutable execution intent before mutation, invoke Git without a shell using only the exact cherry-pick above, verify the resulting parent/tree/source identity, persist one immutable completion receipt, and stop for review without starting a Codex turn or performing any remote mutation.`
+}
+
 function parseCheckpointProposalPrompt(prompt) {
   if (typeof prompt !== "string") {
     return null
@@ -398,6 +422,39 @@ function parseCheckpointProposalPrompt(prompt) {
     : { malformed: true }
 }
 
+function parseCheckpointManagedExecutionPrompt(prompt) {
+  if (
+    typeof prompt !== "string" ||
+    !prompt.startsWith(checkpointManagedExecutionPrefix)
+  ) {
+    return null
+  }
+  const value = {
+    checkpointId: prompt.match(
+      /^The owner explicitly approves one orchestrator-managed execution of superseding Git reconciliation checkpoint `(git-reconciliation-checkpoint:[0-9a-f]{64})` in generation `([^`]+)`\.$/m,
+    )?.[1],
+    generationId: prompt.match(
+      /^The owner explicitly approves one orchestrator-managed execution of superseding Git reconciliation checkpoint `[^`]+` in generation `(git-reconciliation-checkpoint-generation:[0-9a-f]{64})`\.$/m,
+    )?.[1],
+    reconciliationId: prompt.match(
+      /^- reconciliation receipt: `([^`]+)`$/m,
+    )?.[1],
+    head: prompt.match(
+      /^- starting exactly from HEAD: `([0-9a-f]{40})`$/m,
+    )?.[1],
+    tree: prompt.match(/^- tree: `([0-9a-f]{40})`$/m)?.[1],
+    cherryPickCommit: prompt.match(
+      /^- cherry-pick only: `([0-9a-f]{40})`$/m,
+    )?.[1],
+  }
+  if (Object.values(value).some((entry) => !entry)) {
+    return { malformed: true }
+  }
+  return prompt === gitReconciliationCheckpointManagedExecutionPrompt(value)
+    ? value
+    : { malformed: true }
+}
+
 function checkpointPromptDigest(prompt) {
   return sha256(`git-reconciliation-checkpoint-prompt-v1\n${prompt}`)
 }
@@ -408,6 +465,7 @@ export function gitReconciliationCheckpointInstructionKind(instruction) {
   if (prompt.startsWith(checkpointGenerationProposalPrefix)) return "proposal"
   if (prompt.startsWith(checkpointProposalPrefix)) return "proposal"
   if (prompt.startsWith(checkpointActivationPrefix)) return "activation"
+  if (prompt.startsWith(checkpointManagedExecutionPrefix)) return "execution"
   return null
 }
 
@@ -2846,6 +2904,689 @@ export async function proposeGitReconciliationCheckpoint({
         ...checkpointProposalExceptionDiagnostic(error),
       }),
     )
+  }
+}
+
+function managedExecutionRecordBinding(record) {
+  return {
+    schemaVersion: record.schemaVersion,
+    kind: record.kind,
+    executionId: record.executionId,
+    checkpointId: record.checkpointId,
+    generation: record.generation,
+    generationId: record.generationId,
+    operationScope: record.operationScope,
+    executionInstructionId: record.executionInstructionId,
+    executionPromptDigest: record.executionPromptDigest,
+    reconciliationId: record.reconciliationId,
+    historicalTailDigest: record.historicalTailDigest,
+    rejectedProposalAuditDigest: record.rejectedProposalAuditDigest,
+    postProposalAuditDigest: record.postProposalAuditDigest,
+    originIssueNumber: record.originIssueNumber,
+    originIssueUrl: record.originIssueUrl,
+    threadId: record.threadId,
+    workspacePath: record.workspacePath,
+    branch: record.branch,
+    head: record.head,
+    tree: record.tree,
+    baseCommit: record.baseCommit,
+    cherryPickCommit: record.cherryPickCommit,
+    cherryPickParent: record.cherryPickParent,
+    cherryPickTargetTree: record.cherryPickTargetTree,
+    sourceChangedFilesDigest: record.sourceChangedFilesDigest,
+    sourceChangedFileCount: record.sourceChangedFileCount,
+    changedFilesDigest: record.changedFilesDigest,
+    changedFileCount: record.changedFileCount,
+    gitDirectory: record.gitDirectory,
+    commonDirectory: record.commonDirectory,
+  }
+}
+
+function managedExecutionId(binding) {
+  return `git-reconciliation-checkpoint-execution:${sha256(
+    stableJson({
+      version: 1,
+      binding: {
+        ...managedExecutionRecordBinding(binding),
+        executionId: null,
+      },
+    }),
+  )}`
+}
+
+function managedExecutionReceiptId(intent, postHead) {
+  return `git-reconciliation-checkpoint-execution-receipt:${sha256(
+    stableJson({
+      version: 1,
+      executionId: intent.executionId,
+      postHead,
+      postTree: intent.cherryPickTargetTree,
+    }),
+  )}`
+}
+
+function checkpointManagedExecutionProposalDecision({
+  state,
+  task,
+  parsed,
+}) {
+  const checkpoints = state.gitReconciliationCheckpoints
+  if (!Array.isArray(checkpoints)) {
+    return rejected("managed_execution_records_missing")
+  }
+  const proposals = checkpoints.filter((record) => record?.kind === "proposal")
+  const proposalMatches = proposals.filter(
+    (record) => record.checkpointId === parsed.checkpointId,
+  )
+  if (proposals.length !== 1 || proposalMatches.length !== 1) {
+    return rejected("managed_execution_proposal_count", {
+      proposalCount: proposals.length,
+      matchingProposalCount: proposalMatches.length,
+    })
+  }
+  const proposal = proposalMatches[0]
+  if (
+    proposal.schemaVersion !== 2 ||
+    proposal.kind !== "proposal" ||
+    proposal.operationScope !== checkpointOperationScope ||
+    proposal.ownerActivationRequired !== true ||
+    proposal.generation !== checkpointGeneration ||
+    proposal.generationId !== parsed.generationId ||
+    checkpointGenerationId(proposal) !== proposal.generationId ||
+    checkpointProposalId(proposal) !== proposal.checkpointId ||
+    proposal.reconciliationId !== parsed.reconciliationId ||
+    proposal.originIssueNumber !== checkpointIssueNumber ||
+    proposal.originIssueUrl !== state.task.originIssueUrl ||
+    proposal.threadId !== state.threadId ||
+    proposal.workspacePath !== state.workspacePath ||
+    proposal.branch !== state.branch ||
+    proposal.branch !== checkpointBranch ||
+    proposal.head !== parsed.head ||
+    proposal.tree !== parsed.tree ||
+    proposal.cherryPickCommit !== parsed.cherryPickCommit ||
+    !fullShaPattern.test(proposal.baseCommit ?? "") ||
+    !fullShaPattern.test(proposal.cherryPickParent ?? "") ||
+    !fullShaPattern.test(proposal.cherryPickTargetTree ?? "") ||
+    !/^[0-9a-f]{64}$/.test(proposal.historicalTailDigest ?? "") ||
+    !validCheckpointGenerationAudit(proposal.rejectedProposalAudit) ||
+    proposal.rejectedProposalAudit?.digest == null ||
+    !Number.isFinite(Date.parse(proposal.createdAt ?? ""))
+  ) {
+    return rejected("managed_execution_proposal_binding")
+  }
+
+  const context = checkpointContextDecision({
+    state,
+    task,
+    expectedTailInstructionIds: proposal.supersededTailInstructionIds,
+  })
+  if (!context.accepted) return context
+  if (
+    context.value.record.reconciliationId !== proposal.reconciliationId ||
+    context.value.record.head !== proposal.head ||
+    context.value.cherryPickCommit !== proposal.cherryPickCommit ||
+    context.value.historicalTailDigest !== proposal.historicalTailDigest ||
+    sha256(JSON.stringify(context.value.expectedChangedFiles)) !==
+      proposal.changedFilesDigest ||
+    context.value.expectedChangedFiles.length !== proposal.changedFileCount
+  ) {
+    return rejected("managed_execution_historical_binding")
+  }
+
+  const proposalIndexes = context.value.laterRuns
+    .map((run, index) =>
+      run?.instructionId === proposal.proposalInstructionId ? index : -1,
+    )
+    .filter((index) => index >= 0)
+  if (proposalIndexes.length !== 1) {
+    return rejected("managed_execution_proposal_run_count", {
+      runCount: proposalIndexes.length,
+    })
+  }
+  const proposalIndex = proposalIndexes[0]
+  const priorAttempts = checkpointGenerationAuditDecision({
+    state,
+    task,
+    runs: context.value.laterRuns.slice(0, proposalIndex),
+    record: context.value.record,
+    expectedChangedFiles: context.value.expectedChangedFiles,
+    expectedBinding: {
+      head: proposal.head,
+      tree: proposal.tree,
+      cherryPickCommit: proposal.cherryPickCommit,
+    },
+    currentInstructionId: proposal.proposalInstructionId,
+  })
+  if (!priorAttempts.accepted) return priorAttempts
+  if (
+    JSON.stringify(priorAttempts.value) !==
+    JSON.stringify(proposal.rejectedProposalAudit)
+  ) {
+    return rejected("managed_execution_generation_audit_drift")
+  }
+
+  const proposalRun = context.value.laterRuns[proposalIndex]
+  const proposalChangedFiles = normalizedChangedFiles(proposalRun?.changedFiles)
+  if (
+    proposalRun?.status !== "needs_owner" ||
+    proposalRun.turnCount !== 0 ||
+    proposalRun.originIssueNumber !== proposal.originIssueNumber ||
+    proposalRun.originIssueUrl !== proposal.originIssueUrl ||
+    proposalRun.threadId !== proposal.threadId ||
+    proposalRun.workspacePath !== proposal.workspacePath ||
+    proposalRun.branch !== proposal.branch ||
+    proposalRun.resultArtifact !== null ||
+    !sameStringArray(proposalRun.commits, [proposal.head]) ||
+    proposalChangedFiles.status !== "valid" ||
+    sha256(JSON.stringify(proposalChangedFiles.files)) !==
+      proposal.changedFilesDigest
+  ) {
+    return rejected("managed_execution_proposal_run_binding")
+  }
+
+  const postProposalRuns = context.value.laterRuns.slice(proposalIndex + 1)
+  const postInstructionIds = postProposalRuns.map((run) => run?.instructionId)
+  if (
+    postInstructionIds.some((instructionId) =>
+      typeof instructionId !== "string" || !instructionId
+    ) ||
+    new Set(postInstructionIds).size !== postInstructionIds.length
+  ) {
+    return rejected("managed_execution_post_proposal_ambiguous")
+  }
+  const controls = listAgentControls(task.issue, task.comments)
+  for (const run of postProposalRuns) {
+    const matchingControls = controls.filter(
+      (control) => control.instructionId === run.instructionId,
+    )
+    const changedFiles = normalizedChangedFiles(run.changedFiles)
+    const commitsMatch =
+      sameStringArray(run.commits, []) ||
+      sameStringArray(run.commits, [proposal.head])
+    const filesMatch =
+      changedFiles.status === "valid" &&
+      (sameStringArray(changedFiles.files, []) ||
+        sha256(JSON.stringify(changedFiles.files)) ===
+          proposal.changedFilesDigest)
+    if (
+      matchingControls.length !== 1 ||
+      gitReconciliationCheckpointInstructionKind(matchingControls[0]) !==
+        "activation" ||
+      matchingControls[0].action !== "continue" ||
+      (matchingControls[0].ownerApprovalRequired &&
+        !(
+          run.turnCount === 0 &&
+          run.status === "needs_owner" &&
+          run.ownerRequest?.method === "control-plane/ownerGate" &&
+          sameStringArray(run.ownerGates, [run.ownerRequest.reason])
+        )) ||
+      !new Set(["needs_owner", "needs_review"]).has(run.status) ||
+      !new Set([0, 1]).has(run.turnCount) ||
+      run.originIssueNumber !== proposal.originIssueNumber ||
+      run.originIssueUrl !== proposal.originIssueUrl ||
+      run.threadId !== proposal.threadId ||
+      run.workspacePath !== proposal.workspacePath ||
+      run.branch !== proposal.branch ||
+      !commitsMatch ||
+      !filesMatch ||
+      !Array.isArray(run.blockers) ||
+      run.blockers.length !== 0
+    ) {
+      return rejected("managed_execution_post_proposal_binding", {
+        instructionId: run.instructionId,
+      })
+    }
+    if (
+      run.turnCount === 0 &&
+      (run.resultArtifact !== null ||
+        !sameStringArray(run.commits, []) ||
+        !sameStringArray(changedFiles.files, []) ||
+        (matchingControls[0].ownerApprovalRequired &&
+          (!Array.isArray(run.productionReadback) ||
+            run.productionReadback.length !== 0 ||
+            !Array.isArray(run.safetyFindings) ||
+            run.safetyFindings.length !== 0 ||
+            !Array.isArray(run.branchPushState) ||
+            run.branchPushState.length !== 0)))
+    ) {
+      return rejected("managed_execution_post_proposal_zero_turn", {
+        instructionId: run.instructionId,
+      })
+    }
+    if (
+      run.turnCount === 1 &&
+      (!run.resultArtifact ||
+        !sameStringArray(run.commits, [proposal.head]) ||
+        sha256(JSON.stringify(changedFiles.files)) !==
+          proposal.changedFilesDigest ||
+        !Array.isArray(run.branchPushState) ||
+        !run.branchPushState.includes("Push/PR: **NOT ATTEMPTED**"))
+    ) {
+      return rejected("managed_execution_post_proposal_turn_evidence", {
+        instructionId: run.instructionId,
+      })
+    }
+  }
+
+  return accepted({
+    proposal,
+    context: context.value,
+    postProposalAuditDigest: sha256(
+      stableJson(
+        postProposalRuns.map((run) => ({
+          instructionId: run.instructionId,
+          runDigest: sha256(stableJson(run)),
+        })),
+      ),
+    ),
+  })
+}
+
+async function managedExecutionPostStateDecision({
+  proposal,
+  workspacePath,
+  repository,
+  pullRequestLookup,
+}) {
+  const [branch, head, tree, status, branchHead, parent, count, mergeBase,
+    sourceIdentity, resultIdentity, sourceChangedFiles, resultChangedFiles,
+    remote, pullRequestNumbers, diffCheck] = await Promise.all([
+    git(["branch", "--show-current"], workspacePath),
+    git(["rev-parse", "HEAD"], workspacePath),
+    git(["rev-parse", "HEAD^{tree}"], workspacePath),
+    git(["status", "--porcelain=v1", "-z"], workspacePath, { trim: false }),
+    git(["rev-parse", `refs/heads/${proposal.branch}`], workspacePath),
+    git(["rev-parse", "HEAD^"], workspacePath),
+    git(["rev-list", "--count", `${proposal.head}..HEAD`], workspacePath),
+    git(["merge-base", proposal.head, "HEAD"], workspacePath),
+    git(
+      ["show", "-s", "--format=%an%x00%ae%x00%aI%x00%B", proposal.cherryPickCommit],
+      workspacePath,
+      { trim: false },
+    ),
+    git(["show", "-s", "--format=%an%x00%ae%x00%aI%x00%B", "HEAD"], workspacePath, {
+      trim: false,
+    }),
+    git(
+      ["diff", "--name-only", `${proposal.cherryPickParent}..${proposal.cherryPickCommit}`],
+      workspacePath,
+    ),
+    git(["diff", "--name-only", `${proposal.head}..HEAD`], workspacePath),
+    git(
+      ["ls-remote", "--heads", "origin", `refs/heads/${proposal.branch}`],
+      workspacePath,
+    ),
+    pullRequestLookup({ repository, branch: proposal.branch, cwd: workspacePath }),
+    git(["diff", "--check"], workspacePath),
+  ])
+  if (branch !== proposal.branch) return rejected("managed_execution_post_branch")
+  if (status !== "") return rejected("managed_execution_post_dirty")
+  if (branchHead !== head) return rejected("managed_execution_post_branch_head")
+  if (
+    parent !== proposal.head ||
+    count !== "1" ||
+    mergeBase !== proposal.head
+  ) {
+    return rejected("managed_execution_post_lineage")
+  }
+  if (tree !== proposal.cherryPickTargetTree) {
+    return rejected("managed_execution_post_tree")
+  }
+  if (sourceIdentity !== resultIdentity) {
+    return rejected("managed_execution_post_commit_identity")
+  }
+  const sourceFiles = sourceChangedFiles.split("\n").filter(Boolean).sort()
+  const resultFiles = resultChangedFiles.split("\n").filter(Boolean).sort()
+  if (!sourceFiles.length || !sameStringArray(sourceFiles, resultFiles)) {
+    return rejected("managed_execution_post_changed_files")
+  }
+  if (remote !== "") return rejected("managed_execution_post_remote")
+  if (!Array.isArray(pullRequestNumbers) || pullRequestNumbers.length !== 0) {
+    return rejected("managed_execution_post_pull_request")
+  }
+  if (diffCheck !== "") return rejected("managed_execution_post_diff_check")
+  return accepted({
+    head,
+    tree,
+    sourceChangedFiles: sourceFiles,
+    remoteIntegrationBranch: "absent",
+    pullRequestCount: 0,
+  })
+}
+
+async function noGitOperationDecision(gitDirectory, prefix) {
+  for (const marker of gitOperationMarkers) {
+    if (await optionalPathExists(path.join(gitDirectory, marker))) {
+      return rejected(`${prefix}_operation_marker`)
+    }
+  }
+  for (const directory of gitOperationDirectories) {
+    if (await optionalPathExists(path.join(gitDirectory, directory))) {
+      return rejected(`${prefix}_operation_directory`)
+    }
+  }
+  return accepted(null)
+}
+
+export async function prepareGitReconciliationCheckpointExecution({
+  state,
+  instruction,
+  task,
+  workspacePath,
+  workspaceRoot,
+  checkoutPath,
+  repository,
+  baseRef,
+  now = new Date(),
+  pullRequestLookup = githubPullRequestNumbers,
+  onDiagnostic = null,
+}) {
+  if (gitReconciliationCheckpointInstructionKind(instruction) !== "execution") {
+    return null
+  }
+  const finish = (decision) => reportDecision(decision, onDiagnostic)
+  try {
+    const parsed = parseCheckpointManagedExecutionPrompt(instruction.prompt)
+    if (!parsed || parsed.malformed) {
+      return finish(rejected("managed_execution_prompt"))
+    }
+    const control = checkpointControlDecision({ state, instruction, task })
+    if (!control.accepted) return finish(control)
+    if (repository !== "Sillyquack/koalafrog-hq") {
+      return finish(rejected("managed_execution_repository"))
+    }
+    const bound = checkpointManagedExecutionProposalDecision({
+      state,
+      task,
+      parsed,
+    })
+    if (!bound.accepted) return finish(bound)
+    const { proposal, context, postProposalAuditDigest } = bound.value
+    const currentHead = await git(["rev-parse", "HEAD"], workspacePath)
+    const metadata = await linkedWorktreeMetadataDecision({
+      state,
+      workspacePath,
+      workspaceRoot,
+      checkoutPath,
+      record: { ...context.record, head: currentHead },
+      cherryPickCommit: proposal.cherryPickCommit,
+    })
+    if (!metadata.accepted) return finish(metadata)
+    if (
+      proposal.gitDirectory !== metadata.value.gitDirectory ||
+      proposal.commonDirectory !== metadata.value.commonDirectory
+    ) {
+      return finish(rejected("managed_execution_metadata_binding"))
+    }
+    const operation = await noGitOperationDecision(
+      metadata.value.gitDirectory,
+      "managed_execution",
+    )
+    if (!operation.accepted) return finish(operation)
+
+    const checkpoints = state.gitReconciliationCheckpoints
+    const allowedKinds = new Set([
+      "proposal",
+      "activation",
+      "execution_intent",
+      "execution_receipt",
+    ])
+    if (checkpoints.some((record) => !allowedKinds.has(record?.kind))) {
+      return finish(rejected("managed_execution_record_kind"))
+    }
+    const activations = checkpoints.filter((record) => record.kind === "activation")
+    if (
+      activations.length > 1 ||
+      activations.some(
+        (record) =>
+          record.checkpointId !== proposal.checkpointId ||
+          record.generationId !== proposal.generationId ||
+          record.branch !== proposal.branch ||
+          record.head !== proposal.head ||
+          record.tree !== proposal.tree ||
+          record.cherryPickCommit !== proposal.cherryPickCommit,
+      )
+    ) {
+      return finish(rejected("managed_execution_activation_conflict"))
+    }
+    const intents = checkpoints.filter((record) => record.kind === "execution_intent")
+    const receipts = checkpoints.filter((record) => record.kind === "execution_receipt")
+    if (intents.length > 1 || receipts.length > 1) {
+      return finish(rejected("managed_execution_record_ambiguous", {
+        intentCount: intents.length,
+        receiptCount: receipts.length,
+      }))
+    }
+
+    const sourceChangedFiles = (
+      await git(
+        ["diff", "--name-only", `${proposal.cherryPickParent}..${proposal.cherryPickCommit}`],
+        workspacePath,
+      )
+    ).split("\n").filter(Boolean).sort()
+    if (!sourceChangedFiles.length) {
+      return finish(rejected("managed_execution_source_empty"))
+    }
+    const binding = {
+      schemaVersion: 1,
+      kind: "execution_intent",
+      executionId: null,
+      checkpointId: proposal.checkpointId,
+      generation: proposal.generation,
+      generationId: proposal.generationId,
+      operationScope: checkpointOperationScope,
+      executionInstructionId: instruction.instructionId,
+      executionPromptDigest: checkpointPromptDigest(instruction.prompt),
+      reconciliationId: proposal.reconciliationId,
+      historicalTailDigest: proposal.historicalTailDigest,
+      rejectedProposalAuditDigest: proposal.rejectedProposalAudit.digest,
+      postProposalAuditDigest,
+      originIssueNumber: proposal.originIssueNumber,
+      originIssueUrl: proposal.originIssueUrl,
+      threadId: proposal.threadId,
+      workspacePath: proposal.workspacePath,
+      branch: proposal.branch,
+      head: proposal.head,
+      tree: proposal.tree,
+      baseCommit: proposal.baseCommit,
+      cherryPickCommit: proposal.cherryPickCommit,
+      cherryPickParent: proposal.cherryPickParent,
+      cherryPickTargetTree: proposal.cherryPickTargetTree,
+      sourceChangedFilesDigest: sha256(JSON.stringify(sourceChangedFiles)),
+      sourceChangedFileCount: sourceChangedFiles.length,
+      changedFilesDigest: proposal.changedFilesDigest,
+      changedFileCount: proposal.changedFileCount,
+      gitDirectory: metadata.value.gitDirectory,
+      commonDirectory: metadata.value.commonDirectory,
+    }
+    binding.executionId = managedExecutionId(binding)
+    const record = { ...binding, createdAt: now.toISOString() }
+    const intent = intents[0] ?? null
+    if (
+      intent &&
+      (intent.executionId !== record.executionId ||
+        stableJson(managedExecutionRecordBinding(intent)) !==
+          stableJson(managedExecutionRecordBinding(record)) ||
+        !Number.isFinite(Date.parse(intent.createdAt ?? "")))
+    ) {
+      return finish(rejected("managed_execution_intent_conflict"))
+    }
+    if (!intent && receipts.length) {
+      return finish(rejected("managed_execution_receipt_without_intent"))
+    }
+
+    if (currentHead === proposal.head) {
+      if (receipts.length) {
+        return finish(rejected("managed_execution_receipt_pre_state"))
+      }
+      const fresh = await checkpointFreshVerificationDecision({
+        state,
+        workspacePath,
+        workspaceRoot,
+        checkoutPath,
+        baseRef,
+        repository,
+        pullRequestLookup,
+        context,
+        expectedTree: proposal.tree,
+      })
+      if (!fresh.accepted) return finish(fresh)
+      if (
+        fresh.value.metadata.gitDirectory !== proposal.gitDirectory ||
+        fresh.value.metadata.commonDirectory !== proposal.commonDirectory ||
+        fresh.value.baseCommit !== proposal.baseCommit ||
+        fresh.value.cherryPickParent !== proposal.cherryPickParent ||
+        fresh.value.cherryPickTargetTree !== proposal.cherryPickTargetTree ||
+        sha256(JSON.stringify(fresh.value.changedFiles)) !==
+          proposal.changedFilesDigest
+      ) {
+        return finish(rejected("managed_execution_fresh_binding"))
+      }
+      return accepted({
+        mode: "execute",
+        record: intent ?? record,
+        isNewIntent: !intent,
+        proposal,
+        verification: fresh.value,
+      })
+    }
+    if (!intent) {
+      return finish(rejected("managed_execution_unexpected_head"))
+    }
+    const post = await managedExecutionPostStateDecision({
+      proposal,
+      workspacePath,
+      repository,
+      pullRequestLookup,
+    })
+    if (!post.accepted) return finish(post)
+    if (
+      sha256(JSON.stringify(post.value.sourceChangedFiles)) !==
+        intent.sourceChangedFilesDigest ||
+      post.value.sourceChangedFiles.length !== intent.sourceChangedFileCount
+    ) {
+      return finish(rejected("managed_execution_source_scope_drift"))
+    }
+    const receipt = {
+      schemaVersion: 1,
+      kind: "execution_receipt",
+      receiptId: managedExecutionReceiptId(intent, post.value.head),
+      executionId: intent.executionId,
+      checkpointId: intent.checkpointId,
+      generation: intent.generation,
+      generationId: intent.generationId,
+      executionInstructionId: intent.executionInstructionId,
+      branch: intent.branch,
+      parentHead: intent.head,
+      head: post.value.head,
+      tree: post.value.tree,
+      cherryPickCommit: intent.cherryPickCommit,
+      sourceChangedFilesDigest: intent.sourceChangedFilesDigest,
+      sourceChangedFileCount: intent.sourceChangedFileCount,
+      remoteIntegrationBranch: "absent",
+      pullRequestCount: 0,
+      completedAt: now.toISOString(),
+    }
+    if (receipts.length) {
+      const existing = receipts[0]
+      const comparable = { ...receipt, completedAt: existing.completedAt }
+      if (
+        existing.receiptId !== receipt.receiptId ||
+        stableJson(existing) !== stableJson(comparable) ||
+        !Number.isFinite(Date.parse(existing.completedAt ?? ""))
+      ) {
+        return finish(rejected("managed_execution_receipt_conflict"))
+      }
+      return accepted({
+        mode: "complete",
+        record: intent,
+        receipt: existing,
+        isNewIntent: false,
+        isNewReceipt: false,
+        proposal,
+        verification: post.value,
+      })
+    }
+    return accepted({
+      mode: "recover",
+      record: intent,
+      receipt,
+      isNewIntent: false,
+      isNewReceipt: true,
+      proposal,
+      verification: post.value,
+    })
+  } catch (error) {
+    return finish(
+      rejected("managed_execution_exception", {
+        errorName: typeof error?.name === "string" ? error.name : "Error",
+        ...(typeof error?.code === "string" &&
+        new Set(["ENOENT", "EACCES", "EPERM"]).has(error.code)
+          ? { errorCode: error.code }
+          : {}),
+      }),
+    )
+  }
+}
+
+export async function executeGitReconciliationCheckpointMutation({
+  plan,
+  execute = (args, options) => execFileAsync("git", args, options),
+}) {
+  if (!plan || plan.mode !== "execute" || !plan.record || !plan.proposal) {
+    return rejected("managed_execution_plan")
+  }
+  const intent = plan.record
+  const proposal = plan.proposal
+  if (
+    managedExecutionId(intent) !== intent.executionId ||
+    intent.checkpointId !== proposal.checkpointId ||
+    intent.generationId !== proposal.generationId ||
+    intent.workspacePath !== proposal.workspacePath ||
+    intent.branch !== proposal.branch ||
+    intent.head !== proposal.head ||
+    intent.tree !== proposal.tree ||
+    intent.cherryPickCommit !== proposal.cherryPickCommit ||
+    intent.gitDirectory !== proposal.gitDirectory ||
+    intent.commonDirectory !== proposal.commonDirectory
+  ) {
+    return rejected("managed_execution_plan_binding")
+  }
+  try {
+    const environment = Object.fromEntries(
+      Object.entries(process.env).filter(
+        ([key]) =>
+          !key.startsWith("GIT_") &&
+          !key.startsWith("DYLD_") &&
+          key !== "LD_PRELOAD",
+      ),
+    )
+    await execute(
+      [
+        "-c",
+        "core.hooksPath=/dev/null",
+        "-c",
+        "commit.gpgSign=false",
+        "-c",
+        "rerere.enabled=false",
+        "-c",
+        "core.fsmonitor=false",
+        "cherry-pick",
+        intent.cherryPickCommit,
+      ],
+      {
+        cwd: intent.workspacePath,
+        encoding: "utf8",
+        env: environment,
+        maxBuffer: 10 * 1024 * 1024,
+      },
+    )
+    return accepted({ executionId: intent.executionId })
+  } catch (error) {
+    return rejected("managed_execution_git_failed", {
+      ...(typeof error?.code === "number" ? { exitCode: error.code } : {}),
+      errorName: typeof error?.name === "string" ? error.name : "Error",
+    })
   }
 }
 

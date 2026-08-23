@@ -5,7 +5,10 @@ import path from "node:path"
 import test from "node:test"
 import { AppServerClient, classifyServerRequest } from "../src/app-server.mjs"
 import { extractAgentControls, shouldConsumeInstruction } from "../src/control-plane.mjs"
-import { gitReconciliationCheckpointProposalPrompt } from "../src/git-execution-boundary.mjs"
+import {
+  gitReconciliationCheckpointManagedExecutionPrompt,
+  gitReconciliationCheckpointProposalPrompt,
+} from "../src/git-execution-boundary.mjs"
 import {
   beginInstruction,
   ensureTaskThread,
@@ -362,6 +365,190 @@ ${prompt
   })
   assert.equal((await restarted.runOnce()).status, "idle")
   assert.equal(proposalCalls, 1)
+  assert.equal(posted.filter((body) => body.includes("agent_result:")).length, 1)
+})
+
+test("managed checkpoint execution persists intent and receipt once without a Codex turn across restart", async (t) => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "koalafrog-managed-execution-"))
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const storeOptions = {
+    stateDirectory: directory,
+    repository: "Sillyquack/koalafrog-hq",
+    issueNumber: 63,
+  }
+  const store = new StateStore(storeOptions)
+  const state = await store.load()
+  const checkpointId = `git-reconciliation-checkpoint:${"a".repeat(64)}`
+  const generationId =
+    `git-reconciliation-checkpoint-generation:${"b".repeat(64)}`
+  const reconciliationId =
+    `authorized-workspace-branch:production-day1-git-reconciliation-008:production-day1-git-reconciliation-resume-010:${issue63ReconciledHead}`
+  const tree = "2330f747713ce620c7927c2c505c622b40e18386"
+  const cherryPickCommit = "a74079be88ec4a8b36b850f95dca791ff42e4e80"
+  const postHead = "d".repeat(40)
+  const prompt = gitReconciliationCheckpointManagedExecutionPrompt({
+    checkpointId,
+    generationId,
+    reconciliationId,
+    head: issue63ReconciledHead,
+    tree,
+    cherryPickCommit,
+  })
+  const instructionId =
+    "production-day1-git-reconciliation-checkpoint-generation-execution-024"
+  const control = controlBlock({
+    action: "continue",
+    instructionId,
+    prompt,
+    taskState: "needs_review",
+  })
+  state.status = "needs_review"
+  state.task.originIssueUrl = issue63OriginUrl
+  state.threadId = issue63ThreadId
+  state.workspacePath = issue63WorkspacePath
+  state.branch = issue63ReconciledBranch
+  state.gitReconciliationCheckpoints = [{ kind: "proposal", checkpointId }]
+  await store.save(state)
+
+  const comments = [{ body: control }]
+  const posted = []
+  const controlPlane = {
+    async fetchTask() {
+      return {
+        issue: { issue_number: 63, html_url: issue63OriginUrl, body: "" },
+        comments,
+      }
+    },
+    async postComment(body) {
+      posted.push(body)
+      comments.push({ body })
+    },
+  }
+  const intent = {
+    kind: "execution_intent",
+    executionId: `git-reconciliation-checkpoint-execution:${"c".repeat(64)}`,
+    checkpointId,
+    generation: 2,
+    generationId,
+    head: issue63ReconciledHead,
+  }
+  const receipt = {
+    kind: "execution_receipt",
+    receiptId:
+      `git-reconciliation-checkpoint-execution-receipt:${"e".repeat(64)}`,
+    executionId: intent.executionId,
+    checkpointId,
+    generation: 2,
+    generationId,
+    parentHead: issue63ReconciledHead,
+    head: postHead,
+  }
+  let executeCalls = 0
+  let turnCalls = 0
+  const workspace = {
+    ...fakeWorkspace(),
+    async ensureWorkspace() {
+      return { path: issue63WorkspacePath, branch: issue63ReconciledBranch }
+    },
+    async inspectWorkspace() {
+      return {
+        branch: issue63ReconciledBranch,
+        commits: executeCalls ? [postHead] : [issue63ReconciledHead],
+        changedFiles: ["fixture.txt"],
+      }
+    },
+    async prepareGitReconciliationCheckpointExecution({ state }) {
+      const persistedIntent = state.gitReconciliationCheckpoints.find(
+        (record) => record.kind === "execution_intent",
+      )
+      const persistedReceipt = state.gitReconciliationCheckpoints.find(
+        (record) => record.kind === "execution_receipt",
+      )
+      if (persistedReceipt) {
+        return {
+          accepted: true,
+          value: {
+            mode: "complete",
+            record: persistedIntent,
+            receipt: persistedReceipt,
+            isNewIntent: false,
+            isNewReceipt: false,
+          },
+        }
+      }
+      if (persistedIntent && executeCalls) {
+        return {
+          accepted: true,
+          value: {
+            mode: "recover",
+            record: persistedIntent,
+            receipt,
+            isNewIntent: false,
+            isNewReceipt: true,
+          },
+        }
+      }
+      return {
+        accepted: true,
+        value: {
+          mode: "execute",
+          record: persistedIntent ?? intent,
+          isNewIntent: !persistedIntent,
+        },
+      }
+    },
+    async executeGitReconciliationCheckpointMutation() {
+      executeCalls += 1
+      return { accepted: true, value: { executionId: intent.executionId } }
+    },
+  }
+  const appServer = {
+    async start() {},
+    async stop() {},
+    async runTurn() {
+      turnCalls += 1
+      throw new Error("Managed execution must not start a Codex turn")
+    },
+  }
+  const config = { ...runtimeConfig(directory), issueNumber: 63 }
+  const first = new Orchestrator(config, {
+    appServer,
+    controlPlane,
+    store,
+    workspace,
+  })
+  const completed = await first.runOnce()
+  assert.equal(completed.status, "needs_review")
+  assert.equal(executeCalls, 1)
+  assert.equal(turnCalls, 0)
+  assert.equal(posted.filter((body) => body.includes("agent_result:")).length, 1)
+  assert.equal(posted.some((body) => body.includes("agent_pickup:")), false)
+
+  const persisted = await new StateStore(storeOptions).load()
+  assert.equal(
+    persisted.gitReconciliationCheckpoints.filter(
+      (record) => record.kind === "execution_intent",
+    ).length,
+    1,
+  )
+  assert.equal(
+    persisted.gitReconciliationCheckpoints.filter(
+      (record) => record.kind === "execution_receipt",
+    ).length,
+    1,
+  )
+  assert.equal(persisted.runs.at(-1).turnCount, 0)
+  assert.equal(persisted.runs.at(-1).commits[0], postHead)
+  assert.equal(persisted.runs.at(-1).checks.diffCheck, "pass")
+
+  const restarted = new Orchestrator(config, {
+    appServer,
+    controlPlane,
+    store: new StateStore(storeOptions),
+    workspace,
+  })
+  assert.equal((await restarted.runOnce()).status, "idle")
+  assert.equal(executeCalls, 1)
   assert.equal(posted.filter((body) => body.includes("agent_result:")).length, 1)
 })
 
