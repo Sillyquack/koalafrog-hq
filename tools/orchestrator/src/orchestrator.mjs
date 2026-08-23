@@ -1893,6 +1893,10 @@ export class Orchestrator {
           branch: state.branch,
           head: proposal.value.record.head,
           tree: proposal.value.record.tree,
+          generation: proposal.value.record.generation ?? null,
+          generationId: proposal.value.record.generationId ?? null,
+          rejectedProposalAuditDigest:
+            proposal.value.record.rejectedProposalAudit?.digest ?? null,
           supersededRunCount:
             proposal.value.record.supersededTailInstructionIds.length,
         })
@@ -1965,6 +1969,8 @@ export class Orchestrator {
           issueNumber: state.task.originIssueNumber,
           branch: state.branch,
           head: gitExecutionBoundary.head,
+          generation: gitExecutionBoundary.checkpointGeneration ?? null,
+          generationId: gitExecutionBoundary.checkpointGenerationId ?? null,
         })
       }
     }
@@ -1985,6 +1991,10 @@ export class Orchestrator {
           gitExecutionBoundary.interveningExecutionInstructionIds?.length ?? 0,
         writablePathCount: gitExecutionBoundary.writablePaths.length,
         checkpointId: gitExecutionBoundary.checkpointId ?? null,
+        checkpointGeneration:
+          gitExecutionBoundary.checkpointGeneration ?? null,
+        checkpointGenerationId:
+          gitExecutionBoundary.checkpointGenerationId ?? null,
       })
     } else {
       await this.store.appendEvent({
