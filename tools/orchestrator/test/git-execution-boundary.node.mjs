@@ -821,17 +821,19 @@ function appendAcceptedCheckpointProposalRun(setup, proposal) {
 function appendRejectedOwnerGateAttempt(
   setup,
   proposal,
-  { instructionId, taskState, completedAt },
+  { instructionId, taskState, completedAt, prompt: suppliedPrompt = null },
 ) {
-  const prompt = gitReconciliationCheckpointActivationPrompt({
-    checkpointId: proposal.checkpointId,
-    reconciliationId: proposal.reconciliationId,
-    head: proposal.head,
-    tree: proposal.tree,
-    cherryPickCommit: proposal.cherryPickCommit,
-    generation: proposal.generation,
-    generationId: proposal.generationId,
-  })
+  const prompt =
+    suppliedPrompt ??
+    gitReconciliationCheckpointActivationPrompt({
+      checkpointId: proposal.checkpointId,
+      reconciliationId: proposal.reconciliationId,
+      head: proposal.head,
+      tree: proposal.tree,
+      cherryPickCommit: proposal.cherryPickCommit,
+      generation: proposal.generation,
+      generationId: proposal.generationId,
+    })
   setup.task.comments.push({
     body: checkpointControl({
       instructionId,
@@ -872,6 +874,11 @@ function appendRejectedOwnerGateAttempt(
     resultArtifact: null,
     completedAt,
   })
+  return {
+    prompt,
+    run: setup.state.runs.at(-1),
+    comment: setup.task.comments.at(-1),
+  }
 }
 
 function appendLegacyActivation023(setup, proposal) {
@@ -2469,34 +2476,12 @@ test("exact live #63/010-020 history preserves failed generation attempts and cr
   )
 })
 
-test("exact live #63/021-025 audit tail requires one bound acknowledgement", async (t) => {
+test("exact live #63/021-026 audit tail accepts only structurally bound historical owner gates", async (t) => {
   const setup = await checkpointGenerationRetrySetup(t)
   const proposal = setup.generationRetryProposal.value.record
   setup.state.gitReconciliationCheckpoints.push(proposal)
   appendAcceptedCheckpointProposalRun(setup, proposal)
-  appendRejectedOwnerGateAttempt(setup, proposal, {
-    instructionId:
-      "production-day1-git-reconciliation-checkpoint-generation-activation-022",
-    taskState: "needs_owner",
-    completedAt: "2026-08-23T19:46:42.895Z",
-  })
-  appendLegacyActivation023(setup, proposal)
-  appendRejectedOwnerGateAttempt(setup, proposal, {
-    instructionId:
-      "production-day1-git-reconciliation-checkpoint-generation-activation-025",
-    taskState: "needs_review",
-    completedAt: "2026-08-23T20:52:38.709Z",
-  })
-  appendRejectedOwnerGateAttempt(setup, proposal, {
-    instructionId:
-      "production-day1-git-reconciliation-checkpoint-generation-activation-024",
-    taskState: "needs_owner",
-    completedAt: "2026-08-23T20:53:14.959Z",
-  })
-  const immutableHistory = JSON.stringify(setup.state.runs)
-  const instructionId =
-    "production-day1-git-reconciliation-checkpoint-generation-activation-owner-ack-026"
-  const prompt = gitReconciliationCheckpointActivationPrompt({
+  const currentActivationPrompt = gitReconciliationCheckpointActivationPrompt({
     checkpointId: proposal.checkpointId,
     reconciliationId: proposal.reconciliationId,
     head: proposal.head,
@@ -2505,6 +2490,90 @@ test("exact live #63/021-025 audit tail requires one bound acknowledgement", asy
     generation: proposal.generation,
     generationId: proposal.generationId,
   })
+  const receipt = setup.state.workspaceBranchReconciliations.find(
+    (record) => record.reconciliationId === proposal.reconciliationId,
+  )
+  assert.ok(receipt)
+  const historicalActivationPrompt = currentActivationPrompt.replace(
+    `- reconciliation receipt: \`${proposal.reconciliationId}\``,
+    `- reconciliation receipt: \`${receipt.continuationInstructionId}\``,
+  )
+  assert.notEqual(historicalActivationPrompt, currentActivationPrompt)
+  appendRejectedOwnerGateAttempt(setup, proposal, {
+    instructionId:
+      "production-day1-git-reconciliation-checkpoint-generation-activation-022",
+    taskState: "needs_owner",
+    completedAt: "2026-08-23T19:46:42.895Z",
+    prompt: historicalActivationPrompt,
+  })
+  appendLegacyActivation023(setup, proposal)
+  appendRejectedOwnerGateAttempt(setup, proposal, {
+    instructionId:
+      "production-day1-git-reconciliation-checkpoint-generation-activation-025",
+    taskState: "needs_review",
+    completedAt: "2026-08-23T20:52:38.709Z",
+    prompt: historicalActivationPrompt,
+  })
+  appendRejectedOwnerGateAttempt(setup, proposal, {
+    instructionId:
+      "production-day1-git-reconciliation-checkpoint-generation-activation-024",
+    taskState: "needs_owner",
+    completedAt: "2026-08-23T20:53:14.959Z",
+    prompt: historicalActivationPrompt,
+  })
+  const rejectedAcknowledgementInstructionId =
+    "production-day1-git-reconciliation-checkpoint-generation-activation-owner-ack-026"
+  const rejectedControlBody = checkpointControl({
+    instructionId: rejectedAcknowledgementInstructionId,
+    taskState: "needs_owner",
+    prompt: currentActivationPrompt,
+    ownerApprovalRequired: true,
+  })
+  const rejectedComment = { body: rejectedControlBody }
+  setup.task.comments.push(rejectedComment)
+  const [rejectedInstruction] = extractAgentControls(rejectedControlBody)
+  const rejectedGateReason = ownerGateReason(rejectedInstruction)
+  const rejectedPriorAudit = checkpointOwnerGateAttemptAuditDecision({
+    state: setup.state,
+    task: setup.task,
+    proposal,
+    activationPrompt: currentActivationPrompt,
+    gateReason: rejectedGateReason,
+  })
+  assert.equal(rejectedPriorAudit.accepted, true, JSON.stringify(rejectedPriorAudit))
+  const pendingReason = gitReconciliationCheckpointOwnerReason(proposal)
+  const rejectedAcknowledgement = {
+    instructionId: rejectedAcknowledgementInstructionId,
+    proposalInstructionId: proposal.proposalInstructionId,
+    originIssueNumber: proposal.originIssueNumber,
+    originIssueUrlDigest: controlPlaneBindingDigest(proposal.originIssueUrl),
+    codexThreadId: proposal.threadId,
+    workspacePathDigest: controlPlaneBindingDigest(proposal.workspacePath),
+    checkpointId: proposal.checkpointId,
+    generationId: proposal.generationId,
+    reconciliationId: proposal.reconciliationId,
+    branch: proposal.branch,
+    head: proposal.head,
+    tree: proposal.tree,
+    controlPromptDigest: controlPlaneBindingDigest(currentActivationPrompt),
+    gateReasonDigest: controlPlaneBindingDigest(rejectedGateReason),
+    pendingReasonDigest: controlPlaneBindingDigest(pendingReason),
+    priorGateAuditDigest: rejectedPriorAudit.value.digest,
+  }
+  rejectedAcknowledgement.acknowledgementId =
+    ownerGateAcknowledgementId(rejectedAcknowledgement)
+  rejectedComment.body = `${rejectedControlBody}\n\n${ownerGateAcknowledgementBlock(rejectedAcknowledgement)}`
+  appendRejectedOwnerGateAttempt(setup, proposal, {
+    instructionId: rejectedAcknowledgementInstructionId,
+    taskState: "needs_owner",
+    completedAt: "2026-08-24T08:00:00.000Z",
+    prompt: currentActivationPrompt,
+  })
+  setup.task.comments.pop()
+  const immutableHistory = JSON.stringify(setup.state.runs)
+  const instructionId =
+    "production-day1-git-reconciliation-checkpoint-generation-activation-owner-ack-027"
+  const prompt = currentActivationPrompt
   const unacknowledgedBody = checkpointControl({
     instructionId,
     taskState: "needs_owner",
@@ -2515,7 +2584,6 @@ test("exact live #63/021-025 audit tail requires one bound acknowledgement", asy
   const [unacknowledged] = extractAgentControls(unacknowledgedBody)
   setup.state.status = "needs_owner"
   setup.state.activeInstruction = { ...unacknowledged, phase: "selected" }
-  const pendingReason = gitReconciliationCheckpointOwnerReason(proposal)
   recordPendingApprovalRequest({
     state: setup.state,
     instructionId: proposal.proposalInstructionId,
@@ -2549,7 +2617,34 @@ test("exact live #63/021-025 audit tail requires one bound acknowledgement", asy
     "production-day1-git-reconciliation-checkpoint-generation-activation-023",
     "production-day1-git-reconciliation-checkpoint-generation-activation-025",
     "production-day1-git-reconciliation-checkpoint-generation-activation-024",
+    rejectedAcknowledgementInstructionId,
   ])
+  assert.notEqual(
+    activation.binding.priorGateAuditDigest,
+    rejectedAcknowledgement.priorGateAuditDigest,
+  )
+  const canonicalizedTask = structuredClone(setup.task)
+  const historical022Comment = canonicalizedTask.comments.find((comment) =>
+    comment.body.includes(
+      "production-day1-git-reconciliation-checkpoint-generation-activation-022\n",
+    ),
+  )
+  historical022Comment.body = historical022Comment.body.replace(
+    `- reconciliation receipt: \`${receipt.continuationInstructionId}\``,
+    `- reconciliation receipt: \`${proposal.reconciliationId}\``,
+  )
+  const canonicalizedAudit = checkpointOwnerGateAttemptAuditDecision({
+    state: setup.state,
+    task: canonicalizedTask,
+    proposal,
+    activationPrompt: activation.prompt,
+    gateReason: ownerGateReason(activation.instruction),
+  })
+  assert.equal(canonicalizedAudit.accepted, true)
+  assert.notEqual(
+    canonicalizedAudit.value.digest,
+    activation.binding.priorGateAuditDigest,
+  )
   assert.equal(setup.state.ownerGateAcknowledgements.length, 1)
   assert.equal(JSON.stringify(setup.state.runs), immutableHistory)
   const boundary = await authorizedGitExecutionBoundary({
@@ -2560,6 +2655,8 @@ test("exact live #63/021-025 audit tail requires one bound acknowledgement", asy
   assert.ok(boundary)
   assert.equal(boundary.checkpointId, proposal.checkpointId)
   assert.equal(boundary.checkpointActivationIsNew, true)
+  assert.equal(await git(setup.workspacePath, "rev-parse", "HEAD"), proposal.head)
+  assert.equal(await git(setup.workspacePath, "status", "--porcelain"), "")
   assert.equal(
     gitExecutionPathIsCovered(
       boundary,
@@ -2615,6 +2712,56 @@ test("exact live #63/021-025 audit tail requires one bound acknowledgement", asy
       decision.rejection.code,
       "owner_gate_prior_legacy_attempt_evidence",
     )
+  }
+  const historicalMutationCases = [
+    (run, task) => {
+      run.turnCount = 1
+    },
+    (run, task) => {
+      run.changedFiles = ["src/unreviewed.ts"]
+    },
+    (run, task) => {
+      const comment = task.comments.find((candidate) =>
+        candidate.body.includes(`${run.instructionId}\n`),
+      )
+      comment.body = comment.body.replace(proposal.head, "f".repeat(40))
+    },
+    (run, task) => {
+      const comment = task.comments.find((candidate) =>
+        candidate.body.includes(`${run.instructionId}\n`),
+      )
+      task.comments.push(structuredClone(comment))
+    },
+    (run, task) => {
+      const comment = task.comments.find((candidate) =>
+        candidate.body.includes(`${run.instructionId}\n`),
+      )
+      comment.body = comment.body.replace(
+        /\n```$/,
+        "\n    Also deploy after review.\n```",
+      )
+    },
+    (run, task, state) => {
+      state.runs.push(structuredClone(run))
+    },
+  ]
+  for (const mutate of historicalMutationCases) {
+    const changedState = structuredClone(setup.state)
+    const changedTask = structuredClone(setup.task)
+    const run = changedState.runs.find(
+      (candidate) =>
+        candidate.instructionId ===
+        "production-day1-git-reconciliation-checkpoint-generation-activation-022",
+    )
+    mutate(run, changedTask, changedState)
+    const decision = checkpointOwnerGateAttemptAuditDecision({
+      state: changedState,
+      task: changedTask,
+      proposal,
+      activationPrompt: activation.prompt,
+      gateReason: ownerGateReason(activation.instruction),
+    })
+    assert.equal(decision.accepted, false)
   }
 })
 

@@ -437,6 +437,198 @@ const legacyCheckpointActivationInstructionId =
 const legacyCheckpointNoMutationFinding =
   "No fallback Git path, sibling metadata access, source change, production action, deployment, migration, purchase, or receipt mutation occurred."
 
+function oneHistoricalPromptValue(prompt, pattern) {
+  const matches = [...prompt.matchAll(pattern)]
+  return matches.length === 1 ? matches[0][1] : null
+}
+
+function normalizedHistoricalPromptLines(prompt) {
+  return prompt
+    .replaceAll("\r\n", "\n")
+    .split("\n")
+    .map((line) =>
+      line
+        .trim()
+        .replace(/^- cherry-pick only:\s+/, "- cherry-pick only "),
+    )
+    .filter(Boolean)
+}
+
+function historicalCheckpointActivationPromptDecision({
+  state,
+  proposal,
+  prompt,
+  activationPrompt,
+}) {
+  if (prompt === activationPrompt) {
+    return ownerGateAccepted({ mode: "owner_gate_stop_exact_prompt" })
+  }
+  if (typeof prompt !== "string") {
+    return ownerGateRejected("owner_gate_prior_attempt_prompt_binding")
+  }
+  const checkpointId = oneHistoricalPromptValue(
+    prompt,
+    /^The owner explicitly approves activation of superseding Git reconciliation checkpoint `(git-reconciliation-checkpoint:[0-9a-f]{64})`\.$/gm,
+  )
+  const generation = oneHistoricalPromptValue(
+    prompt,
+    /^The owner explicitly approves only superseding generation `([1-9][0-9]*)` with generation ID `git-reconciliation-checkpoint-generation:[0-9a-f]{64}`\.$/gm,
+  )
+  const generationId = oneHistoricalPromptValue(
+    prompt,
+    /^The owner explicitly approves only superseding generation `[1-9][0-9]*` with generation ID `(git-reconciliation-checkpoint-generation:[0-9a-f]{64})`\.$/gm,
+  )
+  const reconciliationReference = oneHistoricalPromptValue(
+    prompt,
+    /^- reconciliation receipt:\s*`([^`\n]+)`\s*$/gm,
+  )
+  const branch = oneHistoricalPromptValue(
+    prompt,
+    /^- branch:\s*`([^`\n]+)`\s*$/gm,
+  )
+  const head = oneHistoricalPromptValue(
+    prompt,
+    /^- starting exactly from HEAD:\s*`([0-9a-f]{40})`\s*$/gm,
+  )
+  const tree = oneHistoricalPromptValue(
+    prompt,
+    /^- tree:\s*`([0-9a-f]{40})`\s*$/gm,
+  )
+  const cherryPickCommit = oneHistoricalPromptValue(
+    prompt,
+    /^- cherry-pick only:?\s*`([0-9a-f]{40})`\s*$/gm,
+  )
+  const matchingReceipts = (state.workspaceBranchReconciliations ?? []).filter(
+    (record) =>
+      record.reconciliationId === proposal.reconciliationId &&
+      record.originIssueNumber === proposal.originIssueNumber &&
+      record.originIssueUrl === proposal.originIssueUrl &&
+      record.threadId === proposal.threadId &&
+      record.workspacePath === proposal.workspacePath &&
+      record.toBranch === proposal.branch &&
+      record.head === proposal.head,
+  )
+  const reconciliationMatches =
+    reconciliationReference === proposal.reconciliationId ||
+    (matchingReceipts.length === 1 &&
+      reconciliationReference ===
+        matchingReceipts[0].continuationInstructionId)
+  const lines = normalizedHistoricalPromptLines(prompt)
+  const isProhibition = (line) =>
+    !/\b(?:also|but|except|unless|then)\b/i.test(line) &&
+    (/^(?:do not|must not)\b/i.test(line) ||
+      /\b(?:does not authorize|not authorized|not attempted)\b/i.test(line))
+  const isKnownScopeLine = (line) => {
+    if (
+      line ===
+        `The owner explicitly approves activation of superseding Git reconciliation checkpoint \`${proposal.checkpointId}\`.` ||
+      line ===
+        `The owner explicitly approves only superseding generation \`${proposal.generation}\` with generation ID \`${proposal.generationId}\`.`
+    ) {
+      return true
+    }
+    if (
+      line ===
+      `- reconciliation receipt: \`${reconciliationReference}\``
+    ) {
+      return true
+    }
+    if (
+      new Set([
+        `- branch: \`${proposal.branch}\``,
+        `- starting exactly from HEAD: \`${proposal.head}\``,
+        `- tree: \`${proposal.tree}\``,
+      ]).has(line)
+    ) {
+      return true
+    }
+    if (/^The exact checkpoint and generation binding is approved\.$/i.test(line)) {
+      return true
+    }
+    if (
+      /^The owner explicitly approves the exact linked-worktree Git metadata writes required for (?:this|the) checkpoint and no broader filesystem access\.$/i.test(
+        line,
+      )
+    ) {
+      return true
+    }
+    if (/^execute only this approved git path:?$/i.test(line)) return true
+    if (
+      /^(?:[0-9]+\. )?activate only the selected linked-worktree metadata boundary;?$/i.test(
+        line,
+      )
+    ) {
+      return true
+    }
+    if (
+      /^(?:- |[0-9]+\. )/.test(line) &&
+      new Set([
+        `cherry-pick only \`${proposal.cherryPickCommit}\``,
+        `cherry-pick only \`${proposal.cherryPickCommit}\`;`,
+      ]).has(line.replace(/^(?:- |[0-9]+\. )/, ""))
+    ) {
+      return true
+    }
+    if (
+      /^[0-9]+\. if and only if validation is green, push the new integration branch normally and open a PR for review;?$/i.test(
+        line,
+      )
+    ) {
+      return true
+    }
+    if (/^[0-9]+\. run the established complete validation suite;?$/i.test(line)) {
+      return true
+    }
+    if (/^[0-9]+\. stop at review\.?$/i.test(line)) return true
+    return isProhibition(line)
+  }
+  const scopeVocabulary =
+    /\b(?:approve\w*|authoriz\w*|permit\w*|grant\w*|allow\w*|execute\w*|activate\w*|cherry-pick|push\w*|pr|merge\w*|deploy\w*|migrat\w*|production|purchase\w*|receipt\w*|filesystem|access\w*|write\w*)\b/i
+  const scopeConflictIndex = lines.findIndex(
+    (line) => scopeVocabulary.test(line) && !isKnownScopeLine(line),
+  )
+  const quotedValues = [...prompt.matchAll(/`([^`\n]+)`/g)].map(
+    (match) => match[1],
+  )
+  const allowedQuotedValues = new Set([
+    proposal.checkpointId,
+    String(proposal.generation),
+    proposal.generationId,
+    reconciliationReference,
+    proposal.branch,
+    proposal.head,
+    proposal.tree,
+    proposal.cherryPickCommit,
+  ])
+  const predicates = {
+    checkpoint: checkpointId === proposal.checkpointId,
+    generation: Number(generation) === proposal.generation,
+    generation_id: generationId === proposal.generationId,
+    reconciliation: reconciliationMatches,
+    branch: branch === proposal.branch,
+    head: head === proposal.head,
+    tree: tree === proposal.tree,
+    cherry_pick: cherryPickCommit === proposal.cherryPickCommit,
+    scope: scopeConflictIndex === -1,
+    quoted_values:
+      quotedValues.length > 0 &&
+      quotedValues.every((value) => allowedQuotedValues.has(value)),
+  }
+  const failedPredicate = Object.entries(predicates).find(
+    ([, accepted]) => !accepted,
+  )?.[0]
+  return !failedPredicate
+    ? ownerGateAccepted({
+        mode:
+          reconciliationReference === proposal.reconciliationId
+            ? "owner_gate_stop_structural_prompt"
+            : "owner_gate_stop_structural_receipt_alias",
+      })
+    : ownerGateRejected("owner_gate_prior_attempt_prompt_binding", {
+        predicate: failedPredicate,
+      })
+}
+
 function legacyCheckpointActivationAttemptDecision({
   run,
   control,
@@ -593,11 +785,17 @@ export function checkpointOwnerGateAttemptAuditDecision({
       continue
     }
     const changedFiles = normalizedChangedFiles(run.changedFiles)
+    const promptBinding = historicalCheckpointActivationPromptDecision({
+      state,
+      proposal,
+      prompt: control.prompt,
+      activationPrompt,
+    })
     if (
       control.action !== "continue" ||
       !new Set(["needs_owner", "needs_review"]).has(control.taskState) ||
       control.ownerApprovalRequired !== true ||
-      control.prompt !== activationPrompt ||
+      !promptBinding.accepted ||
       run.status !== "needs_owner" ||
       run.turnCount !== 0 ||
       run.originIssueNumber !== proposal.originIssueNumber ||
@@ -619,20 +817,32 @@ export function checkpointOwnerGateAttemptAuditDecision({
       !sameStringArray(run.blockers, []) ||
       !sameStringArray(run.productionReadback, []) ||
       !sameStringArray(run.safetyFindings, []) ||
-      !sameStringArray(run.branchPushState, [])
+      !sameStringArray(run.branchPushState, []) ||
+      !Number.isFinite(Date.parse(run.completedAt ?? ""))
     ) {
       return ownerGateRejected("owner_gate_prior_attempt_mutation_or_binding", {
         instructionId: run.instructionId,
+        predicate: promptBinding.accepted
+          ? null
+          : promptBinding.rejection.predicate,
       })
     }
-    modes.push("owner_gate_stop")
+    modes.push(promptBinding.value.mode)
   }
-  const binding = attempts.map((run, index) => ({
-    instructionId: run.instructionId,
-    mode: modes[index],
-    completedAt: run.completedAt,
-    runDigest: controlPlaneBindingDigest(JSON.stringify(run)),
-  }))
+  const binding = attempts.map((run, index) => {
+    const controlsForRun = controls.filter(
+      (control) => control.instructionId === run.instructionId,
+    )
+    return {
+      instructionId: run.instructionId,
+      mode: modes[index],
+      completedAt: run.completedAt,
+      runDigest: controlPlaneBindingDigest(JSON.stringify(run)),
+      controlDigest: controlPlaneBindingDigest(
+        JSON.stringify(controlsForRun[0]),
+      ),
+    }
+  })
   return ownerGateAccepted({
     instructionIds: attempts.map((run) => run.instructionId),
     digest: controlPlaneBindingDigest(JSON.stringify(binding)),
