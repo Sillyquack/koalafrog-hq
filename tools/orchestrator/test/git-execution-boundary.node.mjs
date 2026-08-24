@@ -881,18 +881,20 @@ function appendRejectedOwnerGateAttempt(
   }
 }
 
-function appendLegacyActivation023(setup, proposal) {
+function appendLegacyActivation023(setup, proposal, suppliedPrompt = null) {
   const instructionId =
     "production-day1-git-reconciliation-checkpoint-generation-activation-023"
-  const prompt = gitReconciliationCheckpointActivationPrompt({
-    checkpointId: proposal.checkpointId,
-    reconciliationId: proposal.reconciliationId,
-    head: proposal.head,
-    tree: proposal.tree,
-    cherryPickCommit: proposal.cherryPickCommit,
-    generation: proposal.generation,
-    generationId: proposal.generationId,
-  })
+  const prompt =
+    suppliedPrompt ??
+    gitReconciliationCheckpointActivationPrompt({
+      checkpointId: proposal.checkpointId,
+      reconciliationId: proposal.reconciliationId,
+      head: proposal.head,
+      tree: proposal.tree,
+      cherryPickCommit: proposal.cherryPickCommit,
+      generation: proposal.generation,
+      generationId: proposal.generationId,
+    })
   setup.task.comments.push({
     body: checkpointControl({
       instructionId,
@@ -2476,7 +2478,7 @@ test("exact live #63/010-020 history preserves failed generation attempts and cr
   )
 })
 
-test("exact live #63/021-026 audit tail accepts only structurally bound historical owner gates", async (t) => {
+test("exact live #63/021-027 audit tail accepts only structurally bound historical owner gates", async (t) => {
   const setup = await checkpointGenerationRetrySetup(t)
   const proposal = setup.generationRetryProposal.value.record
   setup.state.gitReconciliationCheckpoints.push(proposal)
@@ -2506,7 +2508,7 @@ test("exact live #63/021-026 audit tail accepts only structurally bound historic
     completedAt: "2026-08-23T19:46:42.895Z",
     prompt: historicalActivationPrompt,
   })
-  appendLegacyActivation023(setup, proposal)
+  appendLegacyActivation023(setup, proposal, historicalActivationPrompt)
   appendRejectedOwnerGateAttempt(setup, proposal, {
     instructionId:
       "production-day1-git-reconciliation-checkpoint-generation-activation-025",
@@ -2676,10 +2678,30 @@ test("exact live #63/021-026 audit tail accepts only structurally bound historic
     ),
     false,
   )
+  const mutateLegacyPrompt = (task, search, replacement) => {
+    const comment = task.comments.find((candidate) =>
+      candidate.body.includes(
+        "production-day1-git-reconciliation-checkpoint-generation-activation-023\n",
+      ),
+    )
+    assert.ok(comment)
+    const changed = comment.body.replace(search, replacement)
+    assert.notEqual(changed, comment.body)
+    comment.body = changed
+  }
   const mutationCases = [
     (run) => run.changedFiles.pop(),
     (run) => {
+      run.turnCount = 0
+    },
+    (run) => {
+      run.commits = []
+    },
+    (run) => {
       run.branch = "agent/issue-63-other-branch"
+    },
+    (run) => {
+      run.productionReadback = ["Production mutation occurred."]
     },
     (run) => {
       run.branchPushState[2] = "Push: ATTEMPTED"
@@ -2688,21 +2710,67 @@ test("exact live #63/021-026 audit tail accepts only structurally bound historic
       run.resultArtifact.checks.diffCheck.evidence = []
     },
     (run) => {
-      run.resultArtifact.finalMessage =
-        "needs_review; structured non-mutation proof removed"
+      run.resultArtifact.finalMessage = run.resultArtifact.finalMessage.replace(
+        "linked-worktree `index.lock: Operation not permitted`",
+        "cherry-pick may have been partially applied",
+      )
+    },
+    (run) => {
+      run.resultArtifact.checks.diffCheck.evidence[0].summary =
+        run.resultArtifact.checks.diffCheck.evidence[0].summary.replace(
+          "CHERRY_PICK_HEAD",
+          "",
+        )
+    },
+    (run, task) => {
+      mutateLegacyPrompt(task, proposal.checkpointId, `git-reconciliation-checkpoint:${"f".repeat(64)}`)
+    },
+    (run, task) => {
+      mutateLegacyPrompt(
+        task,
+        `generation \`${proposal.generation}\``,
+        "generation `3`",
+      )
+    },
+    (run, task) => {
+      mutateLegacyPrompt(task, proposal.generationId, `git-reconciliation-checkpoint-generation:${"f".repeat(64)}`)
+    },
+    (run, task) => {
+      mutateLegacyPrompt(
+        task,
+        receipt.continuationInstructionId,
+        "production-day1-git-reconciliation-resume-999",
+      )
+    },
+    (run, task) => {
+      mutateLegacyPrompt(
+        task,
+        proposal.branch,
+        "agent/issue-63-unreviewed-branch",
+      )
+    },
+    (run, task) => {
+      mutateLegacyPrompt(task, proposal.head, "f".repeat(40))
+    },
+    (run, task) => {
+      mutateLegacyPrompt(task, proposal.tree, "f".repeat(40))
+    },
+    (run, task) => {
+      mutateLegacyPrompt(task, proposal.cherryPickCommit, "f".repeat(40))
     },
   ]
   for (const mutate of mutationCases) {
-    const changed = structuredClone(setup.state)
-    const run = changed.runs.find(
+    const changedState = structuredClone(setup.state)
+    const changedTask = structuredClone(setup.task)
+    const run = changedState.runs.find(
       (candidate) =>
         candidate.instructionId ===
         "production-day1-git-reconciliation-checkpoint-generation-activation-023",
     )
-    mutate(run)
+    mutate(run, changedTask)
     const decision = checkpointOwnerGateAttemptAuditDecision({
-      state: changed,
-      task: setup.task,
+      state: changedState,
+      task: changedTask,
       proposal,
       activationPrompt: activation.prompt,
       gateReason: ownerGateReason(activation.instruction),
@@ -2713,6 +2781,25 @@ test("exact live #63/021-026 audit tail accepts only structurally bound historic
       "owner_gate_prior_legacy_attempt_evidence",
     )
   }
+  const duplicateLegacyTask = structuredClone(setup.task)
+  const legacyControl = duplicateLegacyTask.comments.find((comment) =>
+    comment.body.includes(
+      "production-day1-git-reconciliation-checkpoint-generation-activation-023\n",
+    ),
+  )
+  duplicateLegacyTask.comments.push(structuredClone(legacyControl))
+  const duplicateLegacy = checkpointOwnerGateAttemptAuditDecision({
+    state: setup.state,
+    task: duplicateLegacyTask,
+    proposal,
+    activationPrompt: activation.prompt,
+    gateReason: ownerGateReason(activation.instruction),
+  })
+  assert.equal(duplicateLegacy.accepted, false)
+  assert.equal(
+    duplicateLegacy.rejection.code,
+    "owner_gate_prior_attempt_control_count",
+  )
   const historicalMutationCases = [
     (run, task) => {
       run.turnCount = 1

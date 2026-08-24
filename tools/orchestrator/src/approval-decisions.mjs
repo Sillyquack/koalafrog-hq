@@ -630,6 +630,7 @@ function historicalCheckpointActivationPromptDecision({
 }
 
 function legacyCheckpointActivationAttemptDecision({
+  state,
   run,
   control,
   proposal,
@@ -655,11 +656,17 @@ function legacyCheckpointActivationAttemptDecision({
     "cloudflareReadiness",
     "build",
   ]
+  const promptBinding = historicalCheckpointActivationPromptDecision({
+    state,
+    proposal,
+    prompt: control.prompt,
+    activationPrompt,
+  })
   const acceptedShape =
     control.action === "continue" &&
     control.taskState === "needs_owner" &&
     control.ownerApprovalRequired === false &&
-    control.prompt === activationPrompt &&
+    promptBinding.accepted &&
     run.status === "needs_review" &&
     run.turnCount === 1 &&
     run.originIssueNumber === proposal.originIssueNumber &&
@@ -726,9 +733,14 @@ function legacyCheckpointActivationAttemptDecision({
     finalMessage.includes(legacyCheckpointNoMutationFinding) &&
     Number.isFinite(Date.parse(run.completedAt ?? ""))
   return acceptedShape
-    ? ownerGateAccepted({ mode: "legacy_pre_application_failure" })
+    ? ownerGateAccepted({
+        mode: `legacy_pre_application_failure:${promptBinding.value.mode}`,
+      })
     : ownerGateRejected("owner_gate_prior_legacy_attempt_evidence", {
         instructionId: run.instructionId,
+        predicate: promptBinding.accepted
+          ? null
+          : promptBinding.rejection.predicate,
       })
 }
 
@@ -775,6 +787,7 @@ export function checkpointOwnerGateAttemptAuditDecision({
     const control = matches[0]
     if (run.instructionId === legacyCheckpointActivationInstructionId) {
       const legacy = legacyCheckpointActivationAttemptDecision({
+        state,
         run,
         control,
         proposal,
