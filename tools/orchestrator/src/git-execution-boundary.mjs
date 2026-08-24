@@ -1199,6 +1199,49 @@ function checkpointReconciliationReferenceMatches(value, record) {
   )
 }
 
+function checkpointGenerationAuditControlBinding(control) {
+  const parsed = parseCheckpointProposalPrompt(control?.prompt)
+  return {
+    action: control?.action ?? null,
+    taskState: control?.taskState ?? null,
+    instructionId: control?.instructionId ?? null,
+    maxTurns: control?.maxTurns ?? null,
+    ownerApprovalRequired: control?.ownerApprovalRequired ?? null,
+    prompt: control?.prompt ?? null,
+    instructionKind: gitReconciliationCheckpointInstructionKind(control),
+    proposalBinding:
+      parsed && !parsed.malformed
+        ? {
+            generation: parsed.generation ?? null,
+            auditInstructionIds: parsed.auditInstructionIds ?? null,
+            reconciliationId: parsed.reconciliationId,
+            head: parsed.head,
+            tree: parsed.tree,
+            cherryPickCommit: parsed.cherryPickCommit,
+          }
+        : parsed,
+  }
+}
+
+function checkpointGenerationAuditControlDecision(controls, instructionId) {
+  if (controls.length === 0) {
+    return rejected("checkpoint_generation_audit_control_count", {
+      instructionId,
+      controlCount: 0,
+    })
+  }
+  const bindings = controls.map((control) =>
+    stableJson(checkpointGenerationAuditControlBinding(control)),
+  )
+  if (new Set(bindings).size !== 1) {
+    return rejected("checkpoint_generation_audit_control_conflict", {
+      instructionId,
+      controlCount: controls.length,
+    })
+  }
+  return accepted(controls[0])
+}
+
 function checkpointGenerationAuditDecision({
   state,
   task,
@@ -1254,13 +1297,14 @@ function checkpointGenerationAuditDecision({
     const matchingControls = controls.filter(
       (control) => control.instructionId === run.instructionId,
     )
-    if (matchingControls.length !== 1) {
-      return rejected("checkpoint_generation_audit_control_count", {
-        instructionId: run.instructionId,
-        controlCount: matchingControls.length,
-      })
+    const controlDecision = checkpointGenerationAuditControlDecision(
+      matchingControls,
+      run.instructionId,
+    )
+    if (!controlDecision.accepted) {
+      return controlDecision
     }
-    const control = matchingControls[0]
+    const control = controlDecision.value
     const parsed = parseCheckpointProposalPrompt(control.prompt)
     if (
       gitReconciliationCheckpointInstructionKind(control) !== "proposal" ||

@@ -2285,8 +2285,28 @@ test("generation audit fails closed on post-tail mutation, ambiguity, activation
           task.comments.push(structuredClone(control))
         },
       })
+    ).accepted,
+    true,
+  )
+  assert.equal(
+    (
+      await invoke({
+        mutateTask: (task) => {
+          const control = task.comments.find((comment) =>
+            comment.body.includes(
+              "production-day1-git-reconciliation-checkpoint-proposal-018",
+            ),
+          )
+          const conflicting = structuredClone(control)
+          conflicting.body = conflicting.body.replace(
+            setup.liveConflicting018Tree,
+            "f".repeat(40),
+          )
+          task.comments.push(conflicting)
+        },
+      })
     ).rejection.code,
-    "checkpoint_generation_audit_control_count",
+    "checkpoint_generation_audit_control_conflict",
   )
   assert.equal(
     (
@@ -2481,6 +2501,23 @@ test("exact live #63/010-020 history preserves failed generation attempts and cr
 test("exact live #63/021-027 audit tail accepts only structurally bound historical owner gates", async (t) => {
   const setup = await checkpointGenerationRetrySetup(t)
   const proposal = setup.generationRetryProposal.value.record
+  const proposal019Control = setup.task.comments.find((comment) =>
+    comment.body.includes(
+      "production-day1-git-reconciliation-checkpoint-generation-proposal-019\n",
+    ),
+  )
+  assert.ok(proposal019Control)
+  setup.task.comments.push(structuredClone(proposal019Control))
+  assert.equal(
+    setup.task.comments
+      .flatMap((comment) => extractAgentControls(comment.body))
+      .filter(
+        (control) =>
+          control.instructionId ===
+          "production-day1-git-reconciliation-checkpoint-generation-proposal-019",
+      ).length,
+    2,
+  )
   setup.state.gitReconciliationCheckpoints.push(proposal)
   appendAcceptedCheckpointProposalRun(setup, proposal)
   const currentActivationPrompt = gitReconciliationCheckpointActivationPrompt({
@@ -2648,6 +2685,8 @@ test("exact live #63/021-027 audit tail accepts only structurally bound historic
     activation.binding.priorGateAuditDigest,
   )
   assert.equal(setup.state.ownerGateAcknowledgements.length, 1)
+  assert.ok(setup.state.ownerGateAcknowledgements[0].consumedAt)
+  assert.equal(setup.state.ownerGateAcknowledgements[0].completedAt, null)
   assert.equal(JSON.stringify(setup.state.runs), immutableHistory)
   const boundary = await authorizedGitExecutionBoundary({
     ...setup,
@@ -2959,8 +2998,34 @@ test("generation retry audit rejects changed scope, mutation, ambiguous controls
           task.comments.push(structuredClone(task.comments[index]))
         },
       })
+    ).accepted,
+    true,
+  )
+  assert.equal(
+    (
+      await invoke({
+        mutateTask: (task) => {
+          const index = commentIndexFor(task, proposal019Id)
+          const conflicting = structuredClone(task.comments[index])
+          conflicting.body = conflicting.body.replace(
+            setup.tree,
+            "f".repeat(40),
+          )
+          task.comments.push(conflicting)
+        },
+      })
     ).rejection.code,
-    "checkpoint_generation_audit_control_count",
+    "checkpoint_generation_audit_control_conflict",
+  )
+  assert.equal(
+    (
+      await invoke({
+        mutateState: (state) => {
+          state.runs.push(structuredClone(runFor(state, "019")))
+        },
+      })
+    ).rejection.code,
+    "checkpoint_generation_audit_scope",
   )
   assert.equal(
     (
