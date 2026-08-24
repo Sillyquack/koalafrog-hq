@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto"
+
 const actions = new Set(["start", "continue", "stop"])
 const taskStates = new Set([
   "ready",
@@ -117,6 +119,180 @@ export function extractValidAgentControls(markdown) {
     }
   }
   return controls
+}
+
+const ownerGateAcknowledgementIdPattern =
+  /^owner-gate-acknowledgement:[0-9a-f]{64}$/
+const checkpointIdPattern = /^git-reconciliation-checkpoint:[0-9a-f]{64}$/
+const generationIdPattern =
+  /^git-reconciliation-checkpoint-generation:[0-9a-f]{64}$/
+const digestPattern = /^[0-9a-f]{64}$/
+const fullShaPattern = /^[0-9a-f]{40}$/
+const safeIdentityPattern = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,511}$/
+const branchPattern = /^agent\/issue-[0-9]+-[A-Za-z0-9._/-]+$/
+
+export function controlPlaneBindingDigest(value) {
+  return createHash("sha256").update(String(value ?? "")).digest("hex")
+}
+
+export function ownerGateAcknowledgementId(binding) {
+  return `owner-gate-acknowledgement:${controlPlaneBindingDigest(
+    JSON.stringify([
+      1,
+      binding.instructionId,
+      binding.proposalInstructionId,
+      binding.originIssueNumber,
+      binding.originIssueUrlDigest,
+      binding.codexThreadId,
+      binding.workspacePathDigest,
+      binding.checkpointId,
+      binding.generationId,
+      binding.reconciliationId,
+      binding.branch,
+      binding.head,
+      binding.tree,
+      binding.controlPromptDigest,
+      binding.gateReasonDigest,
+      binding.pendingReasonDigest,
+      binding.priorGateAuditDigest,
+    ]),
+  )}`
+}
+
+export function parseOwnerGateAcknowledgementBlock(block) {
+  const lines = block.replaceAll("\r\n", "\n").split("\n")
+  const root = lines.findIndex((line) =>
+    /^owner_gate_acknowledgement:\s*$/.test(line.trim()),
+  )
+  if (root === -1) return null
+
+  const value = {}
+  for (let index = root + 1; index < lines.length; index += 1) {
+    const line = lines[index]
+    if (line.trim() === "") continue
+    if (!/^\s+/.test(line)) break
+    const field = line.match(/^\s{2}([a-z_]+):\s*(.*)$/)
+    if (!field) continue
+    const [, key, rawValue] = field
+    if (Object.hasOwn(value, key)) {
+      throw new Error(`Duplicate owner_gate_acknowledgement.${key}`)
+    }
+    value[key] = scalar(rawValue)
+  }
+
+  const expectedKeys = [
+    "acknowledgement_id",
+    "branch",
+    "checkpoint_id",
+    "codex_thread_id",
+    "control_prompt_digest",
+    "gate_reason_digest",
+    "generation_id",
+    "head",
+    "instruction_id",
+    "origin_issue_number",
+    "origin_issue_url_digest",
+    "pending_reason_digest",
+    "prior_gate_audit_digest",
+    "proposal_instruction_id",
+    "reconciliation_id",
+    "tree",
+    "workspace_path_digest",
+  ]
+  if (
+    JSON.stringify(Object.keys(value).sort()) !==
+    JSON.stringify(expectedKeys.slice().sort())
+  ) {
+    throw new Error("owner_gate_acknowledgement fields are not canonical")
+  }
+
+  const acknowledgement = {
+    acknowledgementId: value.acknowledgement_id,
+    instructionId: value.instruction_id,
+    proposalInstructionId: value.proposal_instruction_id,
+    originIssueNumber: value.origin_issue_number,
+    originIssueUrlDigest: value.origin_issue_url_digest,
+    codexThreadId: value.codex_thread_id,
+    workspacePathDigest: value.workspace_path_digest,
+    checkpointId: value.checkpoint_id,
+    generationId: value.generation_id,
+    reconciliationId: value.reconciliation_id,
+    branch: value.branch,
+    head: value.head,
+    tree: value.tree,
+    controlPromptDigest: value.control_prompt_digest,
+    gateReasonDigest: value.gate_reason_digest,
+    pendingReasonDigest: value.pending_reason_digest,
+    priorGateAuditDigest: value.prior_gate_audit_digest,
+  }
+  const valid =
+    ownerGateAcknowledgementIdPattern.test(acknowledgement.acknowledgementId) &&
+    safeIdentityPattern.test(acknowledgement.instructionId) &&
+    safeIdentityPattern.test(acknowledgement.proposalInstructionId) &&
+    Number.isSafeInteger(acknowledgement.originIssueNumber) &&
+    acknowledgement.originIssueNumber > 0 &&
+    digestPattern.test(acknowledgement.originIssueUrlDigest) &&
+    safeIdentityPattern.test(acknowledgement.codexThreadId) &&
+    digestPattern.test(acknowledgement.workspacePathDigest) &&
+    checkpointIdPattern.test(acknowledgement.checkpointId) &&
+    generationIdPattern.test(acknowledgement.generationId) &&
+    safeIdentityPattern.test(acknowledgement.reconciliationId) &&
+    branchPattern.test(acknowledgement.branch) &&
+    fullShaPattern.test(acknowledgement.head) &&
+    fullShaPattern.test(acknowledgement.tree) &&
+    digestPattern.test(acknowledgement.controlPromptDigest) &&
+    digestPattern.test(acknowledgement.gateReasonDigest) &&
+    digestPattern.test(acknowledgement.pendingReasonDigest) &&
+    digestPattern.test(acknowledgement.priorGateAuditDigest) &&
+    ownerGateAcknowledgementId(acknowledgement) ===
+      acknowledgement.acknowledgementId
+  if (!valid) {
+    throw new Error("owner_gate_acknowledgement binding is malformed")
+  }
+  return Object.freeze(acknowledgement)
+}
+
+export function extractValidOwnerGateAcknowledgements(markdown) {
+  if (typeof markdown !== "string") return []
+  const acknowledgements = []
+  const fences = /```(?:yaml|yml)\s*\n([\s\S]*?)```/gi
+  for (const match of markdown.matchAll(fences)) {
+    if (!/^\s*owner_gate_acknowledgement:\s*$/m.test(match[1])) continue
+    try {
+      const acknowledgement = parseOwnerGateAcknowledgementBlock(match[1])
+      if (acknowledgement) acknowledgements.push(acknowledgement)
+    } catch {
+      // A malformed explicit acknowledgement is ineligible and fails closed.
+    }
+  }
+  return acknowledgements
+}
+
+export function listOwnerGateAcknowledgements(issue, comments = []) {
+  const sources = [
+    { body: issue?.body ?? "" },
+    ...comments.map((comment) => ({
+      body: comment.body ?? comment.comment ?? "",
+    })),
+  ]
+  const acknowledgements = []
+  for (const source of sources) {
+    const pairedControls = extractValidAgentControls(source.body)
+    for (const acknowledgement of extractValidOwnerGateAcknowledgements(
+      source.body,
+    )) {
+      acknowledgements.push(
+        Object.freeze({
+          ...acknowledgement,
+          pairedControls: pairedControls.filter(
+            (control) =>
+              control.instructionId === acknowledgement.instructionId,
+          ),
+        }),
+      )
+    }
+  }
+  return acknowledgements
 }
 
 export function listAgentControls(issue, comments = []) {

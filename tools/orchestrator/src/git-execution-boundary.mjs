@@ -3,7 +3,12 @@ import { createHash } from "node:crypto"
 import { lstat, readFile, readdir, realpath } from "node:fs/promises"
 import path from "node:path"
 import { promisify } from "node:util"
-import { listAgentControls } from "./control-plane.mjs"
+import { checkpointOwnerGateAttemptAuditDecision } from "./approval-decisions.mjs"
+import {
+  controlPlaneBindingDigest,
+  listAgentControls,
+  ownerGateReason,
+} from "./control-plane.mjs"
 import { extractIssueNumber } from "./repository-discovery.mjs"
 
 const execFileAsync = promisify(execFile)
@@ -1539,14 +1544,55 @@ function checkpointContextDecision({
   })
 }
 
-function checkpointControlDecision({ state, instruction, task }) {
+function activeCheckpointOwnerGateAcknowledgement(state, instruction) {
+  const acknowledgementId =
+    state?.activeInstruction?.ownerGateAcknowledgementId
+  if (!acknowledgementId) return null
+  const matches = (state.ownerGateAcknowledgements ?? []).filter(
+    (record) => record.acknowledgementId === acknowledgementId,
+  )
+  if (matches.length !== 1) return null
+  const record = matches[0]
+  if (
+    record.schemaVersion !== 1 ||
+    record.kind !== "checkpoint_activation" ||
+    record.instructionId !== instruction.instructionId ||
+    record.originIssueNumber !== state.task.originIssueNumber ||
+    record.originIssueUrlDigest !==
+      controlPlaneBindingDigest(state.task.originIssueUrl) ||
+    record.codexThreadId !== state.threadId ||
+    record.workspacePathDigest !== controlPlaneBindingDigest(state.workspacePath) ||
+    record.branch !== state.branch ||
+    record.controlPromptDigest !==
+      controlPlaneBindingDigest(instruction.prompt) ||
+    !Number.isFinite(Date.parse(record.consumedAt ?? "")) ||
+    record.completedAt !== null
+  ) {
+    return null
+  }
+  return record
+}
+
+function checkpointControlDecision({
+  state,
+  instruction,
+  task,
+  ownerGateAcknowledgementRequired = false,
+}) {
+  const acknowledgement = ownerGateAcknowledgementRequired
+    ? activeCheckpointOwnerGateAcknowledgement(state, instruction)
+    : null
+  const allowedPhases = ownerGateAcknowledgementRequired
+    ? new Set(["selected", "thread_ready", "turn_started", "turn_completed"])
+    : new Set(["selected", "thread_ready"])
   if (
     !state?.activeInstruction ||
     state.activeInstruction.instructionId !== instruction?.instructionId ||
-    !new Set(["selected", "thread_ready"]).has(state.activeInstruction.phase) ||
+    !allowedPhases.has(state.activeInstruction.phase) ||
     instruction.action !== "continue" ||
     instruction.taskState !== state.status ||
-    instruction.ownerApprovalRequired
+    instruction.ownerApprovalRequired !== ownerGateAcknowledgementRequired ||
+    (ownerGateAcknowledgementRequired && !acknowledgement)
   ) {
     return rejected("checkpoint_instruction")
   }
@@ -1557,11 +1603,11 @@ function checkpointControlDecision({ state, instruction, task }) {
     controls.length !== 1 ||
     controls[0].action !== "continue" ||
     controls[0].prompt !== instruction.prompt ||
-    controls[0].ownerApprovalRequired
+    controls[0].ownerApprovalRequired !== ownerGateAcknowledgementRequired
   ) {
     return rejected("checkpoint_control", { controlCount: controls.length })
   }
-  return accepted(controls[0])
+  return accepted({ control: controls[0], acknowledgement })
 }
 
 function checkpointProposalBinding(record) {
@@ -1733,8 +1779,6 @@ function checkpointProposalId(binding) {
 }
 
 function checkpointActivationDecision({ state, instruction, task }) {
-  const control = checkpointControlDecision({ state, instruction, task })
-  if (!control.accepted) return control
   const checkpointId = instruction.prompt.match(
     /^The owner explicitly approves activation of superseding Git reconciliation checkpoint `(git-reconciliation-checkpoint:[0-9a-f]{64})`\.$/m,
   )?.[1]
@@ -1756,6 +1800,13 @@ function checkpointActivationDecision({ state, instruction, task }) {
   }
   const proposal = matches[0]
   const generationProposal = proposal.schemaVersion === 2
+  const control = checkpointControlDecision({
+    state,
+    instruction,
+    task,
+    ownerGateAcknowledgementRequired: generationProposal,
+  })
+  if (!control.accepted) return control
   if (
     !new Set([1, 2]).has(proposal.schemaVersion) ||
     proposal.operationScope !== checkpointOperationScope ||
@@ -1890,16 +1941,16 @@ function checkpointActivationDecision({ state, instruction, task }) {
   ) {
     return rejected("checkpoint_current_context_binding")
   }
+  const priorProposalCount = proposal.priorRejectedProposalInstructionIds.length
   if (
-    context.value.laterRuns.length !==
-      proposal.priorRejectedProposalInstructionIds.length + 1 ||
+    context.value.laterRuns.length < priorProposalCount + 1 ||
     !sameStringArray(
       context.value.laterRuns
-        .slice(0, -1)
+        .slice(0, priorProposalCount)
         .map((run) => run.instructionId),
       proposal.priorRejectedProposalInstructionIds,
     ) ||
-    context.value.laterRuns.at(-1)?.instructionId !==
+    context.value.laterRuns[priorProposalCount]?.instructionId !==
       proposal.proposalInstructionId
   ) {
     return rejected("checkpoint_post_tail_run_count", {
@@ -1910,7 +1961,7 @@ function checkpointActivationDecision({ state, instruction, task }) {
     ? checkpointGenerationAuditDecision({
         state,
         task,
-        runs: context.value.laterRuns.slice(0, -1),
+        runs: context.value.laterRuns.slice(0, priorProposalCount),
         record: context.value.record,
         expectedChangedFiles: context.value.expectedChangedFiles,
         expectedBinding: {
@@ -1923,7 +1974,7 @@ function checkpointActivationDecision({ state, instruction, task }) {
     : rejectedCheckpointProposalTailDecision({
         state,
         task,
-        runs: context.value.laterRuns.slice(0, -1),
+        runs: context.value.laterRuns.slice(0, priorProposalCount),
         record: context.value.record,
         expectedChangedFiles: context.value.expectedChangedFiles,
         expectedBinding: {
@@ -1942,7 +1993,7 @@ function checkpointActivationDecision({ state, instruction, task }) {
   ) {
     return rejected("checkpoint_generation_audit_drift")
   }
-  const proposalRun = context.value.laterRuns.at(-1)
+  const proposalRun = context.value.laterRuns[priorProposalCount]
   const ownerReason = gitReconciliationCheckpointOwnerReason(proposal)
   const proposalChangedFiles = normalizedChangedFiles(proposalRun.changedFiles)
   if (
@@ -1977,6 +2028,38 @@ function checkpointActivationDecision({ state, instruction, task }) {
     proposalRun.branchPushState.length !== 0
   ) {
     return rejected("checkpoint_proposal_run_binding")
+  }
+  if (generationProposal) {
+    const gateAudit = checkpointOwnerGateAttemptAuditDecision({
+      state,
+      task,
+      proposal,
+      activationPrompt: expectedPrompt,
+      gateReason: ownerGateReason(instruction),
+    })
+    if (!gateAudit.accepted) return gateAudit
+    const acknowledgement = control.value.acknowledgement
+    if (
+      !acknowledgement ||
+      acknowledgement.checkpointId !== proposal.checkpointId ||
+      acknowledgement.generationId !== proposal.generationId ||
+      acknowledgement.reconciliationId !== proposal.reconciliationId ||
+      acknowledgement.proposalInstructionId !==
+        proposal.proposalInstructionId ||
+      acknowledgement.head !== proposal.head ||
+      acknowledgement.tree !== proposal.tree ||
+      acknowledgement.gateReasonDigest !==
+        controlPlaneBindingDigest(ownerGateReason(instruction)) ||
+      acknowledgement.pendingReasonDigest !==
+        controlPlaneBindingDigest(ownerReason) ||
+      acknowledgement.priorGateAuditDigest !== gateAudit.value.digest ||
+      !sameStringArray(
+        acknowledgement.priorGateInstructionIds,
+        gateAudit.value.instructionIds,
+      )
+    ) {
+      return rejected("checkpoint_owner_gate_acknowledgement_binding")
+    }
   }
 
   const activationPromptDigest = checkpointPromptDigest(instruction.prompt)

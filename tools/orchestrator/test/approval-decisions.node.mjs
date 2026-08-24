@@ -4,10 +4,19 @@ import os from "node:os"
 import path from "node:path"
 import test from "node:test"
 import {
+  checkpointOwnerGateAttemptAuditDecision,
+  completeCheckpointOwnerGateAcknowledgement,
   consumeOwnerApprovalDecision,
   recordPendingApprovalRequest,
+  registerCheckpointOwnerGateAcknowledgement,
   registerOwnerApprovalDecision,
 } from "../src/approval-decisions.mjs"
+import {
+  controlPlaneBindingDigest,
+  extractAgentControls,
+  ownerGateAcknowledgementId,
+  ownerGateReason,
+} from "../src/control-plane.mjs"
 import {
   currentStateSchemaVersion,
   StateStore,
@@ -60,6 +69,160 @@ const precedingIssue53CommitDecision = {
 Owner approval is granted to create exactly one commit from only the already-staged, reviewed orchestrator approval-recovery files identified in the immediately preceding needs_owner result.
 
 Do not stage any additional files. Preserve all existing authorization boundaries.`,
+}
+
+const checkpointId = `git-reconciliation-checkpoint:${"a".repeat(64)}`
+const generationId =
+  `git-reconciliation-checkpoint-generation:${"b".repeat(64)}`
+const checkpointHead = "c".repeat(40)
+const checkpointTree = "d".repeat(40)
+const checkpointReason =
+  `Explicit owner activation is required for superseding Git reconciliation checkpoint ${checkpointId}, generation 2 (${generationId}), bound to branch agent/issue-63-production-day1-integration-001 at HEAD ${checkpointHead} and tree ${checkpointTree}.`
+
+function ownerGateControlBody(instructionId, prompt, acknowledgement = null) {
+  const control = `\`\`\`yaml
+agent_control:
+  action: continue
+  task_state: needs_owner
+  instruction_id: ${instructionId}
+  max_turns: 8
+  owner_approval_required: true
+  prompt: |
+${prompt
+  .split("\n")
+  .map((line) => `    ${line}`)
+  .join("\n")}
+\`\`\``
+  if (!acknowledgement) return control
+  return `${control}
+
+\`\`\`yaml
+owner_gate_acknowledgement:
+  acknowledgement_id: ${acknowledgement.acknowledgementId}
+  instruction_id: ${acknowledgement.instructionId}
+  proposal_instruction_id: ${acknowledgement.proposalInstructionId}
+  origin_issue_number: ${acknowledgement.originIssueNumber}
+  origin_issue_url_digest: ${acknowledgement.originIssueUrlDigest}
+  codex_thread_id: ${acknowledgement.codexThreadId}
+  workspace_path_digest: ${acknowledgement.workspacePathDigest}
+  checkpoint_id: ${acknowledgement.checkpointId}
+  generation_id: ${acknowledgement.generationId}
+  reconciliation_id: ${acknowledgement.reconciliationId}
+  branch: ${acknowledgement.branch}
+  head: ${acknowledgement.head}
+  tree: ${acknowledgement.tree}
+  control_prompt_digest: ${acknowledgement.controlPromptDigest}
+  gate_reason_digest: ${acknowledgement.gateReasonDigest}
+  pending_reason_digest: ${acknowledgement.pendingReasonDigest}
+  prior_gate_audit_digest: ${acknowledgement.priorGateAuditDigest}
+\`\`\``
+}
+
+function checkpointOwnerGateFixture({ includeAcknowledgement = true } = {}) {
+  const instructionId = "checkpoint-owner-gate-acknowledgement-026"
+  const proposalInstructionId = "checkpoint-generation-proposal-021"
+  const prompt = `The owner explicitly approves activation of superseding Git reconciliation checkpoint \`${checkpointId}\`.
+
+The exact checkpoint and generation binding is approved.`
+  const originIssueUrl = "https://github.com/Sillyquack/koalafrog-hq/issues/63"
+  const workspacePath = "/tmp/issue-63-workspace"
+  const threadId = "thread-issue-63"
+  const branch = "agent/issue-63-production-day1-integration-001"
+  const proposal = {
+    schemaVersion: 2,
+    kind: "proposal",
+    checkpointId,
+    generation: 2,
+    generationId,
+    proposalInstructionId,
+    reconciliationId: `authorized-workspace-branch:008:010:${checkpointHead}`,
+    originIssueNumber: 63,
+    originIssueUrl,
+    threadId,
+    workspacePath,
+    branch,
+    head: checkpointHead,
+    tree: checkpointTree,
+  }
+  const state = {
+    task: { originIssueNumber: 63, originIssueUrl },
+    status: "needs_owner",
+    threadId,
+    workspacePath,
+    branch,
+    gitReconciliationCheckpoints: [proposal],
+    ownerGateAcknowledgements: [],
+    pendingApprovalRequests: [],
+    runs: [
+      {
+        instructionId: proposalInstructionId,
+        status: "needs_owner",
+        completedAt: "2026-08-23T19:41:27.792Z",
+      },
+    ],
+  }
+  const bareBody = ownerGateControlBody(instructionId, prompt)
+  const [instruction] = extractAgentControls(bareBody)
+  state.activeInstruction = { ...instruction, phase: "selected" }
+  const task = {
+    issue: { issue_number: 63, html_url: originIssueUrl, body: "" },
+    comments: [{ body: bareBody }],
+  }
+  recordPendingApprovalRequest({
+    state,
+    instructionId: proposalInstructionId,
+    request: {
+      method: "control-plane/gitReconciliationCheckpointActivation",
+      reason: checkpointReason,
+    },
+    now: new Date("2026-08-23T19:41:27.792Z"),
+    allowLegacy: true,
+  })
+  const gateReason = ownerGateReason(instruction)
+  const audit = checkpointOwnerGateAttemptAuditDecision({
+    state,
+    task,
+    proposal,
+    activationPrompt: prompt,
+    gateReason,
+  })
+  assert.equal(audit.accepted, true)
+  const acknowledgement = {
+    instructionId,
+    proposalInstructionId,
+    originIssueNumber: 63,
+    originIssueUrlDigest: controlPlaneBindingDigest(originIssueUrl),
+    codexThreadId: threadId,
+    workspacePathDigest: controlPlaneBindingDigest(workspacePath),
+    checkpointId,
+    generationId,
+    reconciliationId: proposal.reconciliationId,
+    branch,
+    head: checkpointHead,
+    tree: checkpointTree,
+    controlPromptDigest: controlPlaneBindingDigest(prompt),
+    gateReasonDigest: controlPlaneBindingDigest(gateReason),
+    pendingReasonDigest: controlPlaneBindingDigest(checkpointReason),
+    priorGateAuditDigest: audit.value.digest,
+  }
+  acknowledgement.acknowledgementId =
+    ownerGateAcknowledgementId(acknowledgement)
+  if (includeAcknowledgement) {
+    task.comments[0].body = ownerGateControlBody(
+      instructionId,
+      prompt,
+      acknowledgement,
+    )
+  }
+  return {
+    state,
+    task,
+    proposal,
+    instruction,
+    acknowledgement,
+    gateReason,
+    pendingReason: checkpointReason,
+  }
 }
 
 function pendingState(completedAt = "2026-08-20T17:25:00.000Z") {
@@ -256,6 +419,175 @@ test("non-command owner requests do not enter command approval recovery", () => 
     null,
   )
   assert.deepEqual(state.pendingApprovalRequests, [])
+})
+
+test("checkpoint owner gate stays pending without a paired acknowledgement and mutates nothing", () => {
+  const fixture = checkpointOwnerGateFixture({ includeAcknowledgement: false })
+  const runs = structuredClone(fixture.state.runs)
+  const checkpoints = structuredClone(
+    fixture.state.gitReconciliationCheckpoints,
+  )
+  const decision = registerCheckpointOwnerGateAcknowledgement(fixture)
+  assert.equal(decision.accepted, false)
+  assert.equal(
+    decision.rejection.code,
+    "owner_gate_acknowledgement_count_or_pairing",
+  )
+  assert.deepEqual(fixture.state.runs, runs)
+  assert.deepEqual(fixture.state.gitReconciliationCheckpoints, checkpoints)
+  assert.deepEqual(fixture.state.ownerGateAcknowledgements, [])
+})
+
+test("one exact checkpoint owner gate acknowledgement is durable and restart-idempotent", () => {
+  const fixture = checkpointOwnerGateFixture()
+  const registered = registerCheckpointOwnerGateAcknowledgement({
+    ...fixture,
+    now: new Date("2026-08-23T20:00:00.000Z"),
+  })
+  assert.equal(registered.accepted, true)
+  assert.equal(registered.value.isNew, true)
+  assert.equal(fixture.state.ownerGateAcknowledgements.length, 1)
+  assert.equal(
+    fixture.state.pendingApprovalRequests[0].status,
+    "owner_gate_acknowledged",
+  )
+
+  const restartedState = structuredClone(fixture.state)
+  const resumed = registerCheckpointOwnerGateAcknowledgement({
+    ...fixture,
+    state: restartedState,
+    now: new Date("2026-08-23T20:01:00.000Z"),
+  })
+  assert.equal(resumed.accepted, true)
+  assert.equal(resumed.value.isNew, false)
+  assert.equal(restartedState.ownerGateAcknowledgements.length, 1)
+
+  for (const phase of ["thread_ready", "turn_started", "turn_completed"]) {
+    const durableState = structuredClone(restartedState)
+    durableState.activeInstruction.phase = phase
+    const durableResume = registerCheckpointOwnerGateAcknowledgement({
+      ...fixture,
+      state: durableState,
+    })
+    assert.equal(durableResume.accepted, true, phase)
+    assert.equal(durableResume.value.isNew, false, phase)
+    assert.equal(durableState.ownerGateAcknowledgements.length, 1, phase)
+  }
+
+  const activatedState = structuredClone(restartedState)
+  activatedState.activeInstruction.phase = "thread_ready"
+  activatedState.gitReconciliationCheckpoints.push({
+    schemaVersion: fixture.proposal.schemaVersion,
+    kind: "activation",
+    checkpointId: fixture.proposal.checkpointId,
+    generation: fixture.proposal.generation,
+    generationId: fixture.proposal.generationId,
+    historicalTailDigest: fixture.proposal.historicalTailDigest,
+    rejectedProposalAuditDigest:
+      fixture.proposal.rejectedProposalAudit?.digest,
+    activationInstructionId: fixture.instruction.instructionId,
+    originIssueNumber: fixture.proposal.originIssueNumber,
+    originIssueUrl: fixture.proposal.originIssueUrl,
+    threadId: fixture.proposal.threadId,
+    workspacePath: fixture.proposal.workspacePath,
+    branch: fixture.proposal.branch,
+    head: fixture.proposal.head,
+    tree: fixture.proposal.tree,
+    cherryPickCommit: fixture.proposal.cherryPickCommit,
+    cherryPickParent: fixture.proposal.cherryPickParent,
+    cherryPickTargetTree: fixture.proposal.cherryPickTargetTree,
+    activatedAt: "2026-08-23T20:00:30.000Z",
+  })
+  const activatedResume = registerCheckpointOwnerGateAcknowledgement({
+    ...fixture,
+    state: activatedState,
+  })
+  assert.equal(activatedResume.accepted, true)
+  assert.equal(activatedResume.value.isNew, false)
+
+  const completion = completeCheckpointOwnerGateAcknowledgement({
+    state: restartedState,
+    acknowledgementId: registered.value.record.acknowledgementId,
+    outcome: "needs_review",
+    now: new Date("2026-08-23T20:02:00.000Z"),
+  })
+  assert.equal(completion.record.outcome, "needs_review")
+  assert.equal(completion.pending.status, "completed")
+  assert.ok(completion.pending.clearedAt)
+  assert.equal(
+    registerCheckpointOwnerGateAcknowledgement({
+      ...fixture,
+      state: restartedState,
+    }).accepted,
+    false,
+  )
+  assert.equal(restartedState.ownerGateAcknowledgements.length, 1)
+})
+
+test("checkpoint owner gate acknowledgement rejects identity, binding, stale, duplicate, and replay drift", () => {
+  const invoke = (mutate) => {
+    const fixture = checkpointOwnerGateFixture()
+    mutate(fixture)
+    return registerCheckpointOwnerGateAcknowledgement(fixture)
+  }
+  assert.equal(
+    invoke((fixture) => {
+      fixture.task.issue.issue_number = 64
+    }).rejection.code,
+    "owner_gate_origin",
+  )
+  assert.equal(
+    invoke((fixture) => {
+      fixture.state.threadId = "thread-issue-64"
+    }).rejection.code,
+    "owner_gate_checkpoint_binding",
+  )
+  assert.equal(
+    invoke((fixture) => {
+      fixture.state.workspacePath = "/tmp/issue-64-workspace"
+    }).rejection.code,
+    "owner_gate_checkpoint_binding",
+  )
+  assert.equal(
+    invoke((fixture) => {
+      fixture.state.pendingApprovalRequests[0].clearedAt =
+        "2026-08-23T19:59:00.000Z"
+    }).rejection.code,
+    "owner_gate_pending_request_count",
+  )
+  assert.equal(
+    invoke((fixture) => {
+      fixture.task.comments.push(structuredClone(fixture.task.comments[0]))
+    }).rejection.code,
+    "owner_gate_control_count_or_binding",
+  )
+  for (const [field, value] of [
+    ["instructionId", "checkpoint-owner-gate-other-027"],
+    ["checkpointId", `git-reconciliation-checkpoint:${"e".repeat(64)}`],
+    [
+      "generationId",
+      `git-reconciliation-checkpoint-generation:${"f".repeat(64)}`,
+    ],
+    ["head", "1".repeat(40)],
+    ["tree", "2".repeat(40)],
+    ["branch", "agent/issue-63-other-branch"],
+    ["pendingReasonDigest", "3".repeat(64)],
+  ]) {
+    const result = invoke((fixture) => {
+      const acknowledgement = {
+        ...fixture.acknowledgement,
+        [field]: value,
+      }
+      acknowledgement.acknowledgementId =
+        ownerGateAcknowledgementId(acknowledgement)
+      fixture.task.comments[0].body = ownerGateControlBody(
+        fixture.instruction.instructionId,
+        fixture.instruction.prompt,
+        acknowledgement,
+      )
+    })
+    assert.equal(result.accepted, false, field)
+  }
 })
 
 test("restart preserves a registered decision and its consumed state", async (t) => {

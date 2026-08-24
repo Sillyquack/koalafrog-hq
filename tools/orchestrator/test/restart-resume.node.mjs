@@ -4,9 +4,21 @@ import os from "node:os"
 import path from "node:path"
 import test from "node:test"
 import { AppServerClient, classifyServerRequest } from "../src/app-server.mjs"
-import { extractAgentControls, shouldConsumeInstruction } from "../src/control-plane.mjs"
 import {
+  controlPlaneBindingDigest,
+  extractAgentControls,
+  ownerGateAcknowledgementId,
+  ownerGateReason,
+  shouldConsumeInstruction,
+} from "../src/control-plane.mjs"
+import {
+  checkpointOwnerGateAttemptAuditDecision,
+  recordPendingApprovalRequest,
+} from "../src/approval-decisions.mjs"
+import {
+  gitReconciliationCheckpointActivationPrompt,
   gitReconciliationCheckpointManagedExecutionPrompt,
+  gitReconciliationCheckpointOwnerReason,
   gitReconciliationCheckpointProposalPrompt,
 } from "../src/git-execution-boundary.mjs"
 import {
@@ -366,6 +378,350 @@ ${prompt
   assert.equal((await restarted.runOnce()).status, "idle")
   assert.equal(proposalCalls, 1)
   assert.equal(posted.filter((body) => body.includes("agent_result:")).length, 1)
+})
+
+test("generation checkpoint ownerGate acknowledgement resumes one exact activation across restart", async (t) => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "koalafrog-owner-gate-"))
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const storeOptions = {
+    stateDirectory: directory,
+    repository: "Sillyquack/koalafrog-hq",
+    issueNumber: 63,
+  }
+  const store = new StateStore(storeOptions)
+  const state = await store.load()
+  const checkpointId =
+    "git-reconciliation-checkpoint:04f89ffbfad2119fcc86a21f8e67c886746776476f5f06e3e52d761053da939a"
+  const generationId =
+    "git-reconciliation-checkpoint-generation:bfcdb83430c84a8d86a605d807d4cbefa0d38ac76490249f8eea67888c90964a"
+  const head = "ec719153c8e726831d7e2b748067383ea7f4e314"
+  const tree = "2330f747713ce620c7927c2c505c622b40e18386"
+  const cherryPickCommit = "a74079be88ec4a8b36b850f95dca791ff42e4e80"
+  const proposalInstructionId =
+    "production-day1-git-reconciliation-checkpoint-generation-proposal-021"
+  const reconciliationId =
+    `authorized-workspace-branch:production-day1-git-reconciliation-008:production-day1-git-reconciliation-resume-010:${head}`
+  const proposal = {
+    schemaVersion: 2,
+    kind: "proposal",
+    checkpointId,
+    generation: 2,
+    generationId,
+    proposalInstructionId,
+    reconciliationId,
+    originIssueNumber: 63,
+    originIssueUrl: issue63OriginUrl,
+    threadId: issue63ThreadId,
+    workspacePath: issue63WorkspacePath,
+    branch: issue63ReconciledBranch,
+    head,
+    tree,
+    cherryPickCommit,
+  }
+  const prompt = gitReconciliationCheckpointActivationPrompt({
+    checkpointId,
+    generation: 2,
+    generationId,
+    reconciliationId,
+    head,
+    tree,
+    cherryPickCommit,
+  })
+  const controlFor = ({ instructionId, taskState, acknowledgement = null }) => {
+    const control = `\`\`\`yaml
+agent_control:
+  action: continue
+  task_state: ${taskState}
+  instruction_id: ${instructionId}
+  max_turns: 8
+  owner_approval_required: true
+  prompt: |
+${prompt
+  .split("\n")
+  .map((line) => `    ${line}`)
+  .join("\n")}
+\`\`\``
+    if (!acknowledgement) return control
+    return `${control}
+
+\`\`\`yaml
+owner_gate_acknowledgement:
+  acknowledgement_id: ${acknowledgement.acknowledgementId}
+  instruction_id: ${acknowledgement.instructionId}
+  proposal_instruction_id: ${acknowledgement.proposalInstructionId}
+  origin_issue_number: ${acknowledgement.originIssueNumber}
+  origin_issue_url_digest: ${acknowledgement.originIssueUrlDigest}
+  codex_thread_id: ${acknowledgement.codexThreadId}
+  workspace_path_digest: ${acknowledgement.workspacePathDigest}
+  checkpoint_id: ${acknowledgement.checkpointId}
+  generation_id: ${acknowledgement.generationId}
+  reconciliation_id: ${acknowledgement.reconciliationId}
+  branch: ${acknowledgement.branch}
+  head: ${acknowledgement.head}
+  tree: ${acknowledgement.tree}
+  control_prompt_digest: ${acknowledgement.controlPromptDigest}
+  gate_reason_digest: ${acknowledgement.gateReasonDigest}
+  pending_reason_digest: ${acknowledgement.pendingReasonDigest}
+  prior_gate_audit_digest: ${acknowledgement.priorGateAuditDigest}
+\`\`\``
+  }
+  const gateReason = "The control-plane instruction explicitly requires owner approval."
+  const runFor = ({ instructionId, taskState, completedAt }) => ({
+    control: controlFor({ instructionId, taskState }),
+    run: {
+      instructionId,
+      status: "needs_owner",
+      threadId: issue63ThreadId,
+      workspacePath: issue63WorkspacePath,
+      branch: issue63ReconciledBranch,
+      commits: [],
+      changedFiles: [],
+      turnCount: 0,
+      originIssueNumber: 63,
+      originIssueUrl: issue63OriginUrl,
+      ownerRequest: { method: "control-plane/ownerGate", reason: gateReason },
+      checks: {
+        typecheck: "not_run",
+        lint: "not_run",
+        tests: "not_run",
+        cloudflareReadiness: "not_run",
+        build: "not_run",
+        diffCheck: "not_run",
+      },
+      blockers: [],
+      ownerGates: [gateReason],
+      productionReadback: [],
+      safetyFindings: [],
+      branchPushState: [],
+      resultArtifact: null,
+      completedAt,
+    },
+  })
+  const attempt025 = runFor({
+    instructionId:
+      "production-day1-git-reconciliation-checkpoint-generation-activation-025",
+    taskState: "needs_review",
+    completedAt: "2026-08-23T20:52:38.709Z",
+  })
+  const attempt024 = runFor({
+    instructionId:
+      "production-day1-git-reconciliation-checkpoint-generation-activation-024",
+    taskState: "needs_owner",
+    completedAt: "2026-08-23T20:53:14.959Z",
+  })
+  const unacknowledgedInstructionId =
+    "production-day1-git-reconciliation-checkpoint-generation-activation-unacknowledged-026"
+  const comments = [
+    { body: attempt025.control },
+    { body: attempt024.control },
+    {
+      body: controlFor({
+        instructionId: unacknowledgedInstructionId,
+        taskState: "needs_owner",
+      }),
+    },
+  ]
+  state.status = "needs_owner"
+  state.task.originIssueUrl = issue63OriginUrl
+  state.threadId = issue63ThreadId
+  state.workspacePath = issue63WorkspacePath
+  state.branch = issue63ReconciledBranch
+  state.gitReconciliationCheckpoints = [proposal]
+  state.runs = [
+    {
+      instructionId: proposalInstructionId,
+      status: "needs_owner",
+      completedAt: "2026-08-23T19:41:27.792Z",
+    },
+    attempt025.run,
+    attempt024.run,
+  ]
+  recordPendingApprovalRequest({
+    state,
+    instructionId: proposalInstructionId,
+    request: {
+      method: "control-plane/gitReconciliationCheckpointActivation",
+      reason: gitReconciliationCheckpointOwnerReason(proposal),
+    },
+    now: new Date("2026-08-23T19:41:27.792Z"),
+    allowLegacy: true,
+  })
+  await store.save(state)
+
+  const posted = []
+  const controlPlane = {
+    async fetchTask() {
+      return {
+        issue: { issue_number: 63, html_url: issue63OriginUrl, body: "" },
+        comments,
+      }
+    },
+    async postComment(body) {
+      posted.push(body)
+      comments.push({ body })
+    },
+  }
+  let workspaceCalls = 0
+  let boundaryCalls = 0
+  let turnCalls = 0
+  const workspace = {
+    ...fakeWorkspace(),
+    async ensureWorkspace() {
+      workspaceCalls += 1
+      return { path: issue63WorkspacePath, branch: issue63ReconciledBranch }
+    },
+    async inspectWorkspace() {
+      return {
+        branch: issue63ReconciledBranch,
+        commits: [head],
+        changedFiles: [],
+      }
+    },
+    async authorizedGitExecutionBoundary({ instruction }) {
+      boundaryCalls += 1
+      return {
+        instructionId: instruction.instructionId,
+        threadId: issue63ThreadId,
+        workspacePath: issue63WorkspacePath,
+        branch: issue63ReconciledBranch,
+        head,
+        gitDirectory: "/coordinator/.git/worktrees/issue-63",
+        commonDirectory: "/coordinator/.git",
+        writablePaths: [
+          issue63WorkspacePath,
+          "/coordinator/.git/worktrees/issue-63",
+        ],
+        commands: {
+          cherry_pick: [`git cherry-pick ${cherryPickCommit}`],
+          validation: ["git diff --check"],
+          push: ["git push origin HEAD"],
+          pull_request: ["gh pr create"],
+        },
+        checkpointId,
+        checkpointActivationIsNew: true,
+        checkpointActivation: {
+          schemaVersion: 2,
+          kind: "activation",
+          checkpointId,
+          generation: 2,
+          generationId,
+          activationInstructionId: instruction.instructionId,
+          activatedAt: null,
+        },
+      }
+    },
+  }
+  const appServer = {
+    async start() {},
+    async stop() {},
+    async resumeThread(threadId) {
+      assert.equal(threadId, issue63ThreadId)
+      return { thread: { id: threadId } }
+    },
+    async waitForMcpReady() {},
+    async runTurn(options) {
+      turnCalls += 1
+      await options.onTurnStarted("turn-owner-gate-acknowledged")
+      return {
+        status: "completed",
+        turn: {
+          id: "turn-owner-gate-acknowledged",
+          status: "completed",
+          items: [],
+        },
+        pendingOwnerRequest: null,
+        agentMessage: "needs_review; no mutation executed by this fixture",
+      }
+    },
+  }
+  const config = { ...runtimeConfig(directory), issueNumber: 63 }
+  const beforeAck = new Orchestrator(config, {
+    appServer,
+    controlPlane,
+    store,
+    workspace,
+  })
+  assert.equal((await beforeAck.runOnce()).status, "needs_owner")
+  assert.equal(workspaceCalls, 0)
+  assert.equal(boundaryCalls, 0)
+  assert.equal(turnCalls, 0)
+
+  const afterGate = await new StateStore(storeOptions).load()
+  assert.deepEqual(
+    afterGate.runs.slice(0, 3).map((run) => run.instructionId),
+    [proposalInstructionId, attempt025.run.instructionId, attempt024.run.instructionId],
+  )
+  const acknowledgedInstructionId =
+    "production-day1-git-reconciliation-checkpoint-generation-activation-owner-ack-027"
+  const controlBody = controlFor({
+    instructionId: acknowledgedInstructionId,
+    taskState: "needs_owner",
+  })
+  const [instruction] = extractAgentControls(controlBody)
+  const auditTask = {
+    issue: { issue_number: 63, html_url: issue63OriginUrl, body: "" },
+    comments: [...comments, { body: controlBody }],
+  }
+  const audit = checkpointOwnerGateAttemptAuditDecision({
+    state: afterGate,
+    task: auditTask,
+    proposal,
+    activationPrompt: prompt,
+    gateReason: ownerGateReason(instruction),
+  })
+  assert.equal(audit.accepted, true, JSON.stringify(audit))
+  const acknowledgement = {
+    instructionId: acknowledgedInstructionId,
+    proposalInstructionId,
+    originIssueNumber: 63,
+    originIssueUrlDigest: controlPlaneBindingDigest(issue63OriginUrl),
+    codexThreadId: issue63ThreadId,
+    workspacePathDigest: controlPlaneBindingDigest(issue63WorkspacePath),
+    checkpointId,
+    generationId,
+    reconciliationId,
+    branch: issue63ReconciledBranch,
+    head,
+    tree,
+    controlPromptDigest: controlPlaneBindingDigest(prompt),
+    gateReasonDigest: controlPlaneBindingDigest(ownerGateReason(instruction)),
+    pendingReasonDigest: controlPlaneBindingDigest(
+      gitReconciliationCheckpointOwnerReason(proposal),
+    ),
+    priorGateAuditDigest: audit.value.digest,
+  }
+  acknowledgement.acknowledgementId =
+    ownerGateAcknowledgementId(acknowledgement)
+  comments.push({
+    body: controlFor({
+      instructionId: acknowledgedInstructionId,
+      taskState: "needs_owner",
+      acknowledgement,
+    }),
+  })
+
+  const resumed = new Orchestrator(config, {
+    appServer,
+    controlPlane,
+    store: new StateStore(storeOptions),
+    workspace,
+  })
+  assert.equal((await resumed.runOnce()).status, "needs_review")
+  assert.equal(workspaceCalls, 1)
+  assert.equal(boundaryCalls, 1)
+  assert.equal(turnCalls, 1)
+  const completed = await new StateStore(storeOptions).load()
+  assert.equal(completed.ownerGateAcknowledgements.length, 1)
+  assert.equal(completed.ownerGateAcknowledgements[0].outcome, "needs_review")
+  assert.ok(completed.ownerGateAcknowledgements[0].completedAt)
+  assert.equal(completed.pendingApprovalRequests[0].status, "completed")
+  assert.equal(completed.gitReconciliationCheckpoints.length, 2)
+  assert.deepEqual(
+    completed.runs.slice(0, 3).map((run) => run.instructionId),
+    [proposalInstructionId, attempt025.run.instructionId, attempt024.run.instructionId],
+  )
+  assert.equal((await resumed.runOnce()).status, "idle")
+  assert.equal(turnCalls, 1)
 })
 
 test("managed checkpoint execution persists intent and receipt once without a Codex turn across restart", async (t) => {

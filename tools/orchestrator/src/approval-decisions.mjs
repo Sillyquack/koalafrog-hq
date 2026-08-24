@@ -1,4 +1,11 @@
 import { createHash } from "node:crypto"
+import {
+  controlPlaneBindingDigest,
+  listAgentControls,
+  listOwnerGateAcknowledgements,
+  ownerGateAcknowledgementId,
+} from "./control-plane.mjs"
+import { extractIssueNumber } from "./repository-discovery.mjs"
 
 export const ownerApprovalDecisionTtlMs = 24 * 60 * 60 * 1_000
 
@@ -6,6 +13,9 @@ const launchAgentScope =
   "launchagent:koalafrog:user:install-reload:content-addressed-runtime:stable-checkout"
 const approvalRecoveryCommitScope =
   "git:commit:issue-53:staged-reviewed-orchestrator-approval-recovery"
+const checkpointActivationRequestMethod =
+  "control-plane/gitReconciliationCheckpointActivation"
+const genericOwnerGateMethod = "control-plane/ownerGate"
 
 function normalize(value) {
   return String(value ?? "")
@@ -388,6 +398,504 @@ export function supersedePendingApprovalRequests({ state, now = new Date() }) {
     pending.clearedAt = now.toISOString()
     pending.clearReason = "new_task_superseded_pending_action"
   }
+}
+
+function currentIssueUrl(task) {
+  return (
+    task?.issue?.html_url ??
+    task?.issue?.display_url ??
+    task?.issue?.url ??
+    null
+  )
+}
+
+function sameStringArray(actual, expected) {
+  return (
+    Array.isArray(actual) &&
+    actual.length === expected.length &&
+    actual.every((value, index) => value === expected[index])
+  )
+}
+
+function ownerGateRejected(code, context = {}) {
+  return { accepted: false, rejection: { code, ...context } }
+}
+
+function ownerGateAccepted(value) {
+  return { accepted: true, value }
+}
+
+function normalizedChangedFiles(value) {
+  if (!Array.isArray(value) || value.some((file) => typeof file !== "string")) {
+    return null
+  }
+  return [...new Set(value)].sort()
+}
+
+const legacyCheckpointActivationInstructionId =
+  "production-day1-git-reconciliation-checkpoint-generation-activation-023"
+const legacyCheckpointNoMutationFinding =
+  "No fallback Git path, sibling metadata access, source change, production action, deployment, migration, purchase, or receipt mutation occurred."
+
+function legacyCheckpointActivationAttemptDecision({
+  run,
+  control,
+  proposal,
+  activationPrompt,
+}) {
+  if (run.instructionId !== legacyCheckpointActivationInstructionId) {
+    return ownerGateRejected("owner_gate_prior_attempt_not_legacy")
+  }
+  const changedFiles = normalizedChangedFiles(run.changedFiles)
+  const artifact = run.resultArtifact
+  const commandEvidence = artifact?.checks?.diffCheck?.evidence?.filter(
+    (evidence) => evidence?.source === "command_execution",
+  )
+  const summary = commandEvidence?.[0]?.summary ?? ""
+  const finalMessage = artifact?.finalMessage ?? ""
+  const expectedBranchState =
+    `Branch/current HEAD: \`${proposal.branch}\` at \`${proposal.head}\``
+  const artifactChecks = artifact?.checks ?? {}
+  const nonDiffChecks = [
+    "typecheck",
+    "lint",
+    "tests",
+    "cloudflareReadiness",
+    "build",
+  ]
+  const acceptedShape =
+    control.action === "continue" &&
+    control.taskState === "needs_owner" &&
+    control.ownerApprovalRequired === false &&
+    control.prompt === activationPrompt &&
+    run.status === "needs_review" &&
+    run.turnCount === 1 &&
+    run.originIssueNumber === proposal.originIssueNumber &&
+    run.originIssueUrl === proposal.originIssueUrl &&
+    run.threadId === proposal.threadId &&
+    run.workspacePath === proposal.workspacePath &&
+    run.branch === proposal.branch &&
+    sameStringArray(run.commits, [proposal.head]) &&
+    changedFiles &&
+    changedFiles.length === proposal.changedFileCount &&
+    controlPlaneBindingDigest(JSON.stringify(changedFiles)) ===
+      proposal.changedFilesDigest &&
+    run.ownerRequest === null &&
+    sameStringArray(run.blockers, []) &&
+    sameStringArray(run.ownerGates, []) &&
+    sameStringArray(run.safetyFindings, []) &&
+    sameStringArray(run.productionReadback, [legacyCheckpointNoMutationFinding]) &&
+    sameStringArray(run.branchPushState, [
+      expectedBranchState,
+      "Live remote foundation: **PASS**",
+      "Push/PR: **NOT ATTEMPTED**",
+    ]) &&
+    run.checks?.diffCheck === "pass" &&
+    nonDiffChecks.every((name) => run.checks?.[name] === "unknown") &&
+    artifact?.version === 1 &&
+    artifact.source === "completed_turn_final_message" &&
+    artifact.turnStatus === "completed" &&
+    artifact.checks?.diffCheck?.status === "pass" &&
+    nonDiffChecks.every(
+      (name) =>
+        artifactChecks[name]?.status === "unknown" &&
+        sameStringArray(artifactChecks[name]?.evidence, []),
+    ) &&
+    Array.isArray(commandEvidence) &&
+    commandEvidence.length === 1 &&
+    commandEvidence[0].status === "pass" &&
+    /git status --porcelain=v1 --branch/.test(summary) &&
+    /git branch --show-current/.test(summary) &&
+    /git rev-parse HEAD/.test(summary) &&
+    /git rev-list --count/.test(summary) &&
+    ["CHERRY_PICK_HEAD", "MERGE_HEAD", "REVERT_HEAD", "REBASE_HEAD"].every(
+      (marker) => summary.includes(marker),
+    ) &&
+    /git diff --check/.test(summary) &&
+    /\(completed, exit 0\)/.test(summary) &&
+    sameStringArray(
+      artifact.findings?.productionReadback,
+      run.productionReadback,
+    ) &&
+    sameStringArray(artifact.findings?.branchPushState, run.branchPushState) &&
+    sameStringArray(artifact.findings?.blockers, []) &&
+    sameStringArray(artifact.findings?.ownerGates, []) &&
+    sameStringArray(artifact.findings?.safetyFindings, []) &&
+    finalMessage.includes(expectedBranchState) &&
+    finalMessage.includes(`Current tree: \`${proposal.tree}\``) &&
+    finalMessage.includes("Checkpoint binding and lineage preflight: **PASS**") &&
+    finalMessage.includes("Live remote foundation: **PASS**") &&
+    finalMessage.includes("Cherry-pick: **FAILED before application**") &&
+    finalMessage.includes("linked-worktree `index.lock: Operation not permitted`") &&
+    finalMessage.includes(
+      "Worktree: clean; zero commits above base; no Git operation markers",
+    ) &&
+    finalMessage.includes("Push/PR: **NOT ATTEMPTED**") &&
+    finalMessage.includes(legacyCheckpointNoMutationFinding) &&
+    Number.isFinite(Date.parse(run.completedAt ?? ""))
+  return acceptedShape
+    ? ownerGateAccepted({ mode: "legacy_pre_application_failure" })
+    : ownerGateRejected("owner_gate_prior_legacy_attempt_evidence", {
+        instructionId: run.instructionId,
+      })
+}
+
+export function checkpointOwnerGateAttemptAuditDecision({
+  state,
+  task,
+  proposal,
+  activationPrompt,
+  gateReason,
+}) {
+  const proposalRuns = (state.runs ?? []).filter(
+    (run) => run.instructionId === proposal?.proposalInstructionId,
+  )
+  if (proposalRuns.length !== 1) {
+    return ownerGateRejected("owner_gate_proposal_run_count", {
+      runCount: proposalRuns.length,
+    })
+  }
+  const proposalIndex = state.runs.indexOf(proposalRuns[0])
+  const attempts = state.runs.slice(proposalIndex + 1)
+  if (new Set(attempts.map((run) => run.instructionId)).size !== attempts.length) {
+    return ownerGateRejected("owner_gate_prior_attempt_instruction_duplicate")
+  }
+  const controls = listAgentControls(task.issue, task.comments)
+  const expectedChecks = [
+    "typecheck",
+    "lint",
+    "tests",
+    "cloudflareReadiness",
+    "build",
+    "diffCheck",
+  ]
+  const modes = []
+  for (const run of attempts) {
+    const matches = controls.filter(
+      (control) => control.instructionId === run.instructionId,
+    )
+    if (matches.length !== 1) {
+      return ownerGateRejected("owner_gate_prior_attempt_control_count", {
+        instructionId: run.instructionId,
+        controlCount: matches.length,
+      })
+    }
+    const control = matches[0]
+    if (run.instructionId === legacyCheckpointActivationInstructionId) {
+      const legacy = legacyCheckpointActivationAttemptDecision({
+        run,
+        control,
+        proposal,
+        activationPrompt,
+      })
+      if (!legacy.accepted) return legacy
+      modes.push(legacy.value.mode)
+      continue
+    }
+    const changedFiles = normalizedChangedFiles(run.changedFiles)
+    if (
+      control.action !== "continue" ||
+      !new Set(["needs_owner", "needs_review"]).has(control.taskState) ||
+      control.ownerApprovalRequired !== true ||
+      control.prompt !== activationPrompt ||
+      run.status !== "needs_owner" ||
+      run.turnCount !== 0 ||
+      run.originIssueNumber !== proposal.originIssueNumber ||
+      run.originIssueUrl !== proposal.originIssueUrl ||
+      run.threadId !== proposal.threadId ||
+      run.workspacePath !== proposal.workspacePath ||
+      run.branch !== proposal.branch ||
+      !sameStringArray(run.commits, []) ||
+      !changedFiles ||
+      changedFiles.length !== 0 ||
+      run.resultArtifact !== null ||
+      run.ownerRequest?.method !== genericOwnerGateMethod ||
+      run.ownerRequest?.reason !== gateReason ||
+      !sameStringArray(run.ownerGates, [gateReason]) ||
+      !run.checks ||
+      Object.keys(run.checks).length !== expectedChecks.length ||
+      expectedChecks.some((check) => !Object.hasOwn(run.checks, check)) ||
+      Object.values(run.checks).some((status) => status !== "not_run") ||
+      !sameStringArray(run.blockers, []) ||
+      !sameStringArray(run.productionReadback, []) ||
+      !sameStringArray(run.safetyFindings, []) ||
+      !sameStringArray(run.branchPushState, [])
+    ) {
+      return ownerGateRejected("owner_gate_prior_attempt_mutation_or_binding", {
+        instructionId: run.instructionId,
+      })
+    }
+    modes.push("owner_gate_stop")
+  }
+  const binding = attempts.map((run, index) => ({
+    instructionId: run.instructionId,
+    mode: modes[index],
+    completedAt: run.completedAt,
+    runDigest: controlPlaneBindingDigest(JSON.stringify(run)),
+  }))
+  return ownerGateAccepted({
+    instructionIds: attempts.map((run) => run.instructionId),
+    digest: controlPlaneBindingDigest(JSON.stringify(binding)),
+  })
+}
+
+export function registerCheckpointOwnerGateAcknowledgement({
+  state,
+  instruction,
+  task,
+  gateReason,
+  pendingReason,
+  now = new Date(),
+}) {
+  const activePhase = state?.activeInstruction?.phase
+  const resumablePhases = new Set([
+    "selected",
+    "thread_ready",
+    "turn_started",
+    "turn_completed",
+  ])
+  if (
+    !state?.activeInstruction ||
+    state.activeInstruction.instructionId !== instruction?.instructionId ||
+    !resumablePhases.has(activePhase) ||
+    instruction.action !== "continue" ||
+    instruction.taskState !== state.status ||
+    instruction.ownerApprovalRequired !== true
+  ) {
+    return ownerGateRejected("owner_gate_active_instruction")
+  }
+  if (
+    extractIssueNumber(task?.issue) !== state.task?.originIssueNumber ||
+    currentIssueUrl(task) !== state.task?.originIssueUrl
+  ) {
+    return ownerGateRejected("owner_gate_origin")
+  }
+  const controls = listAgentControls(task.issue, task.comments).filter(
+    (control) => control.instructionId === instruction.instructionId,
+  )
+  if (
+    controls.length !== 1 ||
+    controls[0].prompt !== instruction.prompt ||
+    controls[0].ownerApprovalRequired !== true
+  ) {
+    return ownerGateRejected("owner_gate_control_count_or_binding", {
+      controlCount: controls.length,
+    })
+  }
+  const acknowledgements = listOwnerGateAcknowledgements(
+    task.issue,
+    task.comments,
+  ).filter(
+    (acknowledgement) =>
+      acknowledgement.instructionId === instruction.instructionId,
+  )
+  if (
+    acknowledgements.length !== 1 ||
+    acknowledgements[0].pairedControls.length !== 1 ||
+    acknowledgements[0].pairedControls[0].prompt !== instruction.prompt
+  ) {
+    return ownerGateRejected("owner_gate_acknowledgement_count_or_pairing", {
+      acknowledgementCount: acknowledgements.length,
+    })
+  }
+  const acknowledgement = acknowledgements[0]
+  const checkpoints = state.gitReconciliationCheckpoints
+  if (!Array.isArray(checkpoints)) {
+    return ownerGateRejected("owner_gate_checkpoint_records_missing")
+  }
+  const proposals = checkpoints.filter((record) => record.kind === "proposal")
+  const activations = checkpoints.filter((record) => record.kind === "activation")
+  if (proposals.length !== 1 || activations.length > 1) {
+    return ownerGateRejected("owner_gate_checkpoint_record_count", {
+      proposalCount: proposals.length,
+      activationCount: activations.length,
+    })
+  }
+  const proposal = proposals[0]
+  if (
+    proposal.schemaVersion !== 2 ||
+    proposal.checkpointId !== acknowledgement.checkpointId ||
+    proposal.generationId !== acknowledgement.generationId ||
+    proposal.reconciliationId !== acknowledgement.reconciliationId ||
+    proposal.proposalInstructionId !== acknowledgement.proposalInstructionId ||
+    proposal.originIssueNumber !== state.task.originIssueNumber ||
+    proposal.originIssueUrl !== state.task.originIssueUrl ||
+    proposal.threadId !== state.threadId ||
+    proposal.workspacePath !== state.workspacePath ||
+    proposal.branch !== state.branch ||
+    proposal.head !== acknowledgement.head ||
+    proposal.tree !== acknowledgement.tree
+  ) {
+    return ownerGateRejected("owner_gate_checkpoint_binding")
+  }
+  const pending = (state.pendingApprovalRequests ?? []).filter(
+    (candidate) =>
+      !candidate.clearedAt &&
+      candidate.sourceInstructionId === proposal.proposalInstructionId &&
+      candidate.reason === pendingReason,
+  )
+  if (pending.length !== 1) {
+    return ownerGateRejected("owner_gate_pending_request_count", {
+      pendingCount: pending.length,
+    })
+  }
+  const pendingRequest = pending[0]
+  if (
+    !new Set(["interrupted", "owner_gate_acknowledged"]).has(
+      pendingRequest.status,
+    ) ||
+    pendingRequest.reasonDigest !== digest(pendingReason) ||
+    !Array.isArray(pendingRequest.requestIdentities) ||
+    pendingRequest.requestIdentities.length === 0 ||
+    pendingRequest.requestIdentities.some(
+      (identity) => identity.method !== checkpointActivationRequestMethod,
+    )
+  ) {
+    return ownerGateRejected("owner_gate_pending_request_binding")
+  }
+  const audit = checkpointOwnerGateAttemptAuditDecision({
+    state,
+    task,
+    proposal,
+    activationPrompt: instruction.prompt,
+    gateReason,
+  })
+  if (!audit.accepted) return audit
+  const expected = {
+    instructionId: instruction.instructionId,
+    proposalInstructionId: proposal.proposalInstructionId,
+    originIssueNumber: state.task.originIssueNumber,
+    originIssueUrlDigest: controlPlaneBindingDigest(state.task.originIssueUrl),
+    codexThreadId: state.threadId,
+    workspacePathDigest: controlPlaneBindingDigest(state.workspacePath),
+    checkpointId: proposal.checkpointId,
+    generationId: proposal.generationId,
+    reconciliationId: proposal.reconciliationId,
+    branch: proposal.branch,
+    head: proposal.head,
+    tree: proposal.tree,
+    controlPromptDigest: controlPlaneBindingDigest(instruction.prompt),
+    gateReasonDigest: controlPlaneBindingDigest(gateReason),
+    pendingReasonDigest: controlPlaneBindingDigest(pendingReason),
+    priorGateAuditDigest: audit.value.digest,
+  }
+  expected.acknowledgementId = ownerGateAcknowledgementId(expected)
+  const supplied = { ...acknowledgement }
+  delete supplied.pairedControls
+  if (
+    Object.keys(supplied).length !== Object.keys(expected).length ||
+    Object.entries(expected).some(([key, value]) => supplied[key] !== value)
+  ) {
+    return ownerGateRejected("owner_gate_acknowledgement_binding")
+  }
+  state.ownerGateAcknowledgements ??= []
+  const sameId = state.ownerGateAcknowledgements.filter(
+    (record) => record.acknowledgementId === expected.acknowledgementId,
+  )
+  if (sameId.length > 1) {
+    return ownerGateRejected("owner_gate_acknowledgement_ambiguous")
+  }
+  if (sameId.length === 1) {
+    const existing = sameId[0]
+    const activation = activations[0] ?? null
+    const reusableActivation =
+      !activation ||
+      (activation.schemaVersion === proposal.schemaVersion &&
+        activation.checkpointId === proposal.checkpointId &&
+        activation.generation === proposal.generation &&
+        activation.generationId === proposal.generationId &&
+        activation.historicalTailDigest === proposal.historicalTailDigest &&
+        activation.rejectedProposalAuditDigest ===
+          proposal.rejectedProposalAudit?.digest &&
+        activation.activationInstructionId === instruction.instructionId &&
+        activation.originIssueNumber === proposal.originIssueNumber &&
+        activation.originIssueUrl === proposal.originIssueUrl &&
+        activation.threadId === proposal.threadId &&
+        activation.workspacePath === proposal.workspacePath &&
+        activation.branch === proposal.branch &&
+        activation.head === proposal.head &&
+        activation.tree === proposal.tree &&
+        activation.cherryPickCommit === proposal.cherryPickCommit &&
+        activation.cherryPickParent === proposal.cherryPickParent &&
+        activation.cherryPickTargetTree === proposal.cherryPickTargetTree &&
+        Number.isFinite(Date.parse(activation.activatedAt ?? "")))
+    const reusable =
+      existing.instructionId === instruction.instructionId &&
+      existing.completedAt === null &&
+      reusableActivation &&
+      pendingRequest.status === "owner_gate_acknowledged" &&
+      pendingRequest.decisionId === existing.acknowledgementId &&
+      state.activeInstruction.ownerGateAcknowledgementId ===
+        existing.acknowledgementId
+    return reusable
+      ? ownerGateAccepted({
+          record: existing,
+          proposal,
+          priorGateAudit: audit.value,
+          isNew: false,
+        })
+      : ownerGateRejected("owner_gate_acknowledgement_replay")
+  }
+  if (
+    activePhase !== "selected" ||
+    activations.length !== 0 ||
+    pendingRequest.status !== "interrupted" ||
+    pendingRequest.decisionId !== null ||
+    state.ownerGateAcknowledgements.some(
+      (record) =>
+        record.instructionId === instruction.instructionId ||
+        record.checkpointId === proposal.checkpointId,
+    )
+  ) {
+    return ownerGateRejected("owner_gate_acknowledgement_conflict")
+  }
+  const at = now.toISOString()
+  const record = {
+    schemaVersion: 1,
+    kind: "checkpoint_activation",
+    ...expected,
+    priorGateInstructionIds: audit.value.instructionIds,
+    pendingRequestKey: pendingRequest.key,
+    registeredAt: at,
+    consumedAt: at,
+    completedAt: null,
+    outcome: null,
+  }
+  state.ownerGateAcknowledgements.push(record)
+  state.activeInstruction.ownerGateAcknowledgementId =
+    record.acknowledgementId
+  pendingRequest.status = "owner_gate_acknowledged"
+  pendingRequest.decisionId = record.acknowledgementId
+  return ownerGateAccepted({
+    record,
+    proposal,
+    priorGateAudit: audit.value,
+    isNew: true,
+  })
+}
+
+export function completeCheckpointOwnerGateAcknowledgement({
+  state,
+  acknowledgementId,
+  outcome,
+  now = new Date(),
+}) {
+  const matches = (state.ownerGateAcknowledgements ?? []).filter(
+    (record) => record.acknowledgementId === acknowledgementId,
+  )
+  if (matches.length !== 1 || matches[0].completedAt) return null
+  const record = matches[0]
+  record.completedAt = now.toISOString()
+  record.outcome = outcome
+  const pending = (state.pendingApprovalRequests ?? []).find(
+    (candidate) => candidate.key === record.pendingRequestKey,
+  )
+  if (pending?.decisionId === record.acknowledgementId) {
+    pending.status = "completed"
+    pending.clearedAt = record.completedAt
+    pending.clearReason = "owner_gate_acknowledged_instruction_completed"
+  }
+  return { record, pending: pending ?? null }
 }
 
 export function reconcileLaunchAgentApproval({

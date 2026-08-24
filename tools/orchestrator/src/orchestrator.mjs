@@ -2,9 +2,11 @@ import path from "node:path"
 import { setTimeout as delay } from "node:timers/promises"
 import { AppServerClient } from "./app-server.mjs"
 import {
+  completeCheckpointOwnerGateAcknowledgement,
   completeOwnerApprovedAction,
   consumeOwnerApprovalDecision,
   recordPendingApprovalRequest,
+  registerCheckpointOwnerGateAcknowledgement,
   registerOwnerApprovalDecisions,
   supersedePendingApprovalRequests,
 } from "./approval-decisions.mjs"
@@ -1187,6 +1189,8 @@ export class Orchestrator {
       state.resultCorrectionInstructionIds = [...correctionIds]
     }
 
+    const ownerGateAcknowledgementId =
+      state.activeInstruction.ownerGateAcknowledgementId ?? null
     state.lastConsumedInstructionId = packet.instructionId
     state.status = packet.status
     state.pendingOwnerRequest =
@@ -1215,9 +1219,25 @@ export class Orchestrator {
       resultArtifact: packet.resultArtifact ?? null,
       completedAt: new Date().toISOString(),
     })
+    const completedOwnerGateAcknowledgement = ownerGateAcknowledgementId
+      ? completeCheckpointOwnerGateAcknowledgement({
+          state,
+          acknowledgementId: ownerGateAcknowledgementId,
+          outcome: packet.status,
+        })
+      : null
     state.activeInstruction = null
     state.retryCount = 0
     await this.#save(state)
+    if (completedOwnerGateAcknowledgement) {
+      await this.store.appendEvent({
+        type: "owner_gate_acknowledgement_completed",
+        acknowledgementId:
+          completedOwnerGateAcknowledgement.record.acknowledgementId,
+        instructionId: packet.instructionId,
+        outcome: packet.status,
+      })
+    }
   }
 
   async #postPickup(state, instruction, comments) {
@@ -1770,10 +1790,66 @@ export class Orchestrator {
 
     const checkpointInstructionKind =
       gitReconciliationCheckpointInstructionKind(instruction)
-    const gate =
+    let gate =
       new Set(["proposal", "execution"]).has(checkpointInstructionKind)
         ? null
         : ownerGateReason(instruction)
+    if (gate && checkpointInstructionKind === "activation") {
+      const proposals = (state.gitReconciliationCheckpoints ?? []).filter(
+        (record) => record.kind === "proposal",
+      )
+      const pendingReason =
+        proposals.length === 1
+          ? gitReconciliationCheckpointOwnerReason(proposals[0])
+          : null
+      const acknowledgement = pendingReason
+        ? registerCheckpointOwnerGateAcknowledgement({
+            state,
+            instruction,
+            task,
+            gateReason: gate,
+            pendingReason,
+          })
+        : {
+            accepted: false,
+            rejection: { code: "owner_gate_checkpoint_proposal_count" },
+          }
+      if (acknowledgement.accepted) {
+        gate = null
+        if (acknowledgement.value.isNew) {
+          await this.#save(state)
+          await this.store.appendEvent({
+            type: "owner_gate_acknowledgement_consumed",
+            code: "owner_gate_acknowledgement_accepted",
+            acknowledgementId:
+              acknowledgement.value.record.acknowledgementId,
+            instructionId: instruction.instructionId,
+            issueNumber: state.task.originIssueNumber,
+            checkpointId: acknowledgement.value.proposal.checkpointId,
+            generationId: acknowledgement.value.proposal.generationId,
+            branch: acknowledgement.value.proposal.branch,
+            head: acknowledgement.value.proposal.head,
+            tree: acknowledgement.value.proposal.tree,
+            priorGateAttemptCount:
+              acknowledgement.value.priorGateAudit.instructionIds.length,
+          })
+        }
+      } else {
+        await this.store.appendEvent({
+          type: "owner_gate_acknowledgement_rejected",
+          code: acknowledgement.rejection.code,
+          instructionId: instruction.instructionId,
+          issueNumber: state.task.originIssueNumber,
+          branch: state.branch,
+          checkpointId: proposals.length === 1 ? proposals[0].checkpointId : null,
+          priorAttemptInstructionId:
+            acknowledgement.rejection.instructionId ?? null,
+          controlCount: acknowledgement.rejection.controlCount ?? null,
+          acknowledgementCount:
+            acknowledgement.rejection.acknowledgementCount ?? null,
+        })
+      }
+    }
     if (gate) {
       const packet = {
         instructionId: instruction.instructionId,

@@ -17,7 +17,17 @@ import os from "node:os"
 import path from "node:path"
 import test from "node:test"
 import { promisify } from "node:util"
-import { extractAgentControls } from "../src/control-plane.mjs"
+import {
+  controlPlaneBindingDigest,
+  extractAgentControls,
+  ownerGateAcknowledgementId,
+  ownerGateReason,
+} from "../src/control-plane.mjs"
+import {
+  checkpointOwnerGateAttemptAuditDecision,
+  recordPendingApprovalRequest,
+  registerCheckpointOwnerGateAcknowledgement,
+} from "../src/approval-decisions.mjs"
 import {
   authorizedGitExecutionBoundary,
   executeGitReconciliationCheckpointMutation,
@@ -532,6 +542,114 @@ ${indentedPrompt}
 \`\`\``
 }
 
+function ownerGateAcknowledgementBlock(binding) {
+  return `\`\`\`yaml
+owner_gate_acknowledgement:
+  acknowledgement_id: ${binding.acknowledgementId}
+  instruction_id: ${binding.instructionId}
+  proposal_instruction_id: ${binding.proposalInstructionId}
+  origin_issue_number: ${binding.originIssueNumber}
+  origin_issue_url_digest: ${binding.originIssueUrlDigest}
+  codex_thread_id: ${binding.codexThreadId}
+  workspace_path_digest: ${binding.workspacePathDigest}
+  checkpoint_id: ${binding.checkpointId}
+  generation_id: ${binding.generationId}
+  reconciliation_id: ${binding.reconciliationId}
+  branch: ${binding.branch}
+  head: ${binding.head}
+  tree: ${binding.tree}
+  control_prompt_digest: ${binding.controlPromptDigest}
+  gate_reason_digest: ${binding.gateReasonDigest}
+  pending_reason_digest: ${binding.pendingReasonDigest}
+  prior_gate_audit_digest: ${binding.priorGateAuditDigest}
+\`\`\``
+}
+
+function selectAcknowledgedGenerationActivation(
+  setup,
+  proposal,
+  instructionId,
+) {
+  const prompt = gitReconciliationCheckpointActivationPrompt({
+    checkpointId: proposal.checkpointId,
+    reconciliationId: proposal.reconciliationId,
+    head: proposal.head,
+    tree: proposal.tree,
+    cherryPickCommit: proposal.cherryPickCommit,
+    generation: proposal.generation,
+    generationId: proposal.generationId,
+  })
+  const controlBody = checkpointControl({
+    instructionId,
+    taskState: "needs_owner",
+    prompt,
+    ownerApprovalRequired: true,
+  })
+  const comment = { body: controlBody }
+  setup.task.comments.push(comment)
+  const [instruction] = extractAgentControls(controlBody)
+  setup.state.status = "needs_owner"
+  setup.state.activeInstruction = { ...instruction, phase: "selected" }
+  const pendingReason = gitReconciliationCheckpointOwnerReason(proposal)
+  if (
+    !(setup.state.pendingApprovalRequests ?? []).some(
+      (pending) =>
+        !pending.clearedAt &&
+        pending.sourceInstructionId === proposal.proposalInstructionId,
+    )
+  ) {
+    recordPendingApprovalRequest({
+      state: setup.state,
+      instructionId: proposal.proposalInstructionId,
+      request: {
+        method: "control-plane/gitReconciliationCheckpointActivation",
+        reason: pendingReason,
+      },
+      now: new Date("2026-08-23T10:03:00.000Z"),
+      allowLegacy: true,
+    })
+  }
+  const gateReason = ownerGateReason(instruction)
+  const audit = checkpointOwnerGateAttemptAuditDecision({
+    state: setup.state,
+    task: setup.task,
+    proposal,
+    activationPrompt: prompt,
+    gateReason,
+  })
+  assert.equal(audit.accepted, true, JSON.stringify(audit))
+  const binding = {
+    instructionId,
+    proposalInstructionId: proposal.proposalInstructionId,
+    originIssueNumber: proposal.originIssueNumber,
+    originIssueUrlDigest: controlPlaneBindingDigest(proposal.originIssueUrl),
+    codexThreadId: proposal.threadId,
+    workspacePathDigest: controlPlaneBindingDigest(proposal.workspacePath),
+    checkpointId: proposal.checkpointId,
+    generationId: proposal.generationId,
+    reconciliationId: proposal.reconciliationId,
+    branch: proposal.branch,
+    head: proposal.head,
+    tree: proposal.tree,
+    controlPromptDigest: controlPlaneBindingDigest(prompt),
+    gateReasonDigest: controlPlaneBindingDigest(gateReason),
+    pendingReasonDigest: controlPlaneBindingDigest(pendingReason),
+    priorGateAuditDigest: audit.value.digest,
+  }
+  binding.acknowledgementId = ownerGateAcknowledgementId(binding)
+  comment.body = `${controlBody}\n\n${ownerGateAcknowledgementBlock(binding)}`
+  const registered = registerCheckpointOwnerGateAcknowledgement({
+    state: setup.state,
+    instruction,
+    task: setup.task,
+    gateReason,
+    pendingReason,
+    now: new Date("2026-08-23T10:04:00.000Z"),
+  })
+  assert.equal(registered.accepted, true, JSON.stringify(registered))
+  return { instruction, prompt, binding, registered }
+}
+
 function appendLive015Run(setup) {
   const run = structuredClone(setup.state.runs.at(-1))
   const noMutation =
@@ -695,6 +813,169 @@ function appendAcceptedCheckpointProposalRun(setup, proposal) {
     branchPushState: [],
     resultArtifact: null,
     completedAt: "2026-08-23T10:03:00.000Z",
+  }
+  setup.state.runs.push(run)
+  return run
+}
+
+function appendRejectedOwnerGateAttempt(
+  setup,
+  proposal,
+  { instructionId, taskState, completedAt },
+) {
+  const prompt = gitReconciliationCheckpointActivationPrompt({
+    checkpointId: proposal.checkpointId,
+    reconciliationId: proposal.reconciliationId,
+    head: proposal.head,
+    tree: proposal.tree,
+    cherryPickCommit: proposal.cherryPickCommit,
+    generation: proposal.generation,
+    generationId: proposal.generationId,
+  })
+  setup.task.comments.push({
+    body: checkpointControl({
+      instructionId,
+      taskState,
+      prompt,
+      ownerApprovalRequired: true,
+    }),
+  })
+  const gateReason = "The control-plane instruction explicitly requires owner approval."
+  setup.state.runs.push({
+    instructionId,
+    status: "needs_owner",
+    threadId: proposal.threadId,
+    workspacePath: proposal.workspacePath,
+    branch: proposal.branch,
+    commits: [],
+    changedFiles: [],
+    turnCount: 0,
+    originIssueNumber: proposal.originIssueNumber,
+    originIssueUrl: proposal.originIssueUrl,
+    ownerRequest: {
+      method: "control-plane/ownerGate",
+      reason: gateReason,
+    },
+    checks: {
+      typecheck: "not_run",
+      lint: "not_run",
+      tests: "not_run",
+      cloudflareReadiness: "not_run",
+      build: "not_run",
+      diffCheck: "not_run",
+    },
+    blockers: [],
+    ownerGates: [gateReason],
+    productionReadback: [],
+    safetyFindings: [],
+    branchPushState: [],
+    resultArtifact: null,
+    completedAt,
+  })
+}
+
+function appendLegacyActivation023(setup, proposal) {
+  const instructionId =
+    "production-day1-git-reconciliation-checkpoint-generation-activation-023"
+  const prompt = gitReconciliationCheckpointActivationPrompt({
+    checkpointId: proposal.checkpointId,
+    reconciliationId: proposal.reconciliationId,
+    head: proposal.head,
+    tree: proposal.tree,
+    cherryPickCommit: proposal.cherryPickCommit,
+    generation: proposal.generation,
+    generationId: proposal.generationId,
+  })
+  setup.task.comments.push({
+    body: checkpointControl({
+      instructionId,
+      taskState: "needs_owner",
+      prompt,
+      ownerApprovalRequired: false,
+    }),
+  })
+  const noMutation =
+    "No fallback Git path, sibling metadata access, source change, production action, deployment, migration, purchase, or receipt mutation occurred."
+  const branchPushState = [
+    `Branch/current HEAD: \`${proposal.branch}\` at \`${proposal.head}\``,
+    "Live remote foundation: **PASS**",
+    "Push/PR: **NOT ATTEMPTED**",
+  ]
+  const summary =
+    `/bin/zsh -lc "git status --porcelain=v1 --branch; git branch --show-current; git rev-parse HEAD; git rev-list --count ${proposal.head}..HEAD; CHERRY_PICK_HEAD MERGE_HEAD REVERT_HEAD REBASE_HEAD; git diff --check" (completed, exit 0)`
+  const unknown = { status: "unknown", evidence: [] }
+  const run = {
+    instructionId,
+    status: "needs_review",
+    threadId: proposal.threadId,
+    workspacePath: proposal.workspacePath,
+    branch: proposal.branch,
+    commits: [proposal.head],
+    changedFiles: structuredClone(issue63LiveChangedFiles),
+    turnCount: 1,
+    originIssueNumber: proposal.originIssueNumber,
+    originIssueUrl: proposal.originIssueUrl,
+    ownerRequest: null,
+    checks: {
+      typecheck: "unknown",
+      lint: "unknown",
+      tests: "unknown",
+      cloudflareReadiness: "unknown",
+      build: "unknown",
+      diffCheck: "pass",
+    },
+    blockers: [],
+    ownerGates: [],
+    productionReadback: [noMutation],
+    safetyFindings: [],
+    branchPushState,
+    resultArtifact: {
+      version: 1,
+      source: "completed_turn_final_message",
+      capturedAt: "2026-08-23T19:52:28.927Z",
+      turnId: "01a0302d-f3fd-7bc0-9135-c3f7213d7a97",
+      turnStatus: "completed",
+      finalMessage: `needs_review — superseding checkpoint generation 2 did not activate the approved metadata boundary.
+
+- Branch/current HEAD: \`${proposal.branch}\` at \`${proposal.head}\`
+- Current tree: \`${proposal.tree}\`
+- Checkpoint binding and lineage preflight: **PASS**
+- Live remote foundation: **PASS**
+- Cherry-pick: **FAILED before application**
+- Exact failure: linked-worktree \`index.lock: Operation not permitted\`
+- Worktree: clean; zero commits above base; no Git operation markers
+- \`git diff --check\`: **PASS**
+- Validation suite: **NOT RUN**
+- Push/PR: **NOT ATTEMPTED**
+
+${noMutation}`,
+      checks: {
+        typecheck: structuredClone(unknown),
+        lint: structuredClone(unknown),
+        tests: structuredClone(unknown),
+        cloudflareReadiness: structuredClone(unknown),
+        build: structuredClone(unknown),
+        diffCheck: {
+          status: "pass",
+          evidence: [
+            { source: "command_execution", status: "pass", summary },
+            {
+              source: "final_message",
+              status: "pass",
+              summary: "`git diff --check`: **PASS**",
+            },
+          ],
+        },
+      },
+      findings: {
+        blockers: [],
+        ownerGates: [],
+        productionReadback: [noMutation],
+        safetyFindings: [],
+        branchPushState,
+      },
+    },
+    completedAt: "2026-08-23T19:52:30.531Z",
   }
   setup.state.runs.push(run)
   return run
@@ -1821,28 +2102,12 @@ test("exact live #63/010-018 history creates one fresh generation without reinte
 
   setup.state.gitReconciliationCheckpoints.push(proposal)
   appendAcceptedCheckpointProposalRun(setup, proposal)
-  const activationPrompt = gitReconciliationCheckpointActivationPrompt({
-    checkpointId: proposal.checkpointId,
-    reconciliationId: proposal.reconciliationId,
-    head: proposal.head,
-    tree: proposal.tree,
-    cherryPickCommit: proposal.cherryPickCommit,
-    generation: proposal.generation,
-    generationId: proposal.generationId,
-  })
-  const activationBody = checkpointControl({
-    instructionId:
+  const { instruction: activationInstruction } =
+    selectAcknowledgedGenerationActivation(
+      setup,
+      proposal,
       "production-day1-git-reconciliation-checkpoint-generation-activation-020",
-    taskState: "needs_owner",
-    prompt: activationPrompt,
-  })
-  setup.task.comments.push({ body: activationBody })
-  const [activationInstruction] = extractAgentControls(activationBody)
-  setup.state.status = "needs_owner"
-  setup.state.activeInstruction = {
-    ...activationInstruction,
-    phase: "selected",
-  }
+    )
   const activationInput = {
     ...setup,
     state: setup.state,
@@ -2157,28 +2422,12 @@ test("exact live #63/010-020 history preserves failed generation attempts and cr
 
   setup.state.gitReconciliationCheckpoints.push(proposal)
   appendAcceptedCheckpointProposalRun(setup, proposal)
-  const activationPrompt = gitReconciliationCheckpointActivationPrompt({
-    checkpointId: proposal.checkpointId,
-    reconciliationId: proposal.reconciliationId,
-    head: proposal.head,
-    tree: proposal.tree,
-    cherryPickCommit: proposal.cherryPickCommit,
-    generation: proposal.generation,
-    generationId: proposal.generationId,
-  })
-  const activationBody = checkpointControl({
-    instructionId:
+  const { instruction: activationInstruction } =
+    selectAcknowledgedGenerationActivation(
+      setup,
+      proposal,
       "production-day1-git-reconciliation-checkpoint-generation-activation-022",
-    taskState: "needs_owner",
-    prompt: activationPrompt,
-  })
-  setup.task.comments.push({ body: activationBody })
-  const [activationInstruction] = extractAgentControls(activationBody)
-  setup.state.status = "needs_owner"
-  setup.state.activeInstruction = {
-    ...activationInstruction,
-    phase: "selected",
-  }
+    )
   const activationInput = {
     ...setup,
     state: setup.state,
@@ -2218,6 +2467,155 @@ test("exact live #63/010-020 history preserves failed generation attempts and cr
     JSON.stringify(setup.state.runs.slice(0, -1)),
     setup.immutableRetryHistory,
   )
+})
+
+test("exact live #63/021-025 audit tail requires one bound acknowledgement", async (t) => {
+  const setup = await checkpointGenerationRetrySetup(t)
+  const proposal = setup.generationRetryProposal.value.record
+  setup.state.gitReconciliationCheckpoints.push(proposal)
+  appendAcceptedCheckpointProposalRun(setup, proposal)
+  appendRejectedOwnerGateAttempt(setup, proposal, {
+    instructionId:
+      "production-day1-git-reconciliation-checkpoint-generation-activation-022",
+    taskState: "needs_owner",
+    completedAt: "2026-08-23T19:46:42.895Z",
+  })
+  appendLegacyActivation023(setup, proposal)
+  appendRejectedOwnerGateAttempt(setup, proposal, {
+    instructionId:
+      "production-day1-git-reconciliation-checkpoint-generation-activation-025",
+    taskState: "needs_review",
+    completedAt: "2026-08-23T20:52:38.709Z",
+  })
+  appendRejectedOwnerGateAttempt(setup, proposal, {
+    instructionId:
+      "production-day1-git-reconciliation-checkpoint-generation-activation-024",
+    taskState: "needs_owner",
+    completedAt: "2026-08-23T20:53:14.959Z",
+  })
+  const immutableHistory = JSON.stringify(setup.state.runs)
+  const instructionId =
+    "production-day1-git-reconciliation-checkpoint-generation-activation-owner-ack-026"
+  const prompt = gitReconciliationCheckpointActivationPrompt({
+    checkpointId: proposal.checkpointId,
+    reconciliationId: proposal.reconciliationId,
+    head: proposal.head,
+    tree: proposal.tree,
+    cherryPickCommit: proposal.cherryPickCommit,
+    generation: proposal.generation,
+    generationId: proposal.generationId,
+  })
+  const unacknowledgedBody = checkpointControl({
+    instructionId,
+    taskState: "needs_owner",
+    prompt,
+    ownerApprovalRequired: true,
+  })
+  setup.task.comments.push({ body: unacknowledgedBody })
+  const [unacknowledged] = extractAgentControls(unacknowledgedBody)
+  setup.state.status = "needs_owner"
+  setup.state.activeInstruction = { ...unacknowledged, phase: "selected" }
+  const pendingReason = gitReconciliationCheckpointOwnerReason(proposal)
+  recordPendingApprovalRequest({
+    state: setup.state,
+    instructionId: proposal.proposalInstructionId,
+    request: {
+      method: "control-plane/gitReconciliationCheckpointActivation",
+      reason: pendingReason,
+    },
+    now: new Date("2026-08-23T19:41:27.792Z"),
+    allowLegacy: true,
+  })
+  const missing = registerCheckpointOwnerGateAcknowledgement({
+    state: setup.state,
+    instruction: unacknowledged,
+    task: setup.task,
+    gateReason: ownerGateReason(unacknowledged),
+    pendingReason,
+  })
+  assert.equal(
+    missing.rejection.code,
+    "owner_gate_acknowledgement_count_or_pairing",
+  )
+  setup.task.comments.pop()
+
+  const activation = selectAcknowledgedGenerationActivation(
+    setup,
+    proposal,
+    instructionId,
+  )
+  assert.deepEqual(activation.registered.value.priorGateAudit.instructionIds, [
+    "production-day1-git-reconciliation-checkpoint-generation-activation-022",
+    "production-day1-git-reconciliation-checkpoint-generation-activation-023",
+    "production-day1-git-reconciliation-checkpoint-generation-activation-025",
+    "production-day1-git-reconciliation-checkpoint-generation-activation-024",
+  ])
+  assert.equal(setup.state.ownerGateAcknowledgements.length, 1)
+  assert.equal(JSON.stringify(setup.state.runs), immutableHistory)
+  const boundary = await authorizedGitExecutionBoundary({
+    ...setup,
+    state: setup.state,
+    instruction: activation.instruction,
+  })
+  assert.ok(boundary)
+  assert.equal(boundary.checkpointId, proposal.checkpointId)
+  assert.equal(boundary.checkpointActivationIsNew, true)
+  assert.equal(
+    gitExecutionPathIsCovered(
+      boundary,
+      path.join(boundary.gitDirectory, "index.lock"),
+    ),
+    true,
+  )
+  assert.equal(
+    gitExecutionPathIsCovered(
+      boundary,
+      path.join(
+        boundary.commonDirectory,
+        "worktrees",
+        "issue-63-sibling",
+        "index.lock",
+      ),
+    ),
+    false,
+  )
+  const mutationCases = [
+    (run) => run.changedFiles.pop(),
+    (run) => {
+      run.branch = "agent/issue-63-other-branch"
+    },
+    (run) => {
+      run.branchPushState[2] = "Push: ATTEMPTED"
+    },
+    (run) => {
+      run.resultArtifact.checks.diffCheck.evidence = []
+    },
+    (run) => {
+      run.resultArtifact.finalMessage =
+        "needs_review; structured non-mutation proof removed"
+    },
+  ]
+  for (const mutate of mutationCases) {
+    const changed = structuredClone(setup.state)
+    const run = changed.runs.find(
+      (candidate) =>
+        candidate.instructionId ===
+        "production-day1-git-reconciliation-checkpoint-generation-activation-023",
+    )
+    mutate(run)
+    const decision = checkpointOwnerGateAttemptAuditDecision({
+      state: changed,
+      task: setup.task,
+      proposal,
+      activationPrompt: activation.prompt,
+      gateReason: ownerGateReason(activation.instruction),
+    })
+    assert.equal(decision.accepted, false)
+    assert.equal(
+      decision.rejection.code,
+      "owner_gate_prior_legacy_attempt_evidence",
+    )
+  }
 })
 
 test("generation retry audit rejects changed scope, mutation, ambiguous controls, and non-proposal history", async (t) => {
@@ -2849,7 +3247,7 @@ test("a retried proposal still requires one separate exact activation and grants
     }),
     null,
   )
-  assert.equal(oldDiagnostic.code, "checkpoint_post_tail_run_count")
+  assert.equal(oldDiagnostic.code, "checkpoint_proposal_run_binding")
 
   boundary.checkpointActivation.activatedAt =
     "2026-08-23T10:04:00.000Z"
