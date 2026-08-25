@@ -1839,6 +1839,320 @@ test("concurrent repository discovery creates one completed checkpoint recovery"
   assert.equal(result.durable.checkpointActivationRecoveries[0].status, "completed")
 })
 
+function deferredTaskScanner({ issue, comments }) {
+  let release
+  let enteredCount = 0
+  let announce
+  const entered = new Promise((resolve) => {
+    announce = resolve
+  })
+  const gate = new Promise((resolve) => {
+    release = resolve
+  })
+  return {
+    scanner: {
+      threadId: "repository-race-scanner",
+      appServer: {
+        async callMcpTool(request) {
+          if (
+            request.tool !== "github.fetch_issue" &&
+            request.tool !== "github.fetch_issue_comments"
+          ) {
+            throw new Error(`Unexpected MCP tool: ${request.tool}`)
+          }
+          enteredCount += 1
+          if (enteredCount === 2) announce()
+          await gate
+          return request.tool === "github.fetch_issue"
+            ? { structuredContent: { issue } }
+            : { structuredContent: { comments } }
+        },
+      },
+    },
+    entered,
+    release,
+  }
+}
+
+test("a delayed no-control poll cannot erase a newer running protected instruction", async (t) => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "koalafrog-runner-race-running-"))
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const storeOptions = {
+    stateDirectory: directory,
+    repository: "Sillyquack/koalafrog-hq",
+    issueNumber: 63,
+  }
+  const store = new StateStore(storeOptions)
+  const initial = await store.load()
+  initial.status = "needs_review"
+  await store.save(initial)
+  const issue = {
+    issue_number: 63,
+    state: "open",
+    updated_at: "2026-08-25T12:00:00.000Z",
+    url: issue63OriginUrl,
+  }
+  const blocked = deferredTaskScanner({ issue, comments: [] })
+  const config = {
+    repository: storeOptions.repository,
+    stateDirectory: directory,
+    retryBaseMs: 1,
+  }
+  const candidate = { issueNumber: 63, searchMatched: true }
+  let orchestratorSelections = 0
+  class FreshStateOrchestrator {
+    constructor(_config, { store: taskStore }) {
+      this.store = taskStore
+    }
+
+    async runOnce({ expectedInstructionId }) {
+      orchestratorSelections += 1
+      const current = await this.store.load()
+      assert.equal(current.status, "running")
+      assert.equal(current.activeInstruction.instructionId, expectedInstructionId)
+      return { status: "queue_changed", instructionId: expectedInstructionId }
+    }
+
+    async stop() {}
+  }
+  const poll = runRepositoryIssue(blocked.scanner, config, candidate, {
+    OrchestratorClass: FreshStateOrchestrator,
+  })
+  await blocked.entered
+
+  const newer = await store.load()
+  const [instruction] = extractAgentControls(
+    controlBlock("protected-recovery-027", {
+      action: "continue",
+      taskState: "needs_review",
+    }),
+  )
+  newer.status = "running"
+  newer.activeInstruction = {
+    ...instruction,
+    phase: "turn_started",
+    checkpointActivationRecovery: { recoveryId: "recovery-current-027" },
+  }
+  newer.checkpointActivationRecoveries = [
+    {
+      instructionId: instruction.instructionId,
+      recoveryId: "recovery-current-027",
+      status: "boundary_activated",
+    },
+  ]
+  await store.save(newer)
+  const claimStore = new QueueClaimStore({ stateDirectory: directory })
+  await claimStore.withClaim(
+    { instructionId: instruction.instructionId, originIssueNumber: 63 },
+    async () => ({ status: "needs_review" }),
+  )
+  blocked.release()
+  const result = await poll
+
+  assert.equal(result.status, "queue_changed")
+  assert.equal(result.claimed, false)
+  assert.equal(orchestratorSelections, 1)
+  const durable = await store.load()
+  assert.equal(durable.status, "running")
+  assert.equal(durable.activeInstruction.instructionId, instruction.instructionId)
+  assert.equal(durable.checkpointActivationRecoveries.length, 1)
+  const queueRecord = JSON.parse(
+    await readFile(
+      path.join(
+        directory,
+        "repository-queue",
+        "instructions",
+        `${instruction.instructionId}.json`,
+      ),
+      "utf8",
+    ),
+  )
+  assert.equal(queueRecord.status, "completed")
+  assert.equal(queueRecord.attempt, 1)
+})
+
+test("a delayed poll cannot remove or rediscover a terminal recovery", async (t) => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "koalafrog-runner-race-terminal-"))
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const store = new StateStore({
+    stateDirectory: directory,
+    repository: "Sillyquack/koalafrog-hq",
+    issueNumber: 63,
+  })
+  const initial = await store.load()
+  initial.status = "needs_review"
+  await store.save(initial)
+  const instructionId = "completed-recovery-027"
+  const issue = {
+    issue_number: 63,
+    state: "open",
+    updated_at: "2026-08-25T12:01:00.000Z",
+    url: issue63OriginUrl,
+  }
+  const blocked = deferredTaskScanner({ issue, comments: [] })
+  const candidate = { issueNumber: 63, searchMatched: true }
+  const poll = runRepositoryIssue(
+    blocked.scanner,
+    {
+      repository: "Sillyquack/koalafrog-hq",
+      stateDirectory: directory,
+      retryBaseMs: 1,
+    },
+    candidate,
+    {
+      recoverCheckpointActivation: () => ({
+        accepted: false,
+        rejection: {
+          code: "checkpoint_activation_recovery_already_recorded",
+        },
+      }),
+    },
+  )
+  await blocked.entered
+  const terminal = await store.load()
+  terminal.lastConsumedInstructionId = instructionId
+  terminal.ownerGateAcknowledgements = [
+    { kind: "checkpoint_activation", instructionId, completedAt: "2026-08-25T11:59:00.000Z" },
+  ]
+  terminal.checkpointActivationRecoveries = [
+    { instructionId, recoveryId: "terminal-recovery", status: "completed" },
+  ]
+  await store.save(terminal)
+  const claimStore = new QueueClaimStore({ stateDirectory: directory })
+  await claimStore.withClaim(
+    { instructionId, originIssueNumber: 63 },
+    async () => ({ status: "needs_review" }),
+  )
+  blocked.release()
+  const result = await poll
+
+  assert.equal(result.status, "no_pending_agent_control")
+  const durable = await store.load()
+  assert.equal(durable.checkpointActivationRecoveries.length, 1)
+  assert.equal(durable.checkpointActivationRecoveries[0].status, "completed")
+  const queueRecord = JSON.parse(
+    await readFile(
+      path.join(directory, "repository-queue", "instructions", `${instructionId}.json`),
+      "utf8",
+    ),
+  )
+  assert.equal(queueRecord.status, "completed")
+  assert.equal(queueRecord.attempt, 1)
+})
+
+test("a pending control that arrives during fetch wins over the stale idle snapshot", async (t) => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "koalafrog-runner-race-control-"))
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const issue = {
+    issue_number: 63,
+    state: "open",
+    updated_at: "2026-08-25T12:02:00.000Z",
+    url: issue63OriginUrl,
+  }
+  const comments = []
+  const blocked = deferredTaskScanner({ issue, comments })
+  let turns = 0
+  class ConsumingOrchestrator {
+    constructor(_config, { store }) {
+      this.store = store
+    }
+
+    async runOnce({ expectedInstructionId }) {
+      turns += 1
+      const state = await this.store.load()
+      state.status = "needs_review"
+      state.lastConsumedInstructionId = expectedInstructionId
+      state.runs.push({ instructionId: expectedInstructionId, status: "needs_review" })
+      await this.store.save(state)
+      return { status: "needs_review", instructionId: expectedInstructionId }
+    }
+
+    async stop() {}
+  }
+  const poll = runRepositoryIssue(
+    blocked.scanner,
+    {
+      repository: "Sillyquack/koalafrog-hq",
+      stateDirectory: directory,
+      retryBaseMs: 1,
+    },
+    { issueNumber: 63, searchMatched: true },
+    { OrchestratorClass: ConsumingOrchestrator },
+  )
+  await blocked.entered
+  comments.push({ body: controlBlock("arrived-during-fetch-001") })
+  blocked.release()
+  const result = await poll
+
+  assert.equal(result.instructionId, "arrived-during-fetch-001")
+  assert.equal(result.claimed, true)
+  assert.equal(turns, 1)
+})
+
+test("an invalid durable recovery observed after fetch fails closed without overwriting newer authority state", async (t) => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "koalafrog-runner-race-rejection-"))
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const instructionId = "invalid-recovery-027"
+  const store = new StateStore({
+    stateDirectory: directory,
+    repository: "Sillyquack/koalafrog-hq",
+    issueNumber: 63,
+  })
+  const initial = await store.load()
+  initial.status = "needs_review"
+  await store.save(initial)
+  const issue = {
+    issue_number: 63,
+    state: "open",
+    updated_at: "2026-08-25T12:03:00.000Z",
+    url: issue63OriginUrl,
+  }
+  const blocked = deferredTaskScanner({ issue, comments: [] })
+  const poll = runRepositoryIssue(
+    blocked.scanner,
+    {
+      repository: "Sillyquack/koalafrog-hq",
+      stateDirectory: directory,
+      retryBaseMs: 1,
+    },
+    { issueNumber: 63, searchMatched: true },
+    {
+      recoverCheckpointActivation: () => ({
+        accepted: false,
+        rejection: { code: "checkpoint_activation_recovery_binding_drift" },
+      }),
+    },
+  )
+  await blocked.entered
+  const newer = await store.load()
+  newer.lastConsumedInstructionId = instructionId
+  newer.ownerGateAcknowledgements = [
+    {
+      kind: "checkpoint_activation",
+      instructionId,
+      acknowledgementId: "owner-ack-current-027",
+      status: "completed",
+    },
+  ]
+  newer.pendingApprovalRequests = [
+    { requestId: "completed-request-027", status: "completed" },
+  ]
+  newer.runs = [{ instructionId, status: "needs_review" }]
+  await store.save(newer)
+  blocked.release()
+  const result = await poll
+
+  assert.equal(result.status, "checkpoint_activation_recovery_rejected")
+  assert.equal(
+    result.rejectionCode,
+    "checkpoint_activation_recovery_binding_drift",
+  )
+  const durable = await store.load()
+  assert.equal(durable.ownerGateAcknowledgements[0].acknowledgementId, "owner-ack-current-027")
+  assert.equal(durable.pendingApprovalRequests[0].status, "completed")
+  assert.equal(durable.runs.length, 1)
+})
+
 test("applicable durable recovery rejection is explicit and starts no protected turn", async (t) => {
   const result = await runCompletedCheckpointRecoveryScenario(t, {
     boundaryAccepted: true,

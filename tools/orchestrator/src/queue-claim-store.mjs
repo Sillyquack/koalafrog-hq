@@ -1,12 +1,32 @@
 import { randomUUID } from "node:crypto"
-import { chmod, mkdir, open, readFile, rename, unlink, writeFile } from "node:fs/promises"
+import {
+  chmod,
+  link,
+  mkdir,
+  open,
+  readFile,
+  rename,
+  unlink,
+} from "node:fs/promises"
 import path from "node:path"
+
+const issueClaimBrand = Symbol("koalafrog-issue-claim")
 
 function safeInstructionId(instructionId) {
   if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(instructionId)) {
     throw new Error("Cannot claim an unsafe instruction_id")
   }
   return instructionId
+}
+
+function safeRetryAuthorizationId(retryAuthorizationId) {
+  if (retryAuthorizationId == null) return null
+  if (
+    !/^[A-Za-z0-9][A-Za-z0-9._:-]{0,255}$/.test(retryAuthorizationId)
+  ) {
+    throw new Error("Cannot claim an unsafe retry authorization")
+  }
+  return retryAuthorizationId
 }
 
 function processIsAlive(pid) {
@@ -31,11 +51,51 @@ async function readJson(filePath) {
 async function writeJsonAtomic(filePath, value) {
   await mkdir(path.dirname(filePath), { recursive: true, mode: 0o700 })
   const temporary = `${filePath}.${process.pid}.${randomUUID()}.tmp`
-  await writeFile(temporary, `${JSON.stringify(value, null, 2)}\n`, {
-    mode: 0o600,
+  let handle = null
+  try {
+    handle = await open(temporary, "wx", 0o600)
+    await handle.writeFile(`${JSON.stringify(value, null, 2)}\n`)
+    await handle.sync()
+    await handle.close()
+    handle = null
+    await rename(temporary, filePath)
+    await chmod(filePath, 0o600)
+  } finally {
+    await handle?.close().catch(() => {})
+    await unlink(temporary).catch((error) => {
+      if (error.code !== "ENOENT") throw error
+    })
+  }
+}
+
+async function tryCreateFileLock(lockPath, record) {
+  const candidatePath = `${lockPath}.${record.token}.candidate`
+  let handle = null
+  try {
+    handle = await open(candidatePath, "wx", 0o600)
+    await handle.writeFile(`${JSON.stringify(record)}\n`)
+    await handle.sync()
+    await handle.close()
+    handle = null
+    await link(candidatePath, lockPath)
+    return true
+  } catch (error) {
+    if (error.code === "EEXIST") return false
+    throw error
+  } finally {
+    await handle?.close().catch(() => {})
+    await unlink(candidatePath).catch((error) => {
+      if (error.code !== "ENOENT") throw error
+    })
+  }
+}
+
+async function releaseFileLockPath(lockPath, token) {
+  const existing = await readJson(lockPath).catch(() => null)
+  if (existing?.token !== token) return
+  await unlink(lockPath).catch((error) => {
+    if (error.code !== "ENOENT") throw error
   })
-  await rename(temporary, filePath)
-  await chmod(filePath, 0o600)
 }
 
 async function acquireFileLock(
@@ -47,32 +107,46 @@ async function acquireFileLock(
   } = {},
 ) {
   await mkdir(path.dirname(lockPath), { recursive: true, mode: 0o700 })
+  const reaperPath = `${lockPath}.reaper`
   for (let attempt = 0; attempt < 3; attempt += 1) {
+    if (await readJson(reaperPath)) return null
     const token = randomUUID()
-    let handle = null
-    try {
-      handle = await open(lockPath, "wx", 0o600)
-      await handle.writeFile(
-        `${JSON.stringify({ token, pid, acquiredAt: now().toISOString() })}\n`,
-      )
-      await handle.close()
-      handle = null
+    if (
+      await tryCreateFileLock(lockPath, {
+        token,
+        pid,
+        acquiredAt: now().toISOString(),
+      })
+    ) {
       return { token, pid, lockPath }
-    } catch (error) {
-      await handle?.close().catch(() => {})
-      if (error.code !== "EEXIST") throw error
-      const existing = await readJson(lockPath).catch(() => null)
-      if (existing && isProcessAlive(existing.pid)) return null
+    }
 
-      const stalePath = `${lockPath}.${randomUUID()}.stale`
-      try {
-        await rename(lockPath, stalePath)
-        await unlink(stalePath)
-      } catch (renameError) {
-        if (!new Set(["ENOENT", "EEXIST"]).has(renameError.code)) {
-          throw renameError
+    const existing = await readJson(lockPath).catch(() => null)
+    if (!existing || isProcessAlive(existing.pid)) return null
+
+    const reaperToken = randomUUID()
+    if (
+      !(await tryCreateFileLock(reaperPath, {
+        token: reaperToken,
+        pid,
+        acquiredAt: now().toISOString(),
+      }))
+    ) {
+      return null
+    }
+    try {
+      const current = await readJson(lockPath).catch(() => null)
+      if (current && !isProcessAlive(current.pid)) {
+        const stalePath = `${lockPath}.${randomUUID()}.stale`
+        try {
+          await rename(lockPath, stalePath)
+          await unlink(stalePath)
+        } catch (renameError) {
+          if (renameError.code !== "ENOENT") throw renameError
         }
       }
+    } finally {
+      await releaseFileLockPath(reaperPath, reaperToken)
     }
   }
   return null
@@ -80,11 +154,7 @@ async function acquireFileLock(
 
 async function releaseFileLock(lock) {
   if (!lock) return
-  const existing = await readJson(lock.lockPath).catch(() => null)
-  if (existing?.token !== lock.token) return
-  await unlink(lock.lockPath).catch((error) => {
-    if (error.code !== "ENOENT") throw error
-  })
+  await releaseFileLockPath(lock.lockPath, lock.token)
 }
 
 function completedResult(result) {
@@ -125,18 +195,47 @@ export class QueueClaimStore {
       instructionId,
       originIssueNumber,
       originIssueUrl = null,
-      retryAllowed = false,
+      retryAuthorizationId = null,
     },
     callback,
+    { issueClaim = null } = {},
   ) {
     const safeId = safeInstructionId(instructionId)
+    const safeRetryId = safeRetryAuthorizationId(retryAuthorizationId)
     if (!Number.isSafeInteger(originIssueNumber) || originIssueNumber < 1) {
       throw new Error("Cannot claim an invalid origin issue number")
     }
-    const issueLock = await this.#acquire(
+    if (!issueClaim) {
+      const result = await this.withIssueClaim(
+        { originIssueNumber },
+        (claimedIssue) =>
+          this.withClaim(
+            {
+              instructionId: safeId,
+              originIssueNumber,
+              originIssueUrl,
+              retryAuthorizationId: safeRetryId,
+            },
+            callback,
+            { issueClaim: claimedIssue },
+          ),
+      )
+      return result.claimed
+        ? result.value
+        : { claimed: false, reason: result.reason }
+    }
+    if (
+      issueClaim[issueClaimBrand] !== this ||
+      issueClaim.originIssueNumber !== originIssueNumber
+    ) {
+      throw new Error("Instruction claim is not bound to the active issue claim")
+    }
+    const durableIssueClaim = await readJson(
       path.join(this.issueLockDirectory, `${originIssueNumber}.lock`),
     )
-    if (!issueLock) return { claimed: false, reason: "issue_busy" }
+    if (durableIssueClaim?.token !== issueClaim.token) {
+      throw new Error("Instruction claim issue lease is no longer active")
+    }
 
     let instructionLock = null
     try {
@@ -155,8 +254,19 @@ export class QueueClaimStore {
       ) {
         return { claimed: false, reason: "duplicate_instruction_origin" }
       }
-      if (existing?.status === "completed" && !retryAllowed) {
-        return { claimed: false, reason: "already_consumed" }
+      if (existing?.status === "completed") {
+        if (!safeRetryId || existing.retryAuthorizationId === safeRetryId) {
+          return { claimed: false, reason: "already_consumed" }
+        }
+        if (existing.retryAuthorizationId) {
+          return { claimed: false, reason: "retry_authorization_conflict" }
+        }
+      }
+      if (
+        existing?.retryAuthorizationId &&
+        existing.retryAuthorizationId !== safeRetryId
+      ) {
+        return { claimed: false, reason: "retry_authorization_conflict" }
       }
       if (
         existing?.status === "retryable_error" &&
@@ -180,6 +290,7 @@ export class QueueClaimStore {
         attempt,
         pid: this.pid,
         token: instructionLock.token,
+        retryAuthorizationId: safeRetryId,
         claimedAt: this.now().toISOString(),
         updatedAt: this.now().toISOString(),
       }
@@ -187,15 +298,23 @@ export class QueueClaimStore {
 
       try {
         const value = await callback()
-        await writeJsonAtomic(recordPath, {
-          ...active,
-          status: completedResult(value) ? "completed" : "released",
-          resultStatus: value?.status ?? null,
-          completedAt: completedResult(value)
-            ? this.now().toISOString()
-            : null,
-          updatedAt: this.now().toISOString(),
-        })
+        if (
+          existing?.status === "completed" &&
+          safeRetryId &&
+          !completedResult(value)
+        ) {
+          await writeJsonAtomic(recordPath, existing)
+        } else {
+          await writeJsonAtomic(recordPath, {
+            ...active,
+            status: completedResult(value) ? "completed" : "released",
+            resultStatus: value?.status ?? null,
+            completedAt: completedResult(value)
+              ? this.now().toISOString()
+              : null,
+            updatedAt: this.now().toISOString(),
+          })
+        }
         return { claimed: true, value }
       } catch (error) {
         const failureCount = (existing?.failureCount ?? 0) + 1
@@ -215,6 +334,25 @@ export class QueueClaimStore {
       }
     } finally {
       await releaseFileLock(instructionLock)
+    }
+  }
+
+  async withIssueClaim({ originIssueNumber }, callback) {
+    if (!Number.isSafeInteger(originIssueNumber) || originIssueNumber < 1) {
+      throw new Error("Cannot claim an invalid origin issue number")
+    }
+    const issueLock = await this.#acquire(
+      path.join(this.issueLockDirectory, `${originIssueNumber}.lock`),
+    )
+    if (!issueLock) return { claimed: false, reason: "issue_busy" }
+    const claim = {
+      [issueClaimBrand]: this,
+      originIssueNumber,
+      token: issueLock.token,
+    }
+    try {
+      return { claimed: true, value: await callback(claim) }
+    } finally {
       await releaseFileLock(issueLock)
     }
   }

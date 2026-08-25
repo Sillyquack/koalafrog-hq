@@ -3,6 +3,7 @@ import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
 import test from "node:test"
+import { fileURLToPath } from "node:url"
 import {
   buildLaunchAgentPlist,
   installAndStartLaunchAgent,
@@ -15,6 +16,12 @@ import {
   planRuntimeRelease,
   planRuntimeReleaseFromCheckout,
 } from "../src/runtime-bundle.mjs"
+
+const orchestratorDirectory = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "..",
+)
+const repositoryDirectory = path.resolve(orchestratorDirectory, "..", "..")
 
 function fixture(root) {
   const stateDirectory = path.join(root, "state & logs")
@@ -57,7 +64,7 @@ test("LaunchAgent configuration is persistent, bounded, and secret-free", () => 
 test("service runtime release is deterministic, immutable, and outside a task worktree", async (t) => {
   const root = await mkdtemp(path.join(os.tmpdir(), "koalafrog-runtime-"))
   t.after(() => rm(root, { recursive: true, force: true }))
-  const sourceDirectory = path.resolve("tools/orchestrator")
+  const sourceDirectory = orchestratorDirectory
   const options = {
     sourceDirectory,
     stateDirectory: root,
@@ -89,7 +96,7 @@ test("service runtime release is deterministic, immutable, and outside a task wo
 test("service runtime release is planned from the coordinating checkout", async (t) => {
   const root = await mkdtemp(path.join(os.tmpdir(), "koalafrog-checkout-runtime-"))
   t.after(() => rm(root, { recursive: true, force: true }))
-  const checkoutPath = path.resolve(".")
+  const checkoutPath = repositoryDirectory
   const plan = await planRuntimeReleaseFromCheckout({
     checkoutPath,
     stateDirectory: root,

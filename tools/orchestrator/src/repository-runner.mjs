@@ -33,6 +33,32 @@ const commentContinuationStates = new Set([
   "failed",
 ])
 
+function retryAuthorizationId({ state, instruction, recovery }) {
+  const ids = new Set()
+  if (recovery?.accepted) {
+    const recoveryId = recovery.value?.record?.recoveryId
+    if (typeof recoveryId !== "string" || !recoveryId) {
+      throw new Error("Accepted checkpoint recovery is missing its durable identity")
+    }
+    ids.add(recoveryId)
+  }
+  const activeRecoveryId =
+    state.activeInstruction?.checkpointActivationRecovery?.recoveryId
+  if (activeRecoveryId != null) {
+    if (typeof activeRecoveryId !== "string" || !activeRecoveryId) {
+      throw new Error("Active checkpoint recovery has an invalid identity")
+    }
+    ids.add(activeRecoveryId)
+  }
+  if ((state.retryInstructionIds ?? []).includes(instruction.instructionId)) {
+    ids.add(`instruction-retry:${instruction.instructionId}`)
+  }
+  if (ids.size > 1) {
+    throw new Error("Instruction has ambiguous retry authorization")
+  }
+  return [...ids][0] ?? null
+}
+
 function unwrap(result, operation) {
   if (!result || result.isError) {
     throw new Error(`${operation} failed through the connected GitHub app`)
@@ -271,124 +297,160 @@ export async function runRepositoryIssue(
       task.issue?.updated_at ?? task.issue?.updatedAt ?? candidate.updatedAt,
     closed: task.issue?.state === "closed",
   }
-  recordIssueObservation(state, observation)
-  if (task.issue?.state === "closed") {
-    await store.save(state)
-    return { issueNumber, status: "closed", claimed: false }
-  }
-  if (isPullRequest(task.issue)) {
-    await store.save(state)
-    return { issueNumber, status: "pull_request_ignored", claimed: false }
-  }
+  const issueClaim = await claimStore.withIssueClaim(
+    { originIssueNumber: issueNumber },
+    async (claimedIssue) => {
+      const currentState = await store.load()
+      const observedAt = Date.parse(observation.updatedAt ?? "")
+      const durableObservedAt = Date.parse(
+        currentState.task.lastObservedIssueUpdatedAt ?? "",
+      )
+      if (
+        Number.isFinite(observedAt) &&
+        Number.isFinite(durableObservedAt) &&
+        observedAt < durableObservedAt
+      ) {
+        await store.appendEvent({
+          type: "repository_issue_observation_deferred",
+          code: "stale_issue_observation",
+          issueNumber,
+        })
+        return {
+          issueNumber,
+          status: "stale_issue_observation",
+          claimed: false,
+        }
+      }
 
-  const selection = durableTaskInstructionDecision({
-    state,
-    task,
-    recover: recoverCheckpointActivation,
-  })
-  const recovery = selection.recoveryDiscovery?.decision ?? null
-  const instruction = selection.selectedInstruction
-  if (!instruction) {
-    await store.save(state)
-    if (
-      selection.recoveryDiscovery?.applicable &&
-      !selection.recoveryDiscovery.terminal &&
-      recovery &&
-      !recovery.accepted
-    ) {
-      await store.appendEvent({
-        type: "checkpoint_activation_recovery_discovery_rejected",
-        code: recovery.rejection?.code ??
-          "checkpoint_activation_recovery_discovery_rejected",
-        instructionId: state.lastConsumedInstructionId,
-        issueNumber,
+      recordIssueObservation(currentState, observation)
+      if (task.issue?.state === "closed") {
+        await store.save(currentState)
+        return { issueNumber, status: "closed", claimed: false }
+      }
+      if (isPullRequest(task.issue)) {
+        await store.save(currentState)
+        return { issueNumber, status: "pull_request_ignored", claimed: false }
+      }
+
+      const selection = durableTaskInstructionDecision({
+        state: currentState,
+        task,
+        recover: recoverCheckpointActivation,
       })
+      const recovery = selection.recoveryDiscovery?.decision ?? null
+      const instruction = selection.selectedInstruction
+      if (!instruction) {
+        await store.save(currentState)
+        if (
+          selection.recoveryDiscovery?.applicable &&
+          !selection.recoveryDiscovery.terminal &&
+          recovery &&
+          !recovery.accepted
+        ) {
+          await store.appendEvent({
+            type: "checkpoint_activation_recovery_discovery_rejected",
+            code: recovery.rejection?.code ??
+              "checkpoint_activation_recovery_discovery_rejected",
+            instructionId: currentState.lastConsumedInstructionId,
+            issueNumber,
+          })
+          return {
+            issueNumber,
+            instructionId: currentState.lastConsumedInstructionId,
+            status: "checkpoint_activation_recovery_rejected",
+            rejectionCode: recovery.rejection?.code ?? null,
+            claimed: false,
+          }
+        }
+        return {
+          issueNumber,
+          status: "no_pending_agent_control",
+          claimed: false,
+        }
+      }
+      if (!isInstructionEligible(instruction)) {
+        await store.save(currentState)
+        return {
+          issueNumber,
+          instructionId: instruction.instructionId,
+          status: "ineligible_agent_control_state",
+          claimed: false,
+        }
+      }
+
+      const claim = await claimStore.withClaim(
+        {
+          instructionId: instruction.instructionId,
+          originIssueNumber: issueNumber,
+          originIssueUrl:
+            task.issue?.html_url ??
+            task.issue?.display_url ??
+            task.issue?.url ??
+            candidate.issueUrl ??
+            null,
+          retryAuthorizationId: retryAuthorizationId({
+            state: currentState,
+            instruction,
+            recovery,
+          }),
+        },
+        async () => {
+          const orchestrator = new OrchestratorClass(
+            { ...baseConfig, command: "once", issueNumber },
+            { controlPlane, store },
+          )
+          try {
+            const value = await orchestrator.runOnce({
+              task,
+              expectedInstructionId: instruction.instructionId,
+            })
+            const completedState = await store.load()
+            recordIssueObservation(completedState, observation)
+            await store.save(completedState)
+            return value
+          } finally {
+            await orchestrator.stop()
+          }
+        },
+        { issueClaim: claimedIssue },
+      )
+      if (!claim.claimed) {
+        if (recovery?.accepted) {
+          await store.appendEvent({
+            type: "checkpoint_activation_recovery_discovery_deferred",
+            code: claim.reason,
+            instructionId: instruction.instructionId,
+            issueNumber,
+          })
+        }
+        return {
+          issueNumber,
+          instructionId: instruction.instructionId,
+          status: claim.reason,
+          claimed: false,
+          ...(claim.nextEligibleAt
+            ? { nextEligibleAt: claim.nextEligibleAt }
+            : {}),
+        }
+      }
       return {
         issueNumber,
-        instructionId: state.lastConsumedInstructionId,
-        status: "checkpoint_activation_recovery_rejected",
-        rejectionCode: recovery.rejection?.code ?? null,
-        claimed: false,
-      }
-    }
-    return { issueNumber, status: "no_pending_agent_control", claimed: false }
-  }
-  if (!isInstructionEligible(instruction)) {
-    await store.save(state)
-    return {
-      issueNumber,
-      instructionId: instruction.instructionId,
-      status: "ineligible_agent_control_state",
-      claimed: false,
-    }
-  }
-
-  const claim = await claimStore.withClaim(
-    {
-      instructionId: instruction.instructionId,
-      originIssueNumber: issueNumber,
-      originIssueUrl:
-        task.issue?.html_url ??
-        task.issue?.display_url ??
-        task.issue?.url ??
-        candidate.issueUrl ??
-        null,
-      retryAllowed:
-        Boolean(recovery?.accepted) ||
-        Boolean(state.activeInstruction?.checkpointActivationRecovery) ||
-        (state.retryInstructionIds ?? []).includes(instruction.instructionId),
-    },
-    async () => {
-      const orchestrator = new OrchestratorClass(
-        { ...baseConfig, command: "once", issueNumber },
-        { controlPlane, store },
-      )
-      try {
-        const value = await orchestrator.runOnce({
-          task,
-          expectedInstructionId: instruction.instructionId,
-        })
-        const currentState = await store.load()
-        recordIssueObservation(currentState, observation)
-        await store.save(currentState)
-        return value
-      } finally {
-        await orchestrator.stop()
+        originIssueUrl:
+          task.issue?.html_url ??
+          task.issue?.display_url ??
+          task.issue?.url ??
+          candidate.issueUrl ??
+          null,
+        ...claim.value,
+        claimed: !new Set(["claim_deferred", "queue_changed"]).has(
+          claim.value?.status,
+        ),
       }
     },
   )
-  if (!claim.claimed) {
-    if (recovery?.accepted) {
-      await store.appendEvent({
-        type: "checkpoint_activation_recovery_discovery_deferred",
-        code: claim.reason,
-        instructionId: instruction.instructionId,
-        issueNumber,
-      })
-    }
-    return {
-      issueNumber,
-      instructionId: instruction.instructionId,
-      status: claim.reason,
-      claimed: false,
-      ...(claim.nextEligibleAt
-        ? { nextEligibleAt: claim.nextEligibleAt }
-        : {}),
-    }
-  }
-  return {
-    issueNumber,
-    originIssueUrl:
-      task.issue?.html_url ??
-      task.issue?.display_url ??
-      task.issue?.url ??
-      candidate.issueUrl ??
-      null,
-    ...claim.value,
-    claimed: !new Set(["claim_deferred", "queue_changed"]).has(
-      claim.value?.status,
-    ),
-  }
+  return issueClaim.claimed
+    ? issueClaim.value
+    : { issueNumber, status: issueClaim.reason, claimed: false }
 }
 
 export async function runRepositoryCycle(
