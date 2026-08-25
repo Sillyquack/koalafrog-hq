@@ -66,6 +66,52 @@ function persistedRevision(contents) {
   })
 }
 
+function stateTransactionIdentity(contents) {
+  if (contents === null) return { kind: "missing", revision: 0 }
+  const parsed = JSON.parse(contents.toString("utf8"))
+  const schemaVersion = parsed.schemaVersion
+  const revision = durableRevision(parsed.stateRevision, {
+    legacy: Number.isSafeInteger(schemaVersion) && schemaVersion < 9,
+  })
+  const repository = parsed.task?.repository
+  const issueNumber = parsed.task?.issueNumber
+  const originIssueNumber = parsed.task?.originIssueNumber ?? issueNumber
+  if (
+    !Number.isSafeInteger(schemaVersion) ||
+    typeof repository !== "string" ||
+    !Number.isSafeInteger(issueNumber) ||
+    !Number.isSafeInteger(originIssueNumber)
+  ) {
+    throw new Error("Durable state transaction identity is malformed")
+  }
+  return {
+    kind: "state",
+    schemaVersion,
+    revision,
+    repository,
+    issueNumber,
+    originIssueNumber,
+  }
+}
+
+function validStateTransaction(predecessor, successor) {
+  if (successor?.kind !== "state" || successor.schemaVersion !== 9) return false
+  if (predecessor?.kind === "missing") return successor.revision === 1
+  return Boolean(
+    predecessor?.kind === "state" &&
+      successor.repository === predecessor.repository &&
+      successor.issueNumber === predecessor.issueNumber &&
+      successor.originIssueNumber === predecessor.originIssueNumber &&
+      successor.revision === predecessor.revision + 1,
+  )
+}
+
+const stateTransactionOptions = {
+  transactionKind: "task_state_replace",
+  deriveSemanticIdentity: stateTransactionIdentity,
+  validateTransition: validStateTransaction,
+}
+
 function redactString(value) {
   return value
     .replace(/Bearer\s+[A-Za-z0-9._~+/=-]+/gi, "Bearer [redacted]")
@@ -300,7 +346,7 @@ export class StateStore {
       await recoverDurableFileReplace(
         this.directoryGuard,
         path.basename(this.statePath),
-        { hooks: this.fileSystemHooks },
+        { hooks: this.fileSystemHooks, ...stateTransactionOptions },
       )
       await cleanupOrphanAtomicTemps(
         this.directoryGuard,
@@ -394,7 +440,7 @@ export class StateStore {
       await recoverDurableFileReplace(
         this.directoryGuard,
         path.basename(this.statePath),
-        { hooks: this.fileSystemHooks },
+        { hooks: this.fileSystemHooks, ...stateTransactionOptions },
       )
       const persisted = await readFileNoFollow(
         this.directoryGuard,
@@ -414,7 +460,7 @@ export class StateStore {
         this.directoryGuard,
         path.basename(this.statePath),
         `${JSON.stringify(state, null, 2)}\n`,
-        { hooks: this.fileSystemHooks },
+        { hooks: this.fileSystemHooks, ...stateTransactionOptions },
       )
       return state.stateRevision
     } catch (error) {

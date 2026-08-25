@@ -21,7 +21,11 @@ import {
   StateRevisionOverflowError,
   StateStore,
 } from "../src/state-store.mjs"
-import { DurableCommitPendingError } from "../src/durable-filesystem.mjs"
+import {
+  DurableCommitPendingError,
+  DurableTransactionError,
+  ensurePrivateDirectory,
+} from "../src/durable-filesystem.mjs"
 import { QueueClaimStore } from "../src/queue-claim-store.mjs"
 
 const repository = "Sillyquack/koalafrog-hq"
@@ -212,6 +216,41 @@ test("task state path and symlink escapes fail closed", async (t) => {
   await chmod(outside, 0o700)
 })
 
+test("guarded directory creation cannot mutate through a replaced parent", async (t) => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "koalafrog-dir-parent-"))
+  const outside = await mkdtemp(path.join(os.tmpdir(), "koalafrog-dir-outside-"))
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  t.after(() => rm(outside, { recursive: true, force: true }))
+  const guardedPath = path.join(directory, "guarded")
+  const movedPath = path.join(directory, "guarded-original")
+  await mkdir(guardedPath, { mode: 0o700 })
+  const guard = await ensurePrivateDirectory(guardedPath)
+  await rename(guardedPath, movedPath)
+  await symlink(outside, guardedPath)
+  const before = await readdir(outside)
+
+  await assert.rejects(
+    ensurePrivateDirectory(path.join(guardedPath, "child"), {
+      parentGuard: guard,
+    }),
+    (error) => error.code === "FILESYSTEM_DIRECTORY_REPLACED",
+  )
+
+  assert.deepEqual(await readdir(outside), before)
+  await assert.rejects(
+    stat(path.join(outside, "child")),
+    (error) => error.code === "ENOENT",
+  )
+
+  const alias = path.join(directory, "outside-alias")
+  await symlink(outside, alias)
+  await assert.rejects(
+    ensurePrivateDirectory(path.join(alias, "untrusted-child")),
+    (error) => error.code === "FILESYSTEM_DIRECTORY_UNSAFE",
+  )
+  assert.deepEqual(await readdir(outside), before)
+})
+
 test("dead reapers recover while live and ambiguous owners remain fail-closed", async (t) => {
   const directory = await mkdtemp(path.join(os.tmpdir(), "koalafrog-state-reaper-"))
   t.after(() => rm(directory, { recursive: true, force: true }))
@@ -397,6 +436,28 @@ test("event and stderr leaf symlinks are rejected without touching outside files
   assert.equal(await readFile(stderrTarget, "utf8"), "stderr-sentinel\n")
 })
 
+test("transaction key symlinks are rejected without touching outside files", async (t) => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "koalafrog-key-leaf-"))
+  const outside = await mkdtemp(path.join(os.tmpdir(), "koalafrog-key-outside-"))
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  t.after(() => rm(outside, { recursive: true, force: true }))
+  const target = path.join(outside, "key-target")
+  await writeFile(target, "outside-sentinel\n", { mode: 0o600 })
+  const store = new StateStore(options(directory))
+  const state = await store.load()
+  const keyPath = path.join(store.directory, ".durable-transaction.key")
+  await unlink(keyPath)
+  await symlink(target, keyPath)
+  state.status = "needs_review"
+
+  await assert.rejects(
+    store.save(state),
+    (error) => error.code === "FILESYSTEM_LEAF_SYMLINK",
+  )
+  assert.equal(await readFile(target, "utf8"), "outside-sentinel\n")
+  assert.equal((await readFile(store.statePath, "utf8")).includes('"status": "ready"'), true)
+})
+
 test("state, pending, lock, and takeover leaf replacement races fail closed", async (t) => {
   const directory = await mkdtemp(path.join(os.tmpdir(), "koalafrog-state-leaf-race-"))
   const outside = await mkdtemp(path.join(os.tmpdir(), "koalafrog-state-leaf-race-outside-"))
@@ -453,6 +514,7 @@ test("state, pending, lock, and takeover leaf replacement races fail closed", as
     },
   })
   state = await racing.load()
+  const predecessorContents = await readFile(baseline.statePath)
   state.status = "running"
   await assert.rejects(
     racing.save(state),
@@ -462,7 +524,21 @@ test("state, pending, lock, and takeover leaf replacement races fail closed", as
   )
   assert.equal(await readFile(target, "utf8"), "outside-sentinel\n")
   await unlink(baseline.statePath)
-  assert.equal((await baseline.load()).status, "running")
+  await assert.rejects(
+    baseline.load(),
+    (error) =>
+      error instanceof DurableTransactionError &&
+      error.code === "DURABLE_TRANSACTION_EVIDENCE_CONFLICT",
+  )
+  for (const entry of await readdir(baseline.directory)) {
+    if (
+      entry === ".state.json.commit-pending" ||
+      (/^\.state\.json\..+\.tmp$/.test(entry))
+    ) {
+      await unlink(path.join(baseline.directory, entry))
+    }
+  }
+  await writeFile(baseline.statePath, predecessorContents, { mode: 0o600 })
 
   await symlink(target, baseline.stateLockPath)
   await assert.rejects(
@@ -509,6 +585,122 @@ test("state, pending, lock, and takeover leaf replacement races fail closed", as
     (error) => error.code === "FILESYSTEM_LEAF_SYMLINK",
   )
   assert.equal(await readFile(target, "utf8"), "outside-sentinel\n")
+})
+
+test("state transaction journals reject stale and forged authorization state", async (t) => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "koalafrog-state-journal-"))
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const baseline = new StateStore(options(directory))
+  const pendingPath = path.join(baseline.directory, ".state.json.commit-pending")
+  let state = await baseline.load()
+  let injected = false
+  const interrupted = new StateStore({
+    ...options(directory),
+    fileSystemHooks: {
+      beforeDirectorySync: async ({ phase, leafName }) => {
+        if (injected || phase !== "commit" || leafName !== "state.json") return
+        injected = true
+        throw new Error("injected post-rename uncertainty")
+      },
+    },
+  })
+  state.status = "needs_review"
+  await assert.rejects(
+    interrupted.save(state),
+    (error) => error.code === "DURABLE_COMMIT_PENDING",
+  )
+  const staleJournal = await readFile(pendingPath)
+  const interruptedCandidate = path.join(
+    baseline.directory,
+    `..state.json.commit-pending.${process.pid}.00000000-0000-4000-8000-000000000004.journal-candidate`,
+  )
+  await link(pendingPath, interruptedCandidate)
+  assert.equal((await stat(pendingPath)).nlink, 2)
+  assert.equal((await baseline.load()).status, "needs_review")
+  await assert.rejects(
+    stat(interruptedCandidate),
+    (error) => error.code === "ENOENT",
+  )
+
+  state = await baseline.load()
+  state.status = "needs_owner"
+  await baseline.save(state)
+  const protectedContents = await readFile(baseline.statePath)
+
+  const otherStore = new StateStore({
+    stateDirectory: directory,
+    repository,
+    issueNumber: 64,
+  })
+  await otherStore.load()
+  const otherContents = await readFile(otherStore.statePath)
+  const otherPendingPath = path.join(
+    otherStore.directory,
+    ".state.json.commit-pending",
+  )
+  await writeFile(otherPendingPath, staleJournal, { mode: 0o600 })
+  await assert.rejects(
+    otherStore.load(),
+    (error) =>
+      error instanceof DurableTransactionError &&
+      error.code === "DURABLE_TRANSACTION_JOURNAL_INVALID",
+  )
+  assert.deepEqual(await readFile(otherStore.statePath), otherContents)
+
+  const tamperedJournal = JSON.parse(staleJournal.toString("utf8"))
+  tamperedJournal.successor.semanticIdentity.revision = 777
+  await writeFile(pendingPath, `${JSON.stringify(tamperedJournal)}\n`, {
+    mode: 0o600,
+  })
+  await assert.rejects(
+    baseline.load(),
+    (error) =>
+      error instanceof DurableTransactionError &&
+      error.code === "DURABLE_TRANSACTION_JOURNAL_INVALID",
+  )
+  assert.deepEqual(await readFile(baseline.statePath), protectedContents)
+  await unlink(pendingPath)
+
+  await writeFile(pendingPath, staleJournal, { mode: 0o600 })
+  const duplicateOne = path.join(
+    baseline.directory,
+    `..state.json.commit-pending.${process.pid}.00000000-0000-4000-8000-000000000005.journal-candidate`,
+  )
+  const duplicateTwo = path.join(
+    baseline.directory,
+    `..state.json.commit-pending.${process.pid}.00000000-0000-4000-8000-000000000006.journal-candidate`,
+  )
+  await link(pendingPath, duplicateOne)
+  await link(pendingPath, duplicateTwo)
+  await assert.rejects(
+    baseline.load(),
+    (error) =>
+      error instanceof DurableTransactionError &&
+      error.code === "DURABLE_TRANSACTION_JOURNAL_LINKS_AMBIGUOUS",
+  )
+  assert.deepEqual(await readFile(baseline.statePath), protectedContents)
+  await unlink(duplicateOne)
+  await unlink(duplicateTwo)
+  await assert.rejects(
+    baseline.load(),
+    (error) =>
+      error instanceof DurableTransactionError &&
+      error.code === "DURABLE_TRANSACTION_EVIDENCE_CONFLICT",
+  )
+  assert.deepEqual(await readFile(baseline.statePath), protectedContents)
+  await unlink(pendingPath)
+
+  const forged = JSON.parse(protectedContents.toString("utf8"))
+  forged.status = "running"
+  forged.stateRevision = 777
+  await writeFile(pendingPath, `${JSON.stringify(forged)}\n`, { mode: 0o600 })
+  await assert.rejects(
+    baseline.load(),
+    (error) =>
+      error instanceof DurableTransactionError &&
+      error.code === "DURABLE_TRANSACTION_JOURNAL_INVALID",
+  )
+  assert.deepEqual(await readFile(baseline.statePath), protectedContents)
 })
 
 test("durable replacement failures are pre-commit or explicitly recoverable", async (t) => {

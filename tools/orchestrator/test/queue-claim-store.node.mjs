@@ -12,6 +12,7 @@ import {
 import os from "node:os"
 import path from "node:path"
 import test from "node:test"
+import { DurableTransactionError } from "../src/durable-filesystem.mjs"
 import { QueueClaimStore } from "../src/queue-claim-store.mjs"
 
 test("overlapping duplicate reads start one instruction callback", async (t) => {
@@ -606,4 +607,99 @@ test("a durability-uncertain completion is recovered and never downgraded or rep
   )
   assert.equal(durable.status, "completed")
   assert.equal(durable.attempt, 1)
+})
+
+test("stale and forged queue journals cannot reopen a completed claim", async (t) => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "koalafrog-queue-journal-"))
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const instructionId = "bound-journal-completion-001"
+  const retryAuthorizationId = "git-recovery:bound-journal-001"
+  let commitSyncs = 0
+  let callbacks = 0
+  const interrupted = new QueueClaimStore({
+    stateDirectory: directory,
+    fileSystemHooks: {
+      beforeDirectorySync: async ({ phase, leafName }) => {
+        if (phase !== "commit" || leafName !== `${instructionId}.json`) return
+        commitSyncs += 1
+        if (commitSyncs === 2) throw new Error("injected completion uncertainty")
+      },
+    },
+  })
+  await assert.rejects(
+    interrupted.withClaim(
+      { instructionId, originIssueNumber: 63 },
+      async () => {
+        callbacks += 1
+        return { status: "needs_review" }
+      },
+    ),
+    (error) => error.code === "DURABLE_COMMIT_PENDING",
+  )
+  const recordPath = path.join(
+    interrupted.recordDirectory,
+    `${instructionId}.json`,
+  )
+  const pendingPath = path.join(
+    interrupted.recordDirectory,
+    `.${instructionId}.json.commit-pending`,
+  )
+  const staleJournal = await readFile(pendingPath)
+
+  const restarted = new QueueClaimStore({ stateDirectory: directory })
+  assert.deepEqual(
+    await restarted.withClaim(
+      { instructionId, originIssueNumber: 63 },
+      async () => {
+        callbacks += 1
+        return { status: "unexpected" }
+      },
+    ),
+    { claimed: false, reason: "already_consumed" },
+  )
+  const retried = await restarted.withClaim(
+    { instructionId, originIssueNumber: 63, retryAuthorizationId },
+    async () => {
+      callbacks += 1
+      return { status: "needs_review" }
+    },
+  )
+  assert.equal(retried.claimed, true)
+  assert.equal(callbacks, 2)
+  const protectedContents = await readFile(recordPath)
+
+  await writeFile(pendingPath, staleJournal, { mode: 0o600 })
+  await assert.rejects(
+    restarted.withClaim(
+      { instructionId, originIssueNumber: 63, retryAuthorizationId },
+      async () => {
+        callbacks += 1
+        return { status: "unexpected" }
+      },
+    ),
+    (error) =>
+      error instanceof DurableTransactionError &&
+      error.code === "DURABLE_TRANSACTION_EVIDENCE_CONFLICT",
+  )
+  assert.equal(callbacks, 2)
+  assert.deepEqual(await readFile(recordPath), protectedContents)
+  await unlink(pendingPath)
+
+  const forged = JSON.parse(protectedContents.toString("utf8"))
+  forged.status = "released"
+  await writeFile(pendingPath, `${JSON.stringify(forged)}\n`, { mode: 0o600 })
+  await assert.rejects(
+    restarted.withClaim(
+      { instructionId, originIssueNumber: 63, retryAuthorizationId },
+      async () => {
+        callbacks += 1
+        return { status: "unexpected" }
+      },
+    ),
+    (error) =>
+      error instanceof DurableTransactionError &&
+      error.code === "DURABLE_TRANSACTION_JOURNAL_INVALID",
+  )
+  assert.equal(callbacks, 2)
+  assert.deepEqual(await readFile(recordPath), protectedContents)
 })

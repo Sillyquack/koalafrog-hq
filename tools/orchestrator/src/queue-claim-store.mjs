@@ -35,6 +35,88 @@ function completedResult(result) {
   return !new Set(["queue_changed", "claim_deferred"]).has(result?.status)
 }
 
+function queueTransactionIdentity(contents) {
+  if (contents === null) return { kind: "missing", attempt: 0 }
+  const parsed = JSON.parse(contents.toString("utf8"))
+  if (
+    (parsed?.schemaVersion != null && parsed.schemaVersion !== 1) ||
+    typeof parsed.instructionId !== "string" ||
+    !Number.isSafeInteger(parsed.originIssueNumber) ||
+    !Number.isSafeInteger(parsed.attempt) ||
+    parsed.attempt < 1 ||
+    typeof parsed.status !== "string" ||
+    !new Set([
+      "active",
+      "released",
+      "retryable_error",
+      "completed",
+    ]).has(parsed.status)
+  ) {
+    throw new Error("Durable queue transaction identity is malformed")
+  }
+  return {
+    kind: "queue_claim",
+    schemaVersion: parsed.schemaVersion ?? 0,
+    instructionId: parsed.instructionId,
+    originIssueNumber: parsed.originIssueNumber,
+    status: parsed.status,
+    attempt: parsed.attempt,
+    token: parsed.token ?? null,
+    retryAuthorizationId: parsed.retryAuthorizationId ?? null,
+  }
+}
+
+function sameQueueBinding(left, right) {
+  return Boolean(
+    left?.kind === "queue_claim" &&
+      right?.kind === "queue_claim" &&
+      left.instructionId === right.instructionId &&
+      left.originIssueNumber === right.originIssueNumber,
+  )
+}
+
+function validQueueTransaction(predecessor, successor) {
+  if (successor?.kind !== "queue_claim") return false
+  if (predecessor?.kind === "missing") {
+    return successor.status === "active" && successor.attempt === 1
+  }
+  if (!sameQueueBinding(predecessor, successor)) return false
+  if (successor.status === "active") {
+    if (successor.attempt !== predecessor.attempt + 1) return false
+    if (predecessor.status === "completed") {
+      return Boolean(
+        predecessor.retryAuthorizationId === null &&
+          typeof successor.retryAuthorizationId === "string" &&
+          successor.retryAuthorizationId.length > 0,
+      )
+    }
+    return successor.retryAuthorizationId === predecessor.retryAuthorizationId
+  }
+  if (predecessor.status !== "active") return false
+  if (
+    successor.status === "completed" &&
+    predecessor.retryAuthorizationId !== null &&
+    successor.retryAuthorizationId === null &&
+    successor.attempt === predecessor.attempt - 1
+  ) {
+    return true
+  }
+  return Boolean(
+    new Set(["released", "retryable_error", "completed"]).has(
+      successor.status,
+    ) &&
+      successor.attempt === predecessor.attempt &&
+      successor.token === predecessor.token &&
+      successor.retryAuthorizationId === predecessor.retryAuthorizationId,
+  )
+}
+
+const queueTransactionOptions = {
+  transactionKind: "queue_claim_replace",
+  deriveSemanticIdentity: queueTransactionIdentity,
+  validateTransition: validQueueTransaction,
+}
+
 export class QueueClaimStore {
   constructor({
     stateDirectory,
@@ -112,6 +194,7 @@ export class QueueClaimStore {
     const leafName = path.basename(recordPath)
     await recoverDurableFileReplace(guard, leafName, {
       hooks: this.fileSystemHooks,
+      ...queueTransactionOptions,
     })
     return readJsonNoFollow(guard, leafName, { allowMissing: true })
   }
@@ -122,7 +205,7 @@ export class QueueClaimStore {
       this.#guardFor(recordPath),
       path.basename(recordPath),
       `${JSON.stringify(value, null, 2)}\n`,
-      { hooks: this.fileSystemHooks },
+      { hooks: this.fileSystemHooks, ...queueTransactionOptions },
     )
   }
 
