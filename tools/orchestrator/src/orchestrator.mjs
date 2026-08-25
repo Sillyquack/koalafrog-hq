@@ -11,6 +11,9 @@ import {
   supersedePendingApprovalRequests,
 } from "./approval-decisions.mjs"
 import {
+  agentResultBindingDigest,
+  agentResultPublicationDecision,
+  controlPlaneBindingDigest,
   findExistingResult,
   findExistingPickup,
   formatCompletionPacket,
@@ -72,6 +75,33 @@ function promptForInstruction(instruction, allowedPaths) {
         .join("\n")}`
     : ""
   return `${instruction.prompt}\n\n${safetyInstructions}${scope}\n\nRun git diff --check before finishing and summarize the change and validation.`
+}
+
+function activeCheckpointRecoveryRecordDecision(state) {
+  const active = state.activeInstruction
+  const binding = active?.checkpointActivationRecovery ?? null
+  if (!binding || typeof binding.recoveryId !== "string") {
+    return { accepted: false, code: "result_correction_recovery_binding" }
+  }
+  const records = (state.checkpointActivationRecoveries ?? []).filter(
+    (record) => record?.recoveryId === binding.recoveryId,
+  )
+  if (
+    records.length !== 1 ||
+    records[0].status !== "boundary_activated" ||
+    records[0].completedAt !== null ||
+    !Number.isFinite(Date.parse(records[0].boundaryActivatedAt ?? "")) ||
+    records[0].turnId !== active.turnId ||
+    typeof active.turnId !== "string" ||
+    !active.turnId ||
+    !Number.isFinite(Date.parse(active.turnStartedAt ?? "")) ||
+    Object.entries(binding).some(
+      ([key, value]) => JSON.stringify(records[0][key]) !== JSON.stringify(value),
+    )
+  ) {
+    return { accepted: false, code: "result_correction_recovery_record" }
+  }
+  return { accepted: true, record: records[0], binding }
 }
 
 function compactOwnerQuestion(request) {
@@ -1034,6 +1064,7 @@ export async function ensureTaskThread({
   save,
 }) {
   const durableTurnPhase = new Set([
+    "boundary_activated",
     "turn_started",
     "turn_completed",
     "owner_stopped",
@@ -1177,24 +1208,91 @@ export class Orchestrator {
     state.activeInstruction.packet = packet
     await this.#save(state)
 
-    const existingResult = findExistingResult(comments, packet.instructionId)
     const completionComment = formatCompletionPacket(packet)
     const correctionIds = new Set(state.resultCorrectionInstructionIds ?? [])
-    if (!existingResult) {
-      await this.controlPlane.postComment(completionComment)
-    } else if (
-      correctionIds.has(packet.instructionId) &&
-      Number.isSafeInteger(existingResult.id)
-    ) {
-      await this.controlPlane.updateComment(existingResult.id, completionComment)
+    const checkpointActivationRecovery =
+      state.activeInstruction.checkpointActivationRecovery ?? null
+    if (checkpointActivationRecovery) {
+      const recovery = activeCheckpointRecoveryRecordDecision(state)
+      let rejectionCode = recovery.accepted
+        ? null
+        : recovery.code
+      if (!correctionIds.has(packet.instructionId)) {
+        rejectionCode ??= "result_correction_marker_missing"
+      }
+      const publicationDecision = rejectionCode
+        ? null
+        : agentResultPublicationDecision({
+            comments,
+            instructionId: packet.instructionId,
+          })
+      if (publicationDecision && !publicationDecision.accepted) {
+        rejectionCode = publicationDecision.rejection.code
+      }
+      const publication = publicationDecision?.accepted
+        ? publicationDecision.value
+        : null
+      if (
+        publication &&
+        (publication.commentId !== checkpointActivationRecovery.resultCommentId ||
+          !Number.isSafeInteger(publication.commentId) ||
+          publication.commentId < 1)
+      ) {
+        rejectionCode = "result_correction_comment_id"
+      }
+      const intendedBodyDigest = controlPlaneBindingDigest(completionComment)
+      const intendedPacketDigest = agentResultBindingDigest(packet)
+      const isOriginalPublication = Boolean(
+        publication &&
+          publication.bodyDigest ===
+            checkpointActivationRecovery.resultCommentBodyDigest &&
+          publication.packetDigest ===
+            checkpointActivationRecovery.resultPacketDigest,
+      )
+      const isCompletedPublication = Boolean(
+        publication &&
+          publication.bodyDigest === intendedBodyDigest &&
+          publication.packetDigest === intendedPacketDigest,
+      )
+      if (publication && !isOriginalPublication && !isCompletedPublication) {
+        rejectionCode = "result_correction_publication_drift"
+      }
+      if (rejectionCode) {
+        await this.store.appendEvent({
+          type: "checkpoint_activation_result_correction_rejected",
+          code: rejectionCode,
+          instructionId: packet.instructionId,
+          issueNumber: state.task.originIssueNumber,
+        })
+        throw new Error(`Recovered result correction rejected: ${rejectionCode}`)
+      }
+      if (isOriginalPublication) {
+        await this.controlPlane.updateComment(
+          publication.commentId,
+          completionComment,
+        )
+      }
       correctionIds.delete(packet.instructionId)
       state.resultCorrectionInstructionIds = [...correctionIds]
+    } else {
+      const existingResult = findExistingResult(comments, packet.instructionId)
+      if (!existingResult) {
+        await this.controlPlane.postComment(completionComment)
+      } else if (
+        correctionIds.has(packet.instructionId) &&
+        Number.isSafeInteger(existingResult.id)
+      ) {
+        await this.controlPlane.updateComment(
+          existingResult.id,
+          completionComment,
+        )
+        correctionIds.delete(packet.instructionId)
+        state.resultCorrectionInstructionIds = [...correctionIds]
+      }
     }
 
     const ownerGateAcknowledgementId =
       state.activeInstruction.ownerGateAcknowledgementId ?? null
-    const checkpointActivationRecovery =
-      state.activeInstruction.checkpointActivationRecovery ?? null
     state.lastConsumedInstructionId = packet.instructionId
     state.status = packet.status
     state.pendingOwnerRequest =
@@ -1411,6 +1509,25 @@ export class Orchestrator {
             )
             .map((decision) => decision.decisionId)
           recordInstructionTurnStarted(state, { turnId, attempt })
+          const recoveryBinding =
+            state.activeInstruction.checkpointActivationRecovery ?? null
+          if (recoveryBinding) {
+            const recoveries = (
+              state.checkpointActivationRecoveries ?? []
+            ).filter(
+              (record) => record.recoveryId === recoveryBinding.recoveryId,
+            )
+            if (
+              recoveries.length !== 1 ||
+              recoveries[0].status !== "boundary_activated" ||
+              recoveries[0].completedAt !== null
+            ) {
+              throw new Error(
+                "Refusing to bind a turn to an ambiguous checkpoint recovery",
+              )
+            }
+            recoveries[0].turnId = turnId
+          }
           state.retryCount = attempt
           if (state.activeInstruction.ownerRequest) {
             state.activeInstruction.phase = "owner_stopped"
@@ -2308,6 +2425,7 @@ export class Orchestrator {
       if (recoveries[0].status === "selected") {
         recoveries[0].status = "boundary_activated"
         recoveries[0].boundaryActivatedAt = new Date().toISOString()
+        state.activeInstruction.phase = "boundary_activated"
         await this.#save(state)
         await this.store.appendEvent({
           type: "checkpoint_activation_recovery_activated",
@@ -2319,6 +2437,9 @@ export class Orchestrator {
           branch: recoveries[0].branch,
           head: recoveries[0].head,
         })
+      } else if (state.activeInstruction.phase === "selected") {
+        state.activeInstruction.phase = "boundary_activated"
+        await this.#save(state)
       }
     }
     if (gitExecutionBoundary) {
@@ -2358,7 +2479,7 @@ export class Orchestrator {
     if (
       !gitExecutionBoundary &&
       checkpointInstructionKind === "activation" &&
-      new Set(["selected", "thread_ready"]).has(
+      new Set(["selected", "boundary_activated", "thread_ready"]).has(
         state.activeInstruction.phase,
       )
     ) {
@@ -2480,9 +2601,13 @@ export class Orchestrator {
           priorTurn?.status,
         )
       ) {
-        const lastPersistedAt = Date.parse(state.updatedAt ?? "")
-        const recoveryAgeMs = Number.isFinite(lastPersistedAt)
-          ? Date.now() - lastPersistedAt
+        const turnStartedAt = Date.parse(
+          state.activeInstruction.turnStartedAt ??
+            state.activeInstruction.selectedAt ??
+            "",
+        )
+        const recoveryAgeMs = Number.isFinite(turnStartedAt)
+          ? Date.now() - turnStartedAt
           : Number.POSITIVE_INFINITY
         if (recoveryAgeMs < this.config.turnTimeoutMs) {
           await this.store.appendEvent({
@@ -2497,28 +2622,47 @@ export class Orchestrator {
             instructionId: instruction.instructionId,
           }
         }
-        try {
-          await this.appServer.interruptTurn?.(
-            state.threadId,
-            state.activeInstruction.turnId,
+        if (
+          !Number.isFinite(
+            Date.parse(state.activeInstruction.turnTimedOutAt ?? ""),
           )
-          await this.store.appendEvent({
-            type: "stale_turn_interrupt_requested",
-            instructionId: instruction.instructionId,
-            turnId: state.activeInstruction.turnId,
-          })
-        } catch (error) {
-          await this.store.appendEvent({
-            type: "stale_turn_interrupt_failed",
-            instructionId: instruction.instructionId,
-            turnId: state.activeInstruction.turnId,
-            error: error.message,
-          })
+        ) {
+          state.activeInstruction.turnTimedOutAt = new Date().toISOString()
+          await this.#save(state)
         }
-        return {
-          status: "claim_deferred",
-          instructionId: instruction.instructionId,
+        if (
+          !Number.isFinite(
+            Date.parse(
+              state.activeInstruction.turnInterruptRequestedAt ?? "",
+            ),
+          )
+        ) {
+          try {
+            await this.appServer.interruptTurn?.(
+              state.threadId,
+              state.activeInstruction.turnId,
+            )
+            state.activeInstruction.turnInterruptRequestedAt =
+              new Date().toISOString()
+            await this.#save(state)
+            await this.store.appendEvent({
+              type: "stale_turn_interrupt_requested",
+              instructionId: instruction.instructionId,
+              turnId: state.activeInstruction.turnId,
+            })
+          } catch (error) {
+            await this.store.appendEvent({
+              type: "stale_turn_interrupt_failed",
+              instructionId: instruction.instructionId,
+              turnId: state.activeInstruction.turnId,
+              error: error.message,
+            })
+            throw new Error("Persisted turn timed out and interruption failed")
+          }
         }
+        throw new Error(
+          "Persisted turn timed out; waiting for terminal interruption state",
+        )
       }
       if (
         !turnResult &&

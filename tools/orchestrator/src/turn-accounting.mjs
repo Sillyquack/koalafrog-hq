@@ -57,7 +57,7 @@ export function canStartInstructionTurn(state, maxTurns) {
 
 export function recordInstructionTurnStarted(
   state,
-  { turnId, attempt },
+  { turnId, attempt, startedAt = new Date() },
 ) {
   normalizeTurnAccounting(state)
   const activeInstruction = state.activeInstruction
@@ -70,11 +70,17 @@ export function recordInstructionTurnStarted(
   ) {
     return false
   }
+  const turnStartedAt =
+    startedAt instanceof Date ? startedAt.toISOString() : String(startedAt)
+  if (!Number.isFinite(Date.parse(turnStartedAt))) {
+    throw new Error("Turn start time must be a valid durable timestamp")
+  }
 
   state.turnCount += 1
   activeInstruction.turnCount += 1
   activeInstruction.phase = "turn_started"
   activeInstruction.turnId = turnId
+  activeInstruction.turnStartedAt = turnStartedAt
   activeInstruction.attempts = attempt
   return true
 }

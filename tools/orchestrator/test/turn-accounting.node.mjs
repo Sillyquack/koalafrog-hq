@@ -53,16 +53,28 @@ test("max_turns hard-stops within one instruction without double-counting", () =
 
   assert.equal(canStartInstructionTurn(state, 2), true)
   assert.equal(
-    recordInstructionTurnStarted(state, { turnId: "turn-1", attempt: 0 }),
+    recordInstructionTurnStarted(state, {
+      turnId: "turn-1",
+      attempt: 0,
+      startedAt: "2026-08-25T08:00:00.000Z",
+    }),
     true,
   )
   assert.equal(canStartInstructionTurn(state, 2), true)
   assert.equal(
-    recordInstructionTurnStarted(state, { turnId: "turn-1", attempt: 0 }),
+    recordInstructionTurnStarted(state, {
+      turnId: "turn-1",
+      attempt: 0,
+      startedAt: "2026-08-25T09:00:00.000Z",
+    }),
     false,
   )
   assert.equal(state.turnCount, 8)
   assert.equal(state.activeInstruction.turnCount, 1)
+  assert.equal(
+    state.activeInstruction.turnStartedAt,
+    "2026-08-25T08:00:00.000Z",
+  )
 
   assert.equal(
     recordInstructionTurnStarted(state, { turnId: "turn-2", attempt: 1 }),

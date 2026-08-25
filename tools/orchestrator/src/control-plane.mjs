@@ -371,11 +371,345 @@ export function shouldConsumeInstruction(state, instruction) {
   return state.lastConsumedInstructionId !== instruction.instructionId
 }
 
-export function findExistingResult(comments, instructionId) {
+const resultCheckFields = new Map([
+  ["typecheck", "typecheck"],
+  ["lint", "lint"],
+  ["tests", "tests"],
+  ["cloudflare_readiness", "cloudflareReadiness"],
+  ["build", "build"],
+  ["diff_check", "diffCheck"],
+])
+const resultTopLevelFields = new Set([
+  "instruction_id",
+  "origin_issue_number",
+  "origin_issue_url",
+  "codex_thread_id",
+  "status",
+  "branch",
+  "commits",
+  "checks",
+  "owner_question",
+  "owner_request",
+  "blockers",
+  "owner_gates",
+  "production_readback",
+  "safety_findings",
+  "branch_push_state",
+  "result_artifact",
+])
+const resultOwnerRequestFields = new Map([
+  ["method", "method"],
+  ["server", "serverName"],
+  ["tool", "toolName"],
+  ["arguments", "arguments"],
+  ["details", "details"],
+])
+
+function resultScalar(rawValue) {
+  const trimmed = rawValue.trim()
+  if (trimmed.startsWith('"')) {
+    try {
+      return JSON.parse(trimmed)
+    } catch {
+      throw new Error("agent_result contains an invalid quoted scalar")
+    }
+  }
+  return scalar(trimmed)
+}
+
+function resultJson(rawValue, field, expectedType) {
+  let parsed
+  try {
+    parsed = JSON.parse(rawValue)
+  } catch {
+    throw new Error(`agent_result.${field} must contain canonical JSON`)
+  }
+  if (expectedType === "array" && !Array.isArray(parsed)) {
+    throw new Error(`agent_result.${field} must be an array`)
+  }
+  if (
+    expectedType === "object_or_null" &&
+    parsed !== null &&
+    (typeof parsed !== "object" || Array.isArray(parsed))
+  ) {
+    throw new Error(`agent_result.${field} must be an object or null`)
+  }
+  return parsed
+}
+
+function resultNestedJson(value) {
+  if (value === null) return null
+  if (typeof value !== "string") {
+    throw new Error("agent_result owner request JSON must be a string or null")
+  }
+  return resultJson(value, "owner_request", "object_or_null")
+}
+
+function resultInstructionPattern(instructionId, flags = "") {
   const escaped = instructionId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
-  const pattern = new RegExp(
+  return new RegExp(
     `agent_result:\\s*[\\s\\S]*?instruction_id:\\s*["']?${escaped}["']?(?:\\s|$)`,
+    flags,
   )
+}
+
+export function parseAgentResultBlock(block) {
+  const lines = block.replaceAll("\r\n", "\n").split("\n")
+  const root = lines.findIndex((line) => /^agent_result:\s*$/.test(line.trim()))
+  if (root === -1) return null
+  const raw = {}
+  for (let index = root + 1; index < lines.length; index += 1) {
+    const line = lines[index]
+    if (line.trim() === "") continue
+    const field = line.match(/^\s{2}([a-z_]+):\s*(.*)$/)
+    if (!field) {
+      throw new Error("agent_result contains non-canonical indentation")
+    }
+    const [, key, rawValue] = field
+    if (!resultTopLevelFields.has(key) || Object.hasOwn(raw, key)) {
+      throw new Error("agent_result fields are not canonical")
+    }
+
+    if (key === "commits" && rawValue === "") {
+      const commits = []
+      while (index + 1 < lines.length) {
+        const item = lines[index + 1].match(/^\s{4}-\s+(.*)$/)
+        if (!item) break
+        commits.push(resultScalar(item[1]))
+        index += 1
+      }
+      raw.commits = commits
+      continue
+    }
+    if (key === "checks") {
+      if (rawValue !== "") {
+        throw new Error("agent_result.checks must be a mapping")
+      }
+      const checks = {}
+      while (index + 1 < lines.length) {
+        const item = lines[index + 1].match(/^\s{4}([a-z_]+):\s*(.*)$/)
+        if (!item) break
+        const [, checkKey, checkValue] = item
+        const normalized = resultCheckFields.get(checkKey)
+        if (!normalized || Object.hasOwn(checks, normalized)) {
+          throw new Error("agent_result.checks fields are not canonical")
+        }
+        checks[normalized] = resultScalar(checkValue)
+        index += 1
+      }
+      raw.checks = checks
+      continue
+    }
+    if (key === "owner_request" && rawValue === "") {
+      const request = {}
+      while (index + 1 < lines.length) {
+        const item = lines[index + 1].match(/^\s{4}([a-z_]+):\s*(.*)$/)
+        if (!item) break
+        const [, requestKey, requestValue] = item
+        const normalized = resultOwnerRequestFields.get(requestKey)
+        if (!normalized || Object.hasOwn(request, normalized)) {
+          throw new Error("agent_result.owner_request fields are not canonical")
+        }
+        request[normalized] = resultScalar(requestValue)
+        index += 1
+      }
+      request.arguments = resultNestedJson(request.arguments)
+      request.details = resultNestedJson(request.details)
+      raw.owner_request = request
+      continue
+    }
+    if (rawValue === "") {
+      throw new Error(`agent_result.${key} must not be empty`)
+    }
+    raw[key] = resultScalar(rawValue)
+  }
+
+  if (
+    raw.commits === "[]" ||
+    (typeof raw.commits === "string" && raw.commits.trim() === "[]")
+  ) {
+    raw.commits = []
+  }
+  for (const field of [
+    "blockers",
+    "owner_gates",
+    "production_readback",
+    "safety_findings",
+    "branch_push_state",
+  ]) {
+    if (typeof raw[field] === "string") {
+      raw[field] = resultJson(raw[field], field, "array")
+    }
+  }
+  if (typeof raw.result_artifact === "string") {
+    raw.result_artifact = resultJson(
+      raw.result_artifact,
+      "result_artifact",
+      "object_or_null",
+    )
+  }
+  if (raw.owner_request === "null") raw.owner_request = null
+
+  if (
+    JSON.stringify(Object.keys(raw).sort()) !==
+    JSON.stringify([...resultTopLevelFields].sort())
+  ) {
+    throw new Error("agent_result fields are not canonical")
+  }
+  if (
+    !Array.isArray(raw.commits) ||
+    raw.commits.some((commit) => typeof commit !== "string") ||
+    JSON.stringify(Object.keys(raw.checks ?? {}).sort()) !==
+      JSON.stringify([...resultCheckFields.values()].sort()) ||
+    Object.values(raw.checks).some(
+      (value) => typeof value !== "string" || value.length === 0,
+    ) ||
+    (raw.owner_request !== null &&
+      JSON.stringify(Object.keys(raw.owner_request).sort()) !==
+        JSON.stringify([...resultOwnerRequestFields.values()].sort())) ||
+    !Array.isArray(raw.blockers) ||
+    !Array.isArray(raw.owner_gates) ||
+    !Array.isArray(raw.production_readback) ||
+    !Array.isArray(raw.safety_findings) ||
+    !Array.isArray(raw.branch_push_state)
+  ) {
+    throw new Error("agent_result structure is malformed")
+  }
+  if (
+    typeof raw.instruction_id !== "string" ||
+    !/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(raw.instruction_id) ||
+    !Number.isSafeInteger(raw.origin_issue_number) ||
+    raw.origin_issue_number < 1 ||
+    typeof raw.origin_issue_url !== "string" ||
+    !raw.origin_issue_url ||
+    typeof raw.codex_thread_id !== "string" ||
+    !raw.codex_thread_id ||
+    !taskStates.has(raw.status) ||
+    typeof raw.branch !== "string" ||
+    !raw.branch
+  ) {
+    throw new Error("agent_result identity binding is malformed")
+  }
+
+  return Object.freeze({
+    instructionId: raw.instruction_id,
+    originIssueNumber: raw.origin_issue_number,
+    originIssueUrl: raw.origin_issue_url,
+    codexThreadId: raw.codex_thread_id,
+    status: raw.status,
+    branch: raw.branch,
+    commits: raw.commits,
+    checks: raw.checks,
+    ownerQuestion: raw.owner_question,
+    ownerRequest: raw.owner_request,
+    blockers: raw.blockers,
+    ownerGates: raw.owner_gates,
+    productionReadback: raw.production_readback,
+    safetyFindings: raw.safety_findings,
+    branchPushState: raw.branch_push_state,
+    resultArtifact: raw.result_artifact,
+  })
+}
+
+function agentResultBinding(packet) {
+  return {
+    instructionId: packet.instructionId,
+    originIssueNumber: packet.originIssueNumber,
+    originIssueUrl: packet.originIssueUrl,
+    codexThreadId: packet.codexThreadId,
+    status: packet.status,
+    branch: packet.branch,
+    commits: packet.commits,
+    checks: packet.checks,
+    ownerRequest: packet.ownerRequest,
+    blockers: packet.blockers,
+    ownerGates: packet.ownerGates,
+    productionReadback: packet.productionReadback,
+    safetyFindings: packet.safetyFindings,
+    branchPushState: packet.branchPushState,
+    resultArtifact: packet.resultArtifact,
+  }
+}
+
+export function agentResultBindingDigest(packet) {
+  return controlPlaneBindingDigest(JSON.stringify(agentResultBinding(packet)))
+}
+
+export function agentResultPublicationDecision({
+  comments,
+  instructionId,
+  expectedPacket = null,
+}) {
+  const publications = []
+  let textualCount = 0
+  for (const comment of comments ?? []) {
+    const body = comment?.body ?? comment?.comment ?? ""
+    textualCount += [...body.matchAll(resultInstructionPattern(instructionId, "g"))].length
+    const fences = /```(?:yaml|yml)\s*\n([\s\S]*?)```/gi
+    for (const match of body.matchAll(fences)) {
+      if (!/^\s*agent_result:\s*$/m.test(match[1])) continue
+      let packet
+      try {
+        packet = parseAgentResultBlock(match[1])
+      } catch {
+        continue
+      }
+      if (packet?.instructionId !== instructionId) continue
+      publications.push({
+        commentId: comment.id,
+        bodyDigest: controlPlaneBindingDigest(body),
+        packetDigest: agentResultBindingDigest(packet),
+        packet,
+      })
+    }
+  }
+  if (textualCount === 0) {
+    return { accepted: false, rejection: { code: "result_publication_missing" } }
+  }
+  if (textualCount !== publications.length) {
+    return {
+      accepted: false,
+      rejection: {
+        code: "result_publication_malformed",
+        textualCount,
+        validCount: publications.length,
+      },
+    }
+  }
+  if (publications.length !== 1) {
+    return {
+      accepted: false,
+      rejection: {
+        code: "result_publication_ambiguous",
+        publicationCount: publications.length,
+      },
+    }
+  }
+  const publication = publications[0]
+  if (
+    !Number.isSafeInteger(publication.commentId) ||
+    publication.commentId < 1
+  ) {
+    return {
+      accepted: false,
+      rejection: { code: "result_publication_comment_id" },
+    }
+  }
+  if (
+    expectedPacket &&
+    JSON.stringify(agentResultBinding(publication.packet)) !==
+      JSON.stringify(agentResultBinding(expectedPacket))
+  ) {
+    return {
+      accepted: false,
+      rejection: { code: "result_publication_binding" },
+    }
+  }
+  return { accepted: true, value: publication }
+}
+
+export function findExistingResult(comments, instructionId) {
+  const pattern = resultInstructionPattern(instructionId)
   return comments.find((comment) =>
     pattern.test(comment.body ?? comment.comment ?? ""),
   )

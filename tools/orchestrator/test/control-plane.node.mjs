@@ -1,6 +1,7 @@
 import assert from "node:assert/strict"
 import test from "node:test"
 import {
+  agentResultPublicationDecision,
   extractAgentControls,
   findExistingResult,
   formatCompletionPacket,
@@ -395,6 +396,108 @@ test("completion packet is machine-readable and discoverable idempotently", () =
   assert.match(body, /agent_result:/)
   assert.match(body, /status: needs_review/)
   assert.ok(findExistingResult([{ body }], "proof-001"))
+})
+
+function recoveryResultPacket(overrides = {}) {
+  return {
+    instructionId: "recovery-result-027",
+    originIssueNumber: 63,
+    originIssueUrl: "https://github.com/Sillyquack/koalafrog-hq/issues/63",
+    codexThreadId: "thread-recovery-027",
+    status: "needs_review",
+    branch: "agent/issue-63-production-day1-integration-001",
+    commits: ["ec719153c8e726831d7e2b748067383ea7f4e314"],
+    changedFiles: [],
+    checks: {
+      typecheck: "unknown",
+      lint: "unknown",
+      tests: "unknown",
+      cloudflareReadiness: "unknown",
+      build: "unknown",
+      diffCheck: "pass",
+    },
+    ownerQuestion: null,
+    ownerRequest: null,
+    blockers: ["historical-boundary-rejected"],
+    ownerGates: [],
+    productionReadback: [],
+    safetyFindings: [],
+    branchPushState: [],
+    resultArtifact: null,
+    ...overrides,
+  }
+}
+
+test("recovery result publication requires one canonical integer-id packet", () => {
+  const packet = recoveryResultPacket()
+  const body = formatCompletionPacket(packet)
+  const accepted = agentResultPublicationDecision({
+    comments: [{ id: 702, body }],
+    instructionId: packet.instructionId,
+    expectedPacket: packet,
+  })
+  assert.equal(accepted.accepted, true)
+  assert.equal(accepted.value.commentId, 702)
+
+  for (const decision of [
+    agentResultPublicationDecision({
+      comments: [],
+      instructionId: packet.instructionId,
+      expectedPacket: packet,
+    }),
+    agentResultPublicationDecision({
+      comments: [
+        { id: 702, body },
+        { id: 703, body },
+      ],
+      instructionId: packet.instructionId,
+      expectedPacket: packet,
+    }),
+    agentResultPublicationDecision({
+      comments: [{ id: "702", body }],
+      instructionId: packet.instructionId,
+      expectedPacket: packet,
+    }),
+    agentResultPublicationDecision({
+      comments: [{ id: 0, body }],
+      instructionId: packet.instructionId,
+      expectedPacket: packet,
+    }),
+    agentResultPublicationDecision({
+      comments: [
+        {
+          id: 702,
+          body: `agent_result:\n  instruction_id: ${packet.instructionId}`,
+        },
+      ],
+      instructionId: packet.instructionId,
+      expectedPacket: packet,
+    }),
+  ]) {
+    assert.equal(decision.accepted, false)
+  }
+})
+
+test("recovery result publication rejects durable identity and packet drift", () => {
+  const packet = recoveryResultPacket()
+  const body = formatCompletionPacket(packet)
+  for (const expectedPacket of [
+    recoveryResultPacket({ originIssueNumber: 64 }),
+    recoveryResultPacket({
+      originIssueUrl: "https://github.com/Sillyquack/koalafrog-hq/issues/64",
+    }),
+    recoveryResultPacket({ codexThreadId: "thread-other" }),
+    recoveryResultPacket({ status: "failed" }),
+    recoveryResultPacket({ branch: "agent/issue-63-other" }),
+  ]) {
+    const decision = agentResultPublicationDecision({
+      comments: [{ id: 702, body }],
+      instructionId: packet.instructionId,
+      expectedPacket,
+    })
+    assert.equal(decision.accepted, false)
+    assert.equal(decision.rejection.code, "result_publication_binding")
+  }
 })
 
 test("empty commits use the exact inline array shape", () => {

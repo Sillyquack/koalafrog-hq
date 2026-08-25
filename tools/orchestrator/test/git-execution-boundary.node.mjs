@@ -20,6 +20,7 @@ import { promisify } from "node:util"
 import {
   controlPlaneBindingDigest,
   extractAgentControls,
+  formatCompletionPacket,
   ownerGateAcknowledgementId,
   ownerGateReason,
 } from "../src/control-plane.mjs"
@@ -1225,6 +1226,29 @@ async function completedGenerationActivationRecoverySetup(t) {
     activation.binding.acknowledgementId,
   )
   assert.equal(completion.record.outcome, "needs_review")
+  setup.task.comments.push({
+    id: 2702,
+    body: formatCompletionPacket({
+      instructionId,
+      originIssueNumber: sourceRun.originIssueNumber,
+      originIssueUrl: sourceRun.originIssueUrl,
+      codexThreadId: sourceRun.threadId,
+      status: sourceRun.status,
+      branch: sourceRun.branch,
+      commits: sourceRun.commits,
+      changedFiles: sourceRun.changedFiles,
+      checks: sourceRun.checks,
+      ownerQuestion: null,
+      ownerRequest: sourceRun.ownerRequest,
+      blockers: sourceRun.blockers,
+      ownerGates: sourceRun.ownerGates,
+      productionReadback: sourceRun.productionReadback,
+      safetyFindings: sourceRun.safetyFindings,
+      branchPushState: sourceRun.branchPushState,
+      resultArtifact: sourceRun.resultArtifact,
+      detail: "Original completed 027 result.",
+    }),
+  })
   setup.state.activeInstruction = null
   setup.state.gitReconciliationCheckpoints = [proposal]
   setup.state.checkpointActivationRecoveries = []
@@ -3129,10 +3153,70 @@ test("completed checkpoint activation recovery rejects binding drift, ambiguity,
   assert.equal(
     invoke(
       () => {},
-      (task) => task.comments.push(structuredClone(task.comments.at(-1))),
+      (task) => {
+        const control = task.comments.find((comment) =>
+          comment.body.includes(
+            "production-day1-git-reconciliation-checkpoint-generation-activation-owner-ack-027\n",
+          ),
+        )
+        task.comments.push(structuredClone(control))
+      },
     ).rejection.code,
     "checkpoint_activation_recovery_control_count",
   )
+
+  const resultMutations = [
+    {
+      code: "checkpoint_activation_recovery_result_publication_missing",
+      mutate(task) {
+        task.comments = task.comments.filter((comment) => comment.id !== 2702)
+      },
+    },
+    {
+      code: "checkpoint_activation_recovery_result_publication_ambiguous",
+      mutate(task) {
+        const result = task.comments.find((comment) => comment.id === 2702)
+        task.comments.push({ ...structuredClone(result), id: 2703 })
+      },
+    },
+    {
+      code: "checkpoint_activation_recovery_result_publication_malformed",
+      mutate(task) {
+        const result = task.comments.find((comment) => comment.id === 2702)
+        result.body = result.body.replace(/^  status:.*\n/m, "")
+      },
+    },
+    {
+      code: "checkpoint_activation_recovery_result_publication_comment_id",
+      mutate(task) {
+        task.comments.find((comment) => comment.id === 2702).id = "2702"
+      },
+    },
+    {
+      code: "checkpoint_activation_recovery_result_publication_binding",
+      mutate(task) {
+        const result = task.comments.find((comment) => comment.id === 2702)
+        result.body = result.body.replace(
+          `  branch: "${setup.proposal.branch}"`,
+          '  branch: "agent/issue-63-other"',
+        )
+      },
+    },
+    {
+      code: "checkpoint_activation_recovery_result_publication_malformed",
+      mutate(task) {
+        task.comments.push({
+          id: 2703,
+          body: `agent_result:\n  instruction_id: ${setup.activation.instruction.instructionId}`,
+        })
+      },
+    },
+  ]
+  for (const { code, mutate } of resultMutations) {
+    const decision = invoke(() => {}, mutate)
+    assert.equal(decision.accepted, false)
+    assert.equal(decision.rejection.code, code)
+  }
 
   const acceptedRecovery = invoke()
   assert.equal(acceptedRecovery.accepted, true)
@@ -3151,6 +3235,115 @@ test("completed checkpoint activation recovery rejects binding drift, ambiguity,
       task: setup.task,
     }).rejection.code,
     "checkpoint_activation_recovery_already_recorded",
+  )
+})
+
+test("completed activation recovery reconstructs every exact persisted lifecycle phase", async (t) => {
+  const setup = await completedGenerationActivationRecoverySetup(t)
+  const initial = recoverCompletedCheckpointActivation({
+    state: setup.state,
+    task: setup.task,
+  })
+  assert.equal(initial.accepted, true)
+  for (const phase of [
+    "selected",
+    "boundary_activated",
+    "thread_ready",
+    "turn_started",
+    "turn_completed",
+    "result_pending",
+  ]) {
+    const state = structuredClone(setup.state)
+    const turnPhase = new Set([
+      "turn_started",
+      "turn_completed",
+      "result_pending",
+    ]).has(phase)
+    const boundaryPhase = phase !== "selected"
+    const record = {
+      ...structuredClone(initial.value.record),
+      status: boundaryPhase ? "boundary_activated" : "selected",
+      selectedAt: "2026-08-24T09:01:00.000Z",
+      boundaryActivatedAt: boundaryPhase
+        ? "2026-08-24T09:01:01.000Z"
+        : null,
+      turnId: turnPhase ? "turn-recovery-027" : null,
+    }
+    state.status = turnPhase ? "running" : "needs_review"
+    state.checkpointActivationRecoveries = [record]
+    state.activeInstruction = {
+      ...initial.value.instruction,
+      phase,
+      attempts: 0,
+      turnCount: 1,
+      selectedAt: record.selectedAt,
+      ...(turnPhase
+        ? {
+            turnId: record.turnId,
+            turnStartedAt: "2026-08-24T09:01:02.000Z",
+            gitExecutionPermissionGrants: [],
+          }
+        : {}),
+      checkpointActivationRecovery: {
+        ...initial.value.binding,
+        recoveryId: initial.value.record.recoveryId,
+      },
+    }
+    const decision = recoverCompletedCheckpointActivation({
+      state,
+      task: setup.task,
+    })
+    assert.equal(decision.accepted, true, `${phase}: ${JSON.stringify(decision)}`)
+  }
+
+  const drifted = structuredClone(setup.state)
+  drifted.status = "running"
+  drifted.checkpointActivationRecoveries = [
+    {
+      ...structuredClone(initial.value.record),
+      status: "boundary_activated",
+      selectedAt: "2026-08-24T09:01:00.000Z",
+      boundaryActivatedAt: "2026-08-24T09:01:01.000Z",
+      turnId: "turn-other",
+    },
+  ]
+  drifted.activeInstruction = {
+    ...initial.value.instruction,
+    phase: "turn_started",
+    attempts: 0,
+    turnCount: 1,
+    selectedAt: "2026-08-24T09:01:00.000Z",
+    turnId: "turn-recovery-027",
+    turnStartedAt: "2026-08-24T09:01:02.000Z",
+    gitExecutionPermissionGrants: [],
+    checkpointActivationRecovery: {
+      ...initial.value.binding,
+      recoveryId: initial.value.record.recoveryId,
+    },
+  }
+  assert.equal(
+    recoverCompletedCheckpointActivation({
+      state: drifted,
+      task: setup.task,
+    }).rejection.code,
+    "checkpoint_activation_recovery_active_binding",
+  )
+
+  drifted.checkpointActivationRecoveries[0].turnId = "turn-recovery-027"
+  drifted.activeInstruction.gitExecutionPermissionGrants = [
+    {
+      action: "cherry_pick",
+      turnId: "turn-other",
+      itemId: "item-other",
+      grantedAt: "2026-08-24T09:01:03.000Z",
+    },
+  ]
+  assert.equal(
+    recoverCompletedCheckpointActivation({
+      state: drifted,
+      task: setup.task,
+    }).rejection.code,
+    "checkpoint_activation_recovery_active_binding",
   )
 })
 

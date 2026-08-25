@@ -15,12 +15,16 @@ import {
   registerOwnerApprovalDecision,
 } from "../src/approval-decisions.mjs"
 import {
+  agentResultPublicationDecision,
   extractAgentControls,
   formatCompletionPacket,
   formatPickupPacket,
   selectNextInstruction,
 } from "../src/control-plane.mjs"
-import { Orchestrator } from "../src/orchestrator.mjs"
+import {
+  Orchestrator,
+  recordCompletedTurnResult,
+} from "../src/orchestrator.mjs"
 import { QueueClaimStore } from "../src/queue-claim-store.mjs"
 import { StateStore } from "../src/state-store.mjs"
 import {
@@ -1185,6 +1189,10 @@ async function runCompletedCheckpointRecoveryScenario(
     boundaryAccepted,
     retryAfterGrant = false,
     preactivatedRecovery = false,
+    restartPhase = null,
+    mutateResultComments = null,
+    expectCorrectionFailure = false,
+    failFirstResultUpdate = false,
   },
 ) {
   const directory = await mkdtemp(
@@ -1310,6 +1318,7 @@ async function runCompletedCheckpointRecoveryScenario(
   }
   const posted = []
   const updated = []
+  let updateAttempts = 0
   const scanner = {
     threadId: "repository-scanner-thread-027",
     appServer: {
@@ -1325,11 +1334,15 @@ async function runCompletedCheckpointRecoveryScenario(
           return { structuredContent: { result: { id: 703 } } }
         }
         if (request.tool === "github.update_issue_comment") {
+          updateAttempts += 1
           updated.push(request.arguments)
           const comment = task.comments.find(
             (candidate) => candidate.id === request.arguments.comment_id,
           )
           comment.body = request.arguments.comment
+          if (failFirstResultUpdate && updateAttempts === 1) {
+            throw new Error("Injected post-update transport failure")
+          }
           return { structuredContent: { result: { id: comment.id } } }
         }
         throw new Error(`Unexpected MCP tool: ${request.tool}`)
@@ -1350,7 +1363,20 @@ async function runCompletedCheckpointRecoveryScenario(
     head,
     tree,
     cherryPickCommit,
+    resultCommentId: null,
+    resultCommentBodyDigest: null,
+    resultPacketDigest: null,
   }
+  const originalPublication = agentResultPublicationDecision({
+    comments: task.comments,
+    instructionId,
+  })
+  assert.equal(originalPublication.accepted, true)
+  recoveryBinding.resultCommentId = originalPublication.value.commentId
+  recoveryBinding.resultCommentBodyDigest =
+    originalPublication.value.bodyDigest
+  recoveryBinding.resultPacketDigest = originalPublication.value.packetDigest
+  mutateResultComments?.({ task, originalResult })
   const recoveryId =
     `git-reconciliation-checkpoint-activation-recovery:${"c".repeat(64)}`
   const recoveryRecord = {
@@ -1388,6 +1414,65 @@ async function runCompletedCheckpointRecoveryScenario(
       },
     ]
     persisted.resultCorrectionInstructionIds = [instructionId]
+    await store.save(persisted)
+  }
+  if (restartPhase) {
+    const persisted = await store.load()
+    const selectedAt = "2026-08-24T09:06:00.000Z"
+    const turnPhase = new Set([
+      "turn_started",
+      "turn_completed",
+      "result_pending",
+    ]).has(restartPhase)
+    const boundaryPhase = restartPhase !== "selected"
+    const turnId = turnPhase ? "turn-persisted-owner-ack-027" : null
+    persisted.status = turnPhase ? "running" : "needs_review"
+    persisted.activeInstruction = {
+      ...instruction,
+      phase: restartPhase,
+      attempts: 0,
+      turnCount: 1,
+      selectedAt,
+      ...(turnPhase
+        ? {
+            turnId,
+            turnStartedAt: "2026-08-24T09:06:02.000Z",
+            gitExecutionPermissionGrants: [],
+          }
+        : {}),
+      checkpointActivationRecovery: {
+        ...recoveryBinding,
+        recoveryId,
+      },
+    }
+    persisted.checkpointActivationRecoveries = [
+      {
+        ...recoveryRecord,
+        status: boundaryPhase ? "boundary_activated" : "selected",
+        selectedAt,
+        boundaryActivatedAt: boundaryPhase
+          ? "2026-08-24T09:06:01.000Z"
+          : null,
+        turnId,
+      },
+    ]
+    persisted.resultCorrectionInstructionIds = [instructionId]
+    if (restartPhase === "turn_completed") {
+      recordCompletedTurnResult(persisted, {
+        status: "completed",
+        turn: { id: turnId, status: "completed", items: [] },
+        pendingOwnerRequest: null,
+        agentMessage:
+          "needs_review\n\nRecovered the persisted completed checkpoint turn.",
+      })
+    }
+    if (restartPhase === "result_pending") {
+      persisted.activeInstruction.packet = {
+        ...structuredClone(originalResult),
+        blockers: [],
+        detail: "Recovered the persisted result packet.",
+      }
+    }
     await store.save(persisted)
   }
   const recoverCheckpointActivation = ({ state: currentState }) =>
@@ -1463,6 +1548,19 @@ async function runCompletedCheckpointRecoveryScenario(
       throw new Error("Recovery must preserve the existing Codex thread")
     },
     async waitForMcpReady() {},
+    async readThread() {
+      return {
+        thread: {
+          turns: [
+            {
+              id: "turn-persisted-owner-ack-027",
+              status: "completed",
+              items: [],
+            },
+          ],
+        },
+      }
+    },
     async runTurn({
       onTurnStarted,
       approvalPolicy,
@@ -1615,12 +1713,34 @@ async function runCompletedCheckpointRecoveryScenario(
       recoverCheckpointActivation,
       claimStore,
     })
-  const recovered = await run()
-  const replay = await run()
+  let recovered = null
+  let replay = null
+  let correctionError = null
+  if (expectCorrectionFailure) {
+    try {
+      await run()
+    } catch (error) {
+      correctionError = error
+    }
+    assert.ok(correctionError)
+  } else if (failFirstResultUpdate) {
+    await assert.rejects(run(), /Injected post-update transport failure/)
+    await new Promise((resolve) => setTimeout(resolve, 5))
+    recovered = await run()
+    replay = await run()
+  } else {
+    recovered = await run()
+    replay = await run()
+  }
   const durable = await store.load()
-  const events = (await readFile(store.eventPath, "utf8"))
+  const eventText = await readFile(store.eventPath, "utf8").catch((error) => {
+    if (error?.code === "ENOENT") return ""
+    throw error
+  })
+  const events = eventText
     .trim()
     .split("\n")
+    .filter(Boolean)
     .map((line) => JSON.parse(line))
   const claim = JSON.parse(
     await readFile(
@@ -1644,6 +1764,8 @@ async function runCompletedCheckpointRecoveryScenario(
     grants,
     posted,
     updated,
+    updateAttempts,
+    correctionError,
     instructionId,
   }
 }
@@ -1680,6 +1802,41 @@ test("completed acknowledgement 027 recovers once through repository claim and m
     ).length,
     1,
   )
+})
+
+test("checkpoint recovery survives each persisted boundary and turn phase without duplicate execution", async (t) => {
+  for (const phase of [
+    "selected",
+    "boundary_activated",
+    "thread_ready",
+    "turn_started",
+    "turn_completed",
+    "result_pending",
+  ]) {
+    await t.test(phase, async (subtest) => {
+      const result = await runCompletedCheckpointRecoveryScenario(subtest, {
+        boundaryAccepted: true,
+        restartPhase: phase,
+      })
+      assert.equal(result.recovered.status, "needs_review")
+      assert.equal(result.replay.status, "no_pending_agent_control")
+      assert.equal(result.posted.length, 0)
+      assert.equal(result.updated.length, 1)
+      assert.equal(result.durable.checkpointActivationRecoveries.length, 1)
+      assert.equal(
+        result.durable.checkpointActivationRecoveries[0].status,
+        "completed",
+      )
+      const startsNewTurn = new Set([
+        "selected",
+        "boundary_activated",
+        "thread_ready",
+      ]).has(phase)
+      assert.equal(result.turns, startsNewTurn ? 1 : 0)
+      assert.equal(result.grants, startsNewTurn ? 1 : 0)
+      assert.ok(result.grants <= 1)
+    })
+  }
 })
 
 test("checkpoint recovery boundary rejection starts no Codex turn and is restart-idempotent", async (t) => {
@@ -1736,6 +1893,124 @@ test("checkpoint recovery does not regrant a protected Git action on turn retry"
         event.code === "grant_duplicate_action_conflict",
     ).length,
     1,
+  )
+})
+
+test("recovered result correction rejects ambiguous, spoofed, malformed, omitted, and drifted publications", async (t) => {
+  const cases = [
+    [
+      "duplicate",
+      ({ task }) => {
+        const original = task.comments.find((comment) => comment.id === 702)
+        task.comments.push({ ...structuredClone(original), id: 704 })
+      },
+    ],
+    [
+      "spoofed",
+      ({ task }) => {
+        task.comments.push({
+          id: 704,
+          body: "agent_result:\n  instruction_id: production-day1-git-reconciliation-checkpoint-generation-activation-owner-ack-027",
+        })
+      },
+    ],
+    [
+      "malformed",
+      ({ task }) => {
+        const original = task.comments.find((comment) => comment.id === 702)
+        original.body = original.body.replace(/^  status:.*\n/m, "")
+      },
+    ],
+    [
+      "non-integer id",
+      ({ task }) => {
+        task.comments.find((comment) => comment.id === 702).id = "702"
+      },
+    ],
+    [
+      "omitted",
+      ({ task }) => {
+        task.comments = task.comments.filter((comment) => comment.id !== 702)
+      },
+    ],
+    [
+      "branch drift",
+      ({ task }) => {
+        const original = task.comments.find((comment) => comment.id === 702)
+        original.body = original.body.replace(
+          '  branch: "agent/issue-63-production-day1-integration-001"',
+          '  branch: "agent/issue-63-other"',
+        )
+      },
+    ],
+    [
+      "thread drift",
+      ({ task }) => {
+        const original = task.comments.find((comment) => comment.id === 702)
+        original.body = original.body.replace(
+          '  codex_thread_id: "thread-issue-63-generation-2"',
+          '  codex_thread_id: "thread-other"',
+        )
+      },
+    ],
+    [
+      "origin drift",
+      ({ task }) => {
+        const original = task.comments.find((comment) => comment.id === 702)
+        original.body = original.body.replace(
+          "  origin_issue_number: 63",
+          "  origin_issue_number: 64",
+        )
+      },
+    ],
+    [
+      "status drift",
+      ({ task }) => {
+        const original = task.comments.find((comment) => comment.id === 702)
+        original.body = original.body.replace(
+          "  status: needs_review",
+          "  status: failed",
+        )
+      },
+    ],
+  ]
+  for (const [name, mutateResultComments] of cases) {
+    await t.test(name, async (subtest) => {
+      const result = await runCompletedCheckpointRecoveryScenario(subtest, {
+        boundaryAccepted: true,
+        mutateResultComments,
+        expectCorrectionFailure: true,
+      })
+      assert.match(
+        result.correctionError.message,
+        /Recovered result correction rejected/,
+      )
+      assert.equal(result.posted.length, 0)
+      assert.equal(result.updated.length, 0)
+      assert.equal(result.durable.activeInstruction.phase, "result_pending")
+      assert.equal(result.durable.checkpointActivationRecoveries.length, 1)
+      assert.equal(
+        result.durable.checkpointActivationRecoveries[0].status,
+        "boundary_activated",
+      )
+      assert.equal(result.claim.status, "retryable_error")
+    })
+  }
+})
+
+test("recovered result correction recognizes a successful update after a crash without republishing", async (t) => {
+  const result = await runCompletedCheckpointRecoveryScenario(t, {
+    boundaryAccepted: true,
+    failFirstResultUpdate: true,
+  })
+  assert.equal(result.recovered.status, "needs_review")
+  assert.equal(result.replay.status, "no_pending_agent_control")
+  assert.equal(result.updateAttempts, 1)
+  assert.equal(result.updated.length, 1)
+  assert.equal(result.posted.length, 0)
+  assert.equal(
+    result.durable.checkpointActivationRecoveries[0].status,
+    "completed",
   )
 })
 

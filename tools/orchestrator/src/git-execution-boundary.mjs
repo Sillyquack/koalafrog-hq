@@ -5,6 +5,7 @@ import path from "node:path"
 import { promisify } from "node:util"
 import { checkpointOwnerGateAttemptAuditDecision } from "./approval-decisions.mjs"
 import {
+  agentResultPublicationDecision,
   controlPlaneBindingDigest,
   listAgentControls,
   listOwnerGateAcknowledgements,
@@ -15,6 +16,7 @@ import { extractIssueNumber } from "./repository-discovery.mjs"
 
 const execFileAsync = promisify(execFile)
 const fullShaPattern = /^[0-9a-f]{40}$/
+const digestPattern = /^[0-9a-f]{64}$/
 const safeBranchPattern = /^[A-Za-z0-9][A-Za-z0-9._/-]*$/
 const gitOperationMarkers = [
   "CHERRY_PICK_HEAD",
@@ -1831,6 +1833,7 @@ function checkpointActivationRecoveryBinding({
   acknowledgement,
   control,
   sourceRun,
+  resultPublication,
 }) {
   return {
     schemaVersion: 1,
@@ -1855,6 +1858,9 @@ function checkpointActivationRecoveryBinding({
     rejectedProposalAuditDigest: proposal.rejectedProposalAudit.digest,
     sourceRunCompletedAt: sourceRun.completedAt,
     sourceRunDigest: sha256(stableJson(sourceRun)),
+    resultCommentId: resultPublication.commentId,
+    resultCommentBodyDigest: resultPublication.bodyDigest,
+    resultPacketDigest: resultPublication.packetDigest,
     lastConsumedInstructionId: state.lastConsumedInstructionId,
   }
 }
@@ -1888,10 +1894,21 @@ export function recoverCompletedCheckpointActivation({ state, task }) {
   if (active && !activeRecovery) {
     return rejected("checkpoint_activation_recovery_active_instruction")
   }
+  const initialRecovery = !activeRecovery
+  const phaseStatus = new Map([
+    ["selected", "needs_review"],
+    ["boundary_activated", "needs_review"],
+    ["thread_ready", "needs_review"],
+    ["turn_started", "running"],
+    ["turn_completed", "running"],
+    ["result_pending", "running"],
+  ])
   if (
-    state?.status !== "needs_review" ||
-    typeof state.lastConsumedInstructionId !== "string" ||
-    !state.lastConsumedInstructionId
+    typeof state?.lastConsumedInstructionId !== "string" ||
+    !state.lastConsumedInstructionId ||
+    (initialRecovery
+      ? state.status !== "needs_review"
+      : phaseStatus.get(active?.phase) !== state.status)
   ) {
     return rejected("checkpoint_activation_recovery_task_state")
   }
@@ -2105,12 +2122,63 @@ export function recoverCompletedCheckpointActivation({ state, task }) {
     })
   }
 
+  let resultPublication
+  if (activeRecovery) {
+    resultPublication = {
+      commentId: activeRecovery.resultCommentId,
+      bodyDigest: activeRecovery.resultCommentBodyDigest,
+      packetDigest: activeRecovery.resultPacketDigest,
+    }
+    if (
+      !Number.isSafeInteger(resultPublication.commentId) ||
+      resultPublication.commentId < 1 ||
+      !digestPattern.test(resultPublication.bodyDigest ?? "") ||
+      !digestPattern.test(resultPublication.packetDigest ?? "")
+    ) {
+      return rejected("checkpoint_activation_recovery_result_binding")
+    }
+  } else {
+    const resultDecision = agentResultPublicationDecision({
+      comments: task.comments,
+      instructionId,
+      expectedPacket: {
+        instructionId,
+        originIssueNumber: sourceRun.originIssueNumber,
+        originIssueUrl: sourceRun.originIssueUrl,
+        codexThreadId: sourceRun.threadId,
+        status: sourceRun.status,
+        branch: sourceRun.branch,
+        commits: sourceRun.commits,
+        checks: sourceRun.checks,
+        ownerRequest: sourceRun.ownerRequest,
+        blockers: sourceRun.blockers,
+        ownerGates: sourceRun.ownerGates,
+        productionReadback: sourceRun.productionReadback,
+        safetyFindings: sourceRun.safetyFindings,
+        branchPushState: sourceRun.branchPushState,
+        resultArtifact: sourceRun.resultArtifact,
+      },
+    })
+    if (!resultDecision.accepted) {
+      return rejected(
+        `checkpoint_activation_recovery_${resultDecision.rejection.code}`,
+        Object.fromEntries(
+          Object.entries(resultDecision.rejection).filter(
+            ([key]) => key !== "code",
+          ),
+        ),
+      )
+    }
+    resultPublication = resultDecision.value
+  }
+
   const binding = checkpointActivationRecoveryBinding({
     state,
     proposal,
     acknowledgement,
     control,
     sourceRun,
+    resultPublication,
   })
   const recoveryId = checkpointActivationRecoveryId(binding)
   const recoveries = state.checkpointActivationRecoveries ?? []
@@ -2162,12 +2230,58 @@ export function recoverCompletedCheckpointActivation({ state, task }) {
       active.ownerApprovalRequired !== true ||
       !new Set([
         "selected",
+        "boundary_activated",
         "thread_ready",
         "turn_started",
         "turn_completed",
         "result_pending",
       ]).has(active.phase) ||
-      !new Set(["selected", "boundary_activated"]).has(recoveryRecord.status)
+      !new Set(["selected", "boundary_activated"]).has(recoveryRecord.status) ||
+      ((active.phase === "selected" &&
+        recoveryRecord.status === "selected")
+        ? recoveryRecord.turnId !== null
+        : !Number.isFinite(
+            Date.parse(recoveryRecord.boundaryActivatedAt ?? ""),
+          )) ||
+      (new Set(["thread_ready", "boundary_activated"]).has(active.phase) &&
+        recoveryRecord.status !== "boundary_activated") ||
+      (new Set(["turn_started", "turn_completed", "result_pending"]).has(
+        active.phase,
+      ) &&
+        (recoveryRecord.status !== "boundary_activated" ||
+          typeof active.turnId !== "string" ||
+          !active.turnId ||
+          recoveryRecord.turnId !== active.turnId ||
+          !Number.isFinite(Date.parse(active.turnStartedAt ?? "")) ||
+          !Array.isArray(active.gitExecutionPermissionGrants ?? []) ||
+          (active.gitExecutionPermissionGrants ?? []).some(
+            (grant) =>
+              !new Set([
+                "cherry_pick",
+                "push",
+                "pull_request",
+                "validation",
+              ]).has(grant?.action) ||
+              typeof grant.turnId !== "string" ||
+              !grant.turnId ||
+              grant.turnId !== active.turnId ||
+              typeof grant.itemId !== "string" ||
+              !grant.itemId ||
+              !Number.isFinite(Date.parse(grant.grantedAt ?? "")),
+          ) ||
+          new Set(
+            (active.gitExecutionPermissionGrants ?? []).map(
+              (grant) => `${grant.action}:${grant.turnId}:${grant.itemId}`,
+            ),
+          ).size !== (active.gitExecutionPermissionGrants ?? []).length ||
+          new Set(
+            (active.gitExecutionPermissionGrants ?? [])
+              .filter((grant) => grant.action !== "validation")
+              .map((grant) => grant.action),
+          ).size !==
+            (active.gitExecutionPermissionGrants ?? []).filter(
+              (grant) => grant.action !== "validation",
+            ).length))
     ) {
       return rejected("checkpoint_activation_recovery_active_binding")
     }

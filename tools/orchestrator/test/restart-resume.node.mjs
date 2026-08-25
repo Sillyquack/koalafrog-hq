@@ -1736,6 +1736,91 @@ test("restart defers a still-running persisted turn instead of starting a duplic
   assert.equal(deferred.activeInstruction.turnCount, 1)
 })
 
+test("persisted turn timeout uses its stable start time and does not defer forever", async (t) => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "koalafrog-stuck-turn-"))
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const block = controlBlock({ instructionId: "stuck-recovery-001" })
+  const [instruction] = extractAgentControls(block)
+  const store = new StateStore({
+    stateDirectory: directory,
+    repository: "Sillyquack/koalafrog-hq",
+    issueNumber: 53,
+  })
+  const state = await store.load()
+  beginInstruction(state, instruction)
+  state.threadId = "thread-stuck"
+  state.workspacePath = "/tmp/workspace-stuck"
+  state.branch = "agent/stuck-recovery-001"
+  recordInstructionTurnStarted(state, {
+    turnId: "turn-stuck",
+    attempt: 0,
+    startedAt: new Date(Date.now() - 5_000),
+  })
+  await store.save(state)
+
+  let interruptRequests = 0
+  let runTurnCalls = 0
+  const comments = [{ body: block }]
+  const appServer = {
+    async start() {},
+    async resumeThread(threadId) {
+      return { thread: { id: threadId } }
+    },
+    async waitForMcpReady() {},
+    async readThread() {
+      return {
+        thread: { turns: [{ id: "turn-stuck", status: "inProgress" }] },
+      }
+    },
+    async interruptTurn() {
+      interruptRequests += 1
+    },
+    async runTurn() {
+      runTurnCalls += 1
+      throw new Error("A stuck persisted turn must not be duplicated")
+    },
+    async stop() {},
+  }
+  const orchestrator = new Orchestrator(
+    { ...runtimeConfig(directory), turnTimeoutMs: 1_000 },
+    {
+      appServer,
+      controlPlane: {
+        async fetchTask() {
+          return { issue: { body: "" }, comments }
+        },
+        async postComment(comment) {
+          comments.push({ body: comment })
+        },
+      },
+      store,
+      workspace: fakeWorkspace(),
+    },
+  )
+
+  await assert.rejects(
+    orchestrator.runOnce(),
+    /Persisted turn timed out; waiting for terminal interruption state/,
+  )
+  const first = await store.load()
+  const timedOutAt = first.activeInstruction.turnTimedOutAt
+  const interruptRequestedAt =
+    first.activeInstruction.turnInterruptRequestedAt
+  await assert.rejects(
+    orchestrator.runOnce(),
+    /Persisted turn timed out; waiting for terminal interruption state/,
+  )
+  const second = await store.load()
+  assert.equal(second.activeInstruction.turnTimedOutAt, timedOutAt)
+  assert.equal(
+    second.activeInstruction.turnInterruptRequestedAt,
+    interruptRequestedAt,
+  )
+  assert.equal(second.activeInstruction.turnStartedAt, state.activeInstruction.turnStartedAt)
+  assert.equal(interruptRequests, 1)
+  assert.equal(runTurnCalls, 0)
+})
+
 test("a timeout retry starts only after the interrupted turn command is terminal", async (t) => {
   const directory = await mkdtemp(path.join(os.tmpdir(), "koalafrog-retry-isolation-"))
   t.after(() => rm(directory, { recursive: true, force: true }))
