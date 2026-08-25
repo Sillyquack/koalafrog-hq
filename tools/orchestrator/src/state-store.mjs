@@ -80,6 +80,7 @@ export function initialState({ repository, issueNumber, issueUrl = null }) {
     ownerGateAcknowledgements: [],
     workspaceBranchReconciliations: [],
     gitReconciliationCheckpoints: [],
+    checkpointActivationRecoveries: [],
     runs: [],
     updatedAt: new Date().toISOString(),
   }
@@ -139,6 +140,7 @@ export function migrateState(state, { repository, issueNumber }) {
   state.ownerGateAcknowledgements ??= []
   state.workspaceBranchReconciliations ??= []
   state.gitReconciliationCheckpoints ??= []
+  state.checkpointActivationRecoveries ??= []
   return normalizeTurnAccounting(state)
 }
 

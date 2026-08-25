@@ -25,6 +25,7 @@ import {
 } from "../src/control-plane.mjs"
 import {
   checkpointOwnerGateAttemptAuditDecision,
+  completeCheckpointOwnerGateAcknowledgement,
   recordPendingApprovalRequest,
   registerCheckpointOwnerGateAcknowledgement,
 } from "../src/approval-decisions.mjs"
@@ -43,6 +44,7 @@ import {
   gitReconciliationCheckpointProposalPrompt,
   proposeGitReconciliationCheckpoint,
   prepareGitReconciliationCheckpointExecution,
+  recoverCompletedCheckpointActivation,
 } from "../src/git-execution-boundary.mjs"
 import {
   issue63ContinuationControl,
@@ -1130,6 +1132,103 @@ async function checkpointGenerationRetrySetup(t) {
     immutableRetryHistory: immutableHistory,
     generationRetryProposal: proposal,
   }
+}
+
+async function completedGenerationActivationRecoverySetup(t) {
+  const setup = await checkpointGenerationRetrySetup(t)
+  const proposal = setup.generationRetryProposal.value.record
+  const duplicate019 = setup.task.comments.find((comment) =>
+    comment.body.includes(
+      "production-day1-git-reconciliation-checkpoint-generation-proposal-019\n",
+    ),
+  )
+  assert.ok(duplicate019)
+  setup.task.comments.push(structuredClone(duplicate019))
+  setup.state.gitReconciliationCheckpoints.push(proposal)
+  appendAcceptedCheckpointProposalRun(setup, proposal)
+
+  const currentPrompt = gitReconciliationCheckpointActivationPrompt({
+    checkpointId: proposal.checkpointId,
+    reconciliationId: proposal.reconciliationId,
+    head: proposal.head,
+    tree: proposal.tree,
+    cherryPickCommit: proposal.cherryPickCommit,
+    generation: proposal.generation,
+    generationId: proposal.generationId,
+  })
+  const receipt = setup.state.workspaceBranchReconciliations.find(
+    (record) => record.reconciliationId === proposal.reconciliationId,
+  )
+  assert.ok(receipt)
+  const historicalPrompt = currentPrompt.replace(
+    `- reconciliation receipt: \`${proposal.reconciliationId}\``,
+    `- reconciliation receipt: \`${receipt.continuationInstructionId}\``,
+  )
+  appendRejectedOwnerGateAttempt(setup, proposal, {
+    instructionId:
+      "production-day1-git-reconciliation-checkpoint-generation-activation-022",
+    taskState: "needs_owner",
+    completedAt: "2026-08-23T19:46:42.895Z",
+    prompt: historicalPrompt,
+  })
+  const legacy023 = appendLegacyActivation023(
+    setup,
+    proposal,
+    historicalPrompt,
+  )
+  appendRejectedOwnerGateAttempt(setup, proposal, {
+    instructionId:
+      "production-day1-git-reconciliation-checkpoint-generation-activation-025",
+    taskState: "needs_review",
+    completedAt: "2026-08-23T20:52:38.709Z",
+    prompt: historicalPrompt,
+  })
+  appendRejectedOwnerGateAttempt(setup, proposal, {
+    instructionId:
+      "production-day1-git-reconciliation-checkpoint-generation-activation-024",
+    taskState: "needs_owner",
+    completedAt: "2026-08-23T20:53:14.959Z",
+    prompt: historicalPrompt,
+  })
+
+  const rejected026Id =
+    "production-day1-git-reconciliation-checkpoint-generation-activation-owner-ack-026"
+  appendRejectedOwnerGateAttempt(setup, proposal, {
+    instructionId: rejected026Id,
+    taskState: "needs_owner",
+    completedAt: "2026-08-24T08:00:00.000Z",
+    prompt: currentPrompt,
+  })
+
+  const instructionId =
+    "production-day1-git-reconciliation-checkpoint-generation-activation-owner-ack-027"
+  const activation = selectAcknowledgedGenerationActivation(
+    setup,
+    proposal,
+    instructionId,
+  )
+  const sourceRun = structuredClone(legacy023)
+  sourceRun.instructionId = instructionId
+  sourceRun.completedAt = "2026-08-24T09:00:00.000Z"
+  sourceRun.resultArtifact.turnId = "turn-owner-ack-027"
+  setup.state.runs.push(sourceRun)
+  setup.state.lastConsumedInstructionId = instructionId
+  setup.state.status = "needs_review"
+  const completion = completeCheckpointOwnerGateAcknowledgement({
+    state: setup.state,
+    acknowledgementId: activation.binding.acknowledgementId,
+    outcome: "needs_review",
+    now: new Date(sourceRun.completedAt),
+  })
+  assert.equal(
+    completion.record.acknowledgementId,
+    activation.binding.acknowledgementId,
+  )
+  assert.equal(completion.record.outcome, "needs_review")
+  setup.state.activeInstruction = null
+  setup.state.gitReconciliationCheckpoints = [proposal]
+  setup.state.checkpointActivationRecoveries = []
+  return { ...setup, proposal, activation, sourceRun }
 }
 
 test("live-shaped #63 linked worktree receives only its exact Git metadata boundary", async (t) => {
@@ -2889,6 +2988,170 @@ test("exact live #63/021-027 audit tail accepts only structurally bound historic
     })
     assert.equal(decision.accepted, false)
   }
+})
+
+test("completed #63 owner acknowledgement 027 reconstructs its exact generation-2 boundary despite superseded control noise", async (t) => {
+  const setup = await completedGenerationActivationRecoverySetup(t)
+  const immutableRuns = JSON.stringify(setup.state.runs)
+  const proposal019Controls = setup.task.comments
+    .flatMap((comment) => extractAgentControls(comment.body))
+    .filter(
+      (control) =>
+        control.instructionId ===
+        "production-day1-git-reconciliation-checkpoint-generation-proposal-019",
+    )
+  assert.equal(proposal019Controls.length, 2)
+  assert.equal(setup.state.activeInstruction, null)
+  assert.equal(
+    setup.state.lastConsumedInstructionId,
+    "production-day1-git-reconciliation-checkpoint-generation-activation-owner-ack-027",
+  )
+
+  const recovery = recoverCompletedCheckpointActivation({
+    state: setup.state,
+    task: setup.task,
+  })
+  assert.equal(recovery.accepted, true, JSON.stringify(recovery))
+  const selectedAt = "2026-08-24T09:01:00.000Z"
+  setup.state.checkpointActivationRecoveries.push({
+    ...recovery.value.record,
+    selectedAt,
+  })
+  setup.state.activeInstruction = {
+    ...recovery.value.instruction,
+    phase: "selected",
+    attempts: 0,
+    turnCount: 1,
+    selectedAt,
+    checkpointActivationRecovery: {
+      ...recovery.value.binding,
+      recoveryId: recovery.value.record.recoveryId,
+    },
+  }
+  const boundary = await authorizedGitExecutionBoundary({
+    ...setup,
+    state: setup.state,
+    instruction: recovery.value.instruction,
+  })
+  assert.ok(boundary)
+  assert.equal(boundary.checkpointId, setup.proposal.checkpointId)
+  assert.equal(boundary.checkpointGenerationId, setup.proposal.generationId)
+  assert.equal(
+    boundary.reconciliationInstructionId,
+    setup.state.workspaceBranchReconciliations[0].continuationInstructionId,
+  )
+  assert.equal(boundary.head, setup.proposal.head)
+  assert.equal(boundary.checkpointActivation.tree, setup.proposal.tree)
+  assert.equal(boundary.cherryPickCommit, setup.proposal.cherryPickCommit)
+  assert.equal(
+    gitExecutionPathIsCovered(
+      boundary,
+      path.join(boundary.gitDirectory, "index.lock"),
+    ),
+    true,
+  )
+  assert.equal(
+    gitExecutionPathIsCovered(
+      boundary,
+      path.join(
+        boundary.commonDirectory,
+        "worktrees",
+        "issue-63-sibling",
+        "index.lock",
+      ),
+    ),
+    false,
+  )
+  assert.equal(JSON.stringify(setup.state.runs), immutableRuns)
+})
+
+test("completed checkpoint activation recovery rejects binding drift, ambiguity, mutation, and replay", async (t) => {
+  const setup = await completedGenerationActivationRecoverySetup(t)
+  const invoke = (mutateState = () => {}, mutateTask = () => {}) => {
+    const state = structuredClone(setup.state)
+    const task = structuredClone(setup.task)
+    mutateState(state)
+    mutateTask(task)
+    return recoverCompletedCheckpointActivation({ state, task })
+  }
+  const rejectedCases = [
+    (state) => {
+      state.gitReconciliationCheckpoints[0].generationId =
+        `git-reconciliation-checkpoint-generation:${"f".repeat(64)}`
+    },
+    (state) => {
+      state.gitReconciliationCheckpoints[0].checkpointId =
+        `git-reconciliation-checkpoint:${"f".repeat(64)}`
+    },
+    (state) => {
+      state.gitReconciliationCheckpoints[0].reconciliationId = "wrong-receipt"
+    },
+    (state) => {
+      state.gitReconciliationCheckpoints[0].branch = "agent/issue-63-other"
+    },
+    (state) => {
+      state.gitReconciliationCheckpoints[0].head = "f".repeat(40)
+    },
+    (state) => {
+      state.gitReconciliationCheckpoints[0].tree = "f".repeat(40)
+    },
+    (state) => {
+      state.gitReconciliationCheckpoints[0].cherryPickCommit = "f".repeat(40)
+    },
+    (state) => {
+      state.ownerGateAcknowledgements[0].checkpointId =
+        `git-reconciliation-checkpoint:${"e".repeat(64)}`
+    },
+    (state) => {
+      state.ownerGateAcknowledgements = []
+    },
+    (state) => {
+      state.gitReconciliationCheckpoints.push(
+        structuredClone(state.gitReconciliationCheckpoints[0]),
+      )
+    },
+    (state) => {
+      state.runs.at(-1).productionReadback = ["Production mutation occurred."]
+    },
+    (state) => {
+      state.runs.at(-1).originIssueNumber = 64
+    },
+    (state) => {
+      state.runs.at(-1).threadId = "other-thread"
+    },
+    (state) => {
+      state.runs.at(-1).workspacePath = "/workspaces/other-issue"
+    },
+  ]
+  for (const mutateState of rejectedCases) {
+    assert.equal(invoke(mutateState).accepted, false)
+  }
+  assert.equal(
+    invoke(
+      () => {},
+      (task) => task.comments.push(structuredClone(task.comments.at(-1))),
+    ).rejection.code,
+    "checkpoint_activation_recovery_control_count",
+  )
+
+  const acceptedRecovery = invoke()
+  assert.equal(acceptedRecovery.accepted, true)
+  const terminalState = structuredClone(setup.state)
+  terminalState.checkpointActivationRecoveries.push({
+    ...acceptedRecovery.value.record,
+    selectedAt: "2026-08-24T09:01:00.000Z",
+    boundaryActivatedAt: "2026-08-24T09:01:01.000Z",
+    completedAt: "2026-08-24T09:02:00.000Z",
+    status: "completed",
+    outcome: "needs_review",
+  })
+  assert.equal(
+    recoverCompletedCheckpointActivation({
+      state: terminalState,
+      task: setup.task,
+    }).rejection.code,
+    "checkpoint_activation_recovery_already_recorded",
+  )
 })
 
 test("generation retry audit rejects changed scope, mutation, ambiguous controls, and non-proposal history", async (t) => {

@@ -31,6 +31,7 @@ import {
   gitReconciliationCheckpointOwnerReason,
   prepareGitReconciliationCheckpointExecution,
   proposeGitReconciliationCheckpoint,
+  recoverCompletedCheckpointActivation,
 } from "./git-execution-boundary.mjs"
 import {
   checksFromResultArtifact,
@@ -1093,6 +1094,7 @@ export class Orchestrator {
       executeGitReconciliationCheckpointMutation,
       prepareGitReconciliationCheckpointExecution,
       proposeGitReconciliationCheckpoint,
+      recoverCompletedCheckpointActivation,
       ...dependencies.workspace,
     }
     this.controlThreadId = null
@@ -1191,6 +1193,8 @@ export class Orchestrator {
 
     const ownerGateAcknowledgementId =
       state.activeInstruction.ownerGateAcknowledgementId ?? null
+    const checkpointActivationRecovery =
+      state.activeInstruction.checkpointActivationRecovery ?? null
     state.lastConsumedInstructionId = packet.instructionId
     state.status = packet.status
     state.pendingOwnerRequest =
@@ -1198,27 +1202,29 @@ export class Orchestrator {
         ? packet.ownerRequest ??
           (packet.ownerQuestion ? { reason: packet.ownerQuestion } : null)
         : null
-    state.runs.push({
-      instructionId: packet.instructionId,
-      status: packet.status,
-      threadId: packet.codexThreadId,
-      workspacePath: state.workspacePath,
-      branch: packet.branch,
-      commits: packet.commits,
-      changedFiles: packet.changedFiles,
-      turnCount: instructionTurnCount(state, packet.instructionId),
-      originIssueNumber: state.task.originIssueNumber,
-      originIssueUrl: state.task.originIssueUrl,
-      ownerRequest: packet.ownerRequest ?? null,
-      checks: packet.checks,
-      blockers: packet.blockers ?? [],
-      ownerGates: packet.ownerGates ?? [],
-      productionReadback: packet.productionReadback ?? [],
-      safetyFindings: packet.safetyFindings ?? [],
-      branchPushState: packet.branchPushState ?? [],
-      resultArtifact: packet.resultArtifact ?? null,
-      completedAt: new Date().toISOString(),
-    })
+    if (!checkpointActivationRecovery) {
+      state.runs.push({
+        instructionId: packet.instructionId,
+        status: packet.status,
+        threadId: packet.codexThreadId,
+        workspacePath: state.workspacePath,
+        branch: packet.branch,
+        commits: packet.commits,
+        changedFiles: packet.changedFiles,
+        turnCount: instructionTurnCount(state, packet.instructionId),
+        originIssueNumber: state.task.originIssueNumber,
+        originIssueUrl: state.task.originIssueUrl,
+        ownerRequest: packet.ownerRequest ?? null,
+        checks: packet.checks,
+        blockers: packet.blockers ?? [],
+        ownerGates: packet.ownerGates ?? [],
+        productionReadback: packet.productionReadback ?? [],
+        safetyFindings: packet.safetyFindings ?? [],
+        branchPushState: packet.branchPushState ?? [],
+        resultArtifact: packet.resultArtifact ?? null,
+        completedAt: new Date().toISOString(),
+      })
+    }
     const completedOwnerGateAcknowledgement = ownerGateAcknowledgementId
       ? completeCheckpointOwnerGateAcknowledgement({
           state,
@@ -1226,6 +1232,26 @@ export class Orchestrator {
           outcome: packet.status,
         })
       : null
+    if (checkpointActivationRecovery) {
+      const recoveries = (state.checkpointActivationRecoveries ?? []).filter(
+        (record) =>
+          record.recoveryId === checkpointActivationRecovery.recoveryId,
+      )
+      if (
+        recoveries.length !== 1 ||
+        recoveries[0].status !== "boundary_activated" ||
+        recoveries[0].completedAt !== null
+      ) {
+        throw new Error(
+          "Refusing to complete an ambiguous checkpoint activation recovery",
+        )
+      }
+      recoveries[0].status = "completed"
+      recoveries[0].completedAt = new Date().toISOString()
+      recoveries[0].outcome = packet.status
+      recoveries[0].turnId = state.activeInstruction.turnId ?? null
+      recoveries[0].resultPacket = packet
+    }
     state.activeInstruction = null
     state.retryCount = 0
     await this.#save(state)
@@ -1481,11 +1507,16 @@ export class Orchestrator {
             const duplicateAction =
               state.activeInstruction.gitExecutionPermissionGrants.find(
                 (grant) =>
-                  grant.turnId === ownerRequest.turnId &&
-                  grant.action === gitGrant.action,
+                  grant.action === gitGrant.action &&
+                  (state.activeInstruction.checkpointActivationRecovery
+                    ? true
+                    : grant.turnId === ownerRequest.turnId),
               )
             if (duplicateAction && gitGrant.action !== "validation") {
-              if (duplicateAction.itemId === ownerRequest.itemId) {
+              if (
+                duplicateAction.turnId === ownerRequest.turnId &&
+                duplicateAction.itemId === ownerRequest.itemId
+              ) {
                 return { response: gitGrant.response, decisionId: null }
               }
               gitGrantRejection = {
@@ -1635,11 +1666,12 @@ export class Orchestrator {
       })
       await this.#save(state)
     }
-    const pendingInstruction = selectNextInstruction(
-      task.issue,
-      task.comments,
-      state,
-    )
+    const checkpointActivationRecovery = state.activeInstruction
+      ? null
+      : this.workspace.recoverCompletedCheckpointActivation({ state, task })
+    const pendingInstruction = checkpointActivationRecovery?.accepted
+      ? checkpointActivationRecovery.value.instruction
+      : selectNextInstruction(task.issue, task.comments, state)
 
     const selectedInstruction = state.activeInstruction ?? pendingInstruction
     if (
@@ -1750,7 +1782,16 @@ export class Orchestrator {
 
     const instruction = state.activeInstruction ?? pendingInstruction
 
-    if (!instruction || !shouldConsumeInstruction(state, instruction)) {
+    const isCheckpointActivationRecovery = Boolean(
+      checkpointActivationRecovery?.accepted &&
+        checkpointActivationRecovery.value.instruction.instructionId ===
+          instruction?.instructionId,
+    )
+    if (
+      !instruction ||
+      (!isCheckpointActivationRecovery &&
+        !shouldConsumeInstruction(state, instruction))
+    ) {
       await this.store.appendEvent({
         type: "poll_idle",
         instructionId: instruction?.instructionId ?? null,
@@ -1772,11 +1813,42 @@ export class Orchestrator {
 
     if (!state.activeInstruction) {
       beginInstruction(state, instruction)
+      if (isCheckpointActivationRecovery) {
+        const selectedAt = new Date().toISOString()
+        const recoveryRecord = checkpointActivationRecovery.value.record
+        recoveryRecord.selectedAt = selectedAt
+        state.checkpointActivationRecoveries ??= []
+        state.checkpointActivationRecoveries.push(recoveryRecord)
+        state.activeInstruction.checkpointActivationRecovery = {
+          ...checkpointActivationRecovery.value.binding,
+          recoveryId: recoveryRecord.recoveryId,
+        }
+        state.resultCorrectionInstructionIds ??= []
+        if (
+          !state.resultCorrectionInstructionIds.includes(
+            instruction.instructionId,
+          )
+        ) {
+          state.resultCorrectionInstructionIds.push(instruction.instructionId)
+        }
+      }
       await this.#save(state)
       await this.store.appendEvent({
-        type: "instruction_selected",
+        type: isCheckpointActivationRecovery
+          ? "checkpoint_activation_recovery_selected"
+          : "instruction_selected",
         instructionId: instruction.instructionId,
         action: instruction.action,
+        ...(isCheckpointActivationRecovery
+          ? {
+              recoveryId:
+                state.activeInstruction.checkpointActivationRecovery.recoveryId,
+              checkpointId:
+                state.activeInstruction.checkpointActivationRecovery.checkpointId,
+              generationId:
+                state.activeInstruction.checkpointActivationRecovery.generationId,
+            }
+          : {}),
       })
     }
 
@@ -1794,7 +1866,13 @@ export class Orchestrator {
       new Set(["proposal", "execution"]).has(checkpointInstructionKind)
         ? null
         : ownerGateReason(instruction)
-    if (gate && checkpointInstructionKind === "activation") {
+    if (
+      gate &&
+      checkpointInstructionKind === "activation" &&
+      state.activeInstruction.checkpointActivationRecovery
+    ) {
+      gate = null
+    } else if (gate && checkpointInstructionKind === "activation") {
       const proposals = (state.gitReconciliationCheckpoints ?? []).filter(
         (record) => record.kind === "proposal",
       )
@@ -2205,6 +2283,44 @@ export class Orchestrator {
         })
       }
     }
+    const activationRecoveryBinding =
+      state.activeInstruction.checkpointActivationRecovery ?? null
+    if (gitExecutionBoundary && activationRecoveryBinding) {
+      const recoveries = (state.checkpointActivationRecoveries ?? []).filter(
+        (record) => record.recoveryId === activationRecoveryBinding.recoveryId,
+      )
+      if (
+        recoveries.length !== 1 ||
+        !new Set(["selected", "boundary_activated"]).has(
+          recoveries[0].status,
+        ) ||
+        (recoveries[0].status === "selected" &&
+          recoveries[0].boundaryActivatedAt !== null) ||
+        (recoveries[0].status === "boundary_activated" &&
+          !Number.isFinite(
+            Date.parse(recoveries[0].boundaryActivatedAt ?? ""),
+          ))
+      ) {
+        throw new Error(
+          "Refusing to activate an ambiguous checkpoint activation recovery",
+        )
+      }
+      if (recoveries[0].status === "selected") {
+        recoveries[0].status = "boundary_activated"
+        recoveries[0].boundaryActivatedAt = new Date().toISOString()
+        await this.#save(state)
+        await this.store.appendEvent({
+          type: "checkpoint_activation_recovery_activated",
+          code: "activation_recovery_accepted",
+          recoveryId: recoveries[0].recoveryId,
+          instructionId: instruction.instructionId,
+          checkpointId: recoveries[0].checkpointId,
+          generationId: recoveries[0].generationId,
+          branch: recoveries[0].branch,
+          head: recoveries[0].head,
+        })
+      }
+    }
     if (gitExecutionBoundary) {
       await this.store.appendEvent({
         type: "git_execution_boundary_activated",
@@ -2237,6 +2353,89 @@ export class Orchestrator {
           code: "activation_unclassified",
         }),
       })
+    }
+
+    if (
+      !gitExecutionBoundary &&
+      checkpointInstructionKind === "activation" &&
+      new Set(["selected", "thread_ready"]).has(
+        state.activeInstruction.phase,
+      )
+    ) {
+      const rejectionCode =
+        gitExecutionBoundaryRejection?.code ?? "activation_unclassified"
+      if (activationRecoveryBinding) {
+        const recoveries = (state.checkpointActivationRecoveries ?? []).filter(
+          (record) => record.recoveryId === activationRecoveryBinding.recoveryId,
+        )
+        if (
+          recoveries.length !== 1 ||
+          !new Set(["selected", "boundary_activated"]).has(
+            recoveries[0].status,
+          ) ||
+          recoveries[0].completedAt !== null
+        ) {
+          throw new Error(
+            "Refusing to reject an ambiguous checkpoint activation recovery",
+          )
+        }
+        recoveries[0].status = "rejected"
+        recoveries[0].completedAt = new Date().toISOString()
+        recoveries[0].outcome = "needs_review"
+        recoveries[0].rejectionCode = rejectionCode
+        state.resultCorrectionInstructionIds = (
+          state.resultCorrectionInstructionIds ?? []
+        ).filter(
+          (instructionId) => instructionId !== instruction.instructionId,
+        )
+        state.activeInstruction = null
+        state.status = "needs_review"
+        await this.#save(state)
+        await this.store.appendEvent({
+          type: "checkpoint_activation_recovery_rejected",
+          code: rejectionCode,
+          recoveryId: recoveries[0].recoveryId,
+          instructionId: instruction.instructionId,
+          checkpointId: recoveries[0].checkpointId,
+          generationId: recoveries[0].generationId,
+        })
+        return {
+          status: "needs_review",
+          instructionId: instruction.instructionId,
+          ownerRequest: null,
+        }
+      }
+
+      const workspaceState = await this.workspace.inspectWorkspace(
+        state.workspacePath,
+        this.config.baseRef,
+      )
+      const packet = {
+        instructionId: instruction.instructionId,
+        originIssueNumber: state.task.originIssueNumber,
+        originIssueUrl: state.task.originIssueUrl,
+        codexThreadId: state.threadId,
+        status: "needs_review",
+        branch: workspaceState.branch,
+        commits: workspaceState.commits,
+        changedFiles: workspaceState.changedFiles,
+        checks: uniformChecks("not_run"),
+        ownerQuestion: null,
+        ownerRequest: null,
+        blockers: [rejectionCode],
+        ownerGates: [],
+        productionReadback: [],
+        safetyFindings: [],
+        branchPushState: [],
+        resultArtifact: null,
+        detail: `Checkpoint activation failed closed before Codex turn startup with ${rejectionCode}.`,
+      }
+      await this.#completeInstruction(state, packet, task.comments)
+      return {
+        status: "needs_review",
+        instructionId: instruction.instructionId,
+        ownerRequest: null,
+      }
     }
 
     await ensureTaskThread({
@@ -2344,6 +2543,59 @@ export class Orchestrator {
         state.activeInstruction.phase = "thread_ready"
         state.activeInstruction.attempts += 1
         await this.#save(state)
+      }
+    }
+
+    if (
+      !turnResult &&
+      !gitExecutionBoundary &&
+      checkpointInstructionKind === "activation"
+    ) {
+      const rejectionCode =
+        gitExecutionBoundaryRejection?.code ?? "activation_unclassified"
+      const recoveryBinding =
+        state.activeInstruction.checkpointActivationRecovery ?? null
+      if (!recoveryBinding) {
+        throw new Error(
+          "Refusing to restart a checkpoint activation without its boundary",
+        )
+      }
+      const recoveries = (state.checkpointActivationRecoveries ?? []).filter(
+        (record) => record.recoveryId === recoveryBinding.recoveryId,
+      )
+      if (
+        recoveries.length !== 1 ||
+        recoveries[0].status !== "boundary_activated" ||
+        recoveries[0].completedAt !== null
+      ) {
+        throw new Error(
+          "Refusing to restart an ambiguous checkpoint activation recovery",
+        )
+      }
+      recoveries[0].status = "rejected"
+      recoveries[0].completedAt = new Date().toISOString()
+      recoveries[0].outcome = "needs_review"
+      recoveries[0].rejectionCode = rejectionCode
+      state.resultCorrectionInstructionIds = (
+        state.resultCorrectionInstructionIds ?? []
+      ).filter(
+        (instructionId) => instructionId !== instruction.instructionId,
+      )
+      state.activeInstruction = null
+      state.status = "needs_review"
+      await this.#save(state)
+      await this.store.appendEvent({
+        type: "checkpoint_activation_recovery_rejected",
+        code: rejectionCode,
+        recoveryId: recoveries[0].recoveryId,
+        instructionId: instruction.instructionId,
+        checkpointId: recoveries[0].checkpointId,
+        generationId: recoveries[0].generationId,
+      })
+      return {
+        status: "needs_review",
+        instructionId: instruction.instructionId,
+        ownerRequest: null,
       }
     }
 

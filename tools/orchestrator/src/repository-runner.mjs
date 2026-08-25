@@ -8,6 +8,7 @@ import {
   selectNextInstruction,
 } from "./control-plane.mjs"
 import { GithubControlPlane } from "./github-control-plane.mjs"
+import { recoverCompletedCheckpointActivation } from "./git-execution-boundary.mjs"
 import { Orchestrator } from "./orchestrator.mjs"
 import { QueueClaimStore } from "./queue-claim-store.mjs"
 import {
@@ -225,6 +226,7 @@ export async function runRepositoryIssue(
   candidate,
   {
     OrchestratorClass = Orchestrator,
+    recoverCheckpointActivation = recoverCompletedCheckpointActivation,
     claimStore = new QueueClaimStore({
       stateDirectory: baseConfig.stateDirectory,
       retryBaseMs: baseConfig.retryBaseMs,
@@ -275,9 +277,14 @@ export async function runRepositoryIssue(
     return { issueNumber, status: "pull_request_ignored", claimed: false }
   }
 
+  const recovery = state.activeInstruction
+    ? null
+    : recoverCheckpointActivation({ state, task })
   const instruction =
     state.activeInstruction ??
-    selectNextInstruction(task.issue, task.comments, state)
+    (recovery?.accepted
+      ? recovery.value.instruction
+      : selectNextInstruction(task.issue, task.comments, state))
   if (!instruction) {
     return { issueNumber, status: "no_pending_agent_control", claimed: false }
   }
@@ -300,9 +307,10 @@ export async function runRepositoryIssue(
         task.issue?.url ??
         candidate.issueUrl ??
         null,
-      retryAllowed: (state.retryInstructionIds ?? []).includes(
-        instruction.instructionId,
-      ),
+      retryAllowed:
+        Boolean(recovery?.accepted) ||
+        Boolean(state.activeInstruction?.checkpointActivationRecovery) ||
+        (state.retryInstructionIds ?? []).includes(instruction.instructionId),
     },
     async () => {
       const orchestrator = new OrchestratorClass(

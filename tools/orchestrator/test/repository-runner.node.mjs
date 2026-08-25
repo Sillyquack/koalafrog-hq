@@ -16,6 +16,7 @@ import {
 } from "../src/approval-decisions.mjs"
 import {
   extractAgentControls,
+  formatCompletionPacket,
   formatPickupPacket,
   selectNextInstruction,
 } from "../src/control-plane.mjs"
@@ -44,6 +45,8 @@ function controlBlock(
     action = "start",
     taskState = "ready",
     prompt = "Make only the bounded orchestrator change.",
+    ownerApprovalRequired = false,
+    maxTurns = 2,
   } = {},
 ) {
   return `\`\`\`yaml
@@ -51,8 +54,8 @@ agent_control:
   action: ${action}
   task_state: ${taskState}
   instruction_id: ${instructionId}
-  max_turns: 2
-  owner_approval_required: false
+  max_turns: ${maxTurns}
+  owner_approval_required: ${ownerApprovalRequired}
   prompt: |
 ${prompt
   .split("\n")
@@ -1174,6 +1177,584 @@ test("live-shaped Issue #63/012 grants once and remains idempotent after reposit
   )
   assert.equal(claimRecord.status, "completed")
   assert.equal(claimRecord.attempt, 1)
+})
+
+async function runCompletedCheckpointRecoveryScenario(
+  t,
+  {
+    boundaryAccepted,
+    retryAfterGrant = false,
+    preactivatedRecovery = false,
+  },
+) {
+  const directory = await mkdtemp(
+    path.join(os.tmpdir(), "koalafrog-checkpoint-027-recovery-"),
+  )
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const instructionId =
+    "production-day1-git-reconciliation-checkpoint-generation-activation-owner-ack-027"
+  const checkpointId = `git-reconciliation-checkpoint:${"a".repeat(64)}`
+  const generationId =
+    `git-reconciliation-checkpoint-generation:${"b".repeat(64)}`
+  const reconciliationId = "authorized-workspace-branch:008:010:exact-head"
+  const branch = "agent/issue-63-production-day1-integration-001"
+  const head = "ec719153c8e726831d7e2b748067383ea7f4e314"
+  const tree = "2330f747713ce620c7927c2c505c622b40e18386"
+  const cherryPickCommit = "a74079be88ec4a8b36b850f95dca791ff42e4e80"
+  const workspacePath = "/workspaces/issue-63-integration"
+  const issueUrl = "https://github.com/Sillyquack/koalafrog-hq/issues/63"
+  const threadId = "thread-issue-63-generation-2"
+  const prompt = `The owner explicitly approves activation of superseding Git reconciliation checkpoint \`${checkpointId}\`.
+
+- generation: \`2\`
+- generation ID: \`${generationId}\`
+- reconciliation receipt: \`${reconciliationId}\`
+- integration branch: \`${branch}\`
+- current HEAD: \`${head}\`
+- current tree: \`${tree}\`
+- cherry-pick only: \`${cherryPickCommit}\``
+  const controlBody = controlBlock(instructionId, {
+    action: "continue",
+    taskState: "needs_owner",
+    prompt,
+    ownerApprovalRequired: true,
+    maxTurns: 8,
+  })
+  const [instruction] = extractAgentControls(controlBody)
+  const storeOptions = {
+    stateDirectory: directory,
+    repository: "Sillyquack/koalafrog-hq",
+    issueNumber: 63,
+  }
+  const store = new StateStore(storeOptions)
+  const state = await store.load()
+  state.status = "needs_review"
+  state.lastConsumedInstructionId = instructionId
+  state.threadId = threadId
+  state.workspacePath = workspacePath
+  state.branch = branch
+  state.task.originIssueUrl = issueUrl
+  state.task.lastObservedIssueUpdatedAt = "2026-08-24T09:10:00.000Z"
+  state.ownerGateAcknowledgements = [
+    {
+      acknowledgementId: "owner-gate-acknowledgement-027",
+      instructionId,
+      checkpointId,
+      generationId,
+      reconciliationId,
+      consumedAt: "2026-08-24T09:00:00.000Z",
+      completedAt: "2026-08-24T09:05:00.000Z",
+      outcome: "needs_review",
+    },
+  ]
+  state.runs = [
+    {
+      instructionId,
+      status: "needs_review",
+      branch,
+      commits: [head],
+      changedFiles: [],
+      turnCount: 1,
+    },
+  ]
+  await store.save(state)
+
+  const originalResult = {
+    instructionId,
+    originIssueNumber: 63,
+    originIssueUrl: issueUrl,
+    codexThreadId: threadId,
+    status: "needs_review",
+    branch,
+    commits: [head],
+    changedFiles: [],
+    checks: {
+      typecheck: "unknown",
+      lint: "unknown",
+      tests: "unknown",
+      cloudflareReadiness: "unknown",
+      build: "unknown",
+      diffCheck: "pass",
+    },
+    ownerQuestion: null,
+    ownerRequest: null,
+    blockers: ["checkpoint_generation_audit_control_count"],
+    ownerGates: [],
+    productionReadback: [],
+    safetyFindings: [],
+    branchPushState: [],
+    resultArtifact: null,
+    detail: "Original completed 027 result remains durable until recovery.",
+  }
+  const task = {
+    issue: {
+      issue_number: 63,
+      url: issueUrl,
+      state: "open",
+      updated_at: "2026-08-24T09:10:00.000Z",
+    },
+    comments: [
+      { id: 700, body: controlBody },
+      {
+        id: 701,
+        body: formatPickupPacket({
+          instructionId,
+          originIssueNumber: 63,
+          originIssueUrl: issueUrl,
+          codexThreadId: threadId,
+          branch,
+        }),
+      },
+      { id: 702, body: formatCompletionPacket(originalResult) },
+    ],
+  }
+  const posted = []
+  const updated = []
+  const scanner = {
+    threadId: "repository-scanner-thread-027",
+    appServer: {
+      async callMcpTool(request) {
+        if (request.tool === "github.fetch_issue") {
+          return { structuredContent: { issue: task.issue } }
+        }
+        if (request.tool === "github.fetch_issue_comments") {
+          return { structuredContent: { comments: task.comments } }
+        }
+        if (request.tool === "github.add_comment_to_issue") {
+          posted.push(request.arguments.comment)
+          return { structuredContent: { result: { id: 703 } } }
+        }
+        if (request.tool === "github.update_issue_comment") {
+          updated.push(request.arguments)
+          const comment = task.comments.find(
+            (candidate) => candidate.id === request.arguments.comment_id,
+          )
+          comment.body = request.arguments.comment
+          return { structuredContent: { result: { id: comment.id } } }
+        }
+        throw new Error(`Unexpected MCP tool: ${request.tool}`)
+      },
+    },
+  }
+
+  const recoveryBinding = {
+    schemaVersion: 1,
+    kind: "checkpoint_activation_recovery",
+    instructionId,
+    acknowledgementId: "owner-gate-acknowledgement-027",
+    checkpointId,
+    generation: 2,
+    generationId,
+    reconciliationId,
+    branch,
+    head,
+    tree,
+    cherryPickCommit,
+  }
+  const recoveryId =
+    `git-reconciliation-checkpoint-activation-recovery:${"c".repeat(64)}`
+  const recoveryRecord = {
+    ...recoveryBinding,
+    recoveryId,
+    status: "selected",
+    selectedAt: null,
+    boundaryActivatedAt: null,
+    completedAt: null,
+    outcome: null,
+    rejectionCode: null,
+    turnId: null,
+    resultPacket: null,
+  }
+  if (preactivatedRecovery) {
+    const persisted = await store.load()
+    const selectedAt = "2026-08-24T09:06:00.000Z"
+    persisted.activeInstruction = {
+      ...instruction,
+      phase: "selected",
+      attempts: 0,
+      turnCount: 1,
+      selectedAt,
+      checkpointActivationRecovery: {
+        ...recoveryBinding,
+        recoveryId,
+      },
+    }
+    persisted.checkpointActivationRecoveries = [
+      {
+        ...recoveryRecord,
+        status: "boundary_activated",
+        selectedAt,
+        boundaryActivatedAt: "2026-08-24T09:06:01.000Z",
+      },
+    ]
+    persisted.resultCorrectionInstructionIds = [instructionId]
+    await store.save(persisted)
+  }
+  const recoverCheckpointActivation = ({ state: currentState }) =>
+    (currentState.checkpointActivationRecoveries ?? []).length === 0
+      ? {
+          accepted: true,
+          value: {
+            instruction,
+            binding: recoveryBinding,
+            record: structuredClone(recoveryRecord),
+          },
+        }
+      : { accepted: false, rejection: { code: "already_recovered" } }
+  const writablePaths = ["/coordinating/.git/worktrees/issue-63-selected"]
+  const cherryPickCommand =
+    `git -c core.hooksPath=/dev/null -c commit.gpgSign=false -c rerere.enabled=false cherry-pick ${cherryPickCommit}`
+  const boundary = {
+    schemaVersion: 1,
+    instructionId,
+    issueNumber: 63,
+    originIssueUrl: issueUrl,
+    threadId,
+    workspacePath,
+    branch,
+    head,
+    cherryPickCommit,
+    provenanceMode: "superseding_checkpoint",
+    priorPredicateCode:
+      "activation_historical_run_structured_no_mutation_evidence",
+    reconciliationInstructionId:
+      "production-day1-git-reconciliation-resume-010",
+    interveningExecutionInstructionIds: [],
+    checkpointId,
+    checkpointGeneration: 2,
+    checkpointGenerationId: generationId,
+    checkpointActivation: {
+      schemaVersion: 2,
+      kind: "activation",
+      checkpointId,
+      generation: 2,
+      generationId,
+      activationInstructionId: instructionId,
+      branch,
+      head,
+      tree,
+      cherryPickCommit,
+      activatedAt: null,
+    },
+    checkpointActivationIsNew: true,
+    gitDirectory: writablePaths[0],
+    commonDirectory: "/coordinating/.git",
+    writablePaths,
+    repository: storeOptions.repository,
+    commands: {
+      cherry_pick: [cherryPickCommand],
+      push: [`git push origin ${branch}`],
+      pull_request: [`gh pr create --base main --head ${branch} --fill`],
+      validation: ["git diff --check"],
+    },
+  }
+  let turns = 0
+  let resumes = 0
+  let grants = 0
+  const appServer = {
+    async start() {},
+    async resumeThread(resumedThreadId, params) {
+      resumes += 1
+      assert.equal(resumedThreadId, threadId)
+      assert.equal(params.config["features.exec_permission_approvals"], true)
+      return { thread: { id: resumedThreadId } }
+    },
+    async startThread() {
+      throw new Error("Recovery must preserve the existing Codex thread")
+    },
+    async waitForMcpReady() {},
+    async runTurn({
+      onTurnStarted,
+      approvalPolicy,
+      prompt: turnPrompt,
+      resolveApprovalRequest,
+    }) {
+      turns += 1
+      assert.equal(boundaryAccepted, true)
+      assert.equal(approvalPolicy, "on-request")
+      assert.match(turnPrompt, /Orchestrator-managed Git execution boundary/)
+      const turnId = `turn-recovered-owner-ack-027-${turns}`
+      const itemId = retryAfterGrant
+        ? "item-recovered-owner-ack-027-reused"
+        : `item-recovered-owner-ack-027-${turns}`
+      await onTurnStarted(turnId)
+      const permissionRequest = {
+        method: "item/permissions/requestApproval",
+        threadId,
+        turnId,
+        itemId,
+        details: {
+          cwd: workspacePath,
+          permissions: {
+            fileSystem: { write: [...writablePaths] },
+          },
+        },
+      }
+      const commandContext = {
+        commandExecution: {
+          id: itemId,
+          type: "commandExecution",
+          source: "agent",
+          status: "inProgress",
+          cwd: workspacePath,
+          command: cherryPickCommand,
+        },
+      }
+      const decision = await resolveApprovalRequest(
+        permissionRequest,
+        commandContext,
+      )
+      if (retryAfterGrant && turns > 1) {
+        assert.equal(decision, null)
+        return {
+          status: "completed",
+          turn: { id: turnId, status: "completed", items: [] },
+          pendingOwnerRequest: null,
+          agentMessage:
+            "needs_review\n\nThe retry correctly received no second protected Git permission.",
+        }
+      }
+      const replayedDecision = await resolveApprovalRequest(
+        permissionRequest,
+        commandContext,
+      )
+      assert.deepEqual(replayedDecision, decision)
+      assert.deepEqual(decision.response, {
+        permissions: {
+          fileSystem: { write: writablePaths },
+        },
+        scope: "turn",
+        strictAutoReview: true,
+      })
+      grants += 1
+      if (retryAfterGrant) {
+        return {
+          status: "failed",
+          turn: { id: turnId, status: "failed", items: [] },
+          pendingOwnerRequest: null,
+          agentMessage: null,
+        }
+      }
+      return {
+        status: "completed",
+        turn: { id: turnId, status: "completed", items: [] },
+        pendingOwnerRequest: null,
+        agentMessage:
+          "needs_review\n\nRecovered 027 reached the exact managed permission path without executing live Git.",
+      }
+    },
+    async stop() {},
+  }
+  const workspace = {
+    recoverCompletedCheckpointActivation: recoverCheckpointActivation,
+    async ensureWorkspace({ existingPath, existingBranch }) {
+      return { path: existingPath, branch: existingBranch }
+    },
+    async inspectWorkspace() {
+      return {
+        branch,
+        commits: [head],
+        changedFiles: [],
+        dirty: false,
+      }
+    },
+    assertAllowedChanges() {},
+    async commitWorkspaceChanges() {},
+    async validateWorkspace() {
+      return { pass: true, detail: "" }
+    },
+    async authorizedGitExecutionBoundary({ onDiagnostic }) {
+      if (boundaryAccepted) return boundary
+      onDiagnostic({ code: "checkpoint_activation_recovery_current_binding" })
+      return null
+    },
+    async gitExecutionBoundaryIsCurrent() {
+      return true
+    },
+  }
+  class RecoveryOrchestrator extends Orchestrator {
+    constructor(config, dependencies) {
+      super(config, { ...dependencies, appServer, workspace })
+    }
+  }
+  const config = {
+    repository: storeOptions.repository,
+    stateDirectory: directory,
+    checkoutPath: "/tmp/coordinating-checkout",
+    baseRef: "origin/main",
+    maxTurns: 12,
+    turnTimeoutMs: 1_000,
+    maxRetries: retryAfterGrant ? 1 : 0,
+    retryBaseMs: 1,
+    codexBinary: "codex",
+    model: null,
+    allowedPaths: [],
+    autoCommit: false,
+    fetchRemote: false,
+  }
+  const candidate = {
+    issueNumber: 63,
+    searchMatched: true,
+    updatedAt: task.issue.updated_at,
+  }
+  const claimStore = new QueueClaimStore({
+    stateDirectory: directory,
+    retryBaseMs: 1,
+  })
+  await claimStore.withClaim(
+    {
+      instructionId,
+      originIssueNumber: 63,
+      originIssueUrl: issueUrl,
+    },
+    async () => ({ status: "needs_review" }),
+  )
+  const run = () =>
+    runRepositoryIssue(scanner, config, candidate, {
+      OrchestratorClass: RecoveryOrchestrator,
+      recoverCheckpointActivation,
+      claimStore,
+    })
+  const recovered = await run()
+  const replay = await run()
+  const durable = await store.load()
+  const events = (await readFile(store.eventPath, "utf8"))
+    .trim()
+    .split("\n")
+    .map((line) => JSON.parse(line))
+  const claim = JSON.parse(
+    await readFile(
+      path.join(
+        directory,
+        "repository-queue",
+        "instructions",
+        `${instructionId}.json`,
+      ),
+      "utf8",
+    ),
+  )
+  return {
+    recovered,
+    replay,
+    durable,
+    events,
+    claim,
+    turns,
+    resumes,
+    grants,
+    posted,
+    updated,
+    instructionId,
+  }
+}
+
+test("completed acknowledgement 027 recovers once through repository claim and managed permission", async (t) => {
+  const result = await runCompletedCheckpointRecoveryScenario(t, {
+    boundaryAccepted: true,
+  })
+  assert.equal(result.recovered.status, "needs_review")
+  assert.equal(result.recovered.instructionId, result.instructionId)
+  assert.equal(result.replay.status, "no_pending_agent_control")
+  assert.equal(result.turns, 1)
+  assert.equal(result.resumes, 1)
+  assert.equal(result.grants, 1)
+  assert.equal(result.posted.length, 0)
+  assert.equal(result.updated.length, 1)
+  assert.equal(result.updated[0].comment_id, 702)
+  assert.equal(result.durable.runs.length, 1)
+  assert.equal(result.durable.ownerGateAcknowledgements.length, 1)
+  assert.equal(result.durable.ownerGateAcknowledgements[0].outcome, "needs_review")
+  assert.equal(result.durable.checkpointActivationRecoveries.length, 1)
+  assert.equal(result.durable.checkpointActivationRecoveries[0].status, "completed")
+  assert.equal(result.claim.status, "completed")
+  assert.equal(result.claim.attempt, 2)
+  assert.equal(
+    result.events.filter(
+      (event) => event.type === "git_execution_permission_granted",
+    ).length,
+    1,
+  )
+  assert.equal(
+    result.events.filter(
+      (event) => event.type === "checkpoint_activation_recovery_activated",
+    ).length,
+    1,
+  )
+})
+
+test("checkpoint recovery boundary rejection starts no Codex turn and is restart-idempotent", async (t) => {
+  const result = await runCompletedCheckpointRecoveryScenario(t, {
+    boundaryAccepted: false,
+  })
+  assert.equal(result.recovered.status, "needs_review")
+  assert.equal(result.replay.status, "no_pending_agent_control")
+  assert.equal(result.turns, 0)
+  assert.equal(result.resumes, 0)
+  assert.equal(result.grants, 0)
+  assert.equal(result.posted.length, 0)
+  assert.equal(result.updated.length, 0)
+  assert.equal(result.durable.runs.length, 1)
+  assert.equal(result.durable.checkpointActivationRecoveries.length, 1)
+  assert.equal(result.durable.checkpointActivationRecoveries[0].status, "rejected")
+  assert.equal(
+    result.durable.checkpointActivationRecoveries[0].rejectionCode,
+    "checkpoint_activation_recovery_current_binding",
+  )
+  assert.equal(
+    result.events.filter(
+      (event) => event.type === "git_execution_permission_granted",
+    ).length,
+    0,
+  )
+  assert.equal(
+    result.events.filter(
+      (event) => event.type === "checkpoint_activation_recovery_rejected",
+    ).length,
+    1,
+  )
+})
+
+test("checkpoint recovery does not regrant a protected Git action on turn retry", async (t) => {
+  const result = await runCompletedCheckpointRecoveryScenario(t, {
+    boundaryAccepted: true,
+    retryAfterGrant: true,
+  })
+  assert.equal(result.recovered.status, "needs_review")
+  assert.equal(result.replay.status, "no_pending_agent_control")
+  assert.equal(result.turns, 2)
+  assert.equal(result.grants, 1)
+  assert.equal(
+    result.events.filter(
+      (event) => event.type === "git_execution_permission_granted",
+    ).length,
+    1,
+  )
+  assert.equal(
+    result.events.filter(
+      (event) =>
+        event.type === "git_execution_permission_rejected" &&
+        event.code === "grant_duplicate_action_conflict",
+    ).length,
+    1,
+  )
+})
+
+test("persisted boundary activation terminally rejects later reconstruction drift without a turn", async (t) => {
+  const result = await runCompletedCheckpointRecoveryScenario(t, {
+    boundaryAccepted: false,
+    preactivatedRecovery: true,
+  })
+  assert.equal(result.recovered.status, "needs_review")
+  assert.equal(result.replay.status, "no_pending_agent_control")
+  assert.equal(result.turns, 0)
+  assert.equal(result.resumes, 0)
+  assert.equal(result.durable.activeInstruction, null)
+  assert.equal(result.durable.checkpointActivationRecoveries.length, 1)
+  assert.equal(result.durable.checkpointActivationRecoveries[0].status, "rejected")
+  assert.equal(
+    result.durable.checkpointActivationRecoveries[0].rejectionCode,
+    "checkpoint_activation_recovery_current_binding",
+  )
 })
 
 for (const [terminalStatus, issueNumber] of [

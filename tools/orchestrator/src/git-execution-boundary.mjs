@@ -7,6 +7,8 @@ import { checkpointOwnerGateAttemptAuditDecision } from "./approval-decisions.mj
 import {
   controlPlaneBindingDigest,
   listAgentControls,
+  listOwnerGateAcknowledgements,
+  ownerGateAcknowledgementId,
   ownerGateReason,
 } from "./control-plane.mjs"
 import { extractIssueNumber } from "./repository-discovery.mjs"
@@ -71,6 +73,7 @@ const retryableCheckpointProposalRejectionCodes = new Set([
 const checkpointNegatedMutationStatements = [
   "No fallback path or mutation was attempted.",
   "No fallback, source change, remote Git mutation, deployment, migration, receipt, or production action occurred.",
+  "No fallback Git path, sibling metadata access, source change, production action, deployment, migration, purchase, or receipt mutation occurred.",
 ]
 
 function accepted(value, context = {}) {
@@ -1822,11 +1825,376 @@ function checkpointProposalId(binding) {
   )}`
 }
 
+function checkpointActivationRecoveryBinding({
+  state,
+  proposal,
+  acknowledgement,
+  control,
+  sourceRun,
+}) {
+  return {
+    schemaVersion: 1,
+    kind: "checkpoint_activation_recovery",
+    instructionId: acknowledgement.instructionId,
+    acknowledgementId: acknowledgement.acknowledgementId,
+    checkpointId: proposal.checkpointId,
+    generation: proposal.generation,
+    generationId: proposal.generationId,
+    reconciliationId: proposal.reconciliationId,
+    originIssueNumber: proposal.originIssueNumber,
+    originIssueUrlDigest: controlPlaneBindingDigest(proposal.originIssueUrl),
+    threadId: proposal.threadId,
+    workspacePathDigest: controlPlaneBindingDigest(proposal.workspacePath),
+    branch: proposal.branch,
+    head: proposal.head,
+    tree: proposal.tree,
+    cherryPickCommit: proposal.cherryPickCommit,
+    controlPromptDigest: controlPlaneBindingDigest(control.prompt),
+    ownerGateReasonDigest: acknowledgement.gateReasonDigest,
+    priorGateAuditDigest: acknowledgement.priorGateAuditDigest,
+    rejectedProposalAuditDigest: proposal.rejectedProposalAudit.digest,
+    sourceRunCompletedAt: sourceRun.completedAt,
+    sourceRunDigest: sha256(stableJson(sourceRun)),
+    lastConsumedInstructionId: state.lastConsumedInstructionId,
+  }
+}
+
+function checkpointActivationRecoveryId(binding) {
+  return `git-reconciliation-checkpoint-activation-recovery:${sha256(
+    stableJson(binding),
+  )}`
+}
+
+function checkpointActivationRecoveryRecordBinding(record) {
+  if (!record || typeof record !== "object") return null
+  const {
+    recoveryId: _recoveryId,
+    status: _status,
+    selectedAt: _selectedAt,
+    boundaryActivatedAt: _boundaryActivatedAt,
+    completedAt: _completedAt,
+    outcome: _outcome,
+    rejectionCode: _rejectionCode,
+    turnId: _turnId,
+    resultPacket: _resultPacket,
+    ...binding
+  } = record
+  return binding
+}
+
+export function recoverCompletedCheckpointActivation({ state, task }) {
+  const active = state?.activeInstruction ?? null
+  const activeRecovery = active?.checkpointActivationRecovery ?? null
+  if (active && !activeRecovery) {
+    return rejected("checkpoint_activation_recovery_active_instruction")
+  }
+  if (
+    state?.status !== "needs_review" ||
+    typeof state.lastConsumedInstructionId !== "string" ||
+    !state.lastConsumedInstructionId
+  ) {
+    return rejected("checkpoint_activation_recovery_task_state")
+  }
+  if (
+    extractIssueNumber(task?.issue) !== state.task?.originIssueNumber ||
+    currentIssueUrl(task) !== state.task?.originIssueUrl
+  ) {
+    return rejected("checkpoint_activation_recovery_origin")
+  }
+
+  const instructionId = state.lastConsumedInstructionId
+  const controls = listAgentControls(task.issue, task.comments)
+  const matchingControls = controls.filter(
+    (control) => control.instructionId === instructionId,
+  )
+  if (
+    matchingControls.length !== 1 ||
+    controls.at(-1)?.instructionId !== instructionId
+  ) {
+    return rejected("checkpoint_activation_recovery_control_count", {
+      controlCount: matchingControls.length,
+    })
+  }
+  const control = matchingControls[0]
+  if (
+    gitReconciliationCheckpointInstructionKind(control) !== "activation" ||
+    control.action !== "continue" ||
+    control.taskState !== "needs_owner" ||
+    control.ownerApprovalRequired !== true
+  ) {
+    return rejected("checkpoint_activation_recovery_control_binding")
+  }
+
+  const durableAcknowledgements = (state.ownerGateAcknowledgements ?? []).filter(
+    (record) =>
+      record?.kind === "checkpoint_activation" &&
+      record.instructionId === instructionId,
+  )
+  const suppliedAcknowledgements = listOwnerGateAcknowledgements(
+    task.issue,
+    task.comments,
+  ).filter((record) => record.instructionId === instructionId)
+  if (
+    durableAcknowledgements.length !== 1 ||
+    suppliedAcknowledgements.length !== 1 ||
+    suppliedAcknowledgements[0].pairedControls.length !== 1 ||
+    suppliedAcknowledgements[0].pairedControls[0].prompt !== control.prompt
+  ) {
+    return rejected("checkpoint_activation_recovery_acknowledgement_count", {
+      durableCount: durableAcknowledgements.length,
+      suppliedCount: suppliedAcknowledgements.length,
+    })
+  }
+  const acknowledgement = durableAcknowledgements[0]
+  const suppliedAcknowledgement = suppliedAcknowledgements[0]
+  const acknowledgementFields = [
+    "acknowledgementId",
+    "instructionId",
+    "proposalInstructionId",
+    "originIssueNumber",
+    "originIssueUrlDigest",
+    "codexThreadId",
+    "workspacePathDigest",
+    "checkpointId",
+    "generationId",
+    "reconciliationId",
+    "branch",
+    "head",
+    "tree",
+    "controlPromptDigest",
+    "gateReasonDigest",
+    "pendingReasonDigest",
+    "priorGateAuditDigest",
+  ]
+  if (
+    acknowledgement.schemaVersion !== 1 ||
+    acknowledgement.kind !== "checkpoint_activation" ||
+    acknowledgement.outcome !== "needs_review" ||
+    !Number.isFinite(Date.parse(acknowledgement.consumedAt ?? "")) ||
+    !Number.isFinite(Date.parse(acknowledgement.completedAt ?? "")) ||
+    ownerGateAcknowledgementId(acknowledgement) !==
+      acknowledgement.acknowledgementId ||
+    acknowledgementFields.some(
+      (field) => acknowledgement[field] !== suppliedAcknowledgement[field],
+    ) ||
+    !Array.isArray(acknowledgement.priorGateInstructionIds) ||
+    acknowledgement.priorGateInstructionIds.length === 0 ||
+    new Set(acknowledgement.priorGateInstructionIds).size !==
+      acknowledgement.priorGateInstructionIds.length
+  ) {
+    return rejected("checkpoint_activation_recovery_acknowledgement_binding")
+  }
+
+  const checkpoints = state.gitReconciliationCheckpoints
+  if (!Array.isArray(checkpoints)) {
+    return rejected("checkpoint_activation_recovery_checkpoint_records")
+  }
+  const proposals = checkpoints.filter((record) => record.kind === "proposal")
+  const activations = checkpoints.filter(
+    (record) => record.kind === "activation",
+  )
+  if (
+    proposals.length !== 1 ||
+    activations.length > (activeRecovery ? 1 : 0) ||
+    checkpoints.length !== proposals.length + activations.length
+  ) {
+    return rejected("checkpoint_activation_recovery_checkpoint_count", {
+      proposalCount: proposals.length,
+      activationCount: activations.length,
+    })
+  }
+  const proposal = proposals[0]
+  const expectedPrompt = gitReconciliationCheckpointActivationPrompt({
+    checkpointId: proposal.checkpointId,
+    reconciliationId: proposal.reconciliationId,
+    head: proposal.head,
+    tree: proposal.tree,
+    cherryPickCommit: proposal.cherryPickCommit,
+    generation: proposal.generation,
+    generationId: proposal.generationId,
+  })
+  const ownerReason = gitReconciliationCheckpointOwnerReason(proposal)
+  const expectedGateReason = ownerGateReason(control)
+  if (
+    proposal.schemaVersion !== 2 ||
+    proposal.operationScope !== checkpointOperationScope ||
+    proposal.generation !== checkpointGeneration ||
+    checkpointProposalId(proposal) !== proposal.checkpointId ||
+    checkpointGenerationId(proposal) !== proposal.generationId ||
+    proposal.originIssueNumber !== state.task.originIssueNumber ||
+    proposal.originIssueUrl !== state.task.originIssueUrl ||
+    proposal.threadId !== state.threadId ||
+    proposal.workspacePath !== state.workspacePath ||
+    proposal.branch !== state.branch ||
+    control.prompt !== expectedPrompt ||
+    acknowledgement.proposalInstructionId !==
+      proposal.proposalInstructionId ||
+    acknowledgement.checkpointId !== proposal.checkpointId ||
+    acknowledgement.generationId !== proposal.generationId ||
+    acknowledgement.reconciliationId !== proposal.reconciliationId ||
+    acknowledgement.originIssueNumber !== proposal.originIssueNumber ||
+    acknowledgement.originIssueUrlDigest !==
+      controlPlaneBindingDigest(proposal.originIssueUrl) ||
+    acknowledgement.codexThreadId !== proposal.threadId ||
+    acknowledgement.workspacePathDigest !==
+      controlPlaneBindingDigest(proposal.workspacePath) ||
+    acknowledgement.branch !== proposal.branch ||
+    acknowledgement.head !== proposal.head ||
+    acknowledgement.tree !== proposal.tree ||
+    acknowledgement.controlPromptDigest !==
+      controlPlaneBindingDigest(control.prompt) ||
+    acknowledgement.gateReasonDigest !==
+      controlPlaneBindingDigest(expectedGateReason) ||
+    acknowledgement.pendingReasonDigest !==
+      controlPlaneBindingDigest(ownerReason)
+  ) {
+    return rejected("checkpoint_activation_recovery_current_binding")
+  }
+
+  const pendingRequests = (state.pendingApprovalRequests ?? []).filter(
+    (request) => request.key === acknowledgement.pendingRequestKey,
+  )
+  if (
+    pendingRequests.length !== 1 ||
+    pendingRequests[0].status !== "completed" ||
+    pendingRequests[0].decisionId !== acknowledgement.acknowledgementId ||
+    pendingRequests[0].sourceInstructionId !== proposal.proposalInstructionId ||
+    pendingRequests[0].reason !== ownerReason ||
+    pendingRequests[0].clearedAt !== acknowledgement.completedAt
+  ) {
+    return rejected("checkpoint_activation_recovery_pending_binding")
+  }
+
+  const sourceRuns = (state.runs ?? []).filter(
+    (run) => run.instructionId === instructionId,
+  )
+  if (
+    sourceRuns.length !== 1 ||
+    state.runs.at(-1)?.instructionId !== instructionId
+  ) {
+    return rejected("checkpoint_activation_recovery_run_count", {
+      runCount: sourceRuns.length,
+    })
+  }
+  const sourceRun = sourceRuns[0]
+  const changedFiles = normalizedChangedFiles(sourceRun.changedFiles)
+  const reconciliationRecords = (state.workspaceBranchReconciliations ?? []).filter(
+    (record) => record.reconciliationId === proposal.reconciliationId,
+  )
+  if (
+    reconciliationRecords.length !== 1 ||
+    changedFiles.status !== "valid" ||
+    sha256(JSON.stringify(changedFiles.files)) !== proposal.changedFilesDigest ||
+    changedFiles.files.length !== proposal.changedFileCount ||
+    sourceRun.originIssueNumber !== proposal.originIssueNumber ||
+    sourceRun.originIssueUrl !== proposal.originIssueUrl ||
+    sourceRun.threadId !== proposal.threadId ||
+    sourceRun.workspacePath !== proposal.workspacePath ||
+    !Number.isFinite(Date.parse(sourceRun.completedAt ?? ""))
+  ) {
+    return rejected("checkpoint_activation_recovery_run_binding")
+  }
+  const safeStop = checkpointHistoricalContradictionDecision(
+    sourceRun,
+    reconciliationRecords[0],
+    changedFiles.files,
+  )
+  if (!safeStop.accepted) {
+    return rejected("checkpoint_activation_recovery_mutation_evidence", {
+      predicate: safeStop.rejection.code,
+    })
+  }
+
+  const binding = checkpointActivationRecoveryBinding({
+    state,
+    proposal,
+    acknowledgement,
+    control,
+    sourceRun,
+  })
+  const recoveryId = checkpointActivationRecoveryId(binding)
+  const recoveries = state.checkpointActivationRecoveries ?? []
+  if (!Array.isArray(recoveries)) {
+    return rejected("checkpoint_activation_recovery_records")
+  }
+  const matchingRecoveries = recoveries.filter(
+    (record) => record?.recoveryId === recoveryId,
+  )
+  if (
+    recoveries.length !== matchingRecoveries.length ||
+    matchingRecoveries.length > 1
+  ) {
+    return rejected("checkpoint_activation_recovery_record_ambiguous", {
+      recordCount: recoveries.length,
+      matchingRecordCount: matchingRecoveries.length,
+    })
+  }
+  const recoveryRecord = matchingRecoveries[0] ?? {
+    ...binding,
+    recoveryId,
+    status: "selected",
+    selectedAt: null,
+    boundaryActivatedAt: null,
+    completedAt: null,
+    outcome: null,
+    rejectionCode: null,
+    turnId: null,
+    resultPacket: null,
+  }
+  if (
+    stableJson(checkpointActivationRecoveryRecordBinding(recoveryRecord)) !==
+      stableJson(binding)
+  ) {
+    return rejected("checkpoint_activation_recovery_record_binding")
+  }
+  if (activeRecovery) {
+    const {
+      recoveryId: activeRecoveryId,
+      ...activeRecoveryBinding
+    } = activeRecovery
+    if (
+      matchingRecoveries.length !== 1 ||
+      activeRecoveryId !== recoveryId ||
+      stableJson(activeRecoveryBinding) !== stableJson(binding) ||
+      active.instructionId !== control.instructionId ||
+      active.prompt !== control.prompt ||
+      active.action !== control.action ||
+      active.ownerApprovalRequired !== true ||
+      !new Set([
+        "selected",
+        "thread_ready",
+        "turn_started",
+        "turn_completed",
+        "result_pending",
+      ]).has(active.phase) ||
+      !new Set(["selected", "boundary_activated"]).has(recoveryRecord.status)
+    ) {
+      return rejected("checkpoint_activation_recovery_active_binding")
+    }
+  } else if (matchingRecoveries.length !== 0) {
+    return rejected("checkpoint_activation_recovery_already_recorded")
+  }
+  return accepted({
+    instruction: control,
+    binding,
+    record: recoveryRecord,
+    proposal,
+    acknowledgement,
+    sourceRun,
+    isNew: matchingRecoveries.length === 0,
+  })
+}
+
 function checkpointActivationDecision({ state, instruction, task }) {
   const checkpointId = instruction.prompt.match(
     /^The owner explicitly approves activation of superseding Git reconciliation checkpoint `(git-reconciliation-checkpoint:[0-9a-f]{64})`\.$/m,
   )?.[1]
   if (!checkpointId) return rejected("checkpoint_activation_prompt")
+
+  const recovery = state.activeInstruction?.checkpointActivationRecovery
+    ? recoverCompletedCheckpointActivation({ state, task })
+    : null
+  if (recovery && !recovery.accepted) return recovery
 
   const checkpoints = state.gitReconciliationCheckpoints
   if (!Array.isArray(checkpoints)) {
@@ -1844,13 +2212,26 @@ function checkpointActivationDecision({ state, instruction, task }) {
   }
   const proposal = matches[0]
   const generationProposal = proposal.schemaVersion === 2
-  const control = checkpointControlDecision({
-    state,
-    instruction,
-    task,
-    ownerGateAcknowledgementRequired: generationProposal,
-  })
+  const control = recovery
+    ? accepted({
+        control: recovery.value.instruction,
+        acknowledgement: recovery.value.acknowledgement,
+      })
+    : checkpointControlDecision({
+        state,
+        instruction,
+        task,
+        ownerGateAcknowledgementRequired: generationProposal,
+      })
   if (!control.accepted) return control
+  if (
+    recovery &&
+    (recovery.value.proposal.checkpointId !== proposal.checkpointId ||
+      recovery.value.instruction.instructionId !== instruction.instructionId ||
+      recovery.value.instruction.prompt !== instruction.prompt)
+  ) {
+    return rejected("checkpoint_activation_recovery_selection_binding")
+  }
   if (
     !new Set([1, 2]).has(proposal.schemaVersion) ||
     proposal.operationScope !== checkpointOperationScope ||
@@ -2001,41 +2382,43 @@ function checkpointActivationDecision({ state, instruction, task }) {
       runCount: context.value.laterRuns.length,
     })
   }
-  const priorAttempts = generationProposal
-    ? checkpointGenerationAuditDecision({
-        state,
-        task,
-        runs: context.value.laterRuns.slice(0, priorProposalCount),
-        record: context.value.record,
-        expectedChangedFiles: context.value.expectedChangedFiles,
-        expectedBinding: {
-          head: proposal.head,
-          tree: proposal.tree,
-          cherryPickCommit: proposal.cherryPickCommit,
-        },
-        currentInstructionId: proposal.proposalInstructionId,
-      })
-    : rejectedCheckpointProposalTailDecision({
-        state,
-        task,
-        runs: context.value.laterRuns.slice(0, priorProposalCount),
-        record: context.value.record,
-        expectedChangedFiles: context.value.expectedChangedFiles,
-        expectedBinding: {
-          reconciliationId: proposal.reconciliationId,
-          head: proposal.head,
-          tree: proposal.tree,
-          cherryPickCommit: proposal.cherryPickCommit,
-        },
-        currentInstructionId: proposal.proposalInstructionId,
-      })
-  if (!priorAttempts.accepted) return priorAttempts
-  if (
-    generationProposal &&
-    JSON.stringify(priorAttempts.value) !==
-      JSON.stringify(proposal.rejectedProposalAudit)
-  ) {
-    return rejected("checkpoint_generation_audit_drift")
+  if (!recovery) {
+    const priorAttempts = generationProposal
+      ? checkpointGenerationAuditDecision({
+          state,
+          task,
+          runs: context.value.laterRuns.slice(0, priorProposalCount),
+          record: context.value.record,
+          expectedChangedFiles: context.value.expectedChangedFiles,
+          expectedBinding: {
+            head: proposal.head,
+            tree: proposal.tree,
+            cherryPickCommit: proposal.cherryPickCommit,
+          },
+          currentInstructionId: proposal.proposalInstructionId,
+        })
+      : rejectedCheckpointProposalTailDecision({
+          state,
+          task,
+          runs: context.value.laterRuns.slice(0, priorProposalCount),
+          record: context.value.record,
+          expectedChangedFiles: context.value.expectedChangedFiles,
+          expectedBinding: {
+            reconciliationId: proposal.reconciliationId,
+            head: proposal.head,
+            tree: proposal.tree,
+            cherryPickCommit: proposal.cherryPickCommit,
+          },
+          currentInstructionId: proposal.proposalInstructionId,
+        })
+    if (!priorAttempts.accepted) return priorAttempts
+    if (
+      generationProposal &&
+      JSON.stringify(priorAttempts.value) !==
+        JSON.stringify(proposal.rejectedProposalAudit)
+    ) {
+      return rejected("checkpoint_generation_audit_drift")
+    }
   }
   const proposalRun = context.value.laterRuns[priorProposalCount]
   const ownerReason = gitReconciliationCheckpointOwnerReason(proposal)
@@ -2073,7 +2456,7 @@ function checkpointActivationDecision({ state, instruction, task }) {
   ) {
     return rejected("checkpoint_proposal_run_binding")
   }
-  if (generationProposal) {
+  if (generationProposal && !recovery) {
     const gateAudit = checkpointOwnerGateAttemptAuditDecision({
       state,
       task,
@@ -2108,6 +2491,7 @@ function checkpointActivationDecision({ state, instruction, task }) {
 
   const activationPromptDigest = checkpointPromptDigest(instruction.prompt)
   if (
+    !recovery &&
     (state.runs ?? []).some(
       (run) => run.instructionId === instruction.instructionId,
     )
