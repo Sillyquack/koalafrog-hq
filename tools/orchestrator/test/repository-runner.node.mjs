@@ -1193,6 +1193,8 @@ async function runCompletedCheckpointRecoveryScenario(
     mutateResultComments = null,
     expectCorrectionFailure = false,
     failFirstResultUpdate = false,
+    recoveryRejectionCode = null,
+    concurrentDiscovery = false,
   },
 ) {
   const directory = await mkdtemp(
@@ -1475,17 +1477,27 @@ async function runCompletedCheckpointRecoveryScenario(
     }
     await store.save(persisted)
   }
-  const recoverCheckpointActivation = ({ state: currentState }) =>
-    (currentState.checkpointActivationRecoveries ?? []).length === 0
-      ? {
-          accepted: true,
-          value: {
-            instruction,
-            binding: recoveryBinding,
-            record: structuredClone(recoveryRecord),
-          },
-        }
-      : { accepted: false, rejection: { code: "already_recovered" } }
+  const recoverCheckpointActivation = ({ state: currentState }) => {
+    if (recoveryRejectionCode) {
+      return { accepted: false, rejection: { code: recoveryRejectionCode } }
+    }
+    if ((currentState.checkpointActivationRecoveries ?? []).length === 0) {
+      return {
+        accepted: true,
+        value: {
+          instruction,
+          binding: recoveryBinding,
+          record: structuredClone(recoveryRecord),
+        },
+      }
+    }
+    return {
+      accepted: false,
+      rejection: {
+        code: "checkpoint_activation_recovery_already_recorded",
+      },
+    }
+  }
   const writablePaths = ["/coordinating/.git/worktrees/issue-63-selected"]
   const cherryPickCommand =
     `git -c core.hooksPath=/dev/null -c commit.gpgSign=false -c rerere.enabled=false cherry-pick ${cherryPickCommit}`
@@ -1728,6 +1740,15 @@ async function runCompletedCheckpointRecoveryScenario(
     await new Promise((resolve) => setTimeout(resolve, 5))
     recovered = await run()
     replay = await run()
+  } else if (concurrentDiscovery) {
+    const attempts = await Promise.all([run(), run()])
+    recovered = attempts.find((attempt) => attempt.claimed)
+    assert.ok(recovered)
+    assert.equal(
+      attempts.filter((attempt) => attempt.status === "issue_busy").length,
+      1,
+    )
+    replay = await run()
   } else {
     recovered = await run()
     replay = await run()
@@ -1742,17 +1763,18 @@ async function runCompletedCheckpointRecoveryScenario(
     .split("\n")
     .filter(Boolean)
     .map((line) => JSON.parse(line))
-  const claim = JSON.parse(
-    await readFile(
-      path.join(
-        directory,
-        "repository-queue",
-        "instructions",
-        `${instructionId}.json`,
-      ),
-      "utf8",
+  const claim = await readFile(
+    path.join(
+      directory,
+      "repository-queue",
+      "instructions",
+      `${instructionId}.json`,
     ),
-  )
+    "utf8",
+  ).then(JSON.parse, (error) => {
+    if (error?.code === "ENOENT") return null
+    throw error
+  })
   return {
     recovered,
     replay,
@@ -1801,6 +1823,45 @@ test("completed acknowledgement 027 recovers once through repository claim and m
       (event) => event.type === "checkpoint_activation_recovery_activated",
     ).length,
     1,
+  )
+})
+
+test("concurrent repository discovery creates one completed checkpoint recovery", async (t) => {
+  const result = await runCompletedCheckpointRecoveryScenario(t, {
+    boundaryAccepted: true,
+    concurrentDiscovery: true,
+  })
+  assert.equal(result.recovered.status, "needs_review")
+  assert.equal(result.replay.status, "no_pending_agent_control")
+  assert.equal(result.turns, 1)
+  assert.equal(result.grants, 1)
+  assert.equal(result.durable.checkpointActivationRecoveries.length, 1)
+  assert.equal(result.durable.checkpointActivationRecoveries[0].status, "completed")
+})
+
+test("applicable durable recovery rejection is explicit and starts no protected turn", async (t) => {
+  const result = await runCompletedCheckpointRecoveryScenario(t, {
+    boundaryAccepted: true,
+    recoveryRejectionCode: "checkpoint_activation_recovery_current_binding",
+  })
+  assert.equal(result.recovered.status, "checkpoint_activation_recovery_rejected")
+  assert.equal(
+    result.recovered.rejectionCode,
+    "checkpoint_activation_recovery_current_binding",
+  )
+  assert.equal(result.recovered.claimed, false)
+  assert.equal(result.replay.status, "checkpoint_activation_recovery_rejected")
+  assert.equal(result.turns, 0)
+  assert.equal(result.grants, 0)
+  assert.equal(result.durable.checkpointActivationRecoveries.length, 0)
+  assert.equal(
+    result.events.filter(
+      (event) =>
+        event.type ===
+          "checkpoint_activation_recovery_discovery_rejected" &&
+        event.code === "checkpoint_activation_recovery_current_binding",
+    ).length,
+    2,
   )
 })
 

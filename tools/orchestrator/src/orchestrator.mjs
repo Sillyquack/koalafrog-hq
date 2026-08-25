@@ -20,12 +20,12 @@ import {
   formatPickupPacket,
   listAgentControls,
   ownerGateReason,
-  selectNextInstruction,
   shouldConsumeInstruction,
 } from "./control-plane.mjs"
 import { GithubControlPlane } from "./github-control-plane.mjs"
 import {
   authorizedGitExecutionBoundary,
+  durableTaskInstructionDecision,
   gitExecutionBoundaryIsCurrent,
   gitExecutionBoundaryPrompt,
   gitExecutionBoundaryRequestDecision,
@@ -1783,14 +1783,19 @@ export class Orchestrator {
       })
       await this.#save(state)
     }
-    const checkpointActivationRecovery = state.activeInstruction
-      ? null
-      : this.workspace.recoverCompletedCheckpointActivation({ state, task })
-    const pendingInstruction = checkpointActivationRecovery?.accepted
-      ? checkpointActivationRecovery.value.instruction
-      : selectNextInstruction(task.issue, task.comments, state)
-
-    const selectedInstruction = state.activeInstruction ?? pendingInstruction
+    const instructionDecision = durableTaskInstructionDecision({
+      state,
+      task,
+      recover: (candidate) =>
+        this.workspace.recoverCompletedCheckpointActivation(candidate),
+    })
+    const checkpointActivationRecovery =
+      instructionDecision.recoveryDiscovery?.decision ?? null
+    const pendingInstruction = instructionDecision.pendingInstruction ??
+      (checkpointActivationRecovery?.accepted
+        ? checkpointActivationRecovery.value.instruction
+        : null)
+    const selectedInstruction = instructionDecision.selectedInstruction
     if (
       expectedInstructionId &&
       selectedInstruction?.instructionId !== expectedInstructionId

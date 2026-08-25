@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto"
 import { appendFile, chmod, mkdir, readFile, rename, writeFile } from "node:fs/promises"
 import path from "node:path"
 import { recoverPendingApprovalRequestsFromEvents } from "./approval-decisions.mjs"
@@ -221,7 +222,7 @@ export class StateStore {
   async save(state) {
     await this.ensureDirectory()
     state.updatedAt = new Date().toISOString()
-    const temporary = `${this.statePath}.${process.pid}.tmp`
+    const temporary = `${this.statePath}.${process.pid}.${randomUUID()}.tmp`
     await writeFile(temporary, `${JSON.stringify(state, null, 2)}\n`, {
       mode: 0o600,
     })

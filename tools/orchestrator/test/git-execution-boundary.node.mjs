@@ -32,6 +32,7 @@ import {
 } from "../src/approval-decisions.mjs"
 import {
   authorizedGitExecutionBoundary,
+  durableTaskInstructionDecision,
   executeGitReconciliationCheckpointMutation,
   gitExecutionBoundaryIsCurrent,
   gitExecutionBoundaryPrompt,
@@ -47,6 +48,9 @@ import {
   prepareGitReconciliationCheckpointExecution,
   recoverCompletedCheckpointActivation,
 } from "../src/git-execution-boundary.mjs"
+import { QueueClaimStore } from "../src/queue-claim-store.mjs"
+import { runRepositoryIssue } from "../src/repository-runner.mjs"
+import { StateStore } from "../src/state-store.mjs"
 import {
   issue63ContinuationControl,
   issue63ContinuationInstructionId,
@@ -3089,6 +3093,166 @@ test("completed #63 owner acknowledgement 027 reconstructs its exact generation-
   assert.equal(JSON.stringify(setup.state.runs), immutableRuns)
 })
 
+test("repository instruction discovery selects live-shaped completed acknowledgement 027 only after normal controls are exhausted", async (t) => {
+  const setup = await completedGenerationActivationRecoverySetup(t)
+  const decision = durableTaskInstructionDecision({
+    state: setup.state,
+    task: setup.task,
+  })
+
+  assert.equal(decision.pendingInstruction, null)
+  assert.equal(decision.recoveryDiscovery.applicable, true)
+  assert.equal(decision.recoveryDiscovery.terminal, false)
+  assert.equal(decision.recoveryDiscovery.decision.accepted, true)
+  assert.equal(
+    decision.selectedInstruction.instructionId,
+    "production-day1-git-reconciliation-checkpoint-generation-activation-owner-ack-027",
+  )
+
+  setup.state.checkpointActivationRecoveries = [
+    {
+      ...decision.recoveryDiscovery.decision.value.record,
+      status: "completed",
+      selectedAt: "2026-08-24T09:01:00.000Z",
+      boundaryActivatedAt: "2026-08-24T09:02:00.000Z",
+      completedAt: "2026-08-24T09:03:00.000Z",
+      outcome: "needs_review",
+    },
+  ]
+  const terminal = durableTaskInstructionDecision({
+    state: setup.state,
+    task: setup.task,
+  })
+  assert.equal(terminal.selectedInstruction, null)
+  assert.equal(terminal.recoveryDiscovery.applicable, true)
+  assert.equal(terminal.recoveryDiscovery.terminal, true)
+  assert.equal(terminal.recoveryDiscovery.decision.accepted, false)
+  assert.equal(
+    terminal.recoveryDiscovery.decision.rejection.code,
+    "checkpoint_activation_recovery_already_recorded",
+  )
+
+  const unrelated = durableTaskInstructionDecision({
+    state: {
+      status: "needs_review",
+      activeInstruction: null,
+      lastConsumedInstructionId: "ordinary-reviewed-instruction",
+      runs: [{ instructionId: "ordinary-reviewed-instruction" }],
+      ownerGateAcknowledgements: [],
+      checkpointActivationRecoveries: [],
+    },
+    task: { issue: { issue_number: 70 }, comments: [] },
+    recover() {
+      assert.fail("An unrelated reviewed task is not a recovery candidate")
+    },
+  })
+  assert.equal(unrelated.selectedInstruction, null)
+  assert.equal(unrelated.recoveryDiscovery.applicable, false)
+})
+
+test("repository poll claims the exact live-shaped completed acknowledgement recovery without a new control", async (t) => {
+  const setup = await completedGenerationActivationRecoverySetup(t)
+  const stateDirectory = await mkdtemp(
+    path.join(os.tmpdir(), "koalafrog-live-recovery-discovery-"),
+  )
+  t.after(() => rm(stateDirectory, { recursive: true, force: true }))
+  const repository = "Sillyquack/koalafrog-hq"
+  const store = new StateStore({
+    stateDirectory,
+    repository,
+    issueNumber: 63,
+  })
+  const durableState = await store.load()
+  const fixtureState = structuredClone(setup.state)
+  const durableTask = durableState.task
+  Object.assign(durableState, fixtureState)
+  durableState.task = { ...durableTask, ...fixtureState.task }
+  await store.save(durableState)
+  const scanner = {
+    threadId: "repository-discovery-thread",
+    appServer: {
+      async callMcpTool(request) {
+        if (request.tool === "github.fetch_issue") {
+          return { structuredContent: { issue: setup.task.issue } }
+        }
+        if (request.tool === "github.fetch_issue_comments") {
+          return { structuredContent: { comments: setup.task.comments } }
+        }
+        throw new Error(`Unexpected MCP tool: ${request.tool}`)
+      },
+    },
+  }
+  const claimStore = new QueueClaimStore({ stateDirectory, retryBaseMs: 1 })
+  const instructionId = setup.activation.instruction.instructionId
+  await claimStore.withClaim(
+    {
+      instructionId,
+      originIssueNumber: 63,
+      originIssueUrl: setup.state.task.originIssueUrl,
+    },
+    async () => ({ status: "needs_review" }),
+  )
+  let selections = 0
+  class SelectionOnlyOrchestrator {
+    constructor(_config, dependencies) {
+      this.store = dependencies.store
+    }
+
+    async runOnce({ task, expectedInstructionId }) {
+      const current = await this.store.load()
+      const recovery = recoverCompletedCheckpointActivation({
+        state: current,
+        task,
+      })
+      assert.equal(recovery.accepted, true, JSON.stringify(recovery))
+      assert.equal(expectedInstructionId, instructionId)
+      selections += 1
+      current.checkpointActivationRecoveries = [
+        {
+          ...recovery.value.record,
+          status: "completed",
+          selectedAt: "2026-08-24T09:01:00.000Z",
+          boundaryActivatedAt: "2026-08-24T09:02:00.000Z",
+          completedAt: "2026-08-24T09:03:00.000Z",
+          outcome: "needs_review",
+        },
+      ]
+      await this.store.save(current)
+      return { status: "needs_review", instructionId }
+    }
+
+    async stop() {}
+  }
+  const config = {
+    repository,
+    stateDirectory,
+    retryBaseMs: 1,
+  }
+  const candidate = { issueNumber: 63, searchMatched: false }
+  const recovered = await runRepositoryIssue(scanner, config, candidate, {
+    OrchestratorClass: SelectionOnlyOrchestrator,
+    claimStore,
+  })
+  const replay = await runRepositoryIssue(scanner, config, candidate, {
+    OrchestratorClass: SelectionOnlyOrchestrator,
+    claimStore,
+  })
+
+  assert.equal(recovered.status, "needs_review")
+  assert.equal(recovered.instructionId, instructionId)
+  assert.equal(recovered.claimed, true)
+  assert.deepEqual(replay, {
+    issueNumber: 63,
+    status: "no_pending_agent_control",
+    claimed: false,
+  })
+  assert.equal(selections, 1)
+  assert.equal(
+    (await store.load()).checkpointActivationRecoveries.length,
+    1,
+  )
+})
+
 test("completed checkpoint activation recovery rejects binding drift, ambiguity, mutation, and replay", async (t) => {
   const setup = await completedGenerationActivationRecoverySetup(t)
   const invoke = (mutateState = () => {}, mutateTask = () => {}) => {
@@ -3149,6 +3313,13 @@ test("completed checkpoint activation recovery rejects binding drift, ambiguity,
   ]
   for (const mutateState of rejectedCases) {
     assert.equal(invoke(mutateState).accepted, false)
+    const state = structuredClone(setup.state)
+    const task = structuredClone(setup.task)
+    mutateState(state)
+    const discovery = durableTaskInstructionDecision({ state, task })
+    assert.equal(discovery.selectedInstruction, null)
+    assert.equal(discovery.recoveryDiscovery.applicable, true)
+    assert.equal(discovery.recoveryDiscovery.decision.accepted, false)
   }
   assert.equal(
     invoke(
@@ -3216,6 +3387,13 @@ test("completed checkpoint activation recovery rejects binding drift, ambiguity,
     const decision = invoke(() => {}, mutate)
     assert.equal(decision.accepted, false)
     assert.equal(decision.rejection.code, code)
+    const state = structuredClone(setup.state)
+    const task = structuredClone(setup.task)
+    mutate(task)
+    const discovery = durableTaskInstructionDecision({ state, task })
+    assert.equal(discovery.selectedInstruction, null)
+    assert.equal(discovery.recoveryDiscovery.applicable, true)
+    assert.equal(discovery.recoveryDiscovery.decision.rejection.code, code)
   }
 
   const acceptedRecovery = invoke()

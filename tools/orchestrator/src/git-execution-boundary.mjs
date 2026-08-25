@@ -11,6 +11,7 @@ import {
   listOwnerGateAcknowledgements,
   ownerGateAcknowledgementId,
   ownerGateReason,
+  selectNextInstruction,
 } from "./control-plane.mjs"
 import { extractIssueNumber } from "./repository-discovery.mjs"
 
@@ -2297,6 +2298,108 @@ export function recoverCompletedCheckpointActivation({ state, task }) {
     sourceRun,
     isNew: matchingRecoveries.length === 0,
   })
+}
+
+export function discoverCompletedCheckpointActivationRecovery({
+  state,
+  task,
+  recover = recoverCompletedCheckpointActivation,
+}) {
+  if (state?.activeInstruction) {
+    return { applicable: false, terminal: false, decision: null }
+  }
+
+  const instructionId = state?.lastConsumedInstructionId
+  if (typeof instructionId !== "string" || !instructionId) {
+    return { applicable: false, terminal: false, decision: null }
+  }
+
+  const recoveries = state?.checkpointActivationRecoveries
+  const matchingRecoveries = Array.isArray(recoveries)
+    ? recoveries.filter(
+        (record) => record?.instructionId === instructionId,
+      )
+    : []
+  const durableAcknowledgementSignal = Array.isArray(
+    state?.ownerGateAcknowledgements,
+  )
+    ? state.ownerGateAcknowledgements.some(
+        (record) =>
+          record?.kind === "checkpoint_activation" &&
+          record.instructionId === instructionId,
+      )
+    : false
+  const controlSignal = listAgentControls(task?.issue, task?.comments).some(
+    (control) =>
+      control.instructionId === instructionId &&
+      gitReconciliationCheckpointInstructionKind(control) === "activation",
+  )
+  const recoveryRecordSignal = Array.isArray(recoveries)
+    ? matchingRecoveries.length > 0
+    : recoveries != null
+
+  if (
+    !durableAcknowledgementSignal &&
+    !controlSignal &&
+    !recoveryRecordSignal
+  ) {
+    return { applicable: false, terminal: false, decision: null }
+  }
+
+  const decision = recover({ state, task })
+  const terminal =
+    !decision?.accepted &&
+    decision?.rejection?.code ===
+      "checkpoint_activation_recovery_already_recorded" &&
+    Array.isArray(recoveries) &&
+    recoveries.length === 1 &&
+    matchingRecoveries.length === 1 &&
+    new Set(["completed", "rejected"]).has(matchingRecoveries[0].status)
+  return {
+    applicable: true,
+    terminal,
+    decision,
+  }
+}
+
+export function durableTaskInstructionDecision({
+  state,
+  task,
+  recover = recoverCompletedCheckpointActivation,
+}) {
+  const pendingInstruction = selectNextInstruction(
+    task?.issue,
+    task?.comments,
+    state,
+  )
+  if (state?.activeInstruction) {
+    return {
+      selectedInstruction: state.activeInstruction,
+      pendingInstruction,
+      recoveryDiscovery: null,
+    }
+  }
+
+  if (pendingInstruction) {
+    return {
+      selectedInstruction: pendingInstruction,
+      pendingInstruction,
+      recoveryDiscovery: null,
+    }
+  }
+
+  const recoveryDiscovery = discoverCompletedCheckpointActivationRecovery({
+    state,
+    task,
+    recover,
+  })
+  return {
+    selectedInstruction: recoveryDiscovery.decision?.accepted
+      ? recoveryDiscovery.decision.value.instruction
+      : null,
+    pendingInstruction: null,
+    recoveryDiscovery,
+  }
 }
 
 function checkpointActivationDecision({ state, instruction, task }) {
