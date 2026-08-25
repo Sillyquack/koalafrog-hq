@@ -1,18 +1,19 @@
-import { randomUUID } from "node:crypto"
-import {
-  appendFile,
-  chmod,
-  link,
-  mkdir,
-  open,
-  readFile,
-  realpath,
-  rename,
-  unlink,
-} from "node:fs/promises"
 import path from "node:path"
 import { setTimeout as delay } from "node:timers/promises"
 import { recoverPendingApprovalRequestsFromEvents } from "./approval-decisions.mjs"
+import {
+  acquireCrashSafeFileLease,
+  appendFileNoFollow,
+  cleanupOrphanAtomicTemps,
+  defaultProcessIdentity,
+  defaultProcessIsAlive,
+  durableAtomicWriteFile,
+  ensurePrivateDirectory,
+  FileLeaseMetadataError,
+  readFileNoFollow,
+  recoverDurableFileReplace,
+  releaseCrashSafeFileLease,
+} from "./durable-filesystem.mjs"
 import { normalizeTurnAccounting } from "./turn-accounting.mjs"
 
 export const currentStateSchemaVersion = 9
@@ -32,13 +33,12 @@ export class StateRevisionConflictError extends Error {
   }
 }
 
-function processIsAlive(pid) {
-  if (!Number.isSafeInteger(pid) || pid < 1) return false
-  try {
-    process.kill(pid, 0)
-    return true
-  } catch (error) {
-    return error.code === "EPERM"
+export class StateRevisionOverflowError extends Error {
+  constructor(revision) {
+    super(`Persisted state revision cannot advance beyond ${revision}`)
+    this.name = "StateRevisionOverflowError"
+    this.code = "STATE_REVISION_OVERFLOW"
+    this.revision = revision
   }
 }
 
@@ -50,25 +50,20 @@ function durableRevision(value, { legacy = false } = {}) {
   return value
 }
 
-async function readPersistedRevision(statePath) {
-  try {
-    const parsed = JSON.parse(await readFile(statePath, "utf8"))
-    return durableRevision(parsed.stateRevision, {
-      legacy: Number.isSafeInteger(parsed.schemaVersion) && parsed.schemaVersion < 9,
-    })
-  } catch (error) {
-    if (error.code === "ENOENT") return 0
-    throw error
+function nextDurableRevision(revision) {
+  const current = durableRevision(revision)
+  if (current >= Number.MAX_SAFE_INTEGER) {
+    throw new StateRevisionOverflowError(current)
   }
+  return current + 1
 }
 
-async function readLock(lockPath) {
-  try {
-    return JSON.parse(await readFile(lockPath, "utf8"))
-  } catch (error) {
-    if (error.code === "ENOENT") return null
-    return null
-  }
+function persistedRevision(contents) {
+  if (contents === null) return 0
+  const parsed = JSON.parse(contents.toString("utf8"))
+  return durableRevision(parsed.stateRevision, {
+    legacy: Number.isSafeInteger(parsed.schemaVersion) && parsed.schemaVersion < 9,
+  })
 }
 
 function redactString(value) {
@@ -233,7 +228,15 @@ export function recordIssueObservation(
 }
 
 export class StateStore {
-  constructor({ stateDirectory, repository, issueNumber }) {
+  constructor({
+    stateDirectory,
+    repository,
+    issueNumber,
+    fileSystemHooks = null,
+    isProcessAlive = defaultProcessIsAlive,
+    getProcessIdentity = defaultProcessIdentity,
+    lockfSpec = undefined,
+  }) {
     if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository)) {
       throw new Error("Cannot create state for an unsafe repository name")
     }
@@ -249,92 +252,38 @@ export class StateStore {
     this.stderrPath = path.join(this.directory, "app-server.stderr.log")
     this.repository = repository
     this.issueNumber = issueNumber
+    this.fileSystemHooks = fileSystemHooks
+    this.isProcessAlive = isProcessAlive
+    this.getProcessIdentity = getProcessIdentity
+    this.lockfSpec = lockfSpec
+    this.stateRootGuard = null
+    this.directoryGuard = null
   }
 
   async ensureDirectory() {
-    await mkdir(this.stateDirectory, { recursive: true, mode: 0o700 })
-    await mkdir(this.directory, { recursive: true, mode: 0o700 })
-    const root = await realpath(this.stateDirectory)
-    const directory = await realpath(this.directory)
-    if (
-      directory !== path.join(root, path.basename(this.directory)) ||
-      !directory.startsWith(`${root}${path.sep}`)
-    ) {
-      throw new Error("Task state directory escapes the configured state root")
-    }
-    await chmod(this.directory, 0o700)
-  }
-
-  async #tryCreateLock(lockPath, record) {
-    const candidatePath = `${lockPath}.${record.token}.candidate`
-    let handle = null
-    try {
-      handle = await open(candidatePath, "wx", 0o600)
-      await handle.writeFile(`${JSON.stringify(record)}\n`)
-      await handle.sync()
-      await handle.close()
-      handle = null
-      await link(candidatePath, lockPath)
-      return true
-    } catch (error) {
-      if (error.code === "EEXIST") return false
-      throw error
-    } finally {
-      await handle?.close().catch(() => {})
-      await unlink(candidatePath).catch((error) => {
-        if (error.code !== "ENOENT") throw error
-      })
-    }
-  }
-
-  async #releaseLockPath(lockPath, token) {
-    const existing = await readLock(lockPath)
-    if (existing?.token !== token) return
-    await unlink(lockPath).catch((error) => {
-      if (error.code !== "ENOENT") throw error
+    this.stateRootGuard = await ensurePrivateDirectory(this.stateDirectory)
+    this.directoryGuard = await ensurePrivateDirectory(this.directory, {
+      parentGuard: this.stateRootGuard,
     })
   }
 
   async #acquireWriteLock() {
-    const reaperPath = `${this.stateLockPath}.reaper`
     for (let attempt = 0; attempt < stateLockAttempts; attempt += 1) {
-      const token = randomUUID()
-      if (await readLock(reaperPath)) {
-        await delay(stateLockDelayMs)
-        continue
-      }
-      if (
-        await this.#tryCreateLock(this.stateLockPath, {
-          token,
-          pid: process.pid,
+      const decision = await acquireCrashSafeFileLease({
+        directoryGuard: this.directoryGuard,
+        lockLeaf: path.basename(this.stateLockPath),
+        isProcessAlive: this.isProcessAlive,
+        getProcessIdentity: this.getProcessIdentity,
+        hooks: this.fileSystemHooks,
+        ...(this.lockfSpec ? { lockfSpec: this.lockfSpec } : {}),
+      })
+      if (decision.acquired) return decision.lease
+      if (decision.reason !== "lease_busy") {
+        throw new FileLeaseMetadataError({
+          code: decision.reason.toUpperCase(),
+          leafName: path.basename(this.stateLockPath),
+          recovery: decision.recovery,
         })
-      ) {
-        return { token }
-      }
-
-      const reaperToken = randomUUID()
-      if (
-        !(await this.#tryCreateLock(reaperPath, {
-          token: reaperToken,
-          pid: process.pid,
-        }))
-      ) {
-        await delay(stateLockDelayMs)
-        continue
-      }
-      try {
-        const existing = await readLock(this.stateLockPath)
-        if (existing && !processIsAlive(existing.pid)) {
-          const stalePath = `${this.stateLockPath}.${randomUUID()}.stale`
-          try {
-            await rename(this.stateLockPath, stalePath)
-            await unlink(stalePath)
-          } catch (renameError) {
-            if (renameError.code !== "ENOENT") throw renameError
-          }
-        }
-      } finally {
-        await this.#releaseLockPath(reaperPath, reaperToken)
       }
       await delay(stateLockDelayMs)
     }
@@ -342,13 +291,49 @@ export class StateStore {
   }
 
   async #releaseWriteLock(lock) {
-    await this.#releaseLockPath(this.stateLockPath, lock.token)
+    await releaseCrashSafeFileLease(lock)
+  }
+
+  async #readStateContents() {
+    const lock = await this.#acquireWriteLock()
+    try {
+      await recoverDurableFileReplace(
+        this.directoryGuard,
+        path.basename(this.statePath),
+        { hooks: this.fileSystemHooks },
+      )
+      await cleanupOrphanAtomicTemps(
+        this.directoryGuard,
+        path.basename(this.statePath),
+      )
+      return readFileNoFollow(
+        this.directoryGuard,
+        path.basename(this.statePath),
+        { allowMissing: true },
+      )
+    } finally {
+      await this.#releaseWriteLock(lock)
+    }
   }
 
   async load() {
     await this.ensureDirectory()
     try {
-      const parsed = JSON.parse(await readFile(this.statePath, "utf8"))
+      const contents = await this.#readStateContents()
+      if (contents === null) {
+        const state = initialState({
+          repository: this.repository,
+          issueNumber: this.issueNumber,
+        })
+        try {
+          await this.save(state)
+          return state
+        } catch (saveError) {
+          if (saveError.code !== "STATE_REVISION_CONFLICT") throw saveError
+          return this.load()
+        }
+      }
+      const parsed = JSON.parse(contents.toString("utf8"))
       const priorSchemaVersion = parsed.schemaVersion
       const state = migrateState(parsed, {
         repository: this.repository,
@@ -356,7 +341,12 @@ export class StateStore {
       })
       if (priorSchemaVersion < 4 && state.pendingApprovalRequests.length === 0) {
         try {
-          const events = (await readFile(this.eventPath, "utf8"))
+          const eventContents = await readFileNoFollow(
+            this.directoryGuard,
+            path.basename(this.eventPath),
+            { allowMissing: true },
+          )
+          const events = (eventContents?.toString("utf8") ?? "")
             .split("\n")
             .filter(Boolean)
             .flatMap((line) => {
@@ -369,7 +359,7 @@ export class StateStore {
           state.pendingApprovalRequests =
             recoverPendingApprovalRequestsFromEvents(events)
         } catch (error) {
-          if (error.code !== "ENOENT") throw error
+          throw error
         }
       }
       if (priorSchemaVersion !== currentStateSchemaVersion) {
@@ -382,18 +372,7 @@ export class StateStore {
       }
       return state
     } catch (error) {
-      if (error.code !== "ENOENT") throw error
-      const state = initialState({
-        repository: this.repository,
-        issueNumber: this.issueNumber,
-      })
-      try {
-        await this.save(state)
-        return state
-      } catch (saveError) {
-        if (saveError.code !== "STATE_REVISION_CONFLICT") throw saveError
-        return this.load()
-      }
+      throw error
     }
   }
 
@@ -408,37 +387,41 @@ export class StateStore {
       throw new Error("Refusing to save state outside its canonical task origin")
     }
     const expectedRevision = durableRevision(state.stateRevision)
+    const newRevision = nextDurableRevision(expectedRevision)
     const lock = await this.#acquireWriteLock()
-    const temporary = `${this.statePath}.${process.pid}.${randomUUID()}.tmp`
     const priorUpdatedAt = state.updatedAt
-    let handle = null
     try {
-      const actualRevision = await readPersistedRevision(this.statePath)
+      await recoverDurableFileReplace(
+        this.directoryGuard,
+        path.basename(this.statePath),
+        { hooks: this.fileSystemHooks },
+      )
+      const persisted = await readFileNoFollow(
+        this.directoryGuard,
+        path.basename(this.statePath),
+        { allowMissing: true },
+      )
+      const actualRevision = persistedRevision(persisted)
       if (actualRevision !== expectedRevision) {
         throw new StateRevisionConflictError({
           expectedRevision,
           actualRevision,
         })
       }
-      state.stateRevision = expectedRevision + 1
+      state.stateRevision = newRevision
       state.updatedAt = new Date().toISOString()
-      handle = await open(temporary, "wx", 0o600)
-      await handle.writeFile(`${JSON.stringify(state, null, 2)}\n`)
-      await handle.sync()
-      await handle.close()
-      handle = null
-      await rename(temporary, this.statePath)
-      await chmod(this.statePath, 0o600)
+      await durableAtomicWriteFile(
+        this.directoryGuard,
+        path.basename(this.statePath),
+        `${JSON.stringify(state, null, 2)}\n`,
+        { hooks: this.fileSystemHooks },
+      )
       return state.stateRevision
     } catch (error) {
       state.stateRevision = expectedRevision
       state.updatedAt = priorUpdatedAt
       throw error
     } finally {
-      await handle?.close().catch(() => {})
-      await unlink(temporary).catch((error) => {
-        if (error.code !== "ENOENT") throw error
-      })
       await this.#releaseWriteLock(lock)
     }
   }
@@ -449,11 +432,21 @@ export class StateStore {
       at: new Date().toISOString(),
       ...redactForLog(event),
     }
-    await appendFile(this.eventPath, `${JSON.stringify(record)}\n`, { mode: 0o600 })
+    await appendFileNoFollow(
+      this.directoryGuard,
+      path.basename(this.eventPath),
+      `${JSON.stringify(record)}\n`,
+      { hooks: this.fileSystemHooks },
+    )
   }
 
   async appendStderr(text) {
     await this.ensureDirectory()
-    await appendFile(this.stderrPath, redactString(text), { mode: 0o600 })
+    await appendFileNoFollow(
+      this.directoryGuard,
+      path.basename(this.stderrPath),
+      redactString(text),
+      { hooks: this.fileSystemHooks },
+    )
   }
 }

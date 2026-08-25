@@ -1,14 +1,16 @@
-import { randomUUID } from "node:crypto"
-import {
-  chmod,
-  link,
-  mkdir,
-  open,
-  readFile,
-  rename,
-  unlink,
-} from "node:fs/promises"
 import path from "node:path"
+import {
+  acquireCrashSafeFileLease,
+  defaultProcessIdentity,
+  defaultProcessIsAlive,
+  DurableCommitPendingError,
+  durableAtomicWriteFile,
+  ensurePrivateDirectory,
+  fileLeaseIsActive,
+  readJsonNoFollow,
+  recoverDurableFileReplace,
+  releaseCrashSafeFileLease,
+} from "./durable-filesystem.mjs"
 
 const issueClaimBrand = Symbol("koalafrog-issue-claim")
 
@@ -29,134 +31,6 @@ function safeRetryAuthorizationId(retryAuthorizationId) {
   return retryAuthorizationId
 }
 
-function processIsAlive(pid) {
-  if (!Number.isSafeInteger(pid) || pid < 1) return false
-  try {
-    process.kill(pid, 0)
-    return true
-  } catch (error) {
-    return error.code === "EPERM"
-  }
-}
-
-async function readJson(filePath) {
-  try {
-    return JSON.parse(await readFile(filePath, "utf8"))
-  } catch (error) {
-    if (error.code === "ENOENT") return null
-    throw error
-  }
-}
-
-async function writeJsonAtomic(filePath, value) {
-  await mkdir(path.dirname(filePath), { recursive: true, mode: 0o700 })
-  const temporary = `${filePath}.${process.pid}.${randomUUID()}.tmp`
-  let handle = null
-  try {
-    handle = await open(temporary, "wx", 0o600)
-    await handle.writeFile(`${JSON.stringify(value, null, 2)}\n`)
-    await handle.sync()
-    await handle.close()
-    handle = null
-    await rename(temporary, filePath)
-    await chmod(filePath, 0o600)
-  } finally {
-    await handle?.close().catch(() => {})
-    await unlink(temporary).catch((error) => {
-      if (error.code !== "ENOENT") throw error
-    })
-  }
-}
-
-async function tryCreateFileLock(lockPath, record) {
-  const candidatePath = `${lockPath}.${record.token}.candidate`
-  let handle = null
-  try {
-    handle = await open(candidatePath, "wx", 0o600)
-    await handle.writeFile(`${JSON.stringify(record)}\n`)
-    await handle.sync()
-    await handle.close()
-    handle = null
-    await link(candidatePath, lockPath)
-    return true
-  } catch (error) {
-    if (error.code === "EEXIST") return false
-    throw error
-  } finally {
-    await handle?.close().catch(() => {})
-    await unlink(candidatePath).catch((error) => {
-      if (error.code !== "ENOENT") throw error
-    })
-  }
-}
-
-async function releaseFileLockPath(lockPath, token) {
-  const existing = await readJson(lockPath).catch(() => null)
-  if (existing?.token !== token) return
-  await unlink(lockPath).catch((error) => {
-    if (error.code !== "ENOENT") throw error
-  })
-}
-
-async function acquireFileLock(
-  lockPath,
-  {
-    isProcessAlive = processIsAlive,
-    pid = process.pid,
-    now = () => new Date(),
-  } = {},
-) {
-  await mkdir(path.dirname(lockPath), { recursive: true, mode: 0o700 })
-  const reaperPath = `${lockPath}.reaper`
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    if (await readJson(reaperPath)) return null
-    const token = randomUUID()
-    if (
-      await tryCreateFileLock(lockPath, {
-        token,
-        pid,
-        acquiredAt: now().toISOString(),
-      })
-    ) {
-      return { token, pid, lockPath }
-    }
-
-    const existing = await readJson(lockPath).catch(() => null)
-    if (!existing || isProcessAlive(existing.pid)) return null
-
-    const reaperToken = randomUUID()
-    if (
-      !(await tryCreateFileLock(reaperPath, {
-        token: reaperToken,
-        pid,
-        acquiredAt: now().toISOString(),
-      }))
-    ) {
-      return null
-    }
-    try {
-      const current = await readJson(lockPath).catch(() => null)
-      if (current && !isProcessAlive(current.pid)) {
-        const stalePath = `${lockPath}.${randomUUID()}.stale`
-        try {
-          await rename(lockPath, stalePath)
-          await unlink(stalePath)
-        } catch (renameError) {
-          if (renameError.code !== "ENOENT") throw renameError
-        }
-      }
-    } finally {
-      await releaseFileLockPath(reaperPath, reaperToken)
-    }
-  }
-  return null
-}
-
-async function releaseFileLock(lock) {
-  if (!lock) return
-  await releaseFileLockPath(lock.lockPath, lock.token)
-}
-
 function completedResult(result) {
   return !new Set(["queue_changed", "claim_deferred"]).has(result?.status)
 }
@@ -164,12 +38,16 @@ function completedResult(result) {
 export class QueueClaimStore {
   constructor({
     stateDirectory,
-    isProcessAlive = processIsAlive,
+    isProcessAlive = defaultProcessIsAlive,
+    getProcessIdentity = defaultProcessIdentity,
     pid = process.pid,
     now = () => new Date(),
     retryBaseMs = 1_000,
+    fileSystemHooks = null,
+    lockfSpec = undefined,
   }) {
-    this.directory = path.join(stateDirectory, "repository-queue")
+    this.stateDirectory = path.resolve(stateDirectory)
+    this.directory = path.join(this.stateDirectory, "repository-queue")
     this.issueLockDirectory = path.join(this.directory, "issue-locks")
     this.instructionLockDirectory = path.join(
       this.directory,
@@ -177,17 +55,75 @@ export class QueueClaimStore {
     )
     this.recordDirectory = path.join(this.directory, "instructions")
     this.isProcessAlive = isProcessAlive
+    this.getProcessIdentity = getProcessIdentity
     this.pid = pid
     this.now = now
     this.retryBaseMs = retryBaseMs
+    this.fileSystemHooks = fileSystemHooks
+    this.lockfSpec = lockfSpec
+    this.directoryGuards = null
+  }
+
+  async #ensureDirectories() {
+    const root = await ensurePrivateDirectory(this.stateDirectory)
+    const queue = await ensurePrivateDirectory(this.directory, {
+      parentGuard: root,
+    })
+    const issueLocks = await ensurePrivateDirectory(this.issueLockDirectory, {
+      parentGuard: queue,
+    })
+    const instructionLocks = await ensurePrivateDirectory(
+      this.instructionLockDirectory,
+      { parentGuard: queue },
+    )
+    const records = await ensurePrivateDirectory(this.recordDirectory, {
+      parentGuard: queue,
+    })
+    this.directoryGuards = {
+      [this.issueLockDirectory]: issueLocks,
+      [this.instructionLockDirectory]: instructionLocks,
+      [this.recordDirectory]: records,
+    }
+  }
+
+  #guardFor(filePath) {
+    const guard = this.directoryGuards?.[path.dirname(filePath)]
+    if (!guard) throw new Error("Queue file is outside its private directory")
+    return guard
   }
 
   async #acquire(lockPath) {
-    return acquireFileLock(lockPath, {
+    await this.#ensureDirectories()
+    return acquireCrashSafeFileLease({
+      directoryGuard: this.#guardFor(lockPath),
+      lockLeaf: path.basename(lockPath),
       isProcessAlive: this.isProcessAlive,
+      getProcessIdentity: this.getProcessIdentity,
       pid: this.pid,
       now: this.now,
+      hooks: this.fileSystemHooks,
+      ...(this.lockfSpec ? { lockfSpec: this.lockfSpec } : {}),
     })
+  }
+
+  async #readRecord(recordPath) {
+    await this.#ensureDirectories()
+    const guard = this.#guardFor(recordPath)
+    const leafName = path.basename(recordPath)
+    await recoverDurableFileReplace(guard, leafName, {
+      hooks: this.fileSystemHooks,
+    })
+    return readJsonNoFollow(guard, leafName, { allowMissing: true })
+  }
+
+  async #writeRecord(recordPath, value) {
+    await this.#ensureDirectories()
+    await durableAtomicWriteFile(
+      this.#guardFor(recordPath),
+      path.basename(recordPath),
+      `${JSON.stringify(value, null, 2)}\n`,
+      { hooks: this.fileSystemHooks },
+    )
   }
 
   async withClaim(
@@ -230,24 +166,31 @@ export class QueueClaimStore {
     ) {
       throw new Error("Instruction claim is not bound to the active issue claim")
     }
-    const durableIssueClaim = await readJson(
-      path.join(this.issueLockDirectory, `${originIssueNumber}.lock`),
-    )
-    if (durableIssueClaim?.token !== issueClaim.token) {
+    if (!(await fileLeaseIsActive(issueClaim.lease))) {
       throw new Error("Instruction claim issue lease is no longer active")
     }
 
     let instructionLock = null
     try {
-      instructionLock = await this.#acquire(
+      const instructionDecision = await this.#acquire(
         path.join(this.instructionLockDirectory, `${safeId}.lock`),
       )
-      if (!instructionLock) {
-        return { claimed: false, reason: "instruction_busy" }
+      if (!instructionDecision.acquired) {
+        return {
+          claimed: false,
+          reason:
+            instructionDecision.reason === "lease_busy"
+              ? "instruction_busy"
+              : `instruction_${instructionDecision.reason}`,
+          ...(instructionDecision.recovery
+            ? { recovery: instructionDecision.recovery }
+            : {}),
+        }
       }
+      instructionLock = instructionDecision.lease
 
       const recordPath = path.join(this.recordDirectory, `${safeId}.json`)
-      const existing = await readJson(recordPath)
+      const existing = await this.#readRecord(recordPath)
       if (
         existing?.originIssueNumber &&
         existing.originIssueNumber !== originIssueNumber
@@ -294,7 +237,7 @@ export class QueueClaimStore {
         claimedAt: this.now().toISOString(),
         updatedAt: this.now().toISOString(),
       }
-      await writeJsonAtomic(recordPath, active)
+      await this.#writeRecord(recordPath, active)
 
       try {
         const value = await callback()
@@ -303,9 +246,9 @@ export class QueueClaimStore {
           safeRetryId &&
           !completedResult(value)
         ) {
-          await writeJsonAtomic(recordPath, existing)
+          await this.#writeRecord(recordPath, existing)
         } else {
-          await writeJsonAtomic(recordPath, {
+          await this.#writeRecord(recordPath, {
             ...active,
             status: completedResult(value) ? "completed" : "released",
             resultStatus: value?.status ?? null,
@@ -317,12 +260,13 @@ export class QueueClaimStore {
         }
         return { claimed: true, value }
       } catch (error) {
+        if (error instanceof DurableCommitPendingError) throw error
         const failureCount = (existing?.failureCount ?? 0) + 1
         const backoffMs = Math.min(
           this.retryBaseMs * 2 ** (failureCount - 1),
           60_000,
         )
-        await writeJsonAtomic(recordPath, {
+        await this.#writeRecord(recordPath, {
           ...active,
           status: "retryable_error",
           failureCount,
@@ -333,7 +277,7 @@ export class QueueClaimStore {
         throw error
       }
     } finally {
-      await releaseFileLock(instructionLock)
+      await releaseCrashSafeFileLease(instructionLock)
     }
   }
 
@@ -341,19 +285,30 @@ export class QueueClaimStore {
     if (!Number.isSafeInteger(originIssueNumber) || originIssueNumber < 1) {
       throw new Error("Cannot claim an invalid origin issue number")
     }
-    const issueLock = await this.#acquire(
+    const issueDecision = await this.#acquire(
       path.join(this.issueLockDirectory, `${originIssueNumber}.lock`),
     )
-    if (!issueLock) return { claimed: false, reason: "issue_busy" }
+    if (!issueDecision.acquired) {
+      return {
+        claimed: false,
+        reason:
+          issueDecision.reason === "lease_busy"
+            ? "issue_busy"
+            : `issue_${issueDecision.reason}`,
+        ...(issueDecision.recovery ? { recovery: issueDecision.recovery } : {}),
+      }
+    }
+    const issueLock = issueDecision.lease
     const claim = {
       [issueClaimBrand]: this,
       originIssueNumber,
       token: issueLock.token,
+      lease: issueLock,
     }
     try {
       return { claimed: true, value: await callback(claim) }
     } finally {
-      await releaseFileLock(issueLock)
+      await releaseCrashSafeFileLease(issueLock)
     }
   }
 }

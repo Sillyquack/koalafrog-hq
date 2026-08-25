@@ -19,6 +19,7 @@ const runtimeFiles = [
   "src/approval-decisions.mjs",
   "src/config.mjs",
   "src/control-plane.mjs",
+  "src/durable-filesystem.mjs",
   "src/git-execution-boundary.mjs",
   "src/github-control-plane.mjs",
   "src/launchd.mjs",

@@ -82,6 +82,11 @@ test("service runtime release is deterministic, immutable, and outside a task wo
       (file) => file.relativePath === "src/git-execution-boundary.mjs",
     ),
   )
+  assert.ok(
+    firstPlan.files.some(
+      (file) => file.relativePath === "src/durable-filesystem.mjs",
+    ),
+  )
   assert.match(firstPlan.orchestratorScript, /runtime\/releases\/[a-f0-9]{64}\/bin\/repository-orchestrator\.mjs$/)
   assert.equal((await materializeRuntimeRelease(firstPlan)).status, "created")
   assert.equal((await materializeRuntimeRelease(secondPlan)).status, "unchanged")
