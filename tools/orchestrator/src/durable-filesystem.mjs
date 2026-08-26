@@ -26,9 +26,10 @@ import stat
 import sys
 import uuid
 
-request = json.load(sys.stdin)
+request = json.loads(sys.stdin.readline())
 target = os.path.realpath(os.path.abspath(request["target"]))
 expected_parent = request["expectedParent"]
+expected_child = request.get("expectedChild")
 directory_flags = os.O_RDONLY | os.O_DIRECTORY
 if hasattr(os, "O_NOFOLLOW"):
     directory_flags |= os.O_NOFOLLOW
@@ -116,12 +117,28 @@ try:
     current_stat = os.fstat(current_fd)
     if not stat.S_ISDIR(current_stat.st_mode):
         raise OSError(errno.ENOTDIR, "target is not a directory")
+    if expected_child is not None and not same_identity(current_stat, expected_child):
+        raise OSError(errno.ESTALE, "existing directory identity changed")
+    named_stat = os.stat(request["leafName"], dir_fd=root_fd, follow_symlinks=False)
+    if not stat.S_ISDIR(named_stat.st_mode) or not same_identity(named_stat, identity(current_stat)):
+        raise OSError(errno.ESTALE, "named directory identity changed")
+    if request.get("pauseBeforeMutation"):
+        print(json.dumps({"phase": "beforeMutation", **identity(current_stat)}), flush=True)
+        if sys.stdin.readline().strip() != "continue":
+            raise OSError(errno.ECANCELED, "directory mutation was cancelled")
+    named_stat = os.stat(request["leafName"], dir_fd=root_fd, follow_symlinks=False)
+    if not stat.S_ISDIR(named_stat.st_mode) or not same_identity(named_stat, identity(current_stat)):
+        raise OSError(errno.ESTALE, "named directory identity changed before mutation")
     os.fchmod(current_fd, 0o700)
     os.fsync(current_fd)
-    print(json.dumps({"ok": True, "created": created, **identity(current_stat)}))
+    final_stat = os.stat(request["leafName"], dir_fd=root_fd, follow_symlinks=False)
+    if not stat.S_ISDIR(final_stat.st_mode) or not same_identity(final_stat, identity(current_stat)):
+        raise OSError(errno.ESTALE, "named directory identity changed after mutation")
+    print(json.dumps({"ok": True, "created": created, **identity(current_stat)}), flush=True)
 except BaseException as error:
     code = error.errno if isinstance(error, OSError) else None
-    print(json.dumps({"ok": False, "errno": code, "reason": type(error).__name__}))
+    semantic_code = "FILESYSTEM_DIRECTORY_REPLACED" if code == errno.ESTALE else None
+    print(json.dumps({"ok": False, "errno": code, "reason": type(error).__name__, "code": semantic_code}), flush=True)
     sys.exit(1)
 finally:
     if current_fd is not None:
@@ -209,7 +226,11 @@ function sha256(value) {
   return createHash("sha256").update(value).digest("hex")
 }
 
-async function ensureDirectoryDescriptorRelative(directory, parentGuard = null) {
+async function ensureDirectoryDescriptorRelative(
+  directory,
+  parentGuard = null,
+  { expectedChild = null, hooks = null } = {},
+) {
   if (!new Set(["darwin", "linux"]).has(process.platform)) {
     throw new UnsafeFilesystemShapeError(
       "FILESYSTEM_DESCRIPTOR_DIRECTORY_UNSUPPORTED",
@@ -220,17 +241,59 @@ async function ensureDirectoryDescriptorRelative(directory, parentGuard = null) 
     target: path.resolve(directory),
     parentPath: parentGuard.canonicalPath,
     expectedParent: { dev: parentGuard.dev, ino: parentGuard.ino },
+    expectedChild: expectedChild
+      ? { dev: expectedChild.dev, ino: expectedChild.ino }
+      : null,
     leafName: path.basename(directory),
+    pauseBeforeMutation:
+      typeof hooks?.beforeDescriptorDirectoryMutation === "function",
   }
+  await callHook(hooks, "beforeDescriptorDirectoryOpen", {
+    leafName: request.leafName,
+    expectedChild: request.expectedChild,
+  })
   const child = spawn("/usr/bin/python3", ["-I", "-c", descriptorDirectoryHelper], {
     stdio: ["pipe", "pipe", "pipe"],
   })
   let stdout = ""
+  let response = null
+  let hookError = null
+  let hookWork = Promise.resolve()
   child.stdout.on("data", (chunk) => {
     stdout += chunk.toString("utf8")
+    let newline = stdout.indexOf("\n")
+    while (newline >= 0) {
+      const line = stdout.slice(0, newline)
+      stdout = stdout.slice(newline + 1)
+      let message = null
+      try {
+        message = JSON.parse(line)
+      } catch {
+        message = null
+      }
+      if (message?.phase === "beforeMutation") {
+        hookWork = hookWork
+          .then(async () => {
+            await callHook(hooks, "beforeDescriptorDirectoryMutation", {
+              leafName: request.leafName,
+              expectedChild: request.expectedChild,
+              openedChild: { dev: message.dev, ino: message.ino },
+            })
+            child.stdin.end("continue\n")
+          })
+          .catch((error) => {
+            hookError = error
+            child.kill("SIGKILL")
+          })
+      } else if (message) {
+        response = message
+      }
+      newline = stdout.indexOf("\n")
+    }
   })
   child.stderr.resume()
-  child.stdin.end(`${JSON.stringify(request)}\n`)
+  child.stdin.write(`${JSON.stringify(request)}\n`)
+  if (!request.pauseBeforeMutation) child.stdin.end()
   const result = await new Promise((resolve, reject) => {
     child.once("error", reject)
     child.once("exit", (code) => resolve(code))
@@ -241,11 +304,14 @@ async function ensureDirectoryDescriptorRelative(directory, parentGuard = null) 
       { cause: error },
     )
   })
-  let response = null
-  try {
-    response = JSON.parse(stdout)
-  } catch {
-    // The helper's arbitrary stderr is intentionally not propagated.
+  await hookWork
+  if (hookError) throw hookError
+  if (!response && stdout.trim()) {
+    try {
+      response = JSON.parse(stdout)
+    } catch {
+      // The helper's arbitrary output is intentionally not propagated.
+    }
   }
   if (
     result !== 0 ||
@@ -254,7 +320,9 @@ async function ensureDirectoryDescriptorRelative(directory, parentGuard = null) 
     !Number.isSafeInteger(response.ino)
   ) {
     const error = new UnsafeFilesystemShapeError(
-      "FILESYSTEM_DESCRIPTOR_DIRECTORY_REJECTED",
+      response?.code === "FILESYSTEM_DIRECTORY_REPLACED"
+        ? response.code
+        : "FILESYSTEM_DESCRIPTOR_DIRECTORY_REJECTED",
       path.basename(directory),
     )
     error.helperReason = response?.reason ?? "unavailable"
@@ -339,7 +407,7 @@ async function statRegularLeaf(
 
 export async function ensurePrivateDirectory(
   directory,
-  { parentGuard = null } = {},
+  { parentGuard = null, hooks = null } = {},
 ) {
   requireNoFollowSupport()
   const resolved = path.resolve(directory)
@@ -399,6 +467,7 @@ export async function ensurePrivateDirectory(
   const descriptorResult = await ensureDirectoryDescriptorRelative(
     resolved,
     effectiveParentGuard,
+    { expectedChild: existing, hooks },
   )
   const info = await lstat(resolved)
   if (info.isSymbolicLink() || !info.isDirectory()) {
@@ -416,6 +485,12 @@ export async function ensurePrivateDirectory(
     )
   }
   if (!sameIdentity(info, descriptorResult)) {
+    throw new UnsafeFilesystemShapeError(
+      "FILESYSTEM_DIRECTORY_REPLACED",
+      path.basename(resolved),
+    )
+  }
+  if (existing && !sameIdentity(info, existing)) {
     throw new UnsafeFilesystemShapeError(
       "FILESYSTEM_DIRECTORY_REPLACED",
       path.basename(resolved),
@@ -439,8 +514,8 @@ export async function ensurePrivateDirectory(
   const guard = {
     path: resolved,
     canonicalPath: canonical,
-    dev: info.dev,
-    ino: info.ino,
+    dev: existing?.dev ?? info.dev,
+    ino: existing?.ino ?? info.ino,
   }
   return guard
 }
@@ -610,14 +685,49 @@ export async function appendFileNoFollow(
 async function unlinkRegularLeaf(
   directoryGuard,
   leafName,
-  { allowMissing = false, allowMultipleLinks = false, sync = false, hooks = null } = {},
+  {
+    allowMissing = false,
+    allowMultipleLinks = false,
+    expectedIdentity = null,
+    expectedLinkCount = null,
+    sync = false,
+    hooks = null,
+  } = {},
 ) {
+  const inspectMultipleLinks =
+    allowMultipleLinks || Number.isSafeInteger(expectedLinkCount)
   const info = await statRegularLeaf(directoryGuard, leafName, {
     allowMissing,
-    allowMultipleLinks,
+    allowMultipleLinks: inspectMultipleLinks,
   })
   if (!info) return false
+  if (
+    (expectedIdentity && !sameIdentity(info, expectedIdentity)) ||
+    (Number.isSafeInteger(expectedLinkCount) && info.nlink !== expectedLinkCount)
+  ) {
+    throw new UnsafeFilesystemShapeError(
+      "FILESYSTEM_LEAF_LINK_TOPOLOGY",
+      leafName,
+    )
+  }
+  await callHook(hooks, "beforeLeafUnlink", { leafName })
   await assertDirectoryStable(directoryGuard)
+  const current = await statRegularLeaf(directoryGuard, leafName, {
+    allowMissing,
+    allowMultipleLinks: inspectMultipleLinks,
+  })
+  if (!current) return false
+  if (
+    !sameIdentity(info, current) ||
+    (expectedIdentity && !sameIdentity(current, expectedIdentity)) ||
+    (Number.isSafeInteger(expectedLinkCount) &&
+      current.nlink !== expectedLinkCount)
+  ) {
+    throw new UnsafeFilesystemShapeError(
+      "FILESYSTEM_LEAF_LINK_TOPOLOGY",
+      leafName,
+    )
+  }
   await unlink(leafPath(directoryGuard, leafName))
   if (sync) {
     await syncDirectory(directoryGuard, {
@@ -627,6 +737,56 @@ async function unlinkRegularLeaf(
     })
   }
   return true
+}
+
+function requirePrivateCandidate(info, leafName) {
+  if (info.nlink !== 1 || (info.mode & 0o777) !== 0o600) {
+    throw new UnsafeFilesystemShapeError(
+      "FILESYSTEM_LEAF_LINK_TOPOLOGY",
+      leafName,
+    )
+  }
+}
+
+async function unlinkOwnedCanonicalCandidate(
+  directoryGuard,
+  candidate,
+  canonical,
+  { hooks = null } = {},
+) {
+  const canonicalInfo = await statRegularLeaf(directoryGuard, canonical, {
+    allowMultipleLinks: true,
+  })
+  const candidateInfo = await statRegularLeaf(directoryGuard, candidate, {
+    allowMultipleLinks: true,
+  })
+  if (
+    canonicalInfo.nlink !== 2 ||
+    candidateInfo.nlink !== 2 ||
+    (canonicalInfo.mode & 0o777) !== 0o600 ||
+    (candidateInfo.mode & 0o777) !== 0o600 ||
+    !sameIdentity(canonicalInfo, candidateInfo)
+  ) {
+    throw new UnsafeFilesystemShapeError(
+      "FILESYSTEM_LEAF_LINK_TOPOLOGY",
+      candidate,
+    )
+  }
+  await unlinkRegularLeaf(directoryGuard, candidate, {
+    allowMultipleLinks: true,
+    expectedIdentity: canonicalInfo,
+    expectedLinkCount: 2,
+    sync: true,
+    hooks,
+  })
+  const normalized = await statRegularLeaf(directoryGuard, canonical)
+  if (!sameIdentity(canonicalInfo, normalized)) {
+    throw new UnsafeFilesystemShapeError(
+      "FILESYSTEM_LEAF_REPLACED",
+      canonical,
+    )
+  }
+  return normalized
 }
 
 function pendingLeafName(leafName) {
@@ -780,9 +940,13 @@ async function normalizeTransactionKeyLinks(directoryGuard, hooks) {
   )
   if (!keyInfo) {
     for (const candidate of candidates) {
+      const candidateInfo = await statRegularLeaf(directoryGuard, candidate)
+      requirePrivateCandidate(candidateInfo, candidate)
+      parseTransactionKey(
+        await readFileNoFollow(directoryGuard, candidate),
+      )
       await unlinkRegularLeaf(directoryGuard, candidate, {
         allowMissing: true,
-        allowMultipleLinks: true,
         sync: true,
         hooks,
       })
@@ -799,20 +963,26 @@ async function normalizeTransactionKeyLinks(directoryGuard, hooks) {
   const candidateInfo = await statRegularLeaf(directoryGuard, candidates[0], {
     allowMultipleLinks: true,
   })
-  if (!sameIdentity(keyInfo, candidateInfo)) {
+  if (
+    !sameIdentity(keyInfo, candidateInfo) ||
+    (keyInfo.mode & 0o777) !== 0o600 ||
+    (candidateInfo.mode & 0o777) !== 0o600
+  ) {
     throw new DurableTransactionError({
       code: "DURABLE_TRANSACTION_KEY_LINKS_AMBIGUOUS",
       leafName: durableTransactionKeyLeaf,
     })
   }
-  await unlinkRegularLeaf(directoryGuard, candidates[0], {
-    allowMultipleLinks: true,
-    sync: true,
-    hooks,
-  })
-  const normalized = await statRegularLeaf(
+  parseTransactionKey(
+    await readFileNoFollow(directoryGuard, durableTransactionKeyLeaf, {
+      allowMultipleLinks: true,
+    }),
+  )
+  const normalized = await unlinkOwnedCanonicalCandidate(
     directoryGuard,
+    candidates[0],
     durableTransactionKeyLeaf,
+    { hooks },
   )
   if (!sameIdentity(keyInfo, normalized)) {
     throw new DurableTransactionError({
@@ -870,7 +1040,6 @@ async function readTransactionKey(
       if (error.code !== "EEXIST") throw error
       await unlinkRegularLeaf(directoryGuard, candidate, {
         allowMissing: true,
-        allowMultipleLinks: true,
       })
       return readTransactionKey(directoryGuard, { hooks })
     }
@@ -890,11 +1059,12 @@ async function readTransactionKey(
       phase: "transaction_key_create",
       leafName: durableTransactionKeyLeaf,
     })
-    await unlinkRegularLeaf(directoryGuard, candidate, {
-      allowMultipleLinks: true,
-      sync: true,
-      hooks,
-    })
+    await unlinkOwnedCanonicalCandidate(
+      directoryGuard,
+      candidate,
+      durableTransactionKeyLeaf,
+      { hooks },
+    )
     return { key: secret, keyId: record.keyId }
   } finally {
     await handle?.close().catch(() => {})
@@ -1007,7 +1177,12 @@ function journalCandidatePattern(pendingLeaf) {
   )
 }
 
-async function normalizePublishedJournalLinks(directoryGuard, leafName, hooks) {
+async function normalizePublishedJournalLinks(
+  directoryGuard,
+  leafName,
+  options,
+  hooks,
+) {
   const pending = pendingLeafName(leafName)
   const pendingInfo = await statRegularLeaf(directoryGuard, pending, {
     allowMissing: true,
@@ -1017,10 +1192,36 @@ async function normalizePublishedJournalLinks(directoryGuard, leafName, hooks) {
   const pattern = journalCandidatePattern(pending)
   const candidateNames = entries.filter((entry) => pattern.test(entry))
   if (!pendingInfo) {
+    if (candidateNames.length === 0) return false
+    const transactionKey = await readTransactionKey(directoryGuard, { hooks })
+    if (!transactionKey) {
+      throw new DurableTransactionError({
+        code: "DURABLE_TRANSACTION_KEY_MISSING",
+        leafName,
+      })
+    }
     for (const candidate of candidateNames) {
+      const candidateInfo = await statRegularLeaf(directoryGuard, candidate)
+      requirePrivateCandidate(candidateInfo, candidate)
+      let record
+      try {
+        record = await readJsonNoFollow(directoryGuard, candidate)
+      } catch (cause) {
+        throw new DurableTransactionError({
+          code: "DURABLE_TRANSACTION_JOURNAL_MALFORMED",
+          leafName,
+          cause,
+        })
+      }
+      validateTransactionRecord(
+        directoryGuard,
+        leafName,
+        record,
+        options,
+        transactionKey,
+      )
       await unlinkRegularLeaf(directoryGuard, candidate, {
         allowMissing: true,
-        allowMultipleLinks: true,
         sync: true,
         hooks,
       })
@@ -1039,18 +1240,48 @@ async function normalizePublishedJournalLinks(directoryGuard, leafName, hooks) {
     candidateNames[0],
     { allowMultipleLinks: true },
   )
-  if (!sameIdentity(pendingInfo, candidateInfo)) {
+  if (
+    !sameIdentity(pendingInfo, candidateInfo) ||
+    (pendingInfo.mode & 0o777) !== 0o600 ||
+    (candidateInfo.mode & 0o777) !== 0o600
+  ) {
     throw new DurableTransactionError({
       code: "DURABLE_TRANSACTION_JOURNAL_LINKS_AMBIGUOUS",
       leafName,
     })
   }
-  await unlinkRegularLeaf(directoryGuard, candidateNames[0], {
-    allowMultipleLinks: true,
-    sync: true,
-    hooks,
-  })
-  const normalized = await statRegularLeaf(directoryGuard, pending)
+  const transactionKey = await readTransactionKey(directoryGuard, { hooks })
+  if (!transactionKey) {
+    throw new DurableTransactionError({
+      code: "DURABLE_TRANSACTION_KEY_MISSING",
+      leafName,
+    })
+  }
+  let record
+  try {
+    record = await readJsonNoFollow(directoryGuard, pending, {
+      allowMultipleLinks: true,
+    })
+  } catch (cause) {
+    throw new DurableTransactionError({
+      code: "DURABLE_TRANSACTION_JOURNAL_MALFORMED",
+      leafName,
+      cause,
+    })
+  }
+  validateTransactionRecord(
+    directoryGuard,
+    leafName,
+    record,
+    options,
+    transactionKey,
+  )
+  const normalized = await unlinkOwnedCanonicalCandidate(
+    directoryGuard,
+    candidateNames[0],
+    pending,
+    { hooks },
+  )
   if (!sameIdentity(pendingInfo, normalized)) {
     throw new DurableTransactionError({
       code: "DURABLE_TRANSACTION_JOURNAL_REPLACED",
@@ -1137,12 +1368,20 @@ async function writeTransactionJournal(
     throw cause
   } finally {
     await handle?.close().catch(() => {})
-    await unlinkRegularLeaf(directoryGuard, candidate, {
-      allowMissing: true,
-      allowMultipleLinks: true,
-      sync: published,
-      hooks,
-    }).catch(() => {})
+    if (published) {
+      await unlinkOwnedCanonicalCandidate(
+        directoryGuard,
+        candidate,
+        pending,
+        { hooks },
+      )
+    } else {
+      await unlinkRegularLeaf(directoryGuard, candidate, {
+        allowMissing: true,
+        sync: false,
+        hooks,
+      })
+    }
   }
 }
 
@@ -1186,7 +1425,14 @@ export async function recoverDurableFileReplace(
     validateTransition,
   })
   const pending = pendingLeafName(leafName)
-  if (!(await normalizePublishedJournalLinks(directoryGuard, leafName, hooks))) {
+  if (
+    !(await normalizePublishedJournalLinks(
+      directoryGuard,
+      leafName,
+      options,
+      hooks,
+    ))
+  ) {
     return false
   }
   let record
@@ -1306,7 +1552,6 @@ export async function cleanupOrphanAtomicTemps(directoryGuard, leafName) {
     }
     await unlinkRegularLeaf(directoryGuard, entry, {
       allowMissing: true,
-      allowMultipleLinks: true,
     })
   }
 }
@@ -1461,7 +1706,6 @@ export async function durableAtomicWriteFile(
     if (!intentCreated) {
       await unlinkRegularLeaf(directoryGuard, temporary, {
         allowMissing: true,
-        allowMultipleLinks: true,
       }).catch(() => {})
     }
   }
@@ -1733,11 +1977,47 @@ async function cleanupOrphanLeaseCandidates(directoryGuard, lockLeaf) {
   const pattern = /^\.[A-Za-z0-9._-]+\.\d+\.[0-9a-f-]{36}\.lease-candidate$/i
   for (const entry of await readdir(directoryGuard.path)) {
     if (!entry.startsWith(prefix) || !pattern.test(entry)) continue
-    await unlinkRegularLeaf(directoryGuard, entry, {
-      allowMissing: true,
+    const candidateInfo = await statRegularLeaf(directoryGuard, entry, {
       allowMultipleLinks: true,
-      sync: true,
     })
+    if ((candidateInfo.mode & 0o777) !== 0o600) {
+      throw new UnsafeFilesystemShapeError(
+        "FILESYSTEM_LEAF_LINK_TOPOLOGY",
+        entry,
+      )
+    }
+    let record
+    try {
+      record = await readJsonNoFollow(directoryGuard, entry, {
+        allowMultipleLinks: candidateInfo.nlink !== 1,
+      })
+    } catch (cause) {
+      throw new FileLeaseMetadataError({
+        code: "FILE_LEASE_CANDIDATE_MALFORMED",
+        leafName: entry,
+        recovery: "verify the private task directory before retrying",
+        cause,
+      })
+    }
+    if (!validLeaseRecord(record)) {
+      throw new FileLeaseMetadataError({
+        code: "FILE_LEASE_CANDIDATE_INVALID",
+        leafName: entry,
+        recovery: "verify the private task directory before retrying",
+      })
+    }
+    if (candidateInfo.nlink === 1) {
+      await unlinkRegularLeaf(directoryGuard, entry, {
+        allowMissing: true,
+        sync: true,
+      })
+    } else {
+      await unlinkOwnedCanonicalCandidate(
+        directoryGuard,
+        entry,
+        lockLeaf,
+      )
+    }
   }
 }
 
@@ -1759,6 +2039,7 @@ async function writeLeaseRecord(
       constants.O_NOFOLLOW,
     0o600,
   )
+  let published = false
   try {
     await handle.chmod(0o600)
     await handle.writeFile(`${JSON.stringify(record)}\n`)
@@ -1783,6 +2064,7 @@ async function writeLeaseRecord(
       leafPath(directoryGuard, candidate),
       leafPath(directoryGuard, lockLeaf),
     )
+    published = true
     const durableLeaf = await statRegularLeaf(directoryGuard, lockLeaf, {
       allowMultipleLinks: true,
     })
@@ -1798,12 +2080,20 @@ async function writeLeaseRecord(
       leafName: lockLeaf,
     })
   } finally {
-    await unlinkRegularLeaf(directoryGuard, candidate, {
-      allowMissing: true,
-      allowMultipleLinks: true,
-      sync: true,
-      hooks,
-    })
+    if (published) {
+      await unlinkOwnedCanonicalCandidate(
+        directoryGuard,
+        candidate,
+        lockLeaf,
+        { hooks },
+      )
+    } else {
+      await unlinkRegularLeaf(directoryGuard, candidate, {
+        allowMissing: true,
+        sync: true,
+        hooks,
+      })
+    }
   }
 }
 

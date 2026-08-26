@@ -16,6 +16,7 @@ import {
 import os from "node:os"
 import path from "node:path"
 import test from "node:test"
+import { setTimeout as delay } from "node:timers/promises"
 import {
   StateRevisionConflictError,
   StateRevisionOverflowError,
@@ -251,6 +252,79 @@ test("guarded directory creation cannot mutate through a replaced parent", async
   assert.deepEqual(await readdir(outside), before)
 })
 
+test("existing private-directory identity is immutable before permission normalization", async (t) => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "koalafrog-dir-identity-"))
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const parentGuard = await ensurePrivateDirectory(directory)
+
+  for (let round = 0; round < 100; round += 1) {
+    const child = path.join(directory, `child-${round}`)
+    const replacement = path.join(directory, `replacement-${round}`)
+    const moved = path.join(directory, `moved-${round}`)
+    await mkdir(child, { mode: 0o755 })
+    await mkdir(replacement, { mode: 0o755 })
+    await chmod(child, 0o755)
+    await chmod(replacement, 0o755)
+    let replacementAfterSwap = null
+    await assert.rejects(
+      ensurePrivateDirectory(child, {
+        parentGuard,
+        hooks: {
+          beforeDescriptorDirectoryOpen: async () => {
+            await rename(child, moved)
+            await rename(replacement, child)
+            replacementAfterSwap = await stat(child)
+          },
+        },
+      }),
+      (error) => error.code === "FILESYSTEM_DIRECTORY_REPLACED",
+    )
+    const after = await stat(child)
+    assert.equal(after.dev, replacementAfterSwap.dev)
+    assert.equal(after.ino, replacementAfterSwap.ino)
+    assert.equal(after.mode, replacementAfterSwap.mode)
+    assert.equal(after.nlink, replacementAfterSwap.nlink)
+    assert.equal(after.ctimeMs, replacementAfterSwap.ctimeMs)
+  }
+})
+
+test("descriptor-open directory swaps reject before chmod or fsync", async (t) => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "koalafrog-dir-mutation-"))
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const parentGuard = await ensurePrivateDirectory(directory)
+
+  for (let round = 0; round < 8; round += 1) {
+    const child = path.join(directory, `child-${round}`)
+    const replacement = path.join(directory, `replacement-${round}`)
+    const moved = path.join(directory, `moved-${round}`)
+    await mkdir(child, { mode: 0o755 })
+    await mkdir(replacement, { mode: 0o755 })
+    await chmod(child, 0o755)
+    await chmod(replacement, 0o755)
+    let replacementAfterSwap = null
+    await assert.rejects(
+      ensurePrivateDirectory(child, {
+        parentGuard,
+        hooks: {
+          beforeDescriptorDirectoryMutation: async () => {
+            await delay(30)
+            await rename(child, moved)
+            await rename(replacement, child)
+            replacementAfterSwap = await stat(child)
+          },
+        },
+      }),
+      (error) => error.code === "FILESYSTEM_DIRECTORY_REPLACED",
+    )
+    const after = await stat(child)
+    assert.equal(after.dev, replacementAfterSwap.dev)
+    assert.equal(after.ino, replacementAfterSwap.ino)
+    assert.equal(after.mode, replacementAfterSwap.mode)
+    assert.equal(after.nlink, replacementAfterSwap.nlink)
+    assert.equal(after.ctimeMs, replacementAfterSwap.ctimeMs)
+  }
+})
+
 test("dead reapers recover while live and ambiguous owners remain fail-closed", async (t) => {
   const directory = await mkdtemp(path.join(os.tmpdir(), "koalafrog-state-reaper-"))
   t.after(() => rm(directory, { recursive: true, force: true }))
@@ -456,6 +530,114 @@ test("transaction key symlinks are rejected without touching outside files", asy
   )
   assert.equal(await readFile(target, "utf8"), "outside-sentinel\n")
   assert.equal((await readFile(store.statePath, "utf8")).includes('"status": "ready"'), true)
+})
+
+test("ambiguous transaction-key hard links never mutate outside inode metadata", async (t) => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "koalafrog-key-links-"))
+  const outside = await mkdtemp(path.join(os.tmpdir(), "koalafrog-key-links-outside-"))
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  t.after(() => rm(outside, { recursive: true, force: true }))
+
+  await t.test("candidate to outside", async () => {
+    const store = new StateStore(options(path.join(directory, "candidate")))
+    const state = await store.load()
+    await unlink(path.join(store.directory, ".durable-transaction.key"))
+    const outsideFile = path.join(outside, "candidate-sentinel")
+    await writeFile(outsideFile, "candidate-sentinel\n", { mode: 0o600 })
+    const candidate = path.join(
+      store.directory,
+      `.durable-transaction.key.${process.pid}.00000000-0000-4000-8000-000000000021.key-candidate`,
+    )
+    await link(outsideFile, candidate)
+    const before = await stat(outsideFile)
+    state.status = "needs_review"
+    await assert.rejects(
+      store.save(state),
+      (error) =>
+        error.code === "FILESYSTEM_LEAF_LINK_COUNT" ||
+        error.code === "FILESYSTEM_LEAF_LINK_TOPOLOGY",
+    )
+    const after = await stat(outsideFile)
+    assert.equal(await readFile(outsideFile, "utf8"), "candidate-sentinel\n")
+    assert.equal(after.mode, before.mode)
+    assert.equal(after.nlink, before.nlink)
+    assert.equal(after.ctimeMs, before.ctimeMs)
+  })
+
+  await t.test("canonical to outside", async () => {
+    const store = new StateStore(options(path.join(directory, "canonical")))
+    const state = await store.load()
+    const keyPath = path.join(store.directory, ".durable-transaction.key")
+    const outsideAlias = path.join(outside, "canonical-alias")
+    await link(keyPath, outsideAlias)
+    const before = await stat(outsideAlias)
+    state.status = "needs_review"
+    await assert.rejects(
+      store.save(state),
+      (error) => error.code === "DURABLE_TRANSACTION_KEY_LINKS_AMBIGUOUS",
+    )
+    const after = await stat(outsideAlias)
+    assert.equal(after.mode, before.mode)
+    assert.equal(after.nlink, before.nlink)
+    assert.equal(after.ctimeMs, before.ctimeMs)
+    assert.deepEqual(await readFile(outsideAlias), await readFile(keyPath))
+  })
+
+  await t.test("multiple candidate aliases", async () => {
+    const store = new StateStore(options(path.join(directory, "aliases")))
+    const state = await store.load()
+    await unlink(path.join(store.directory, ".durable-transaction.key"))
+    const outsideFile = path.join(outside, "multi-sentinel")
+    await writeFile(outsideFile, "multi-sentinel\n", { mode: 0o600 })
+    for (const suffix of ["22", "23"]) {
+      await link(
+        outsideFile,
+        path.join(
+          store.directory,
+          `.durable-transaction.key.${process.pid}.00000000-0000-4000-8000-0000000000${suffix}.key-candidate`,
+        ),
+      )
+    }
+    const before = await stat(outsideFile)
+    state.status = "needs_review"
+    await assert.rejects(
+      store.save(state),
+      (error) => error.code === "FILESYSTEM_LEAF_LINK_COUNT",
+    )
+    const after = await stat(outsideFile)
+    assert.equal(after.mode, before.mode)
+    assert.equal(after.nlink, before.nlink)
+    assert.equal(after.ctimeMs, before.ctimeMs)
+    assert.equal(await readFile(outsideFile, "utf8"), "multi-sentinel\n")
+  })
+})
+
+test("a genuine transaction-key publication artifact is normalized exactly once", async (t) => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "koalafrog-key-owned-link-"))
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const first = new StateStore(options(directory))
+  const initial = await first.load()
+  const keyPath = path.join(first.directory, ".durable-transaction.key")
+  const candidate = path.join(
+    first.directory,
+    `.durable-transaction.key.${process.pid}.00000000-0000-4000-8000-000000000024.key-candidate`,
+  )
+  await link(keyPath, candidate)
+  assert.equal((await stat(keyPath)).nlink, 2)
+
+  const second = new StateStore(options(directory))
+  const firstUpdate = structuredClone(initial)
+  const secondUpdate = structuredClone(initial)
+  firstUpdate.status = "needs_review"
+  secondUpdate.status = "needs_owner"
+  const saves = await Promise.allSettled([
+    first.save(firstUpdate),
+    second.save(secondUpdate),
+  ])
+  assert.equal(saves.filter((result) => result.status === "fulfilled").length, 1)
+  assert.equal(saves.filter((result) => result.status === "rejected").length, 1)
+  assert.equal((await stat(keyPath)).nlink, 1)
+  await assert.rejects(stat(candidate), (error) => error.code === "ENOENT")
 })
 
 test("state, pending, lock, and takeover leaf replacement races fail closed", async (t) => {
