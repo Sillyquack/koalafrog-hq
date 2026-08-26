@@ -1012,3 +1012,37 @@ test("revision ceiling never persists a value the loader rejects", async (t) => 
   assert.deepEqual(await readFile(store.statePath), atMaximum)
   assert.equal(loaded.stateRevision, Number.MAX_SAFE_INTEGER)
 })
+
+test("durable turn failure events are idempotent and conflict-safe", async (t) => {
+  const directory = await mkdtemp(
+    path.join(os.tmpdir(), "koalafrog-state-turn-failure-"),
+  )
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const store = new StateStore(options(directory))
+  await store.load()
+  const eventId = "turn_failed:thread-1:turn-1"
+  const event = {
+    type: "turn_failed",
+    eventId,
+    errorClass: "AppServerTurnError",
+    code: "APP_SERVER_TURN_ERROR",
+    category: "cyberPolicy",
+    codexErrorInfo: "cyberPolicy",
+    willRetry: false,
+    threadId: "thread-1",
+    turnId: "turn-1",
+  }
+
+  assert.equal((await store.appendEventOnce(eventId, event)).created, true)
+  assert.equal((await store.appendEventOnce(eventId, event)).created, false)
+  assert.equal((await store.findEvent(eventId)).turnId, "turn-1")
+  await assert.rejects(
+    store.appendEventOnce(eventId, { ...event, willRetry: true }),
+    (error) => error.code === "EVENT_ID_CONFLICT",
+  )
+  const events = (await readFile(store.eventPath, "utf8"))
+    .trim()
+    .split("\n")
+    .map(JSON.parse)
+  assert.equal(events.filter((candidate) => candidate.eventId === eventId).length, 1)
+})

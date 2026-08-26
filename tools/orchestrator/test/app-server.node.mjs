@@ -2,10 +2,176 @@ import assert from "node:assert/strict"
 import test from "node:test"
 import {
   AppServerClient,
+  appServerTurnFailureFromMessage,
   autoResponseForBoundedCommandApproval,
   autoResponseForBoundedElicitation,
   classifyServerRequest,
 } from "../src/app-server.mjs"
+
+test("a terminal AppServer error is redacted and never enters EventEmitter's error channel", async () => {
+  const events = []
+  const persisted = []
+  const client = new AppServerClient({
+    cwd: "/tmp",
+    eventSink: async (event) => events.push(event),
+  })
+  client.request = async (method) => {
+    assert.equal(method, "turn/start")
+    queueMicrotask(() =>
+      client.dispatchProtocolMessage({
+        method: "error",
+        params: {
+          threadId: "thread-cyber-policy",
+          turnId: "turn-cyber-policy",
+          willRetry: false,
+          error: {
+            codexErrorInfo: "cyberPolicy",
+            message: "Bearer secret-value must never persist",
+            sensitivePayload: { token: "ghp_not-for-logs" },
+          },
+        },
+      }),
+    )
+    return { turn: { id: "turn-cyber-policy" } }
+  }
+
+  const result = await client.runTurn({
+    threadId: "thread-cyber-policy",
+    prompt: "Read-only review.",
+    cwd: "/tmp",
+    timeoutMs: 1_000,
+    onTurnFailed: async (failure) => persisted.push(failure),
+  })
+
+  assert.equal(result.status, "failed")
+  assert.equal(result.turn.id, "turn-cyber-policy")
+  assert.equal(result.retryable, false)
+  assert.equal(persisted.length, 1)
+  assert.deepEqual(events, [
+    {
+      type: "turn_failed",
+      eventId:
+        "turn_failed:thread-cyber-policy:turn-cyber-policy",
+      errorClass: "AppServerTurnError",
+      code: "APP_SERVER_TURN_ERROR",
+      category: "cyberPolicy",
+      codexErrorInfo: "cyberPolicy",
+      willRetry: false,
+      threadId: "thread-cyber-policy",
+      turnId: "turn-cyber-policy",
+    },
+  ])
+  assert.doesNotMatch(JSON.stringify({ events, result }), /secret-value|ghp_/)
+  await client.dispatchProtocolMessage({
+    method: "error",
+    params: {
+      threadId: "thread-cyber-policy",
+      turnId: "turn-cyber-policy",
+      willRetry: false,
+      error: { codexErrorInfo: "cyberPolicy" },
+    },
+  })
+  assert.equal(events.length, 1)
+  await assert.rejects(
+    client.dispatchProtocolMessage({
+      method: "error",
+      params: {
+        threadId: "thread-cyber-policy",
+        turnId: "turn-cyber-policy",
+        willRetry: true,
+        error: { codexErrorInfo: "cyberPolicy" },
+      },
+    }),
+    (error) => error.code === "APP_SERVER_TURN_FAILURE_CONFLICT",
+  )
+})
+
+test("protocol method names cannot address reserved EventEmitter channels", async () => {
+  const notifications = []
+  const protocolEvents = []
+  const client = new AppServerClient({
+    cwd: "/tmp",
+    eventSink: async (event) => protocolEvents.push(event),
+  })
+  client.on("notification", (message) => notifications.push(message.method))
+  let errorEvents = 0
+  client.on("error", () => {
+    errorEvents += 1
+  })
+
+  for (const method of ["error", "newListener", "removeListener"]) {
+    await client.dispatchProtocolMessage({ method, params: { arbitrary: true } })
+  }
+
+  assert.deepEqual(notifications, ["error", "newListener", "removeListener"])
+  assert.equal(errorEvents, 0)
+  assert.equal(protocolEvents.length, 3)
+  assert.deepEqual(
+    protocolEvents.map((event) => event.message.method),
+    ["error", "newListener", "removeListener"],
+  )
+})
+
+test("turn failure normalization requires stable active-turn identity", () => {
+  assert.equal(
+    appServerTurnFailureFromMessage({
+      method: "error",
+      params: {
+        threadId: "thread\nforged",
+        turnId: "turn-1",
+        error: { codexErrorInfo: "cyberPolicy" },
+      },
+    }),
+    null,
+  )
+})
+
+test("upstream retry disposition cannot replay a turn with command evidence", async () => {
+  const client = new AppServerClient({ cwd: "/tmp", eventSink: async () => {} })
+  client.request = async () => {
+    setTimeout(async () => {
+      client.emit("item/started", {
+        threadId: "thread-command-failure",
+        turnId: "turn-command-failure",
+        item: {
+          id: "command-1",
+          type: "commandExecution",
+          status: "inProgress",
+        },
+      })
+      client.emit("item/completed", {
+        threadId: "thread-command-failure",
+        turnId: "turn-command-failure",
+        item: {
+          id: "command-1",
+          type: "commandExecution",
+          status: "completed",
+          exitCode: 0,
+        },
+      })
+      await client.dispatchProtocolMessage({
+        method: "error",
+        params: {
+          threadId: "thread-command-failure",
+          turnId: "turn-command-failure",
+          willRetry: true,
+          error: { codexErrorInfo: "transient" },
+        },
+      })
+    }, 0)
+    return { turn: { id: "turn-command-failure" } }
+  }
+
+  const result = await client.runTurn({
+    threadId: "thread-command-failure",
+    prompt: "Run once.",
+    cwd: "/tmp",
+    timeoutMs: 1_000,
+  })
+  assert.equal(result.appServerFailure.willRetry, true)
+  assert.equal(result.retryable, false)
+  assert.equal(result.commandExecutions.length, 1)
+})
 
 const approvedPrompt = `
 Owner approval remains granted for the bounded repository write needed to finish this review: create the Git tree/commit for the existing Issue #54 review changes and push that commit to the existing branch.

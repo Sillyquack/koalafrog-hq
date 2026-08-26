@@ -7,6 +7,48 @@ import {
 import { issue63AcceptanceTurnResult } from "./fixtures/issue-63-production-day1-result-fidelity-acceptance-005.mjs"
 import { issue63CloseoutFinalMessage } from "./fixtures/issue-63-production-day1-review-closeout-004.mjs"
 
+test("terminal AppServer failure artifacts retain redacted turn provenance", () => {
+  const artifact = resultArtifactFromTurnResult(
+    {
+      status: "failed",
+      turn: {
+        id: "turn-cyber-policy",
+        status: "failed",
+        items: [],
+        error: { message: "Bearer should-not-persist" },
+      },
+      appServerFailure: {
+        eventId: "turn_failed:thread-review:turn-cyber-policy",
+        errorClass: "AppServerTurnError",
+        code: "APP_SERVER_TURN_ERROR",
+        category: "cyberPolicy",
+        codexErrorInfo: "cyberPolicy",
+        willRetry: false,
+        threadId: "thread-review",
+        turnId: "turn-cyber-policy",
+      },
+    },
+    "2026-08-26T12:00:00.000Z",
+  )
+
+  assert.equal(artifact.source, "app_server_turn_failure")
+  assert.equal(artifact.turnId, "turn-cyber-policy")
+  assert.equal(artifact.turnStatus, "failed")
+  assert.deepEqual(artifact.failure, {
+    eventId: "turn_failed:thread-review:turn-cyber-policy",
+    errorClass: "AppServerTurnError",
+    code: "APP_SERVER_TURN_ERROR",
+    category: "cyberPolicy",
+    codexErrorInfo: "cyberPolicy",
+    willRetry: false,
+    threadId: "thread-review",
+    turnId: "turn-cyber-policy",
+  })
+  assert.doesNotMatch(JSON.stringify(artifact), /should-not-persist/)
+  assert.equal(artifact.finalMessage, "")
+  assert.equal(artifact.checks.tests.status, "unknown")
+})
+
 test("Issue #63/004 final message produces faithful checks and findings", () => {
   const artifact = resultArtifactFromTurnResult(
     {

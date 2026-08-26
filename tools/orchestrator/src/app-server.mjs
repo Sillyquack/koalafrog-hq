@@ -42,6 +42,35 @@ function compactProtocolMessage(message) {
   return compact
 }
 
+function stableProtocolIdentifier(value, fallback = null) {
+  return typeof value === "string" &&
+    /^[A-Za-z0-9._:/-]{1,160}$/.test(value)
+    ? value
+    : fallback
+}
+
+export function appServerTurnFailureFromMessage(message) {
+  if (message?.method !== "error" || message.id !== undefined) return null
+  const params = message.params ?? {}
+  const threadId = stableProtocolIdentifier(params.threadId)
+  const turnId = stableProtocolIdentifier(params.turnId ?? params.turn?.id)
+  if (!threadId || !turnId) return null
+  const codexErrorInfo = stableProtocolIdentifier(
+    params.error?.codexErrorInfo,
+    "unknown",
+  )
+  return {
+    eventId: `turn_failed:${threadId}:${turnId}`,
+    errorClass: "AppServerTurnError",
+    code: "APP_SERVER_TURN_ERROR",
+    category: codexErrorInfo,
+    codexErrorInfo,
+    willRetry: params.willRetry === true,
+    threadId,
+    turnId,
+  }
+}
+
 function requestSummary(params = {}) {
   return (
     params.reason ??
@@ -268,6 +297,7 @@ export class AppServerClient extends EventEmitter {
     this.nextRequestId = 1
     this.pending = new Map()
     this.mcpStatuses = new Map()
+    this.seenTurnFailures = new Map()
     this.process = null
   }
 
@@ -320,6 +350,18 @@ export class AppServerClient extends EventEmitter {
       return
     }
 
+    void this.dispatchProtocolMessage(message).catch((error) => {
+      Promise.resolve(
+        this.eventSink({
+          type: "protocol_dispatch_failed",
+          code: "APP_SERVER_PROTOCOL_DISPATCH_FAILED",
+        }),
+      ).catch(() => {})
+      this.emit("adapter_failure", error)
+    })
+  }
+
+  async dispatchProtocolMessage(message) {
     if (message.id !== undefined && !message.method) {
       const pending = this.pending.get(message.id)
       if (!pending) return
@@ -337,6 +379,28 @@ export class AppServerClient extends EventEmitter {
       return
     }
 
+    const turnFailure = appServerTurnFailureFromMessage(message)
+    if (turnFailure) {
+      const serialized = JSON.stringify(turnFailure)
+      const prior = this.seenTurnFailures.get(turnFailure.eventId)
+      if (prior && prior !== serialized) {
+        const error = new Error("AppServer turn failure identity conflicts")
+        error.code = "APP_SERVER_TURN_FAILURE_CONFLICT"
+        throw error
+      }
+      if (prior) return
+      this.seenTurnFailures.set(turnFailure.eventId, serialized)
+      try {
+        await this.eventSink({ type: "turn_failed", ...turnFailure })
+      } catch (error) {
+        this.seenTurnFailures.delete(turnFailure.eventId)
+        throw error
+      }
+      this.emit("notification", message)
+      this.emit("turn_failure", turnFailure)
+      return
+    }
+
     if (message.method === "mcpServer/startupStatus/updated") {
       const key = `${message.params?.threadId}:${message.params?.name}`
       this.mcpStatuses.set(key, message.params?.status)
@@ -347,7 +411,20 @@ export class AppServerClient extends EventEmitter {
       this.eventSink({ type: kind, message: compactProtocolMessage(message) }),
     ).catch(() => {})
     this.emit(kind, message)
-    this.emit(message.method, message.params, message)
+    switch (message.method) {
+      case "item/completed":
+        this.emit("item/completed", message.params, message)
+        break
+      case "item/started":
+        this.emit("item/started", message.params, message)
+        break
+      case "mcpServer/startupStatus/updated":
+        this.emit("mcpServer/startupStatus/updated", message.params, message)
+        break
+      case "turn/completed":
+        this.emit("turn/completed", message.params, message)
+        break
+    }
   }
 
   #failPending(error) {
@@ -452,6 +529,7 @@ export class AppServerClient extends EventEmitter {
     timeoutMs,
     approvalPolicy = null,
     onTurnStarted = () => {},
+    onTurnFailed = () => {},
     onOwnerStop = () => {},
     resolveApprovalRequest = () => null,
     onApprovedActionCompleted = () => {},
@@ -467,6 +545,9 @@ export class AppServerClient extends EventEmitter {
     let turnTimedOut = false
     let timeoutInterruption = null
     let interruptedTurnCompletion = null
+    const pendingProtocolFailures = new Map()
+    let protocolFailureInFlight = false
+    let approvalGranted = false
     const activeCommandExecutions = new Set()
     const commandExecutionItems = new Map()
     const completedCommandExecutions = []
@@ -586,6 +667,57 @@ export class AppServerClient extends EventEmitter {
       }
       finishTurn(params.turn)
     }
+    const finishProtocolFailure = async (failure) => {
+      if (
+        settled ||
+        protocolFailureInFlight ||
+        !turnId ||
+        failure.turnId !== turnId
+      ) {
+        return
+      }
+      protocolFailureInFlight = true
+      const retryable =
+        failure.willRetry &&
+        !approvalGranted &&
+        activeCommandExecutions.size === 0 &&
+        completedCommandExecutions.length === 0
+      const result = {
+        status: "failed",
+        turn: {
+          id: turnId,
+          status: "failed",
+          items: [],
+          error: {
+            errorClass: failure.errorClass,
+            code: failure.code,
+            category: failure.category,
+            codexErrorInfo: failure.codexErrorInfo,
+            willRetry: failure.willRetry,
+          },
+        },
+        pendingOwnerRequest: null,
+        agentMessage,
+        commandExecutions: completedCommandExecutions,
+        appServerFailure: failure,
+        retryable,
+      }
+      try {
+        await onTurnFailed(result)
+        complete(result)
+      } catch (error) {
+        fail(error)
+      }
+    }
+    const onTurnFailure = (failure) => {
+      if (failure?.threadId !== threadId) return
+      if (turnId) {
+        if (failure.turnId === turnId) void finishProtocolFailure(failure)
+        return
+      }
+      pendingProtocolFailures.set(failure.turnId, failure)
+    }
+    const onAdapterFailure = (error) => fail(error)
     const stopForOwner = async (message, ownerRequest) => {
       pendingOwnerRequest = ownerRequest
       ownerStopPersistence = ownerStopPersistence.then(() =>
@@ -660,6 +792,7 @@ export class AppServerClient extends EventEmitter {
         autoResponseForBoundedCommandApproval(message, prompt)
       if (autoResponse) {
         try {
+          approvalGranted = true
           this.respond(message.id, autoResponse)
           if (matchedResolution?.decisionId && ownerRequest.itemId) {
             approvedItems.set(ownerRequest.itemId, {
@@ -710,12 +843,16 @@ export class AppServerClient extends EventEmitter {
       this.off("item/completed", onItemCompleted)
       this.off("turn/completed", onTurnCompleted)
       this.off("server_request", onServerRequest)
+      this.off("turn_failure", onTurnFailure)
+      this.off("adapter_failure", onAdapterFailure)
     }
 
     this.on("item/started", onItemStarted)
     this.on("item/completed", onItemCompleted)
     this.on("turn/completed", onTurnCompleted)
     this.on("server_request", onServerRequest)
+    this.on("turn_failure", onTurnFailure)
+    this.on("adapter_failure", onAdapterFailure)
 
     try {
       const response = await this.request(
@@ -730,6 +867,10 @@ export class AppServerClient extends EventEmitter {
       )
       turnId = response.turn.id
       await onTurnStarted(turnId)
+      const pendingProtocolFailure = pendingProtocolFailures.get(turnId)
+      if (pendingProtocolFailure) {
+        await finishProtocolFailure(pendingProtocolFailure)
+      }
       if (turnTimedOut) interruptTimedOutTurn()
     } catch (error) {
       cleanup()

@@ -246,6 +246,18 @@ export function resultArtifactFromTurnResult(
   capturedAt = new Date().toISOString(),
 ) {
   const turn = turnResult?.turn ?? null
+  const appServerFailure = turnResult?.appServerFailure
+    ? {
+        eventId: turnResult.appServerFailure.eventId ?? null,
+        errorClass: turnResult.appServerFailure.errorClass ?? null,
+        code: turnResult.appServerFailure.code ?? null,
+        category: turnResult.appServerFailure.category ?? null,
+        codexErrorInfo: turnResult.appServerFailure.codexErrorInfo ?? null,
+        willRetry: turnResult.appServerFailure.willRetry === true,
+        threadId: turnResult.appServerFailure.threadId ?? null,
+        turnId: turnResult.appServerFailure.turnId ?? turn?.id ?? null,
+      }
+    : null
   const finalMessage = bounded(
     redactForLog(
       turnResult?.agentMessage || finalAgentMessageFromTurn(turn) || "",
@@ -265,14 +277,17 @@ export function resultArtifactFromTurnResult(
   )
   return redactForLog({
     version: 1,
-    source: finalMessage
-      ? "completed_turn_final_message"
-      : commandExecutions.length
-        ? "completed_turn_execution_evidence"
-        : "completed_turn_unverified",
+    source: appServerFailure
+      ? "app_server_turn_failure"
+      : finalMessage
+        ? "completed_turn_final_message"
+        : commandExecutions.length
+          ? "completed_turn_execution_evidence"
+          : "completed_turn_unverified",
     capturedAt,
     turnId: turn?.id ?? null,
     turnStatus: turn?.status ?? turnResult?.status ?? null,
+    ...(appServerFailure ? { failure: appServerFailure } : {}),
     finalMessage,
     checks,
     findings: extractFindings(finalMessage),

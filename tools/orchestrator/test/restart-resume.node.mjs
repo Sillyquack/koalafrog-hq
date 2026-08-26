@@ -1472,6 +1472,256 @@ test("restart finalizes a completed persisted turn without starting a duplicate"
   assert.equal(recoveredState.runs[0].turnCount, 1)
 })
 
+test("restart finalizes one durably observed non-retryable AppServer failure", async (t) => {
+  const directory = await mkdtemp(
+    path.join(os.tmpdir(), "koalafrog-app-server-failure-"),
+  )
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const block = controlBlock({ instructionId: "app-server-failure-001" })
+  const [instruction] = extractAgentControls(block)
+  const store = new StateStore({
+    stateDirectory: directory,
+    repository: "Sillyquack/koalafrog-hq",
+    issueNumber: 53,
+  })
+  const state = await store.load()
+  beginInstruction(state, instruction)
+  state.threadId = "thread-app-server-failure"
+  state.workspacePath = "/tmp/workspace-app-server-failure"
+  state.branch = "agent/app-server-failure-001"
+  recordInstructionTurnStarted(state, {
+    turnId: "turn-app-server-failure",
+    attempt: 0,
+  })
+  await store.save(state)
+  const eventId =
+    "turn_failed:thread-app-server-failure:turn-app-server-failure"
+  await store.appendEventOnce(eventId, {
+    type: "turn_failed",
+    eventId,
+    errorClass: "AppServerTurnError",
+    code: "APP_SERVER_TURN_ERROR",
+    category: "cyberPolicy",
+    codexErrorInfo: "cyberPolicy",
+    willRetry: false,
+    threadId: "thread-app-server-failure",
+    turnId: "turn-app-server-failure",
+  })
+
+  let runTurnCalls = 0
+  let readThreadCalls = 0
+  const appServer = {
+    async start() {},
+    async resumeThread(threadId) {
+      return { thread: { id: threadId } }
+    },
+    async waitForMcpReady() {},
+    async readThread() {
+      readThreadCalls += 1
+      throw new Error("Durable failure evidence must precede thread readback")
+    },
+    async runTurn() {
+      runTurnCalls += 1
+      throw new Error("A non-retryable failed turn must not restart")
+    },
+    async stop() {},
+  }
+  const comments = [{ body: block }]
+  const posted = []
+  const orchestrator = new Orchestrator(runtimeConfig(directory), {
+    appServer,
+    store,
+    workspace: fakeWorkspace(),
+    controlPlane: {
+      async fetchTask() {
+        return { issue: { body: "" }, comments }
+      },
+      async postComment(body) {
+        posted.push(body)
+        comments.push({ body })
+      },
+    },
+  })
+
+  assert.equal((await orchestrator.runOnce()).status, "failed")
+  assert.equal((await orchestrator.runOnce()).status, "idle")
+  assert.equal(runTurnCalls, 0)
+  assert.equal(readThreadCalls, 0)
+  assert.equal(posted.filter((body) => body.includes("agent_result:")).length, 1)
+  const persisted = await store.load()
+  assert.equal(persisted.activeInstruction, null)
+  assert.equal(persisted.lastConsumedInstructionId, instruction.instructionId)
+  assert.equal(persisted.runs.length, 1)
+  assert.equal(persisted.runs[0].turnCount, 1)
+  assert.equal(
+    persisted.runs[0].resultArtifact.source,
+    "app_server_turn_failure",
+  )
+  assert.equal(persisted.runs[0].resultArtifact.turnId, "turn-app-server-failure")
+  assert.equal(persisted.runs[0].resultArtifact.failure.codexErrorInfo, "cyberPolicy")
+})
+
+test("restart fail-closes a failed thread whose notification was not persisted", async (t) => {
+  const directory = await mkdtemp(
+    path.join(os.tmpdir(), "koalafrog-app-server-failure-readback-"),
+  )
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const block = controlBlock({ instructionId: "app-server-failure-readback-001" })
+  const [instruction] = extractAgentControls(block)
+  const store = new StateStore({
+    stateDirectory: directory,
+    repository: "Sillyquack/koalafrog-hq",
+    issueNumber: 53,
+  })
+  const state = await store.load()
+  beginInstruction(state, instruction)
+  state.threadId = "thread-failure-readback"
+  state.workspacePath = "/tmp/workspace-failure-readback"
+  state.branch = "agent/app-server-failure-readback-001"
+  recordInstructionTurnStarted(state, {
+    turnId: "turn-failure-readback",
+    attempt: 0,
+  })
+  await store.save(state)
+
+  let runTurnCalls = 0
+  const comments = [{ body: block }]
+  const orchestrator = new Orchestrator(runtimeConfig(directory), {
+    store,
+    workspace: fakeWorkspace(),
+    appServer: {
+      async start() {},
+      async resumeThread(threadId) {
+        return { thread: { id: threadId } }
+      },
+      async waitForMcpReady() {},
+      async readThread() {
+        return {
+          thread: {
+            turns: [
+              {
+                id: "turn-failure-readback",
+                status: "failed",
+                error: { codexErrorInfo: "cyberPolicy", willRetry: false },
+              },
+            ],
+          },
+        }
+      },
+      async runTurn() {
+        runTurnCalls += 1
+        throw new Error("Failed readback must not start another turn")
+      },
+      async stop() {},
+    },
+    controlPlane: {
+      async fetchTask() {
+        return { issue: { body: "" }, comments }
+      },
+      async postComment(body) {
+        comments.push({ body })
+      },
+    },
+  })
+
+  assert.equal((await orchestrator.runOnce()).status, "failed")
+  assert.equal(runTurnCalls, 0)
+  const persisted = await store.load()
+  assert.equal(persisted.runs.length, 1)
+  assert.equal(persisted.runs[0].turnCount, 1)
+  assert.equal(persisted.runs[0].resultArtifact.turnId, "turn-failure-readback")
+  assert.equal(
+    (await store.findEvent(
+      "turn_failed:thread-failure-readback:turn-failure-readback",
+    )).willRetry,
+    false,
+  )
+})
+
+test("retryable AppServer failures use the bounded sequential retry policy", async (t) => {
+  const directory = await mkdtemp(
+    path.join(os.tmpdir(), "koalafrog-app-server-retry-"),
+  )
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const block = controlBlock({ instructionId: "app-server-retry-001" })
+  const comments = [{ body: block }]
+  let turns = 0
+  let activeTurns = 0
+  const orchestrator = new Orchestrator(
+    { ...runtimeConfig(directory), maxRetries: 1 },
+    {
+      workspace: fakeWorkspace(),
+      appServer: {
+        async start() {},
+        async startThread() {
+          return { thread: { id: "thread-app-server-retry" } }
+        },
+        async waitForMcpReady() {},
+        async runTurn(options) {
+          turns += 1
+          activeTurns += 1
+          assert.equal(activeTurns, 1)
+          const turnId = `turn-app-server-retry-${turns}`
+          await options.onTurnStarted(turnId)
+          if (turns === 1) {
+            const failure = {
+              eventId: `turn_failed:thread-app-server-retry:${turnId}`,
+              errorClass: "AppServerTurnError",
+              code: "APP_SERVER_TURN_ERROR",
+              category: "transient",
+              codexErrorInfo: "transient",
+              willRetry: true,
+              threadId: "thread-app-server-retry",
+              turnId,
+            }
+            const result = {
+              status: "failed",
+              turn: { id: turnId, status: "failed", items: [] },
+              pendingOwnerRequest: null,
+              commandExecutions: [],
+              appServerFailure: failure,
+              retryable: true,
+            }
+            await options.onTurnFailed(result)
+            activeTurns -= 1
+            return result
+          }
+          activeTurns -= 1
+          return {
+            status: "completed",
+            turn: { id: turnId, status: "completed", items: [] },
+            pendingOwnerRequest: null,
+            agentMessage: "Completed after the bounded retry.",
+          }
+        },
+        async stop() {},
+      },
+      controlPlane: {
+        async fetchTask() {
+          return { issue: { body: "" }, comments }
+        },
+        async postComment(body) {
+          comments.push({ body })
+        },
+      },
+    },
+  )
+
+  assert.equal((await orchestrator.runOnce()).status, "needs_review")
+  assert.equal(turns, 2)
+  assert.equal(activeTurns, 0)
+  const store = new StateStore({
+    stateDirectory: directory,
+    repository: "Sillyquack/koalafrog-hq",
+    issueNumber: 53,
+  })
+  const persisted = await store.load()
+  assert.equal(persisted.runs.length, 1)
+  assert.equal(persisted.runs[0].turnCount, 2)
+  assert.equal((await orchestrator.runOnce()).status, "idle")
+  assert.equal(turns, 2)
+})
+
 test("Issue #63/004 final artifact survives restart and publishes exactly once", async (t) => {
   const directory = await mkdtemp(path.join(os.tmpdir(), "koalafrog-result-recovery-"))
   t.after(() => rm(directory, { recursive: true, force: true }))

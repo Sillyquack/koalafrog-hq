@@ -137,6 +137,43 @@ function redactString(value) {
     )
 }
 
+function canonicalLogValue(value) {
+  if (Array.isArray(value)) return value.map(canonicalLogValue)
+  if (value === null || typeof value !== "object") return value
+  return Object.fromEntries(
+    Object.keys(value)
+      .sort()
+      .map((key) => [key, canonicalLogValue(value[key])]),
+  )
+}
+
+function parseEventLog(contents) {
+  if (contents === null) return []
+  return contents
+    .toString("utf8")
+    .split("\n")
+    .filter(Boolean)
+    .map((line) => {
+      try {
+        const event = JSON.parse(line)
+        if (!event || typeof event !== "object" || Array.isArray(event)) {
+          throw new Error("event is not an object")
+        }
+        return event
+      } catch (error) {
+        const failure = new Error("Durable event log is malformed")
+        failure.code = "EVENT_LOG_MALFORMED"
+        failure.cause = error
+        throw failure
+      }
+    })
+}
+
+function eventPayload(event) {
+  const { at: _at, ...payload } = event
+  return canonicalLogValue(payload)
+}
+
 export function redactForLog(value, seen = new WeakSet()) {
   if (typeof value === "string") return redactString(value)
   if (value === null || typeof value !== "object") return value
@@ -484,6 +521,86 @@ export class StateStore {
       `${JSON.stringify(record)}\n`,
       { hooks: this.fileSystemHooks },
     )
+  }
+
+  async appendEventOnce(eventId, event) {
+    if (
+      typeof eventId !== "string" ||
+      !/^[A-Za-z0-9._:/-]{1,512}$/.test(eventId)
+    ) {
+      throw new Error("Cannot persist an event with an unsafe identity")
+    }
+    await this.ensureDirectory()
+    const record = {
+      at: new Date().toISOString(),
+      ...redactForLog(event),
+      eventId,
+    }
+    const lock = await this.#acquireWriteLock()
+    try {
+      const contents = await readFileNoFollow(
+        this.directoryGuard,
+        path.basename(this.eventPath),
+        { allowMissing: true },
+      )
+      const matches = parseEventLog(contents).filter(
+        (candidate) => candidate.eventId === eventId,
+      )
+      if (matches.length > 1) {
+        const error = new Error("Durable event identity is ambiguous")
+        error.code = "EVENT_ID_AMBIGUOUS"
+        throw error
+      }
+      if (matches.length === 1) {
+        if (
+          JSON.stringify(eventPayload(matches[0])) !==
+          JSON.stringify(eventPayload(record))
+        ) {
+          const error = new Error("Durable event identity conflicts")
+          error.code = "EVENT_ID_CONFLICT"
+          throw error
+        }
+        return { created: false, event: matches[0] }
+      }
+      await appendFileNoFollow(
+        this.directoryGuard,
+        path.basename(this.eventPath),
+        `${JSON.stringify(record)}\n`,
+        { hooks: this.fileSystemHooks },
+      )
+      return { created: true, event: record }
+    } finally {
+      await this.#releaseWriteLock(lock)
+    }
+  }
+
+  async findEvent(eventId) {
+    if (
+      typeof eventId !== "string" ||
+      !/^[A-Za-z0-9._:/-]{1,512}$/.test(eventId)
+    ) {
+      throw new Error("Cannot read an event with an unsafe identity")
+    }
+    await this.ensureDirectory()
+    const lock = await this.#acquireWriteLock()
+    try {
+      const contents = await readFileNoFollow(
+        this.directoryGuard,
+        path.basename(this.eventPath),
+        { allowMissing: true },
+      )
+      const matches = parseEventLog(contents).filter(
+        (candidate) => candidate.eventId === eventId,
+      )
+      if (matches.length > 1) {
+        const error = new Error("Durable event identity is ambiguous")
+        error.code = "EVENT_ID_AMBIGUOUS"
+        throw error
+      }
+      return matches[0] ?? null
+    } finally {
+      await this.#releaseWriteLock(lock)
+    }
   }
 
   async appendStderr(text) {

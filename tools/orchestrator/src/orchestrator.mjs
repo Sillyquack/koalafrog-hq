@@ -968,6 +968,12 @@ export function recordCompletedTurnResult(
     pendingOwnerRequest: compactOwnerRequest(
       turnResult?.pendingOwnerRequest ?? null,
     ),
+    ...(turnResult?.appServerFailure
+      ? {
+          appServerFailure: turnResult.appServerFailure,
+          retryable: turnResult.retryable === true,
+        }
+      : {}),
     resultArtifact,
   })
   state.activeInstruction.resultArtifact = persisted.resultArtifact
@@ -976,6 +982,131 @@ export function recordCompletedTurnResult(
     state.activeInstruction.phase = "turn_completed"
   }
   return persisted
+}
+
+function appServerFailureEventId(threadId, turnId) {
+  if (
+    typeof threadId !== "string" ||
+    typeof turnId !== "string" ||
+    !/^[A-Za-z0-9._:/-]{1,160}$/.test(threadId) ||
+    !/^[A-Za-z0-9._:/-]{1,160}$/.test(turnId)
+  ) {
+    throw new Error("AppServer turn failure identity is invalid")
+  }
+  return `turn_failed:${threadId}:${turnId}`
+}
+
+function turnResultFromAppServerFailureEvent(state, event) {
+  const threadId = state.threadId
+  const turnId = state.activeInstruction?.turnId
+  const expectedEventId = appServerFailureEventId(threadId, turnId)
+  if (
+    !event ||
+    event.type !== "turn_failed" ||
+    event.eventId !== expectedEventId ||
+    event.threadId !== threadId ||
+    event.turnId !== turnId ||
+    event.errorClass !== "AppServerTurnError" ||
+    event.code !== "APP_SERVER_TURN_ERROR" ||
+    typeof event.codexErrorInfo !== "string" ||
+    !/^[A-Za-z0-9._:/-]{1,160}$/.test(event.codexErrorInfo) ||
+    event.category !== event.codexErrorInfo ||
+    typeof event.willRetry !== "boolean"
+  ) {
+    throw new Error("Durable AppServer turn failure binding is invalid")
+  }
+  const failure = {
+    eventId: event.eventId,
+    errorClass: event.errorClass,
+    code: event.code,
+    category: event.category,
+    codexErrorInfo: event.codexErrorInfo,
+    willRetry: event.willRetry,
+    threadId,
+    turnId,
+  }
+  return {
+    status: "failed",
+    turn: {
+      id: turnId,
+      status: "failed",
+      items: [],
+      error: {
+        errorClass: failure.errorClass,
+        code: failure.code,
+        category: failure.category,
+        codexErrorInfo: failure.codexErrorInfo,
+        willRetry: failure.willRetry,
+      },
+    },
+    pendingOwnerRequest: null,
+    agentMessage: "",
+    commandExecutions: [],
+    appServerFailure: failure,
+    // A recovered notification does not prove that no command was active when
+    // the process stopped. Preserve the upstream disposition, but fail closed
+    // rather than replaying an unverifiable side effect.
+    retryable: false,
+  }
+}
+
+function appServerFailureEventFromRecoveredTurn(state, turn) {
+  const threadId = state.threadId
+  const turnId = state.activeInstruction?.turnId
+  if (turn?.id !== turnId || turn?.status !== "failed") return null
+  const rawCategory = turn.error?.codexErrorInfo ?? turn.error?.category
+  const codexErrorInfo =
+    typeof rawCategory === "string" &&
+    /^[A-Za-z0-9._:/-]{1,160}$/.test(rawCategory)
+      ? rawCategory
+      : "unknown"
+  return {
+    type: "turn_failed",
+    eventId: appServerFailureEventId(threadId, turnId),
+    errorClass: "AppServerTurnError",
+    code: "APP_SERVER_TURN_ERROR",
+    category: codexErrorInfo,
+    codexErrorInfo,
+    willRetry: turn.error?.willRetry === true,
+    threadId,
+    turnId,
+  }
+}
+
+function prepareAppServerFailureRetry(state, maxRetries) {
+  const active = state.activeInstruction
+  const completed = active?.completedTurnResult
+  if (!completed?.appServerFailure || completed.retryable !== true) return false
+  const attempt = active.attempts ?? 0
+  if (!Number.isSafeInteger(attempt) || attempt < 0 || attempt >= maxRetries) {
+    return false
+  }
+  const priorTurnId = active.turnId
+  active.phase = "thread_ready"
+  active.attempts = attempt + 1
+  delete active.turnId
+  delete active.turnStartedAt
+  delete active.turnTimedOutAt
+  delete active.turnInterruptRequestedAt
+  delete active.completedTurnResult
+  delete active.resultArtifact
+  delete active.gitExecutionPermissionGrants
+  const recoveryBinding = active.checkpointActivationRecovery
+  if (recoveryBinding) {
+    const recoveries = (state.checkpointActivationRecoveries ?? []).filter(
+      (record) => record.recoveryId === recoveryBinding.recoveryId,
+    )
+    if (
+      recoveries.length !== 1 ||
+      recoveries[0].status !== "boundary_activated" ||
+      recoveries[0].completedAt !== null ||
+      recoveries[0].turnId !== priorTurnId
+    ) {
+      throw new Error("Refusing to retry an ambiguous checkpoint recovery turn")
+    }
+    recoveries[0].turnId = null
+  }
+  return { attempt: attempt + 1, priorTurnId }
 }
 
 export function beginInstruction(state, instruction, selectedAt = new Date()) {
@@ -1110,7 +1241,10 @@ export class Orchestrator {
       new AppServerClient({
         binary: config.codexBinary,
         cwd: config.checkoutPath,
-        eventSink: (event) => this.store.appendEvent(event),
+        eventSink: (event) =>
+          event.type === "turn_failed" && event.eventId
+            ? this.store.appendEventOnce(event.eventId, event)
+            : this.store.appendEvent(event),
         stderrSink: (text) => this.store.appendStderr(text),
       })
     this.controlPlane = dependencies.controlPlane ?? null
@@ -1554,6 +1688,20 @@ export class Orchestrator {
             })
           }
         },
+        onTurnFailed: async (failedTurnResult) => {
+          if (
+            state.activeInstruction?.phase !== "turn_started" ||
+            state.activeInstruction.turnId !== failedTurnResult?.turn?.id ||
+            failedTurnResult?.appServerFailure?.threadId !== state.threadId
+          ) {
+            throw new Error(
+              "Refusing to persist an AppServer failure for another turn",
+            )
+          }
+          const persisted = recordCompletedTurnResult(state, failedTurnResult)
+          failedTurnResult.resultArtifact = persisted.resultArtifact
+          await this.#save(state)
+        },
         onOwnerStop: async (ownerRequest) => {
           recordPendingApprovalRequest({
             state,
@@ -1727,6 +1875,32 @@ export class Orchestrator {
       })
       if (result.status === "completed" || result.status === "needs_owner") {
         return result
+      }
+      if (result.appServerFailure) {
+        const retry = prepareAppServerFailureRetry(
+          state,
+          this.config.maxRetries,
+        )
+        if (!retry) return result
+        await this.#save(state)
+        await this.store.appendEventOnce(
+          `turn_retry_scheduled:${state.threadId}:${retry.priorTurnId}`,
+          {
+            type: "retry_scheduled",
+            instructionId: instruction.instructionId,
+            threadId: state.threadId,
+            priorTurnId: retry.priorTurnId,
+            attempt: retry.attempt,
+            reason: "app_server_turn_failure",
+          },
+        )
+        const backoff = Math.min(
+          this.config.retryBaseMs * 2 ** attempt +
+            Math.floor(Math.random() * 250),
+          30_000,
+        )
+        await delay(backoff)
+        continue
       }
       if (attempt < this.config.maxRetries) {
         const backoff = Math.min(
@@ -2588,8 +2762,22 @@ export class Orchestrator {
     }
 
     if (state.activeInstruction.phase === "turn_started") {
-      const recovered = await this.appServer.readThread(state.threadId)
-      const priorTurn = recovered.thread?.turns?.find(
+      const eventId = appServerFailureEventId(
+        state.threadId,
+        state.activeInstruction.turnId,
+      )
+      const durableFailure = await this.store.findEvent?.(eventId)
+      if (durableFailure) {
+        turnResult = recordCompletedTurnResult(
+          state,
+          turnResultFromAppServerFailureEvent(state, durableFailure),
+        )
+        await this.#save(state)
+      }
+      const recovered = turnResult
+        ? null
+        : await this.appServer.readThread(state.threadId)
+      const priorTurn = recovered?.thread?.turns?.find(
         (turn) => turn.id === state.activeInstruction.turnId,
       )
       if (priorTurn?.status === "completed") {
@@ -2598,6 +2786,21 @@ export class Orchestrator {
           turn: priorTurn,
           pendingOwnerRequest: null,
         })
+        await this.#save(state)
+      }
+      if (!turnResult && priorTurn?.status === "failed") {
+        const recoveredFailure = appServerFailureEventFromRecoveredTurn(
+          state,
+          priorTurn,
+        )
+        await this.store.appendEventOnce(
+          recoveredFailure.eventId,
+          recoveredFailure,
+        )
+        turnResult = recordCompletedTurnResult(
+          state,
+          turnResultFromAppServerFailureEvent(state, recoveredFailure),
+        )
         await this.#save(state)
       }
       if (
@@ -2692,6 +2895,28 @@ export class Orchestrator {
         state.activeInstruction.phase = "thread_ready"
         state.activeInstruction.attempts += 1
         await this.#save(state)
+      }
+    }
+
+    if (turnResult?.appServerFailure?.willRetry === true) {
+      const retry = prepareAppServerFailureRetry(
+        state,
+        this.config.maxRetries,
+      )
+      if (retry) {
+        await this.#save(state)
+        await this.store.appendEventOnce(
+          `turn_retry_scheduled:${state.threadId}:${retry.priorTurnId}`,
+          {
+            type: "retry_scheduled",
+            instructionId: instruction.instructionId,
+            threadId: state.threadId,
+            priorTurnId: retry.priorTurnId,
+            attempt: retry.attempt,
+            reason: "app_server_turn_failure",
+          },
+        )
+        turnResult = null
       }
     }
 
