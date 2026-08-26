@@ -59,6 +59,81 @@ function retryAuthorizationId({ state, instruction, recovery }) {
   return [...ids][0] ?? null
 }
 
+function terminalNonRetryableFailureRun(state) {
+  if (state.activeInstruction || !state.lastConsumedInstructionId) return null
+  const matches = (state.runs ?? []).filter(
+    (run) => run.instructionId === state.lastConsumedInstructionId,
+  )
+  if (matches.length > 1) {
+    throw new Error("Durable instruction result is ambiguous")
+  }
+  if (matches.length === 0) return null
+  const run = matches[0]
+  if (
+    run.status !== "failed" ||
+    run.resultArtifact?.source !== "app_server_turn_failure" ||
+    run.resultArtifact?.failure?.willRetry !== false
+  ) {
+    return null
+  }
+  const failure = run.resultArtifact.failure
+  if (
+    typeof run.threadId !== "string" ||
+    !run.threadId ||
+    !/^[A-Za-z0-9._:/-]{1,160}$/.test(run.threadId) ||
+    failure.threadId !== run.threadId ||
+    typeof failure.turnId !== "string" ||
+    !failure.turnId ||
+    !/^[A-Za-z0-9._:/-]{1,160}$/.test(failure.turnId) ||
+    run.resultArtifact.turnId !== failure.turnId ||
+    failure.eventId !== `turn_failed:${failure.threadId}:${failure.turnId}` ||
+    failure.errorClass !== "AppServerTurnError" ||
+    failure.code !== "APP_SERVER_TURN_ERROR" ||
+    typeof failure.codexErrorInfo !== "string" ||
+    !/^[A-Za-z0-9._:/-]{1,160}$/.test(failure.codexErrorInfo) ||
+    failure.category !== failure.codexErrorInfo
+  ) {
+    throw new Error("Durable terminal failure result binding is invalid")
+  }
+  return run
+}
+
+async function reconcileTerminalFailureQueueCompletion({
+  claimStore,
+  issueClaim,
+  state,
+  store,
+}) {
+  const run = terminalNonRetryableFailureRun(state)
+  if (
+    !run ||
+    typeof claimStore.completeClaimFromDurableTerminalFailure !== "function"
+  ) {
+    return null
+  }
+  const result = await claimStore.completeClaimFromDurableTerminalFailure(
+    {
+      instructionId: run.instructionId,
+      originIssueNumber: state.task.originIssueNumber,
+      originIssueUrl: state.task.originIssueUrl,
+      resultStatus: run.status,
+    },
+    { issueClaim },
+  )
+  if (result.completed) {
+    await store.appendEventOnce(
+      `queue_completion_reconciled:${run.instructionId}`,
+      {
+        type: "queue_completion_reconciled",
+        instructionId: run.instructionId,
+        issueNumber: state.task.originIssueNumber,
+        resultStatus: run.status,
+      },
+    )
+  }
+  return result
+}
+
 function unwrap(result, operation) {
   if (!result || result.isError) {
     throw new Error(`${operation} failed through the connected GitHub app`)
@@ -330,6 +405,29 @@ export async function runRepositoryIssue(
       if (isPullRequest(task.issue)) {
         await store.save(currentState)
         return { issueNumber, status: "pull_request_ignored", claimed: false }
+      }
+
+      const queueCompletion =
+        await reconcileTerminalFailureQueueCompletion({
+          claimStore,
+          issueClaim: claimedIssue,
+          state: currentState,
+          store,
+        })
+      if (
+        queueCompletion &&
+        !queueCompletion.completed &&
+        !new Set(["already_completed", "claim_missing"]).has(
+          queueCompletion.reason,
+        )
+      ) {
+        return {
+          issueNumber,
+          instructionId: currentState.lastConsumedInstructionId,
+          status: "queue_completion_deferred",
+          reason: queueCompletion.reason,
+          claimed: false,
+        }
       }
 
       const selection = durableTaskInstructionDecision({

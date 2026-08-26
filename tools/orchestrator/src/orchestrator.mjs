@@ -14,7 +14,6 @@ import {
   agentResultBindingDigest,
   agentResultPublicationDecision,
   controlPlaneBindingDigest,
-  findExistingResult,
   findExistingPickup,
   formatCompletionPacket,
   formatPickupPacket,
@@ -1025,6 +1024,11 @@ function turnResultFromAppServerFailureEvent(state, event) {
     threadId,
     turnId,
   }
+  const preservedFinalMessage =
+    state.activeInstruction?.resultArtifact?.turnId === turnId &&
+    typeof state.activeInstruction.resultArtifact.finalMessage === "string"
+      ? state.activeInstruction.resultArtifact.finalMessage
+      : ""
   return {
     status: "failed",
     turn: {
@@ -1040,7 +1044,7 @@ function turnResultFromAppServerFailureEvent(state, event) {
       },
     },
     pendingOwnerRequest: null,
-    agentMessage: "",
+    agentMessage: preservedFinalMessage,
     commandExecutions: [],
     appServerFailure: failure,
     // A recovered notification does not prove that no command was active when
@@ -1076,7 +1080,13 @@ function appServerFailureEventFromRecoveredTurn(state, turn) {
 function prepareAppServerFailureRetry(state, maxRetries) {
   const active = state.activeInstruction
   const completed = active?.completedTurnResult
-  if (!completed?.appServerFailure || completed.retryable !== true) return false
+  if (
+    !completed?.appServerFailure ||
+    completed.appServerFailure.willRetry !== true ||
+    completed.retryable !== true
+  ) {
+    return false
+  }
   const attempt = active.attempts ?? 0
   if (!Number.isSafeInteger(attempt) || attempt < 0 || attempt >= maxRetries) {
     return false
@@ -1340,6 +1350,12 @@ export class Orchestrator {
     packet = redactForLog(packet)
     state.activeInstruction.phase = "result_pending"
     state.activeInstruction.packet = packet
+    if (
+      packet.resultArtifact?.source === "app_server_turn_failure" &&
+      packet.resultArtifact?.failure?.willRetry === false
+    ) {
+      state.status = packet.status
+    }
     await this.#save(state)
 
     const completionComment = formatCompletionPacket(packet)
@@ -1409,15 +1425,35 @@ export class Orchestrator {
       correctionIds.delete(packet.instructionId)
       state.resultCorrectionInstructionIds = [...correctionIds]
     } else {
-      const existingResult = findExistingResult(comments, packet.instructionId)
-      if (!existingResult) {
+      const publicationDecision = agentResultPublicationDecision({
+        comments,
+        instructionId: packet.instructionId,
+        expectedPacket: packet,
+      })
+      if (
+        !publicationDecision.accepted &&
+        publicationDecision.rejection.code === "result_publication_missing"
+      ) {
         await this.controlPlane.postComment(completionComment)
+      } else if (!publicationDecision.accepted) {
+        await this.store.appendEventOnce(
+          `result_publication_rejected:${packet.instructionId}:${publicationDecision.rejection.code}`,
+          {
+            type: "result_publication_rejected",
+            instructionId: packet.instructionId,
+            issueNumber: state.task.originIssueNumber,
+            ...publicationDecision.rejection,
+          },
+        )
+        throw new Error(
+          `Result publication rejected: ${publicationDecision.rejection.code}`,
+        )
       } else if (
         correctionIds.has(packet.instructionId) &&
-        Number.isSafeInteger(existingResult.id)
+        Number.isSafeInteger(publicationDecision.value.commentId)
       ) {
         await this.controlPlane.updateComment(
-          existingResult.id,
+          publicationDecision.value.commentId,
           completionComment,
         )
         correctionIds.delete(packet.instructionId)
@@ -1873,6 +1909,62 @@ export class Orchestrator {
           })
         },
       })
+      if (!result.appServerFailure && state.activeInstruction?.turnId) {
+        const eventId = appServerFailureEventId(
+          state.threadId,
+          state.activeInstruction.turnId,
+        )
+        const durableFailure = await this.store.findEvent?.(eventId)
+        if (durableFailure) {
+          const canonicalFailure = turnResultFromAppServerFailureEvent(
+            state,
+            durableFailure,
+          )
+          const persistedFailure =
+            state.activeInstruction.completedTurnResult?.appServerFailure
+              ?.eventId === eventId
+              ? state.activeInstruction.completedTurnResult
+              : null
+          if (persistedFailure) {
+            if (
+              JSON.stringify(persistedFailure.appServerFailure) !==
+              JSON.stringify(canonicalFailure.appServerFailure)
+            ) {
+              throw new Error(
+                "Persisted AppServer failure conflicts with its durable event",
+              )
+            }
+            if (
+              !persistedFailure.resultArtifact?.finalMessage &&
+              result.agentMessage
+            ) {
+              canonicalFailure.agentMessage = result.agentMessage
+              canonicalFailure.commandExecutions = Array.isArray(
+                result.commandExecutions,
+              )
+                ? result.commandExecutions
+                : []
+              result = recordCompletedTurnResult(state, canonicalFailure)
+              await this.#save(state)
+            } else {
+              result = persistedFailure
+            }
+          } else {
+            const terminalFailure = canonicalFailure
+            terminalFailure.agentMessage =
+              result.agentMessage ||
+              state.activeInstruction.resultArtifact?.finalMessage ||
+              ""
+            terminalFailure.commandExecutions = Array.isArray(
+              result.commandExecutions,
+            )
+              ? result.commandExecutions
+              : []
+            result = recordCompletedTurnResult(state, terminalFailure)
+            await this.#save(state)
+          }
+        }
+      }
       if (result.status === "completed" || result.status === "needs_owner") {
         return result
       }

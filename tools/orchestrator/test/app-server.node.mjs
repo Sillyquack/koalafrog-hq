@@ -86,6 +86,80 @@ test("a terminal AppServer error is redacted and never enters EventEmitter's err
   )
 })
 
+test("turn completion cannot outrun a durably pending non-retryable failure", async () => {
+  let releaseFailurePersistence
+  let announceFailurePersistence
+  const failurePersistenceEntered = new Promise((resolve) => {
+    announceFailurePersistence = resolve
+  })
+  const failurePersistenceGate = new Promise((resolve) => {
+    releaseFailurePersistence = resolve
+  })
+  const persisted = []
+  const client = new AppServerClient({
+    cwd: "/tmp",
+    eventSink: async (event) => {
+      if (event.type !== "turn_failed") return
+      announceFailurePersistence()
+      await failurePersistenceGate
+    },
+  })
+  let protocolDispatch
+  client.request = async () => {
+    queueMicrotask(async () => {
+      client.emit("item/completed", {
+        threadId: "thread-live-047",
+        turnId: "turn-live-047-attempt-0",
+        item: {
+          id: "message-live-047",
+          type: "agentMessage",
+          text: "Safe progress captured before the terminal failure.",
+        },
+      })
+      protocolDispatch = client.dispatchProtocolMessage({
+        method: "error",
+        params: {
+          threadId: "thread-live-047",
+          turnId: "turn-live-047-attempt-0",
+          willRetry: false,
+          error: { codexErrorInfo: "cyberPolicy" },
+        },
+      })
+      await failurePersistenceEntered
+      client.emit("turn/completed", {
+        threadId: "thread-live-047",
+        turn: {
+          id: "turn-live-047-attempt-0",
+          status: "failed",
+          items: [],
+          error: { codexErrorInfo: "cyberPolicy", willRetry: false },
+        },
+      })
+      releaseFailurePersistence()
+      await protocolDispatch
+    })
+    return { turn: { id: "turn-live-047-attempt-0" } }
+  }
+
+  const result = await client.runTurn({
+    threadId: "thread-live-047",
+    prompt: "Continue the exact active instruction.",
+    cwd: "/tmp",
+    timeoutMs: 1_000,
+    onTurnFailed: async (failure) => persisted.push(failure),
+  })
+  await protocolDispatch
+
+  assert.equal(result.appServerFailure.willRetry, false)
+  assert.equal(result.appServerFailure.codexErrorInfo, "cyberPolicy")
+  assert.equal(result.retryable, false)
+  assert.equal(
+    result.agentMessage,
+    "Safe progress captured before the terminal failure.",
+  )
+  assert.equal(persisted.length, 1)
+})
+
 test("protocol method names cannot address reserved EventEmitter channels", async () => {
   const notifications = []
   const protocolEvents = []

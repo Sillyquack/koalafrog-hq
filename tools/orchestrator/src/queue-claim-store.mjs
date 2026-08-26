@@ -364,6 +364,120 @@ export class QueueClaimStore {
     }
   }
 
+  async completeClaimFromDurableTerminalFailure(
+    {
+      instructionId,
+      originIssueNumber,
+      originIssueUrl = null,
+      resultStatus,
+    },
+    { issueClaim = null } = {},
+  ) {
+    const safeId = safeInstructionId(instructionId)
+    if (!Number.isSafeInteger(originIssueNumber) || originIssueNumber < 1) {
+      throw new Error("Cannot complete a claim for an invalid origin issue")
+    }
+    if (
+      typeof resultStatus !== "string" ||
+      resultStatus !== "failed" ||
+      !completedResult({ status: resultStatus })
+    ) {
+      throw new Error("Cannot reconcile a non-terminal durable result")
+    }
+    if (!issueClaim) {
+      const result = await this.withIssueClaim(
+        { originIssueNumber },
+        (claimedIssue) =>
+          this.completeClaimFromDurableTerminalFailure(
+            {
+              instructionId: safeId,
+              originIssueNumber,
+              originIssueUrl,
+              resultStatus,
+            },
+            { issueClaim: claimedIssue },
+          ),
+      )
+      return result.claimed
+        ? result.value
+        : { completed: false, reason: result.reason }
+    }
+    if (
+      issueClaim[issueClaimBrand] !== this ||
+      issueClaim.originIssueNumber !== originIssueNumber
+    ) {
+      throw new Error(
+        "Durable queue completion is not bound to the active issue claim",
+      )
+    }
+    if (!(await fileLeaseIsActive(issueClaim.lease))) {
+      throw new Error("Durable queue completion issue lease is no longer active")
+    }
+
+    let instructionLock = null
+    try {
+      const instructionDecision = await this.#acquire(
+        path.join(this.instructionLockDirectory, `${safeId}.lock`),
+      )
+      if (!instructionDecision.acquired) {
+        return {
+          completed: false,
+          reason:
+            instructionDecision.reason === "lease_busy"
+              ? "instruction_busy"
+              : `instruction_${instructionDecision.reason}`,
+        }
+      }
+      instructionLock = instructionDecision.lease
+      const recordPath = path.join(this.recordDirectory, `${safeId}.json`)
+      const existing = await this.#readRecord(recordPath)
+      if (!existing) return { completed: false, reason: "claim_missing" }
+      if (existing.originIssueNumber !== originIssueNumber) {
+        throw new Error("Durable queue completion origin conflicts")
+      }
+      if (
+        existing.originIssueUrl &&
+        originIssueUrl &&
+        existing.originIssueUrl !== originIssueUrl
+      ) {
+        throw new Error("Durable queue completion URL conflicts")
+      }
+      if (existing.status === "completed") {
+        if (existing.resultStatus !== resultStatus) {
+          throw new Error("Durable queue completion result conflicts")
+        }
+        return { completed: false, reason: "already_completed", record: existing }
+      }
+
+      const now = this.now().toISOString()
+      const active = {
+        schemaVersion: 1,
+        instructionId: safeId,
+        originIssueNumber,
+        originIssueUrl: existing.originIssueUrl ?? originIssueUrl,
+        status: "active",
+        attempt: existing.attempt + 1,
+        pid: this.pid,
+        token: instructionLock.token,
+        retryAuthorizationId: existing.retryAuthorizationId ?? null,
+        claimedAt: now,
+        updatedAt: now,
+      }
+      await this.#writeRecord(recordPath, active)
+      const completed = {
+        ...active,
+        status: "completed",
+        resultStatus,
+        completedAt: this.now().toISOString(),
+        updatedAt: this.now().toISOString(),
+      }
+      await this.#writeRecord(recordPath, completed)
+      return { completed: true, record: completed }
+    } finally {
+      await releaseCrashSafeFileLease(instructionLock)
+    }
+  }
+
   async withIssueClaim({ originIssueNumber }, callback) {
     if (!Number.isSafeInteger(originIssueNumber) || originIssueNumber < 1) {
       throw new Error("Cannot claim an invalid origin issue number")

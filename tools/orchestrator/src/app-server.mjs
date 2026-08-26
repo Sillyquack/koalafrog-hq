@@ -390,6 +390,7 @@ export class AppServerClient extends EventEmitter {
       }
       if (prior) return
       this.seenTurnFailures.set(turnFailure.eventId, serialized)
+      this.emit("turn_failure_pending", turnFailure)
       try {
         await this.eventSink({ type: "turn_failed", ...turnFailure })
       } catch (error) {
@@ -546,6 +547,7 @@ export class AppServerClient extends EventEmitter {
     let timeoutInterruption = null
     let interruptedTurnCompletion = null
     const pendingProtocolFailures = new Map()
+    const observedProtocolFailureIds = new Set()
     let protocolFailureInFlight = false
     let approvalGranted = false
     const activeCommandExecutions = new Set()
@@ -619,6 +621,12 @@ export class AppServerClient extends EventEmitter {
       }
     }
     const finishTurn = (turn) => {
+      if (
+        protocolFailureInFlight ||
+        (turnId && observedProtocolFailureIds.has(turnId))
+      ) {
+        return
+      }
       const completedTurn = turnTimedOut
         ? {
             ...turn,
@@ -661,6 +669,12 @@ export class AppServerClient extends EventEmitter {
     }
     const onTurnCompleted = (params) => {
       if (params?.threadId !== threadId || params?.turn?.id !== turnId) return
+      if (
+        protocolFailureInFlight ||
+        observedProtocolFailureIds.has(turnId)
+      ) {
+        return
+      }
       if (turnTimedOut && activeCommandExecutions.size > 0) {
         interruptedTurnCompletion = params.turn
         return
@@ -716,6 +730,10 @@ export class AppServerClient extends EventEmitter {
         return
       }
       pendingProtocolFailures.set(failure.turnId, failure)
+    }
+    const onTurnFailurePending = (failure) => {
+      if (failure?.threadId !== threadId) return
+      observedProtocolFailureIds.add(failure.turnId)
     }
     const onAdapterFailure = (error) => fail(error)
     const stopForOwner = async (message, ownerRequest) => {
@@ -843,6 +861,7 @@ export class AppServerClient extends EventEmitter {
       this.off("item/completed", onItemCompleted)
       this.off("turn/completed", onTurnCompleted)
       this.off("server_request", onServerRequest)
+      this.off("turn_failure_pending", onTurnFailurePending)
       this.off("turn_failure", onTurnFailure)
       this.off("adapter_failure", onAdapterFailure)
     }
@@ -851,6 +870,7 @@ export class AppServerClient extends EventEmitter {
     this.on("item/completed", onItemCompleted)
     this.on("turn/completed", onTurnCompleted)
     this.on("server_request", onServerRequest)
+    this.on("turn_failure_pending", onTurnFailurePending)
     this.on("turn_failure", onTurnFailure)
     this.on("adapter_failure", onAdapterFailure)
 

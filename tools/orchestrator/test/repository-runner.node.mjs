@@ -2407,6 +2407,172 @@ test("persisted boundary activation terminally rejects later reconstruction drif
   )
 })
 
+test("repository restart completes the exact terminal #70/047 queue record without replaying a turn or protected action", async (t) => {
+  const directory = await mkdtemp(
+    path.join(os.tmpdir(), "koalafrog-terminal-queue-restart-"),
+  )
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const repository = "Sillyquack/koalafrog-hq"
+  const issueNumber = 70
+  const issueUrl =
+    "https://github.com/Sillyquack/koalafrog-hq/issues/70"
+  const instructionId = "orchestrator-bootstrap-direct-canonical-review-047"
+  const similarSuffixId = "unrelated-owner-control-047"
+  const queue = new QueueClaimStore({
+    stateDirectory: directory,
+    retryBaseMs: 60_000,
+  })
+  let queueCallbacks = 0
+  await assert.rejects(
+    queue.withClaim(
+      { instructionId, originIssueNumber: issueNumber, originIssueUrl: issueUrl },
+      async () => {
+        queueCallbacks += 1
+        throw new Error("simulated crash after durable task finalization")
+      },
+    ),
+    /simulated crash/,
+  )
+
+  const store = new StateStore({
+    stateDirectory: directory,
+    repository,
+    issueNumber,
+  })
+  const state = await store.load()
+  state.status = "failed"
+  state.lastConsumedInstructionId = instructionId
+  state.threadId = "thread-live-047"
+  state.workspacePath = "/workspaces/live-047"
+  state.branch = "agent/issue-70-live-047"
+  state.task.originIssueUrl = issueUrl
+  state.runs.push({
+    instructionId,
+    status: "failed",
+    threadId: "thread-live-047",
+    workspacePath: state.workspacePath,
+    branch: state.branch,
+    commits: [],
+    changedFiles: [],
+    turnCount: 1,
+    originIssueNumber: issueNumber,
+    originIssueUrl: issueUrl,
+    ownerRequest: null,
+    checks: {},
+    blockers: [],
+    ownerGates: [],
+    productionReadback: [],
+    safetyFindings: [],
+    branchPushState: [],
+    resultArtifact: {
+      version: 1,
+      source: "app_server_turn_failure",
+      capturedAt: "2026-08-26T12:00:00.000Z",
+      turnId: "turn-live-047-attempt-0",
+      turnStatus: "failed",
+      failure: {
+        eventId:
+          "turn_failed:thread-live-047:turn-live-047-attempt-0",
+        errorClass: "AppServerTurnError",
+        code: "APP_SERVER_TURN_ERROR",
+        category: "cyberPolicy",
+        codexErrorInfo: "cyberPolicy",
+        willRetry: false,
+        threadId: "thread-live-047",
+        turnId: "turn-live-047-attempt-0",
+      },
+      finalMessage: "Safe final progress evidence.",
+      checks: {},
+      findings: {},
+    },
+    completedAt: "2026-08-26T12:00:01.000Z",
+  })
+  await store.save(state)
+
+  const issue = {
+    number: issueNumber,
+    state: "open",
+    html_url: issueUrl,
+    updated_at: "2026-08-26T12:00:02.000Z",
+    body: controlBlock(instructionId),
+  }
+  const comments = [
+    {
+      id: 1,
+      body: controlBlock(similarSuffixId, {
+        action: "continue",
+        taskState: "needs_review",
+      }),
+    },
+  ]
+  const scanner = {
+    threadId: "scanner-terminal-047",
+    appServer: {
+      async callMcpTool(request) {
+        if (request.tool === "github.fetch_issue") {
+          return { structuredContent: { issue } }
+        }
+        if (request.tool === "github.fetch_issue_comments") {
+          return { structuredContent: { comments } }
+        }
+        throw new Error(`Unexpected MCP tool: ${request.tool}`)
+      },
+    },
+  }
+  let orchestratorConstructions = 0
+  class ForbiddenReplayOrchestrator {
+    constructor() {
+      orchestratorConstructions += 1
+      throw new Error("Terminal queue finalization must not construct a runner")
+    }
+  }
+  const config = {
+    repository,
+    stateDirectory: directory,
+    retryBaseMs: 1,
+  }
+  const candidate = {
+    issueNumber,
+    issueUrl,
+    updatedAt: issue.updated_at,
+    searchMatched: true,
+  }
+
+  const first = await runRepositoryIssue(scanner, config, candidate, {
+    OrchestratorClass: ForbiddenReplayOrchestrator,
+    claimStore: queue,
+  })
+  const replay = await runRepositoryIssue(scanner, config, candidate, {
+    OrchestratorClass: ForbiddenReplayOrchestrator,
+    claimStore: queue,
+  })
+  assert.equal(first.status, "no_pending_agent_control")
+  assert.equal(replay.status, "no_pending_agent_control")
+  assert.equal(orchestratorConstructions, 0)
+  assert.equal(queueCallbacks, 1)
+  const record = JSON.parse(
+    await readFile(
+      path.join(queue.recordDirectory, `${instructionId}.json`),
+      "utf8",
+    ),
+  )
+  assert.equal(record.status, "completed")
+  assert.equal(record.resultStatus, "failed")
+  assert.equal(record.attempt, 2)
+  const events = (await readFile(store.eventPath, "utf8"))
+    .trim()
+    .split("\n")
+    .map(JSON.parse)
+  assert.equal(
+    events.filter((event) => event.type === "queue_completion_reconciled")
+      .length,
+    1,
+  )
+  const persisted = await store.load()
+  assert.equal(persisted.lastConsumedInstructionId, instructionId)
+  assert.equal(persisted.runs.length, 1)
+})
+
 for (const [terminalStatus, issueNumber] of [
   ["needs_review", 63],
   ["failed", 53],

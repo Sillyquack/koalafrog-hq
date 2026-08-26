@@ -7,6 +7,7 @@ import { AppServerClient, classifyServerRequest } from "../src/app-server.mjs"
 import {
   controlPlaneBindingDigest,
   extractAgentControls,
+  formatCompletionPacket,
   ownerGateAcknowledgementId,
   ownerGateReason,
   shouldConsumeInstruction,
@@ -1493,6 +1494,10 @@ test("restart finalizes one durably observed non-retryable AppServer failure", a
     turnId: "turn-app-server-failure",
     attempt: 0,
   })
+  state.activeInstruction.resultArtifact = {
+    turnId: "turn-app-server-failure",
+    finalMessage: "Safe progress persisted before the terminal failure.",
+  }
   await store.save(state)
   const eventId =
     "turn_failed:thread-app-server-failure:turn-app-server-failure"
@@ -1559,6 +1564,515 @@ test("restart finalizes one durably observed non-retryable AppServer failure", a
   )
   assert.equal(persisted.runs[0].resultArtifact.turnId, "turn-app-server-failure")
   assert.equal(persisted.runs[0].resultArtifact.failure.codexErrorInfo, "cyberPolicy")
+  assert.equal(
+    persisted.runs[0].resultArtifact.finalMessage,
+    "Safe progress persisted before the terminal failure.",
+  )
+})
+
+test("restart finalizes a prepared terminal failure result without starting another turn", async (t) => {
+  const directory = await mkdtemp(
+    path.join(os.tmpdir(), "koalafrog-prepared-terminal-failure-"),
+  )
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const instructionId = "prepared-terminal-failure-047"
+  const block = controlBlock({ instructionId })
+  const [instruction] = extractAgentControls(block)
+  const store = new StateStore({
+    stateDirectory: directory,
+    repository: "Sillyquack/koalafrog-hq",
+    issueNumber: 53,
+  })
+  const state = await store.load()
+  state.task.originIssueUrl =
+    "https://github.com/Sillyquack/koalafrog-hq/issues/53"
+  beginInstruction(state, instruction)
+  state.threadId = "thread-prepared-terminal"
+  state.workspacePath = "/tmp/workspace-prepared-terminal"
+  state.branch = "agent/prepared-terminal"
+  recordInstructionTurnStarted(state, {
+    turnId: "turn-prepared-terminal",
+    attempt: 0,
+  })
+  const failure = {
+    eventId:
+      "turn_failed:thread-prepared-terminal:turn-prepared-terminal",
+    errorClass: "AppServerTurnError",
+    code: "APP_SERVER_TURN_ERROR",
+    category: "cyberPolicy",
+    codexErrorInfo: "cyberPolicy",
+    willRetry: false,
+    threadId: "thread-prepared-terminal",
+    turnId: "turn-prepared-terminal",
+  }
+  await store.appendEventOnce(failure.eventId, {
+    type: "turn_failed",
+    ...failure,
+  })
+  recordCompletedTurnResult(state, {
+    status: "failed",
+    turn: { id: failure.turnId, status: "failed", items: [] },
+    pendingOwnerRequest: null,
+    agentMessage: "Prepared safe terminal progress.",
+    commandExecutions: [],
+    appServerFailure: failure,
+    retryable: false,
+  })
+  await store.save(state)
+
+  let runTurnCalls = 0
+  const comments = [{ id: 1, body: block }]
+  let nextCommentId = 2
+  const orchestrator = new Orchestrator(runtimeConfig(directory), {
+    store,
+    workspace: fakeWorkspace(),
+    appServer: {
+      async start() {},
+      async resumeThread(threadId) {
+        return { thread: { id: threadId } }
+      },
+      async waitForMcpReady() {},
+      async runTurn() {
+        runTurnCalls += 1
+        throw new Error("Prepared terminal result must not replay")
+      },
+      async stop() {},
+    },
+    controlPlane: {
+      async fetchTask() {
+        return {
+          issue: {
+            body: "",
+            html_url: state.task.originIssueUrl,
+          },
+          comments,
+        }
+      },
+      async postComment(body) {
+        comments.push({ id: nextCommentId, body })
+        nextCommentId += 1
+      },
+    },
+  })
+
+  assert.equal((await orchestrator.runOnce()).status, "failed")
+  assert.equal((await orchestrator.runOnce()).status, "idle")
+  assert.equal(runTurnCalls, 0)
+  assert.equal(
+    comments.filter((comment) => comment.body.includes("agent_result:")).length,
+    1,
+  )
+  const completed = await store.load()
+  assert.equal(completed.activeInstruction, null)
+  assert.equal(completed.runs.length, 1)
+  assert.equal(
+    completed.runs[0].resultArtifact.finalMessage,
+    "Prepared safe terminal progress.",
+  )
+})
+
+test("live-shaped #70/047 attempt zero cannot invert willRetry false or substitute a suffix match", async (t) => {
+  const directory = await mkdtemp(
+    path.join(os.tmpdir(), "koalafrog-live-047-terminal-"),
+  )
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const instructionId = "orchestrator-bootstrap-direct-canonical-review-047"
+  const block = controlBlock({ instructionId })
+  const similarSuffix = controlBlock({
+    action: "continue",
+    instructionId: "unrelated-later-control-047",
+    taskState: "needs_review",
+  })
+  const comments = [
+    { id: 1, body: block },
+    { id: 2, body: similarSuffix },
+    {
+      id: 3,
+      body: formatCompletionPacket({
+        instructionId: "unrelated-later-control-047",
+        originIssueNumber: 53,
+        originIssueUrl:
+          "https://github.com/Sillyquack/koalafrog-hq/issues/53",
+        codexThreadId: "thread-unrelated-047",
+        status: "needs_review",
+        branch: "agent/issue-53-unrelated-047",
+        commits: [],
+        changedFiles: [],
+        checks: {},
+        ownerQuestion: null,
+        ownerRequest: null,
+        blockers: [],
+        ownerGates: [],
+        productionReadback: [],
+        safetyFindings: [],
+        branchPushState: [],
+        resultArtifact: null,
+      }),
+    },
+  ]
+  const store = new StateStore({
+    stateDirectory: directory,
+    repository: "Sillyquack/koalafrog-hq",
+    issueNumber: 53,
+  })
+  let turnStarts = 0
+  let protectedActions = 0
+  let nextCommentId = 4
+  const orchestrator = new Orchestrator(runtimeConfig(directory), {
+    store,
+    workspace: {
+      ...fakeWorkspace(),
+      async commitWorkspaceChanges() {
+        protectedActions += 1
+      },
+    },
+    appServer: {
+      async start() {},
+      async startThread() {
+        return { thread: { id: "thread-live-047" } }
+      },
+      async resumeThread(threadId) {
+        return { thread: { id: threadId } }
+      },
+      async waitForMcpReady() {},
+      async runTurn(options) {
+        turnStarts += 1
+        const turnId = `turn-live-047-attempt-${turnStarts - 1}`
+        await options.onTurnStarted(turnId)
+        const failure = {
+          eventId: `turn_failed:thread-live-047:${turnId}`,
+          errorClass: "AppServerTurnError",
+          code: "APP_SERVER_TURN_ERROR",
+          category: "cyberPolicy",
+          codexErrorInfo: "cyberPolicy",
+          willRetry: false,
+          threadId: "thread-live-047",
+          turnId,
+        }
+        await store.appendEventOnce(failure.eventId, {
+          type: "turn_failed",
+          ...failure,
+        })
+        return {
+          status: "failed",
+          turn: {
+            id: turnId,
+            status: "failed",
+            items: [],
+            error: { codexErrorInfo: "cyberPolicy", willRetry: false },
+          },
+          pendingOwnerRequest: null,
+          agentMessage:
+            "Safe progress evidence captured before the cyberPolicy failure.",
+          commandExecutions: [],
+        }
+      },
+      async stop() {},
+    },
+    controlPlane: {
+      async fetchTask() {
+        return {
+          issue: {
+            body: "",
+            html_url: "https://github.com/Sillyquack/koalafrog-hq/issues/53",
+          },
+          comments,
+        }
+      },
+      async postComment(body) {
+        comments.push({ id: nextCommentId, body })
+        nextCommentId += 1
+      },
+    },
+  })
+
+  assert.equal((await orchestrator.runOnce()).status, "failed")
+  assert.equal((await orchestrator.runOnce()).status, "idle")
+  assert.equal(turnStarts, 1)
+  assert.equal(protectedActions, 0)
+  assert.equal(
+    comments.filter(
+      (comment) =>
+        comment.body.includes("agent_result:") &&
+        comment.body.includes(`instruction_id: \"${instructionId}\"`),
+    ).length,
+    1,
+  )
+  const state = await store.load()
+  assert.equal(state.status, "failed")
+  assert.equal(state.activeInstruction, null)
+  assert.equal(state.lastConsumedInstructionId, instructionId)
+  assert.equal(state.runs.length, 1)
+  assert.equal(state.runs[0].turnCount, 1)
+  assert.equal(state.runs[0].resultArtifact.failure.threadId, "thread-live-047")
+  assert.equal(
+    state.runs[0].resultArtifact.failure.turnId,
+    "turn-live-047-attempt-0",
+  )
+  assert.equal(
+    state.runs[0].resultArtifact.finalMessage,
+    "Safe progress evidence captured before the cyberPolicy failure.",
+  )
+  const events = (await readFile(store.eventPath, "utf8"))
+    .trim()
+    .split("\n")
+    .map(JSON.parse)
+  assert.equal(events.filter((event) => event.type === "turn_failed").length, 1)
+  assert.equal(events.filter((event) => event.type === "retry_scheduled").length, 0)
+})
+
+test("terminal failure publication converges across crashes before and after the remote write", async (t) => {
+  for (const crashPoint of ["before_publication", "after_publication"]) {
+    await t.test(crashPoint, async (t) => {
+      const directory = await mkdtemp(
+        path.join(os.tmpdir(), `koalafrog-terminal-${crashPoint}-`),
+      )
+      t.after(() => rm(directory, { recursive: true, force: true }))
+      const instructionId = `terminal-${crashPoint}-047`
+      const comments = [{ id: 1, body: controlBlock({ instructionId }) }]
+      const store = new StateStore({
+        stateDirectory: directory,
+        repository: "Sillyquack/koalafrog-hq",
+        issueNumber: 53,
+      })
+      let turnStarts = 0
+      let resultPublicationAttempts = 0
+      let crashArmed = true
+      let nextCommentId = 2
+      const appServer = {
+        async start() {},
+        async startThread() {
+          return { thread: { id: `thread-${crashPoint}` } }
+        },
+        async resumeThread(threadId) {
+          return { thread: { id: threadId } }
+        },
+        async waitForMcpReady() {},
+        async readThread() {
+          throw new Error("Durable terminal failure must precede readback")
+        },
+        async runTurn(options) {
+          turnStarts += 1
+          const turnId = `turn-${crashPoint}`
+          await options.onTurnStarted(turnId)
+          const failure = {
+            eventId: `turn_failed:thread-${crashPoint}:${turnId}`,
+            errorClass: "AppServerTurnError",
+            code: "APP_SERVER_TURN_ERROR",
+            category: "cyberPolicy",
+            codexErrorInfo: "cyberPolicy",
+            willRetry: false,
+            threadId: `thread-${crashPoint}`,
+            turnId,
+          }
+          await store.appendEventOnce(failure.eventId, {
+            type: "turn_failed",
+            ...failure,
+          })
+          const result = {
+            status: "failed",
+            turn: { id: turnId, status: "failed", items: [] },
+            pendingOwnerRequest: null,
+            agentMessage: `Preserved ${crashPoint} progress.`,
+            commandExecutions: [],
+            appServerFailure: failure,
+            retryable: false,
+          }
+          await options.onTurnFailed(result)
+          return result
+        },
+        async stop() {},
+      }
+      const controlPlane = {
+        async fetchTask() {
+          return {
+            issue: {
+              body: "",
+              html_url: "https://github.com/Sillyquack/koalafrog-hq/issues/53",
+            },
+            comments,
+          }
+        },
+        async postComment(body) {
+          const isResult = body.includes("agent_result:")
+          if (isResult) {
+            resultPublicationAttempts += 1
+            if (crashArmed && crashPoint === "before_publication") {
+              crashArmed = false
+              throw new Error("crash before result publication")
+            }
+          }
+          comments.push({ id: nextCommentId, body })
+          nextCommentId += 1
+          if (isResult && crashArmed && crashPoint === "after_publication") {
+            crashArmed = false
+            throw new Error("crash after result publication")
+          }
+        },
+      }
+      const first = new Orchestrator(runtimeConfig(directory), {
+        appServer,
+        controlPlane,
+        store,
+        workspace: fakeWorkspace(),
+      })
+      await assert.rejects(first.runOnce(), /crash (?:before|after) result publication/)
+      const interrupted = await store.load()
+      assert.equal(interrupted.status, "failed")
+      assert.equal(interrupted.activeInstruction.phase, "result_pending")
+
+      const restarted = new Orchestrator(runtimeConfig(directory), {
+        appServer,
+        controlPlane,
+        store,
+        workspace: fakeWorkspace(),
+      })
+      assert.equal((await restarted.runOnce()).status, "failed")
+      assert.equal((await restarted.runOnce()).status, "idle")
+      assert.equal(turnStarts, 1)
+      assert.equal(
+        comments.filter((comment) => comment.body.includes("agent_result:"))
+          .length,
+        1,
+      )
+      assert.equal(
+        resultPublicationAttempts,
+        crashPoint === "before_publication" ? 2 : 1,
+      )
+      const completed = await store.load()
+      assert.equal(completed.activeInstruction, null)
+      assert.equal(completed.runs.length, 1)
+      assert.equal(
+        completed.runs[0].resultArtifact.finalMessage,
+        `Preserved ${crashPoint} progress.`,
+      )
+    })
+  }
+})
+
+test("ambiguous terminal result publication fails closed without a turn or third result", async (t) => {
+  const directory = await mkdtemp(
+    path.join(os.tmpdir(), "koalafrog-terminal-publication-ambiguous-"),
+  )
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const instructionId = "terminal-publication-ambiguous-047"
+  const comments = [{ id: 1, body: controlBlock({ instructionId }) }]
+  const store = new StateStore({
+    stateDirectory: directory,
+    repository: "Sillyquack/koalafrog-hq",
+    issueNumber: 53,
+  })
+  let turns = 0
+  let postCalls = 0
+  const appServer = {
+    async start() {},
+    async startThread() {
+      return { thread: { id: "thread-publication-ambiguous" } }
+    },
+    async resumeThread(threadId) {
+      return { thread: { id: threadId } }
+    },
+    async waitForMcpReady() {},
+    async readThread() {
+      throw new Error("Result finalization must not read or replay the turn")
+    },
+    async runTurn(options) {
+      turns += 1
+      const turnId = "turn-publication-ambiguous"
+      await options.onTurnStarted(turnId)
+      const failure = {
+        eventId:
+          "turn_failed:thread-publication-ambiguous:turn-publication-ambiguous",
+        errorClass: "AppServerTurnError",
+        code: "APP_SERVER_TURN_ERROR",
+        category: "cyberPolicy",
+        codexErrorInfo: "cyberPolicy",
+        willRetry: false,
+        threadId: "thread-publication-ambiguous",
+        turnId,
+      }
+      await store.appendEventOnce(failure.eventId, {
+        type: "turn_failed",
+        ...failure,
+      })
+      const result = {
+        status: "failed",
+        turn: { id: turnId, status: "failed", items: [] },
+        pendingOwnerRequest: null,
+        agentMessage: "Safe progress before ambiguous publication.",
+        commandExecutions: [],
+        appServerFailure: failure,
+        retryable: false,
+      }
+      await options.onTurnFailed(result)
+      return result
+    },
+    async stop() {},
+  }
+  let duplicated = false
+  const controlPlane = {
+    async fetchTask() {
+      return {
+        issue: {
+          body: "",
+          html_url: "https://github.com/Sillyquack/koalafrog-hq/issues/53",
+        },
+        comments,
+      }
+    },
+    async postComment(body) {
+      postCalls += 1
+      if (!body.includes("agent_result:")) {
+        comments.push({ id: 2, body })
+        return
+      }
+      if (duplicated) throw new Error("A third result must not be attempted")
+      duplicated = true
+      comments.push({ id: 3, body }, { id: 4, body })
+      throw new Error("simulated ambiguous remote publication")
+    },
+  }
+  const first = new Orchestrator(runtimeConfig(directory), {
+    appServer,
+    controlPlane,
+    store,
+    workspace: fakeWorkspace(),
+  })
+  await assert.rejects(first.runOnce(), /ambiguous remote publication/)
+
+  const restarted = new Orchestrator(runtimeConfig(directory), {
+    appServer,
+    controlPlane,
+    store,
+    workspace: fakeWorkspace(),
+  })
+  await assert.rejects(
+    restarted.runOnce(),
+    /Result publication rejected: result_publication_ambiguous/,
+  )
+  await assert.rejects(
+    restarted.runOnce(),
+    /Result publication rejected: result_publication_ambiguous/,
+  )
+  assert.equal(turns, 1)
+  assert.equal(postCalls, 2)
+  assert.equal(
+    comments.filter((comment) => comment.body.includes("agent_result:")).length,
+    2,
+  )
+  const state = await store.load()
+  assert.equal(state.status, "failed")
+  assert.equal(state.activeInstruction.phase, "result_pending")
+  assert.equal(state.runs.length, 0)
+  const events = (await readFile(store.eventPath, "utf8"))
+    .trim()
+    .split("\n")
+    .map(JSON.parse)
+  assert.equal(
+    events.filter((event) => event.type === "result_publication_rejected")
+      .length,
+    1,
+  )
 })
 
 test("restart fail-closes a failed thread whose notification was not persisted", async (t) => {
