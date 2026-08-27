@@ -31,6 +31,7 @@ const runtimeFiles = [
   "src/runtime-bundle.mjs",
   "src/runtime-policy.mjs",
   "src/state-store.mjs",
+  "src/terminality-reconciliation.mjs",
   "src/turn-accounting.mjs",
   "src/workspace.mjs",
 ]

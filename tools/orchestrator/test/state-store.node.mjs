@@ -18,6 +18,7 @@ import path from "node:path"
 import test from "node:test"
 import { setTimeout as delay } from "node:timers/promises"
 import {
+  currentStateSchemaVersion,
   StateRevisionConflictError,
   StateRevisionOverflowError,
   StateStore,
@@ -34,6 +35,49 @@ const repository = "Sillyquack/koalafrog-hq"
 function options(stateDirectory) {
   return { stateDirectory, repository, issueNumber: 63 }
 }
+
+test("schema-nine state gains an empty terminality reconciliation ledger", async (t) => {
+  const directory = await mkdtemp(
+    path.join(os.tmpdir(), "koalafrog-state-terminality-migration-"),
+  )
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const store = new StateStore(options(directory))
+  const legacy = await store.load()
+  legacy.schemaVersion = 9
+  delete legacy.terminalityReconciliations
+  await writeFile(store.statePath, `${JSON.stringify(legacy, null, 2)}\n`)
+
+  const migrated = await store.load()
+  assert.equal(migrated.schemaVersion, currentStateSchemaVersion)
+  assert.deepEqual(migrated.terminalityReconciliations, [])
+  assert.equal(migrated.stateRevision, legacy.stateRevision + 1)
+})
+
+test("durable protocol events can be reconstructed for terminality readback", async (t) => {
+  const directory = await mkdtemp(
+    path.join(os.tmpdir(), "koalafrog-state-terminality-events-"),
+  )
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const store = new StateStore(options(directory))
+  await store.load()
+  await store.appendEvent({
+    at: "2026-08-27T18:54:41.403Z",
+    type: "notification",
+    message: {
+      method: "item/started",
+      threadId: "thread-054",
+      turnId: "turn-054",
+      itemId: "exec-054",
+      itemType: "commandExecution",
+      itemStatus: "inProgress",
+    },
+  })
+
+  const events = await store.readEvents()
+  assert.equal(events.length, 1)
+  assert.equal(events[0].at, "2026-08-27T18:54:41.403Z")
+  assert.equal(events[0].message.itemId, "exec-054")
+})
 
 test("state revision CAS rejects a stale whole-state replacement", async (t) => {
   const directory = await mkdtemp(path.join(os.tmpdir(), "koalafrog-state-cas-"))

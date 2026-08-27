@@ -24,6 +24,7 @@ import {
   redactForLog,
   StateStore,
 } from "./state-store.mjs"
+import { terminalityReconciliationRecordIsValid } from "./terminality-reconciliation.mjs"
 
 installTaskThreadPolicy(AppServerClient)
 
@@ -59,7 +60,7 @@ function retryAuthorizationId({ state, instruction, recovery }) {
   return [...ids][0] ?? null
 }
 
-function terminalNonRetryableFailureRun(state) {
+function terminalDurableResultRun(state) {
   if (state.activeInstruction || !state.lastConsumedInstructionId) return null
   const matches = (state.runs ?? []).filter(
     (run) => run.instructionId === state.lastConsumedInstructionId,
@@ -74,7 +75,40 @@ function terminalNonRetryableFailureRun(state) {
     run.resultArtifact?.source !== "app_server_turn_failure" ||
     run.resultArtifact?.failure?.willRetry !== false
   ) {
-    return null
+    const terminality = run.resultArtifact?.terminality
+    if (
+      !new Set(["failed", "needs_review"]).has(run.status) ||
+      run.resultArtifact?.source !==
+        "interrupted_command_terminality_reconciliation" ||
+      !terminality ||
+      !new Set(["terminality_proven", "terminality_unprovable"]).has(
+        terminality.classification,
+      )
+    ) {
+      return null
+    }
+    const records = (state.terminalityReconciliations ?? []).filter(
+      (record) => record.reconciliationId === terminality.reconciliationId,
+    )
+    if (
+      records.length !== 1 ||
+      !terminalityReconciliationRecordIsValid(records[0]) ||
+      records[0].status !== "finalized" ||
+      records[0].resultStatus !== run.status ||
+      records[0].originIssueNumber !== state.task.originIssueNumber ||
+      records[0].originIssueUrl !== state.task.originIssueUrl ||
+      records[0].instructionId !== run.instructionId ||
+      records[0].threadId !== run.threadId ||
+      records[0].turnId !== terminality.turnId ||
+      records[0].classification !== terminality.classification ||
+      records[0].terminalOutcome !== terminality.terminalOutcome ||
+      records[0].instructionId !== terminality.instructionId ||
+      records[0].evidenceIdentity !== terminality.evidenceIdentity ||
+      JSON.stringify(records[0].itemIds) !== JSON.stringify(terminality.itemIds)
+    ) {
+      throw new Error("Durable terminality result binding is invalid")
+    }
+    return run
   }
   const failure = run.resultArtifact.failure
   if (
@@ -104,14 +138,18 @@ async function reconcileTerminalFailureQueueCompletion({
   state,
   store,
 }) {
-  const run = terminalNonRetryableFailureRun(state)
+  const run = terminalDurableResultRun(state)
   if (
     !run ||
-    typeof claimStore.completeClaimFromDurableTerminalFailure !== "function"
+    (typeof claimStore.completeClaimFromDurableTerminalResult !== "function" &&
+      typeof claimStore.completeClaimFromDurableTerminalFailure !== "function")
   ) {
     return null
   }
-  const result = await claimStore.completeClaimFromDurableTerminalFailure(
+  const complete =
+    claimStore.completeClaimFromDurableTerminalResult?.bind(claimStore) ??
+    claimStore.completeClaimFromDurableTerminalFailure.bind(claimStore)
+  const result = await complete(
     {
       instructionId: run.instructionId,
       originIssueNumber: state.task.originIssueNumber,
@@ -564,10 +602,20 @@ export async function runRepositoryCycle(
     }),
   } = {},
 ) {
-  const candidates = mergeIssueCandidates(
-    await search(scanner, config),
-    await discoverPersisted(config),
-  )
+  const candidates = config.issueNumberExplicit
+    ? [
+        {
+          issueNumber: config.issueNumber,
+          issueUrl: null,
+          createdAt: null,
+          updatedAt: null,
+          searchMatched: false,
+        },
+      ]
+    : mergeIssueCandidates(
+        await search(scanner, config),
+        await discoverPersisted(config),
+      )
   const results = []
   let claimedCount = 0
   for (const candidate of candidates) {

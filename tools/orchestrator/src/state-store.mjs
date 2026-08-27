@@ -16,7 +16,7 @@ import {
 } from "./durable-filesystem.mjs"
 import { normalizeTurnAccounting } from "./turn-accounting.mjs"
 
-export const currentStateSchemaVersion = 9
+export const currentStateSchemaVersion = 10
 
 const stateLockAttempts = 400
 const stateLockDelayMs = 5
@@ -95,10 +95,17 @@ function stateTransactionIdentity(contents) {
 }
 
 function validStateTransaction(predecessor, successor) {
-  if (successor?.kind !== "state" || successor.schemaVersion !== 9) return false
+  if (
+    successor?.kind !== "state" ||
+    !new Set([9, currentStateSchemaVersion]).has(successor.schemaVersion)
+  ) {
+    return false
+  }
   if (predecessor?.kind === "missing") return successor.revision === 1
   return Boolean(
     predecessor?.kind === "state" &&
+      (predecessor.schemaVersion !== currentStateSchemaVersion ||
+        successor.schemaVersion === currentStateSchemaVersion) &&
       successor.repository === predecessor.repository &&
       successor.issueNumber === predecessor.issueNumber &&
       successor.originIssueNumber === predecessor.originIssueNumber &&
@@ -226,6 +233,7 @@ export function initialState({ repository, issueNumber, issueUrl = null }) {
     workspaceBranchReconciliations: [],
     gitReconciliationCheckpoints: [],
     checkpointActivationRecoveries: [],
+    terminalityReconciliations: [],
     runs: [],
     updatedAt: new Date().toISOString(),
   }
@@ -266,8 +274,12 @@ export function migrateState(state, { repository, issueNumber }) {
     state.ownerGateAcknowledgements ??= []
   }
   if (state.schemaVersion === 8) {
-    state.schemaVersion = currentStateSchemaVersion
+    state.schemaVersion = 9
     state.stateRevision = 0
+  }
+  if (state.schemaVersion === 9) {
+    state.schemaVersion = currentStateSchemaVersion
+    state.terminalityReconciliations ??= []
   }
   if (state.schemaVersion !== currentStateSchemaVersion) {
     throw new Error(`Unsupported state schema: ${state.schemaVersion}`)
@@ -290,6 +302,7 @@ export function migrateState(state, { repository, issueNumber }) {
   state.workspaceBranchReconciliations ??= []
   state.gitReconciliationCheckpoints ??= []
   state.checkpointActivationRecoveries ??= []
+  state.terminalityReconciliations ??= []
   durableRevision(state.stateRevision)
   return normalizeTurnAccounting(state)
 }
@@ -598,6 +611,21 @@ export class StateStore {
         throw error
       }
       return matches[0] ?? null
+    } finally {
+      await this.#releaseWriteLock(lock)
+    }
+  }
+
+  async readEvents() {
+    await this.ensureDirectory()
+    const lock = await this.#acquireWriteLock()
+    try {
+      const contents = await readFileNoFollow(
+        this.directoryGuard,
+        path.basename(this.eventPath),
+        { allowMissing: true },
+      )
+      return parseEventLog(contents)
     } finally {
       await this.#releaseWriteLock(lock)
     }

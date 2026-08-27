@@ -8,6 +8,7 @@ import {
   controlPlaneBindingDigest,
   extractAgentControls,
   formatCompletionPacket,
+  formatPickupPacket,
   ownerGateAcknowledgementId,
   ownerGateReason,
   shouldConsumeInstruction,
@@ -47,6 +48,16 @@ import {
   issue63WorkspacePath,
   prepareIssue63ReconciliationState,
 } from "./fixtures/issue-63-production-day1-git-reconciliation-resume-010.mjs"
+import {
+  issue70CommandItemId,
+  issue70InstructionId,
+  issue70InterruptedCommand054Events,
+  issue70OriginIssueNumber,
+  issue70OriginIssueUrl,
+  issue70ReadbackWithCommand,
+  issue70ThreadId,
+  issue70TurnId,
+} from "./fixtures/issue-70-interrupted-command-054.mjs"
 
 function controlBlock({
   action = "start",
@@ -121,6 +132,112 @@ function fakeWorkspace() {
     async commitWorkspaceChanges() {},
     async validateWorkspace() {
       return { pass: true, detail: "" }
+    },
+  }
+}
+
+async function prepareIssue70InterruptedCommandState(directory) {
+  const block = controlBlock({ instructionId: issue70InstructionId })
+  const [instruction] = extractAgentControls(block)
+  const storeOptions = {
+    stateDirectory: directory,
+    repository: "Sillyquack/koalafrog-hq",
+    issueNumber: issue70OriginIssueNumber,
+  }
+  const store = new StateStore(storeOptions)
+  const state = await store.load()
+  beginInstruction(state, instruction, new Date("2026-08-27T18:53:00.000Z"))
+  state.task.originIssueUrl = issue70OriginIssueUrl
+  state.threadId = issue70ThreadId
+  state.workspacePath = "/tmp/issue-70-interrupted-054"
+  state.branch = "agent/issue-70-interrupted-054"
+  state.status = "running"
+  recordInstructionTurnStarted(state, {
+    turnId: issue70TurnId,
+    attempt: 0,
+    startedAt: new Date("2026-08-27T18:53:01.000Z"),
+  })
+  await store.save(state)
+  for (const event of issue70InterruptedCommand054Events()) {
+    await store.appendEvent(event)
+  }
+  const comments = [
+    { body: block },
+    {
+      body: formatPickupPacket({
+        instructionId: issue70InstructionId,
+        originIssueNumber: issue70OriginIssueNumber,
+        originIssueUrl: issue70OriginIssueUrl,
+        codexThreadId: issue70ThreadId,
+        branch: state.branch,
+      }),
+    },
+  ]
+  return { block, comments, store, storeOptions }
+}
+
+function issue70RecoveryDependencies({
+  comments,
+  resumeThread,
+  readThread,
+  counters,
+  store,
+}) {
+  return {
+    store,
+    appServer: {
+      async start() {},
+      async resumeThread(threadId) {
+        counters.resumes += 1
+        assert.equal(threadId, issue70ThreadId)
+        if (resumeThread) return resumeThread(threadId)
+        return { thread: { id: threadId } }
+      },
+      async waitForMcpReady() {},
+      async readThread(threadId) {
+        counters.reads += 1
+        return readThread(threadId)
+      },
+      async runTurn() {
+        counters.turns += 1
+        throw new Error("Interrupted command reconciliation must not start a turn")
+      },
+      async stop() {},
+    },
+    controlPlane: {
+      async fetchTask() {
+        return {
+          issue: {
+            issue_number: issue70OriginIssueNumber,
+            html_url: issue70OriginIssueUrl,
+            body: comments[0].body,
+          },
+          comments,
+        }
+      },
+      async postComment(body) {
+        counters.posts += 1
+        comments.push({ body })
+      },
+    },
+    workspace: {
+      ...fakeWorkspace(),
+      async ensureWorkspace() {
+        return {
+          path: "/tmp/issue-70-interrupted-054",
+          branch: "agent/issue-70-interrupted-054",
+        }
+      },
+      async inspectWorkspace() {
+        return {
+          branch: "agent/issue-70-interrupted-054",
+          commits: ["preserved-interrupted-head"],
+          changedFiles: ["preserved-interrupted.diff"],
+        }
+      },
+      async commitWorkspaceChanges() {
+        counters.commits += 1
+      },
     },
   }
 }
@@ -2698,6 +2815,7 @@ test("a timed-out turn fails closed when an interrupted command never becomes te
   })
   let turnStarts = 0
   let interruptRequests = 0
+  let timeoutPersisted = false
   appServer.request = async (method) => {
     if (method === "turn/start") {
       turnStarts += 1
@@ -2713,6 +2831,7 @@ test("a timed-out turn fails closed when an interrupted command never becomes te
       return { turn: { id: "turn-unproven-command" } }
     }
     if (method === "turn/interrupt") {
+      assert.equal(timeoutPersisted, true)
       interruptRequests += 1
       setTimeout(
         () =>
@@ -2750,11 +2869,284 @@ test("a timed-out turn fails closed when an interrupted command never becomes te
       prompt: "Do not overlap an unproven command.",
       cwd: "/tmp",
       timeoutMs: 5,
+      onTurnTimedOut: async ({ threadId, turnId, timedOutAt }) => {
+        assert.equal(threadId, "thread-unproven-command")
+        assert.equal(turnId, "turn-unproven-command")
+        assert.ok(Number.isFinite(Date.parse(timedOutAt)))
+        timeoutPersisted = true
+      },
     }),
     /did not prove terminal command completion/,
   )
   assert.equal(turnStarts, 1)
   assert.equal(interruptRequests, 1)
+  assert.equal(timeoutPersisted, true)
+})
+
+test("exact live-shaped Issue #70/054 terminalizes unprovable once without retry or worktree mutation", async (t) => {
+  const directory = await mkdtemp(
+    path.join(os.tmpdir(), "koalafrog-live-054-unprovable-"),
+  )
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const prepared = await prepareIssue70InterruptedCommandState(directory)
+  const counters = { resumes: 0, reads: 0, turns: 0, posts: 0, commits: 0 }
+  const orchestrator = new Orchestrator(
+    {
+      ...runtimeConfig(directory),
+      issueNumber: issue70OriginIssueNumber,
+      autoCommit: true,
+    },
+    issue70RecoveryDependencies({
+      comments: prepared.comments,
+      store: prepared.store,
+      counters,
+      resumeThread: async () => {
+        throw new Error("The original AppServer thread cannot be resumed")
+      },
+      readThread: async () => {
+        const error = new Error("The original AppServer process is gone")
+        error.code = "APP_SERVER_READBACK_UNAVAILABLE"
+        throw error
+      },
+    }),
+  )
+
+  const completed = await orchestrator.runOnce()
+  assert.equal(completed.status, "needs_review")
+  assert.deepEqual(counters, {
+    resumes: 1,
+    reads: 1,
+    turns: 0,
+    posts: 1,
+    commits: 0,
+  })
+  assert.equal(
+    prepared.comments.filter((comment) => comment.body.includes("agent_pickup:"))
+      .length,
+    1,
+  )
+  assert.equal(
+    prepared.comments.filter((comment) => comment.body.includes("agent_result:"))
+      .length,
+    1,
+  )
+  assert.match(prepared.comments.at(-1).body, /terminality_unprovable/)
+  assert.match(prepared.comments.at(-1).body, new RegExp(issue70TurnId))
+  assert.match(prepared.comments.at(-1).body, new RegExp(issue70CommandItemId))
+
+  const durable = await new StateStore(prepared.storeOptions).load()
+  assert.equal(durable.status, "needs_review")
+  assert.equal(durable.activeInstruction, null)
+  assert.equal(durable.runs.length, 1)
+  assert.deepEqual(durable.runs[0].changedFiles, ["preserved-interrupted.diff"])
+  assert.equal(durable.runs[0].turnCount, 1)
+  assert.equal(durable.terminalityReconciliations.length, 1)
+  assert.equal(
+    durable.terminalityReconciliations[0].classification,
+    "terminality_unprovable",
+  )
+  assert.equal(durable.terminalityReconciliations[0].status, "finalized")
+  assert.equal(
+    durable.terminalityReconciliations[0].evidence.terminalInteractionCount,
+    4,
+  )
+  assert.equal(
+    durable.terminalityReconciliations[0].evidence.postInterruptionOutputCount,
+    9,
+  )
+  assert.equal(
+    durable.terminalityReconciliations[0].evidence
+      .processAbsenceObservationCount,
+    1,
+  )
+
+  const replay = await orchestrator.runOnce()
+  assert.equal(replay.status, "idle")
+  assert.equal(counters.turns, 0)
+  assert.equal(counters.reads, 1)
+  assert.equal(counters.posts, 1)
+  assert.equal((await prepared.store.readEvents()).filter(
+    (event) => event.type === "turn_failed",
+  ).length, 0)
+})
+
+test("later authoritative completed, failed, and cancelled readback finalizes each interrupted instruction without replay", async (t) => {
+  for (const [commandStatus, exitCode, resultStatus, outcome] of [
+    ["completed", 0, "needs_review", "completed"],
+    ["failed", 1, "failed", "failed"],
+    ["cancelled", 1, "failed", "cancelled"],
+  ]) {
+    await t.test(commandStatus, async (t) => {
+      const directory = await mkdtemp(
+        path.join(os.tmpdir(), `koalafrog-live-054-${commandStatus}-`),
+      )
+      t.after(() => rm(directory, { recursive: true, force: true }))
+      const prepared = await prepareIssue70InterruptedCommandState(directory)
+      const counters = {
+        resumes: 0,
+        reads: 0,
+        turns: 0,
+        posts: 0,
+        commits: 0,
+      }
+      const orchestrator = new Orchestrator(
+        {
+          ...runtimeConfig(directory),
+          issueNumber: issue70OriginIssueNumber,
+          autoCommit: true,
+        },
+        issue70RecoveryDependencies({
+          comments: prepared.comments,
+          store: prepared.store,
+          counters,
+          readThread: async () =>
+            issue70ReadbackWithCommand(commandStatus, exitCode),
+        }),
+      )
+
+      assert.equal((await orchestrator.runOnce()).status, resultStatus)
+      assert.equal((await orchestrator.runOnce()).status, "idle")
+      assert.equal(counters.turns, 0)
+      assert.equal(counters.reads, 1)
+      assert.equal(counters.posts, 1)
+      assert.equal(counters.commits, 0)
+      const durable = await new StateStore(prepared.storeOptions).load()
+      assert.equal(durable.terminalityReconciliations.length, 1)
+      assert.equal(
+        durable.terminalityReconciliations[0].classification,
+        "terminality_proven",
+      )
+      assert.equal(durable.terminalityReconciliations[0].terminalOutcome, outcome)
+      assert.equal(durable.terminalityReconciliations[0].status, "finalized")
+      assert.equal(durable.runs.length, 1)
+      assert.equal(durable.runs[0].status, resultStatus)
+    })
+  }
+})
+
+test("contradictory interrupted-command readback terminalizes fail-closed without a turn", async (t) => {
+  const directory = await mkdtemp(
+    path.join(os.tmpdir(), "koalafrog-live-054-contradictory-"),
+  )
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const prepared = await prepareIssue70InterruptedCommandState(directory)
+  await prepared.store.appendEvent({
+    at: "2026-08-27T18:56:00.000Z",
+    type: "notification",
+    message: {
+      method: "item/completed",
+      threadId: issue70ThreadId,
+      turnId: issue70TurnId,
+      itemId: issue70CommandItemId,
+      itemType: "commandExecution",
+      itemStatus: "completed",
+      exitCode: 0,
+    },
+  })
+  const counters = { resumes: 0, reads: 0, turns: 0, posts: 0, commits: 0 }
+  const orchestrator = new Orchestrator(
+    { ...runtimeConfig(directory), issueNumber: issue70OriginIssueNumber },
+    issue70RecoveryDependencies({
+      comments: prepared.comments,
+      store: prepared.store,
+      counters,
+      readThread: async () => issue70ReadbackWithCommand("failed", 1),
+    }),
+  )
+
+  assert.equal((await orchestrator.runOnce()).status, "needs_review")
+  assert.equal(counters.turns, 0)
+  const durable = await new StateStore(prepared.storeOptions).load()
+  assert.equal(
+    durable.terminalityReconciliations[0].classification,
+    "terminality_unprovable",
+  )
+  assert.ok(
+    durable.terminalityReconciliations[0].evidence.reasons.includes(
+      `contradictory_item_evidence:${issue70CommandItemId}`,
+    ),
+  )
+})
+
+test("reconciliation persistence converges across crashes immediately before and after its CAS write", async (t) => {
+  for (const crashPhase of ["before", "after"]) {
+    await t.test(crashPhase, async (t) => {
+      const directory = await mkdtemp(
+        path.join(os.tmpdir(), `koalafrog-live-054-crash-${crashPhase}-`),
+      )
+      t.after(() => rm(directory, { recursive: true, force: true }))
+      const prepared = await prepareIssue70InterruptedCommandState(directory)
+      let injected = false
+      const crashingStore = {
+        directory: prepared.store.directory,
+        load: (...args) => prepared.store.load(...args),
+        appendEvent: (...args) => prepared.store.appendEvent(...args),
+        appendEventOnce: (...args) => prepared.store.appendEventOnce(...args),
+        findEvent: (...args) => prepared.store.findEvent(...args),
+        readEvents: (...args) => prepared.store.readEvents(...args),
+        appendStderr: (...args) => prepared.store.appendStderr(...args),
+        async save(state) {
+          const reconciliationWrite = Boolean(
+            state.activeInstruction?.phase === "turn_completed" &&
+              state.activeInstruction?.completedTurnResult
+                ?.terminalityReconciliation,
+          )
+          if (!injected && reconciliationWrite) {
+            injected = true
+            if (crashPhase === "after") await prepared.store.save(state)
+            throw new Error(`crash ${crashPhase} reconciliation persistence`)
+          }
+          return prepared.store.save(state)
+        },
+      }
+      const counters = {
+        resumes: 0,
+        reads: 0,
+        turns: 0,
+        posts: 0,
+        commits: 0,
+      }
+      const config = {
+        ...runtimeConfig(directory),
+        issueNumber: issue70OriginIssueNumber,
+      }
+      const first = new Orchestrator(
+        config,
+        issue70RecoveryDependencies({
+          comments: prepared.comments,
+          store: crashingStore,
+          counters,
+          readThread: async () => issue70ReadbackWithCommand("completed", 0),
+        }),
+      )
+      await assert.rejects(
+        first.runOnce(),
+        new RegExp(`crash ${crashPhase} reconciliation persistence`),
+      )
+      assert.equal(counters.posts, 0)
+      assert.equal(counters.turns, 0)
+
+      const restartedStore = new StateStore(prepared.storeOptions)
+      const restarted = new Orchestrator(
+        config,
+        issue70RecoveryDependencies({
+          comments: prepared.comments,
+          store: restartedStore,
+          counters,
+          readThread: async () => issue70ReadbackWithCommand("completed", 0),
+        }),
+      )
+      assert.equal((await restarted.runOnce()).status, "needs_review")
+      assert.equal((await restarted.runOnce()).status, "idle")
+      const durable = await restartedStore.load()
+      assert.equal(durable.terminalityReconciliations.length, 1)
+      assert.equal(durable.terminalityReconciliations[0].status, "finalized")
+      assert.equal(durable.runs.length, 1)
+      assert.equal(counters.posts, 1)
+      assert.equal(counters.turns, 0)
+      assert.equal(counters.reads, crashPhase === "before" ? 2 : 1)
+    })
+  }
 })
 
 test("restart publishes a persisted owner stop before returning to polling", async (t) => {

@@ -365,6 +365,16 @@ export class QueueClaimStore {
   }
 
   async completeClaimFromDurableTerminalFailure(
+    binding,
+    options = {},
+  ) {
+    if (binding?.resultStatus !== "failed") {
+      throw new Error("Cannot reconcile a non-failure through the failure path")
+    }
+    return this.completeClaimFromDurableTerminalResult(binding, options)
+  }
+
+  async completeClaimFromDurableTerminalResult(
     {
       instructionId,
       originIssueNumber,
@@ -379,7 +389,7 @@ export class QueueClaimStore {
     }
     if (
       typeof resultStatus !== "string" ||
-      resultStatus !== "failed" ||
+      !new Set(["failed", "needs_review"]).has(resultStatus) ||
       !completedResult({ status: resultStatus })
     ) {
       throw new Error("Cannot reconcile a non-terminal durable result")
@@ -388,7 +398,7 @@ export class QueueClaimStore {
       const result = await this.withIssueClaim(
         { originIssueNumber },
         (claimedIssue) =>
-          this.completeClaimFromDurableTerminalFailure(
+          this.completeClaimFromDurableTerminalResult(
             {
               instructionId: safeId,
               originIssueNumber,

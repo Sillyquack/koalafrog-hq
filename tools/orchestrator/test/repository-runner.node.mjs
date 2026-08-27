@@ -26,7 +26,9 @@ import {
   recordCompletedTurnResult,
 } from "../src/orchestrator.mjs"
 import { QueueClaimStore } from "../src/queue-claim-store.mjs"
+import { resultArtifactFromTurnResult } from "../src/result-artifact.mjs"
 import { StateStore } from "../src/state-store.mjs"
+import { interruptedCommandTerminalityDecision } from "../src/terminality-reconciliation.mjs"
 import {
   issue63ContinuationControl,
   issue63ExpectedBranch,
@@ -42,6 +44,15 @@ import {
   prepareIssue63HistoricalGrantState,
   prepareIssue63ReconciliationState,
 } from "./fixtures/issue-63-production-day1-git-reconciliation-resume-010.mjs"
+import {
+  issue70CommandItemId,
+  issue70InstructionId,
+  issue70InterruptedCommand054Events,
+  issue70OriginIssueNumber,
+  issue70OriginIssueUrl,
+  issue70ThreadId,
+  issue70TurnId,
+} from "./fixtures/issue-70-interrupted-command-054.mjs"
 
 function controlBlock(
   instructionId,
@@ -262,6 +273,45 @@ test("a failed oldest issue does not starve the next deterministic candidate", a
   assert.deepEqual(visited, [54, 63])
   assert.equal(results[0].status, "failed")
   assert.equal(results[1].status, "needs_review")
+})
+
+test("an explicit repository issue scope loads only that durable task", async () => {
+  const visited = []
+  const results = await runRepositoryCycle(
+    {},
+    {
+      issueNumber: issue70OriginIssueNumber,
+      issueNumberExplicit: true,
+      stateDirectory: "/tmp/unused-scoped-queue-state",
+      retryBaseMs: 1,
+      maxTasksPerPoll: 1,
+    },
+    {
+      search: async () => {
+        throw new Error("scoped recovery must not search unrelated issues")
+      },
+      discoverPersisted: async () => {
+        throw new Error("scoped recovery must not inspect unrelated state")
+      },
+      runIssue: async (_scanner, _config, candidate) => {
+        visited.push(candidate.issueNumber)
+        return {
+          issueNumber: candidate.issueNumber,
+          status: "needs_review",
+          claimed: true,
+        }
+      },
+    },
+  )
+
+  assert.deepEqual(visited, [issue70OriginIssueNumber])
+  assert.deepEqual(results, [
+    {
+      issueNumber: issue70OriginIssueNumber,
+      status: "needs_review",
+      claimed: true,
+    },
+  ])
 })
 
 test("a repository task is claimed once and routes pickup to its origin issue", async (t) => {
@@ -2571,6 +2621,163 @@ test("repository restart completes the exact terminal #70/047 queue record witho
   const persisted = await store.load()
   assert.equal(persisted.lastConsumedInstructionId, instructionId)
   assert.equal(persisted.runs.length, 1)
+})
+
+test("repository restart completes a finalized #70/054 terminality queue record without replay", async (t) => {
+  const directory = await mkdtemp(
+    path.join(os.tmpdir(), "koalafrog-terminality-queue-restart-"),
+  )
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const repository = "Sillyquack/koalafrog-hq"
+  const queue = new QueueClaimStore({
+    stateDirectory: directory,
+    retryBaseMs: 60_000,
+  })
+  let queueCallbacks = 0
+  await assert.rejects(
+    queue.withClaim(
+      {
+        instructionId: issue70InstructionId,
+        originIssueNumber: issue70OriginIssueNumber,
+        originIssueUrl: issue70OriginIssueUrl,
+      },
+      async () => {
+        queueCallbacks += 1
+        throw new Error("simulated crash after terminality result finalization")
+      },
+    ),
+    /simulated crash/,
+  )
+
+  const store = new StateStore({
+    stateDirectory: directory,
+    repository,
+    issueNumber: issue70OriginIssueNumber,
+  })
+  const state = await store.load()
+  state.status = "needs_review"
+  state.lastConsumedInstructionId = issue70InstructionId
+  state.threadId = issue70ThreadId
+  state.workspacePath = "/workspaces/issue-70-054"
+  state.branch = "agent/issue-70-054"
+  state.task.originIssueUrl = issue70OriginIssueUrl
+  const decision = interruptedCommandTerminalityDecision({
+    state: {
+      task: {
+        originIssueNumber: issue70OriginIssueNumber,
+        originIssueUrl: issue70OriginIssueUrl,
+      },
+      status: "running",
+      threadId: issue70ThreadId,
+      activeInstruction: {
+        instructionId: issue70InstructionId,
+        phase: "turn_started",
+        turnId: issue70TurnId,
+      },
+    },
+    events: issue70InterruptedCommand054Events(),
+    readbackError: Object.assign(new Error("readback unavailable"), {
+      code: "APP_SERVER_READBACK_UNAVAILABLE",
+    }),
+    reconciledAt: "2026-08-27T19:05:00.000Z",
+  })
+  const terminality = decision.turnResult.terminalityReconciliation
+  state.terminalityReconciliations.push({
+    ...decision.record,
+    status: "finalized",
+    finalizedAt: "2026-08-27T19:05:01.000Z",
+    resultStatus: "needs_review",
+  })
+  state.runs.push({
+    instructionId: issue70InstructionId,
+    status: "needs_review",
+    threadId: issue70ThreadId,
+    workspacePath: state.workspacePath,
+    branch: state.branch,
+    commits: [],
+    changedFiles: ["preserved-interrupted.diff"],
+    turnCount: 1,
+    originIssueNumber: issue70OriginIssueNumber,
+    originIssueUrl: issue70OriginIssueUrl,
+    ownerRequest: null,
+    checks: {},
+    blockers: ["terminality_unprovable"],
+    ownerGates: [],
+    productionReadback: [],
+    safetyFindings: [terminality.evidenceSummary],
+    branchPushState: [],
+    resultArtifact: resultArtifactFromTurnResult(
+      decision.turnResult,
+      "2026-08-27T19:05:00.000Z",
+    ),
+    completedAt: "2026-08-27T19:05:01.000Z",
+  })
+  await store.save(state)
+
+  const issue = {
+    number: issue70OriginIssueNumber,
+    state: "open",
+    html_url: issue70OriginIssueUrl,
+    updated_at: "2026-08-27T19:06:00.000Z",
+    body: controlBlock(issue70InstructionId),
+  }
+  const scanner = {
+    threadId: "scanner-terminal-054",
+    appServer: {
+      async callMcpTool(request) {
+        if (request.tool === "github.fetch_issue") {
+          return { structuredContent: { issue } }
+        }
+        if (request.tool === "github.fetch_issue_comments") {
+          return { structuredContent: { comments: [] } }
+        }
+        throw new Error(`Unexpected MCP tool: ${request.tool}`)
+      },
+    },
+  }
+  let orchestratorConstructions = 0
+  class ForbiddenReplayOrchestrator {
+    constructor() {
+      orchestratorConstructions += 1
+      throw new Error("Terminality queue finalization must not construct a runner")
+    }
+  }
+  const config = { repository, stateDirectory: directory, retryBaseMs: 1 }
+  const candidate = {
+    issueNumber: issue70OriginIssueNumber,
+    issueUrl: issue70OriginIssueUrl,
+    updatedAt: issue.updated_at,
+    searchMatched: true,
+  }
+
+  const first = await runRepositoryIssue(scanner, config, candidate, {
+    OrchestratorClass: ForbiddenReplayOrchestrator,
+    claimStore: queue,
+  })
+  const replay = await runRepositoryIssue(scanner, config, candidate, {
+    OrchestratorClass: ForbiddenReplayOrchestrator,
+    claimStore: queue,
+  })
+  assert.equal(first.status, "no_pending_agent_control")
+  assert.equal(replay.status, "no_pending_agent_control")
+  assert.equal(orchestratorConstructions, 0)
+  assert.equal(queueCallbacks, 1)
+  const queueRecord = JSON.parse(
+    await readFile(
+      path.join(queue.recordDirectory, `${issue70InstructionId}.json`),
+      "utf8",
+    ),
+  )
+  assert.equal(queueRecord.status, "completed")
+  assert.equal(queueRecord.resultStatus, "needs_review")
+  assert.equal(queueRecord.attempt, 2)
+  const events = await store.readEvents()
+  assert.equal(
+    events.filter((event) => event.type === "queue_completion_reconciled")
+      .length,
+    1,
+  )
+  assert.equal((await store.load()).terminalityReconciliations.length, 1)
 })
 
 for (const [terminalStatus, issueNumber] of [

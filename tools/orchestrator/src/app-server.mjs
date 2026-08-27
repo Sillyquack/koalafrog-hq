@@ -30,6 +30,8 @@ function compactProtocolMessage(message) {
   if (params.turn?.status !== undefined) compact.status = params.turn.status
   if (params.item?.type !== undefined) compact.itemType = params.item.type
   if (params.item?.status !== undefined) compact.itemStatus = params.item.status
+  const exitCode = params.item?.exitCode ?? params.item?.exit_code
+  if (Number.isInteger(exitCode)) compact.exitCode = exitCode
   if (params.name !== undefined) compact.name = params.name
   if (params.reason !== undefined) compact.reason = String(params.reason).slice(0, 500)
   if (params.message !== undefined) compact.summary = String(params.message).slice(0, 500)
@@ -298,6 +300,7 @@ export class AppServerClient extends EventEmitter {
     this.pending = new Map()
     this.mcpStatuses = new Map()
     this.seenTurnFailures = new Map()
+    this.protocolDispatch = Promise.resolve()
     this.process = null
   }
 
@@ -350,14 +353,18 @@ export class AppServerClient extends EventEmitter {
       return
     }
 
-    void this.dispatchProtocolMessage(message).catch((error) => {
-      Promise.resolve(
-        this.eventSink({
-          type: "protocol_dispatch_failed",
-          code: "APP_SERVER_PROTOCOL_DISPATCH_FAILED",
-        }),
-      ).catch(() => {})
-      this.emit("adapter_failure", error)
+    this.protocolDispatch = this.protocolDispatch.then(async () => {
+      try {
+        await this.dispatchProtocolMessage(message)
+      } catch (error) {
+        Promise.resolve(
+          this.eventSink({
+            type: "protocol_dispatch_failed",
+            code: "APP_SERVER_PROTOCOL_DISPATCH_FAILED",
+          }),
+        ).catch(() => {})
+        this.emit("adapter_failure", error)
+      }
     })
   }
 
@@ -408,9 +415,16 @@ export class AppServerClient extends EventEmitter {
     }
 
     const kind = message.id === undefined ? "notification" : "server_request"
-    Promise.resolve(
-      this.eventSink({ type: kind, message: compactProtocolMessage(message) }),
-    ).catch(() => {})
+    const event = { type: kind, message: compactProtocolMessage(message) }
+    if (
+      new Set(["item/started", "item/completed", "turn/completed"]).has(
+        message.method,
+      )
+    ) {
+      await this.eventSink(event)
+    } else {
+      Promise.resolve(this.eventSink(event)).catch(() => {})
+    }
     this.emit(kind, message)
     switch (message.method) {
       case "item/completed":
@@ -530,6 +544,7 @@ export class AppServerClient extends EventEmitter {
     timeoutMs,
     approvalPolicy = null,
     onTurnStarted = () => {},
+    onTurnTimedOut = () => {},
     onTurnFailed = () => {},
     onOwnerStop = () => {},
     resolveApprovalRequest = () => null,
@@ -545,6 +560,9 @@ export class AppServerClient extends EventEmitter {
     let settled = false
     let turnTimedOut = false
     let timeoutInterruption = null
+    let turnStartPersistence = Promise.resolve()
+    let turnTimeoutPersistence = Promise.resolve()
+    let turnTimedOutAt = null
     let interruptedTurnCompletion = null
     const pendingProtocolFailures = new Map()
     const observedProtocolFailureIds = new Set()
@@ -562,7 +580,11 @@ export class AppServerClient extends EventEmitter {
       if (settled) return
       settled = true
       cleanup()
-      Promise.all([ownerStopPersistence, approvedActionPersistence]).then(
+      Promise.all([
+        ownerStopPersistence,
+        approvedActionPersistence,
+        turnTimeoutPersistence,
+      ]).then(
         () => terminal.resolve(result),
         (error) => terminal.reject(error),
       )
@@ -571,13 +593,18 @@ export class AppServerClient extends EventEmitter {
       if (settled) return
       settled = true
       cleanup()
-      Promise.all([ownerStopPersistence, approvedActionPersistence]).then(
+      Promise.all([
+        ownerStopPersistence,
+        approvedActionPersistence,
+        turnTimeoutPersistence,
+      ]).then(
         () => terminal.reject(error),
         (persistenceError) => terminal.reject(persistenceError),
       )
     }
     const interruptTimedOutTurn = () => {
       if (!turnId || timeoutInterruption || settled) return
+      turnTimedOutAt ??= new Date().toISOString()
       turnTerminationTimer = setTimeout(
         () =>
           fail(
@@ -587,13 +614,18 @@ export class AppServerClient extends EventEmitter {
           ),
         this.turnTerminationTimeoutMs,
       )
-      timeoutInterruption = this.interruptTurn(threadId, turnId).catch((error) => {
-        fail(
-          new Error(
-            `Failed to interrupt timed-out turn ${turnId}: ${error.message}`,
-          ),
-        )
-      })
+      turnTimeoutPersistence = turnStartPersistence.then(() =>
+        onTurnTimedOut({ threadId, turnId, timedOutAt: turnTimedOutAt }),
+      )
+      timeoutInterruption = turnTimeoutPersistence
+        .then(() => this.interruptTurn(threadId, turnId))
+        .catch((error) => {
+          fail(
+            new Error(
+              `Failed to persist or interrupt timed-out turn ${turnId}: ${error.message}`,
+            ),
+          )
+        })
     }
     const scheduleOwnerStopFallback = () => {
       clearTimeout(ownerStopTimer)
@@ -886,7 +918,8 @@ export class AppServerClient extends EventEmitter {
         60_000,
       )
       turnId = response.turn.id
-      await onTurnStarted(turnId)
+      turnStartPersistence = Promise.resolve().then(() => onTurnStarted(turnId))
+      await turnStartPersistence
       const pendingProtocolFailure = pendingProtocolFailures.get(turnId)
       if (pendingProtocolFailure) {
         await finishProtocolFailure(pendingProtocolFailure)

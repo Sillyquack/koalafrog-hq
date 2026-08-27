@@ -186,6 +186,50 @@ test("protocol method names cannot address reserved EventEmitter channels", asyn
   )
 })
 
+test("authoritative command lifecycle notifications persist before turn listeners consume them", async () => {
+  let releasePersistence
+  let announcePersistence
+  const persistenceEntered = new Promise((resolve) => {
+    announcePersistence = resolve
+  })
+  const persistenceGate = new Promise((resolve) => {
+    releasePersistence = resolve
+  })
+  const events = []
+  const client = new AppServerClient({
+    cwd: "/tmp",
+    eventSink: async (event) => {
+      events.push(event)
+      announcePersistence()
+      await persistenceGate
+    },
+  })
+  let listenerCalls = 0
+  client.on("item/completed", () => {
+    listenerCalls += 1
+  })
+
+  const dispatch = client.dispatchProtocolMessage({
+    method: "item/completed",
+    params: {
+      threadId: "thread-durable-command",
+      turnId: "turn-durable-command",
+      item: {
+        id: "exec-durable-command",
+        type: "commandExecution",
+        status: "completed",
+        exitCode: 7,
+      },
+    },
+  })
+  await persistenceEntered
+  assert.equal(listenerCalls, 0)
+  assert.equal(events[0].message.exitCode, 7)
+  releasePersistence()
+  await dispatch
+  assert.equal(listenerCalls, 1)
+})
+
 test("turn failure normalization requires stable active-turn identity", () => {
   assert.equal(
     appServerTurnFailureFromMessage({

@@ -286,6 +286,48 @@ test("a durable terminal result completes an interrupted queue claim without rep
   assert.equal(record.attempt, 2)
 })
 
+test("a fail-closed needs_review terminality result completes its queue claim once", async (t) => {
+  const directory = await mkdtemp(
+    path.join(os.tmpdir(), "koalafrog-terminality-queue-completion-"),
+  )
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const store = new QueueClaimStore({ stateDirectory: directory })
+  const binding = {
+    instructionId: "orchestrator-cooperative-local-process-model-finalization-054",
+    originIssueNumber: 70,
+    originIssueUrl: "https://github.com/Sillyquack/koalafrog-hq/issues/70",
+  }
+  let callbacks = 0
+  await assert.rejects(
+    store.withClaim(binding, async () => {
+      callbacks += 1
+      throw new Error("simulated crash after terminality finalization")
+    }),
+    /simulated crash/,
+  )
+
+  const completed = await store.completeClaimFromDurableTerminalResult({
+    ...binding,
+    resultStatus: "needs_review",
+  })
+  assert.equal(completed.completed, true)
+  const replay = await store.completeClaimFromDurableTerminalResult({
+    ...binding,
+    resultStatus: "needs_review",
+  })
+  assert.equal(replay.completed, false)
+  assert.equal(replay.reason, "already_completed")
+  assert.equal(callbacks, 1)
+  const record = JSON.parse(
+    await readFile(
+      path.join(store.recordDirectory, `${binding.instructionId}.json`),
+      "utf8",
+    ),
+  )
+  assert.equal(record.status, "completed")
+  assert.equal(record.resultStatus, "needs_review")
+})
+
 test("terminal queue completion recovers across both durable write crash boundaries", async (t) => {
   for (const failedWrite of [1, 2]) {
     await t.test(`write_${failedWrite}`, async (t) => {
