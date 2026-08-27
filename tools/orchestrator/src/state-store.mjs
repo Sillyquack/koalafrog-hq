@@ -10,6 +10,7 @@ import {
   durableAtomicWriteFile,
   ensurePrivateDirectory,
   FileLeaseMetadataError,
+  preflightDurableFilesystemCapabilities,
   readFileNoFollow,
   recoverDurableFileReplace,
   releaseCrashSafeFileLease,
@@ -344,6 +345,10 @@ export class StateStore {
   }
 
   async ensureDirectory() {
+    await preflightDurableFilesystemCapabilities({
+      ...(this.lockfSpec ? { lockfSpec: this.lockfSpec } : {}),
+      guardPaths: [`${this.stateLockPath}.takeover`],
+    })
     this.stateRootGuard = await ensurePrivateDirectory(this.stateDirectory)
     this.directoryGuard = await ensurePrivateDirectory(this.directory, {
       parentGuard: this.stateRootGuard,

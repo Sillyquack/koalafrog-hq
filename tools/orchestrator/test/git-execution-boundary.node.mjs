@@ -4884,7 +4884,7 @@ test("managed checkpoint execution writes only the selected linked worktree and 
   const executed = await executeGitReconciliationCheckpointMutation({
     plan: persisted.value,
   })
-  assert.equal(executed.accepted, true)
+  assert.equal(executed.accepted, true, JSON.stringify(executed))
 
   const recovered = await prepareGitReconciliationCheckpointExecution(setup.input)
   assert.equal(recovered.accepted, true, JSON.stringify(recovered))
@@ -4912,6 +4912,89 @@ test("managed checkpoint execution writes only the selected linked worktree and 
     1,
   )
   assert.deepEqual(await fileSnapshot(siblingGitDirectory), siblingBefore)
+})
+
+test("managed execution pins the authorized worktree and rejects final path or Git metadata replacement", async (t) => {
+  async function setupSibling(setup, suffix) {
+    const siblingPath = path.join(
+      path.dirname(setup.workspacePath),
+      `issue-63-boundary-sibling-${suffix}`,
+    )
+    await git(
+      setup.checkoutPath,
+      "worktree",
+      "add",
+      "-b",
+      `agent/issue-63-boundary-sibling-${suffix}`,
+      siblingPath,
+      setup.head,
+    )
+    const pointer = await readFile(path.join(siblingPath, ".git"), "utf8")
+    const gitDirectory = await realpath(
+      pointer.trim().slice("gitdir: ".length),
+    )
+    return { siblingPath, pointer, gitDirectory }
+  }
+
+  await t.test("workspace path replacement", async (t) => {
+    const setup = await managedExecutionSetup(t)
+    const prepared = await prepareGitReconciliationCheckpointExecution(setup.input)
+    assert.equal(prepared.accepted, true)
+    const sibling = await setupSibling(setup, "workspace")
+    const siblingBefore = await fileSnapshot(sibling.gitDirectory)
+    const moved = `${setup.workspacePath}-authorized-moved`
+    let replaced = false
+    try {
+      const result = await executeGitReconciliationCheckpointMutation({
+        plan: prepared.value,
+        beforeExecute: async () => {
+          await rename(setup.workspacePath, moved)
+          await symlink(sibling.siblingPath, setup.workspacePath)
+          replaced = true
+        },
+      })
+      assert.equal(result.accepted, false)
+      assert.equal(result.rejection.code, "managed_execution_boundary_changed")
+      assert.equal(await git(moved, "rev-parse", "HEAD"), setup.head)
+      assert.equal(await git(sibling.siblingPath, "rev-parse", "HEAD"), setup.head)
+      assert.deepEqual(await fileSnapshot(sibling.gitDirectory), siblingBefore)
+    } finally {
+      if (replaced) {
+        await unlink(setup.workspacePath)
+        await rename(moved, setup.workspacePath)
+      }
+    }
+  })
+
+  await t.test("workspace Git file replacement", async (t) => {
+    const setup = await managedExecutionSetup(t)
+    const prepared = await prepareGitReconciliationCheckpointExecution(setup.input)
+    assert.equal(prepared.accepted, true)
+    const sibling = await setupSibling(setup, "gitfile")
+    const siblingBefore = await fileSnapshot(sibling.gitDirectory)
+    const gitFile = path.join(setup.workspacePath, ".git")
+    const movedGitFile = path.join(setup.workspacePath, ".git.authorized")
+    let replaced = false
+    try {
+      const result = await executeGitReconciliationCheckpointMutation({
+        plan: prepared.value,
+        beforeExecute: async () => {
+          await rename(gitFile, movedGitFile)
+          await writeFile(gitFile, sibling.pointer, { mode: 0o600 })
+          replaced = true
+        },
+      })
+      assert.equal(result.accepted, false)
+      assert.equal(result.rejection.code, "managed_execution_boundary_changed")
+      assert.equal(await git(sibling.siblingPath, "rev-parse", "HEAD"), setup.head)
+      assert.deepEqual(await fileSnapshot(sibling.gitDirectory), siblingBefore)
+    } finally {
+      if (replaced) {
+        await unlink(gitFile)
+        await rename(movedGitFile, gitFile)
+      }
+    }
+  })
 })
 
 test("managed execution rejects tampered plans, destination drift, and ambiguous records", async (t) => {

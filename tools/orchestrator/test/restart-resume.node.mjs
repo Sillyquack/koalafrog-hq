@@ -1561,7 +1561,7 @@ test("restart finalizes one durably observed non-retryable AppServer failure", a
   assert.equal(persisted.runs[0].resultArtifact.failure.codexErrorInfo, "cyberPolicy")
 })
 
-test("back-to-back terminal error and failed completion schedule zero retries", async (t) => {
+test("completion-first terminal error dominance schedules zero retries", async (t) => {
   const directory = await mkdtemp(
     path.join(os.tmpdir(), "koalafrog-app-server-terminal-order-"),
   )
@@ -1608,19 +1608,19 @@ test("back-to-back terminal error and failed completion schedule zero retries", 
           result: { turn: { id: turnId } },
         })
         void appServer.dispatchProtocolMessage({
+          method: "turn/completed",
+          params: {
+            threadId: "thread-terminal-order",
+            turn: { id: turnId, status: "failed", items: [] },
+          },
+        })
+        void appServer.dispatchProtocolMessage({
           method: "error",
           params: {
             threadId: "thread-terminal-order",
             turnId,
             willRetry: false,
             error: { codexErrorInfo: "cyberPolicy" },
-          },
-        })
-        void appServer.dispatchProtocolMessage({
-          method: "turn/completed",
-          params: {
-            threadId: "thread-terminal-order",
-            turn: { id: turnId, status: "failed", items: [] },
           },
         })
       },

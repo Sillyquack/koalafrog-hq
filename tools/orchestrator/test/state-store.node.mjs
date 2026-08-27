@@ -252,6 +252,114 @@ test("guarded directory creation cannot mutate through a replaced parent", async
   assert.deepEqual(await readdir(outside), before)
 })
 
+test("descriptor mutation rejects a parent displaced outside guarded ancestry before touching its child", async (t) => {
+  const directory = await mkdtemp(path.join(os.tmpdir(), "koalafrog-ancestry-"))
+  const outside = await mkdtemp(path.join(os.tmpdir(), "koalafrog-displaced-"))
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  t.after(() => rm(outside, { recursive: true, force: true }))
+  const guardedPath = path.join(directory, "guarded")
+  const replacementPath = path.join(directory, "replacement")
+  const child = path.join(guardedPath, "child")
+  const sentinel = path.join(child, "sentinel.txt")
+  const displaced = path.join(outside, "displaced")
+  await mkdir(guardedPath, { mode: 0o700 })
+  await mkdir(replacementPath, { mode: 0o700 })
+  await mkdir(child, { mode: 0o755 })
+  await chmod(child, 0o755)
+  await writeFile(sentinel, "authorized ancestry only\n", { mode: 0o600 })
+  const guard = await ensurePrivateDirectory(guardedPath)
+  const beforeChild = await stat(child)
+  const beforeSentinel = await stat(sentinel)
+  const beforeContents = await readFile(sentinel, "utf8")
+
+  await assert.rejects(
+    ensurePrivateDirectory(child, {
+      parentGuard: guard,
+      hooks: {
+        beforeDescriptorDirectoryMutation: async () => {
+          await rename(guardedPath, displaced)
+          await symlink(replacementPath, guardedPath)
+        },
+      },
+    }),
+    (error) => error.code === "FILESYSTEM_DIRECTORY_REPLACED",
+  )
+
+  const displacedChild = path.join(displaced, "child")
+  const afterChild = await stat(displacedChild)
+  const afterSentinel = await stat(path.join(displacedChild, "sentinel.txt"))
+  assert.equal(afterChild.mode, beforeChild.mode)
+  assert.equal(afterChild.nlink, beforeChild.nlink)
+  assert.equal(afterChild.ctimeMs, beforeChild.ctimeMs)
+  assert.equal(afterSentinel.mode, beforeSentinel.mode)
+  assert.equal(afterSentinel.nlink, beforeSentinel.nlink)
+  assert.equal(afterSentinel.ctimeMs, beforeSentinel.ctimeMs)
+  assert.equal(
+    await readFile(path.join(displacedChild, "sentinel.txt"), "utf8"),
+    beforeContents,
+  )
+  assert.deepEqual(await readdir(replacementPath), [])
+})
+
+test("required advisory-lock capability failure occurs before state or queue filesystem mutation", async (t) => {
+  const stateDirectory = await mkdtemp(
+    path.join(os.tmpdir(), "koalafrog-capability-state-"),
+  )
+  const queueDirectory = await mkdtemp(
+    path.join(os.tmpdir(), "koalafrog-capability-queue-"),
+  )
+  t.after(() => rm(stateDirectory, { recursive: true, force: true }))
+  t.after(() => rm(queueDirectory, { recursive: true, force: true }))
+  await chmod(stateDirectory, 0o755)
+  await chmod(queueDirectory, 0o755)
+  const beforeState = await stat(stateDirectory)
+  const beforeQueue = await stat(queueDirectory)
+  const pathDependentLockfSpec = (guardPath) =>
+    guardPath === "/dev/null"
+      ? {
+          command: "/bin/sh",
+          args: [
+            "-c",
+            'printf "READY 1 1\\n"; /bin/cat >/dev/null',
+            "capability-only-lock-helper",
+          ],
+          busyCodes: new Set([75]),
+        }
+      : {
+          command: "/definitely/missing/koalafrog-lock-helper",
+          args: [],
+          busyCodes: new Set([75]),
+        }
+
+  const stateStore = new StateStore({
+    ...options(stateDirectory),
+    lockfSpec: pathDependentLockfSpec,
+  })
+  await assert.rejects(
+    stateStore.load(),
+    (error) => error.code === "FILE_LEASE_GUARD_UNAVAILABLE",
+  )
+  const queueStore = new QueueClaimStore({
+    stateDirectory: queueDirectory,
+    lockfSpec: pathDependentLockfSpec,
+  })
+  await assert.rejects(
+    queueStore.withIssueClaim({ originIssueNumber: 63 }, async () => null),
+    (error) => error.code === "FILE_LEASE_GUARD_UNAVAILABLE",
+  )
+
+  const afterState = await stat(stateDirectory)
+  const afterQueue = await stat(queueDirectory)
+  assert.deepEqual(await readdir(stateDirectory), [])
+  assert.deepEqual(await readdir(queueDirectory), [])
+  assert.equal(afterState.mode, beforeState.mode)
+  assert.equal(afterState.nlink, beforeState.nlink)
+  assert.equal(afterState.ctimeMs, beforeState.ctimeMs)
+  assert.equal(afterQueue.mode, beforeQueue.mode)
+  assert.equal(afterQueue.nlink, beforeQueue.nlink)
+  assert.equal(afterQueue.ctimeMs, beforeQueue.ctimeMs)
+})
+
 test("existing private-directory identity is immutable before permission normalization", async (t) => {
   const directory = await mkdtemp(path.join(os.tmpdir(), "koalafrog-dir-identity-"))
   t.after(() => rm(directory, { recursive: true, force: true }))

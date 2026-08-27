@@ -1,6 +1,7 @@
-import { execFile } from "node:child_process"
+import { execFile, spawn } from "node:child_process"
 import { createHash } from "node:crypto"
-import { lstat, readFile, readdir, realpath } from "node:fs/promises"
+import { constants } from "node:fs"
+import { lstat, open, readFile, readdir, realpath } from "node:fs/promises"
 import path from "node:path"
 import { promisify } from "node:util"
 import { checkpointOwnerGateAttemptAuditDecision } from "./approval-decisions.mjs"
@@ -26,6 +27,134 @@ const gitOperationMarkers = [
   "REBASE_HEAD",
 ]
 const gitOperationDirectories = ["rebase-merge", "rebase-apply", "sequencer"]
+const managedGitExecutionHelper = String.raw`
+import json
+import os
+import platform
+import stat
+import subprocess
+import sys
+
+if platform.system() == "Darwin":
+    import fcntl
+
+request = json.loads(sys.stdin.readline())
+
+def same_identity(value, expected, kind):
+    type_matches = stat.S_ISREG(value.st_mode) if kind == "file" else stat.S_ISDIR(value.st_mode)
+    return type_matches and value.st_dev == expected["dev"] and value.st_ino == expected["ino"]
+
+def require_descriptor(fd, expected, kind):
+    if not same_identity(os.fstat(fd), expected, kind):
+        raise RuntimeError("descriptor identity changed")
+
+def require_named(path, expected, kind):
+    value = os.lstat(path)
+    if stat.S_ISLNK(value.st_mode) or not same_identity(value, expected, kind):
+        raise RuntimeError("named identity changed")
+    if os.path.realpath(path) != path:
+        raise RuntimeError("named path is not canonical")
+
+def require_workspace_entry():
+    value = os.stat(request["workspaceName"], dir_fd=3, follow_symlinks=False)
+    if not same_identity(value, request["workspaceIdentity"], "directory"):
+        raise RuntimeError("workspace ancestry changed")
+
+def require_git_file():
+    descriptor = os.open(".git", os.O_RDONLY | os.O_NOFOLLOW, dir_fd=4)
+    try:
+        value = os.fstat(descriptor)
+        if not same_identity(value, request["workspaceGitFileIdentity"], "file"):
+            raise RuntimeError("Git file identity changed")
+        contents = os.read(descriptor, 4097).decode("utf-8")
+        if len(contents) > 4096 or contents != request["workspaceGitFileContents"]:
+            raise RuntimeError("Git file contents changed")
+    finally:
+        os.close(descriptor)
+
+def require_boundary():
+    require_descriptor(3, request["workspaceRootIdentity"], "directory")
+    require_descriptor(4, request["workspaceIdentity"], "directory")
+    require_descriptor(5, request["workspaceGitFileIdentity"], "file")
+    require_descriptor(6, request["gitDirectoryIdentity"], "directory")
+    require_descriptor(7, request["commonDirectoryIdentity"], "directory")
+    require_named(request["workspaceRoot"], request["workspaceRootIdentity"], "directory")
+    require_named(request["workspacePath"], request["workspaceIdentity"], "directory")
+    require_named(request["workspaceGitFile"], request["workspaceGitFileIdentity"], "file")
+    require_named(request["gitDirectory"], request["gitDirectoryIdentity"], "directory")
+    require_named(request["commonDirectory"], request["commonDirectoryIdentity"], "directory")
+    require_workspace_entry()
+    require_git_file()
+
+def descriptor_path(fd, expected):
+    if platform.system() == "Darwin":
+        value = fcntl.fcntl(fd, 50, b"\0" * 1024).split(b"\0", 1)[0].decode("utf-8")
+    elif platform.system() == "Linux":
+        value = os.readlink("/proc/self/fd/%d" % fd)
+    else:
+        raise RuntimeError("descriptor path lookup is unavailable")
+    value = os.path.realpath(value)
+    if not os.path.isabs(value):
+        raise RuntimeError("descriptor path is not absolute")
+    require_named(value, expected, "directory")
+    return value
+
+def git(args, binary=False):
+    result = subprocess.run(
+        ["/usr/bin/git", *args],
+        env=request["env"],
+        check=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+    )
+    return result.stdout if binary else result.stdout.decode("utf-8").strip()
+
+def main():
+    require_boundary()
+    os.fchdir(4)
+    if git(["branch", "--show-current"]) != request["branch"]:
+        raise RuntimeError("branch changed")
+    if git(["rev-parse", "HEAD"]) != request["head"]:
+        raise RuntimeError("HEAD changed")
+    if git(["rev-parse", "HEAD^{tree}"]) != request["tree"]:
+        raise RuntimeError("tree changed")
+    if git(["status", "--porcelain=v1", "-z"], binary=True) != b"":
+        raise RuntimeError("workspace is dirty")
+    if git(["rev-parse", "refs/heads/%s" % request["branch"]]) != request["head"]:
+        raise RuntimeError("branch ref changed")
+    if git(["cat-file", "-t", "%s^{commit}" % request["cherryPickCommit"]]) != "commit":
+        raise RuntimeError("target commit changed")
+    for marker in request["operationMarkers"]:
+        try:
+            os.stat(marker, dir_fd=6, follow_symlinks=False)
+            raise RuntimeError("Git operation marker appeared")
+        except FileNotFoundError:
+            pass
+    for directory in request["operationDirectories"]:
+        try:
+            os.stat(directory, dir_fd=6, follow_symlinks=False)
+            raise RuntimeError("Git operation directory appeared")
+        except FileNotFoundError:
+            pass
+    require_boundary()
+    os.write(8, b"BOUNDARY_READY\n")
+    if sys.stdin.readline() != "continue\n":
+        raise RuntimeError("managed execution boundary handshake failed")
+    require_boundary()
+    environment = dict(request["env"])
+    environment["GIT_DIR"] = descriptor_path(6, request["gitDirectoryIdentity"])
+    environment["GIT_COMMON_DIR"] = descriptor_path(7, request["commonDirectoryIdentity"])
+    environment["GIT_WORK_TREE"] = "."
+    environment.pop("GIT_OPTIONAL_LOCKS", None)
+    require_boundary()
+    os.execve("/usr/bin/git", ["/usr/bin/git", *request["args"]], environment)
+
+try:
+    main()
+except BaseException:
+    sys.stderr.write("KOALAFROG_MANAGED_BOUNDARY_REJECTED\n")
+    sys.exit(78)
+`
 const checkpointIssueNumber = 63
 const checkpointBranch =
   "agent/issue-63-production-day1-integration-001"
@@ -159,11 +288,16 @@ function reportDecision(decision, onDiagnostic) {
   return decision
 }
 
-async function git(args, cwd, { allowFailure = false, trim = true } = {}) {
+async function git(
+  args,
+  cwd,
+  { allowFailure = false, trim = true, env = undefined } = {},
+) {
   try {
     const result = await execFileAsync("git", args, {
       cwd,
       encoding: "utf8",
+      ...(env ? { env } : {}),
       maxBuffer: 10 * 1024 * 1024,
     })
     return trim ? result.stdout.trim() : result.stdout
@@ -214,6 +348,33 @@ async function regularPath(target, type) {
   const stat = await lstat(target)
   if (stat.isSymbolicLink()) return false
   return type === "file" ? stat.isFile() : stat.isDirectory()
+}
+
+function filesystemIdentity(info, type) {
+  const typeMatches = type === "file" ? info.isFile() : info.isDirectory()
+  if (
+    info.isSymbolicLink() ||
+    !typeMatches ||
+    !Number.isSafeInteger(info.dev) ||
+    !Number.isSafeInteger(info.ino)
+  ) {
+    return null
+  }
+  return { dev: info.dev, ino: info.ino, type }
+}
+
+function sameFilesystemIdentity(info, expected, type) {
+  const actual = filesystemIdentity(info, type)
+  return Boolean(
+    actual &&
+      expected?.type === type &&
+      actual.dev === expected.dev &&
+      actual.ino === expected.ino,
+  )
+}
+
+async function pathFilesystemIdentity(target, type) {
+  return filesystemIdentity(await lstat(target), type)
 }
 
 async function optionalPathExists(target) {
@@ -1689,8 +1850,15 @@ function checkpointProposalBinding(record) {
     cherryPickTargetTree: record.cherryPickTargetTree,
     changedFilesDigest: record.changedFilesDigest,
     changedFileCount: record.changedFileCount,
+    workspaceRoot: record.workspaceRoot,
+    workspaceGitFile: record.workspaceGitFile,
+    workspaceRootIdentity: record.workspaceRootIdentity,
+    workspaceIdentity: record.workspaceIdentity,
+    workspaceGitFileIdentity: record.workspaceGitFileIdentity,
     gitDirectory: record.gitDirectory,
     commonDirectory: record.commonDirectory,
+    gitDirectoryIdentity: record.gitDirectoryIdentity,
+    commonDirectoryIdentity: record.commonDirectoryIdentity,
     verification: record.verification,
     proposalControl: record.proposalControl,
     ownerActivationRequired: record.ownerActivationRequired,
@@ -3264,9 +3432,49 @@ async function linkedWorktreeMetadataDecision({
     return rejected("activation_metadata_branch_log")
   }
 
+  const [
+    workspaceRootIdentity,
+    workspaceIdentity,
+    workspaceGitFileIdentity,
+    gitDirectoryIdentity,
+    commonDirectoryIdentity,
+  ] = await Promise.all([
+    stageOperation("metadata_workspace_root_identity", () =>
+      pathFilesystemIdentity(rootReal, "directory"),
+    ),
+    stageOperation("metadata_workspace_identity", () =>
+      pathFilesystemIdentity(workspaceReal, "directory"),
+    ),
+    stageOperation("metadata_workspace_git_file_identity", () =>
+      pathFilesystemIdentity(workspaceGitFile, "file"),
+    ),
+    stageOperation("metadata_git_directory_identity", () =>
+      pathFilesystemIdentity(gitDirectory, "directory"),
+    ),
+    stageOperation("metadata_common_directory_identity", () =>
+      pathFilesystemIdentity(commonDirectory, "directory"),
+    ),
+  ])
+  if (
+    !workspaceRootIdentity ||
+    !workspaceIdentity ||
+    !workspaceGitFileIdentity ||
+    !gitDirectoryIdentity ||
+    !commonDirectoryIdentity
+  ) {
+    return rejected("activation_metadata_identity")
+  }
+
   return accepted({
+    workspaceRoot: rootReal,
+    workspaceGitFile,
+    workspaceRootIdentity,
+    workspaceIdentity,
+    workspaceGitFileIdentity,
     gitDirectory,
     commonDirectory,
+    gitDirectoryIdentity,
+    commonDirectoryIdentity,
     writablePaths: [
       gitDirectory,
       objectsDirectory,
@@ -4096,7 +4304,7 @@ export async function prepareGitReconciliationCheckpointExecution({
       return finish(rejected("managed_execution_source_empty"))
     }
     const binding = {
-      schemaVersion: 1,
+      schemaVersion: 2,
       kind: "execution_intent",
       executionId: null,
       checkpointId: proposal.checkpointId,
@@ -4124,8 +4332,15 @@ export async function prepareGitReconciliationCheckpointExecution({
       sourceChangedFileCount: sourceChangedFiles.length,
       changedFilesDigest: proposal.changedFilesDigest,
       changedFileCount: proposal.changedFileCount,
+      workspaceRoot: metadata.value.workspaceRoot,
+      workspaceGitFile: metadata.value.workspaceGitFile,
+      workspaceRootIdentity: metadata.value.workspaceRootIdentity,
+      workspaceIdentity: metadata.value.workspaceIdentity,
+      workspaceGitFileIdentity: metadata.value.workspaceGitFileIdentity,
       gitDirectory: metadata.value.gitDirectory,
       commonDirectory: metadata.value.commonDirectory,
+      gitDirectoryIdentity: metadata.value.gitDirectoryIdentity,
+      commonDirectoryIdentity: metadata.value.commonDirectoryIdentity,
     }
     binding.executionId = managedExecutionId(binding)
     const record = { ...binding, createdAt: now.toISOString() }
@@ -4257,9 +4472,302 @@ export async function prepareGitReconciliationCheckpointExecution({
   }
 }
 
+function validManagedFilesystemIdentity(value, type) {
+  return Boolean(
+    value?.type === type &&
+      Number.isSafeInteger(value.dev) &&
+      Number.isSafeInteger(value.ino),
+  )
+}
+
+async function openPinnedManagedPath(target, expected, type) {
+  const before = await lstat(target)
+  if (!sameFilesystemIdentity(before, expected, type)) {
+    throw new Error("managed execution path identity changed")
+  }
+  if ((await realpath(target)) !== target) {
+    throw new Error("managed execution path is no longer canonical")
+  }
+  const flags =
+    constants.O_RDONLY |
+    constants.O_NOFOLLOW |
+    (type === "directory" ? constants.O_DIRECTORY : 0)
+  const handle = await open(target, flags)
+  try {
+    const descriptor = await handle.stat()
+    const after = await lstat(target)
+    if (
+      !sameFilesystemIdentity(descriptor, expected, type) ||
+      !sameFilesystemIdentity(after, expected, type) ||
+      (await realpath(target)) !== target
+    ) {
+      throw new Error("managed execution path identity changed")
+    }
+    return handle
+  } catch (error) {
+    await handle.close().catch(() => {})
+    throw error
+  }
+}
+
+function executePinnedGit(
+  args,
+  {
+    boundaryRequest,
+    beforeMutation = null,
+    maxBuffer = 10 * 1024 * 1024,
+    ...options
+  },
+) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(
+      "/usr/bin/python3",
+      ["-I", "-c", managedGitExecutionHelper],
+      options,
+    )
+    let stdout = ""
+    let stderr = ""
+    let boundaryReady = ""
+    let settled = false
+    const fail = (error) => {
+      if (settled) return
+      settled = true
+      error.stdout = stdout
+      error.stderr = stderr
+      reject(error)
+    }
+    child.stdout.on("data", (chunk) => {
+      stdout += chunk.toString("utf8")
+      if (stdout.length + stderr.length > maxBuffer) {
+        child.kill("SIGKILL")
+        const error = new Error("managed Git output exceeded maxBuffer")
+        error.code = "ERR_CHILD_PROCESS_STDIO_MAXBUFFER"
+        fail(error)
+      }
+    })
+    child.stdin.write(`${JSON.stringify({ ...boundaryRequest, args })}\n`)
+    child.stdio[8].on("data", (chunk) => {
+      if (settled) return
+      boundaryReady += chunk.toString("utf8")
+      if (!boundaryReady.includes("\n")) return
+      if (boundaryReady !== "BOUNDARY_READY\n") {
+        child.kill("SIGKILL")
+        fail(new Error("managed Git boundary handshake was invalid"))
+        return
+      }
+      Promise.resolve(
+        typeof beforeMutation === "function" ? beforeMutation() : undefined,
+      ).then(
+        () => child.stdin.end("continue\n"),
+        (error) => {
+          child.kill("SIGKILL")
+          fail(error)
+        },
+      )
+    })
+    child.stderr.on("data", (chunk) => {
+      stderr += chunk.toString("utf8")
+      if (stdout.length + stderr.length > maxBuffer) {
+        child.kill("SIGKILL")
+        const error = new Error("managed Git output exceeded maxBuffer")
+        error.code = "ERR_CHILD_PROCESS_STDIO_MAXBUFFER"
+        fail(error)
+      }
+    })
+    child.once("error", fail)
+    child.once("close", (code, signal) => {
+      if (settled) return
+      settled = true
+      if (code === 0) {
+        resolve({ stdout, stderr })
+        return
+      }
+      const error = new Error("managed Git command failed")
+      error.code = code
+      error.signal = signal
+      error.stdout = stdout
+      error.stderr = stderr
+      reject(error)
+    })
+  })
+}
+
+async function openManagedExecutionTarget(intent) {
+  const handles = []
+  try {
+    const workspaceRoot = await openPinnedManagedPath(
+      intent.workspaceRoot,
+      intent.workspaceRootIdentity,
+      "directory",
+    )
+    handles.push(workspaceRoot)
+    const workspace = await openPinnedManagedPath(
+      intent.workspacePath,
+      intent.workspaceIdentity,
+      "directory",
+    )
+    handles.push(workspace)
+    const workspaceGitFile = await openPinnedManagedPath(
+      intent.workspaceGitFile,
+      intent.workspaceGitFileIdentity,
+      "file",
+    )
+    handles.push(workspaceGitFile)
+    const gitDirectory = await openPinnedManagedPath(
+      intent.gitDirectory,
+      intent.gitDirectoryIdentity,
+      "directory",
+    )
+    handles.push(gitDirectory)
+    const commonDirectory = await openPinnedManagedPath(
+      intent.commonDirectory,
+      intent.commonDirectoryIdentity,
+      "directory",
+    )
+    handles.push(commonDirectory)
+
+    if (
+      path.dirname(intent.workspacePath) !== intent.workspaceRoot ||
+      path.join(intent.workspacePath, ".git") !== intent.workspaceGitFile ||
+      !exactPathWithin(intent.workspaceRoot, intent.workspacePath)
+    ) {
+      throw new Error("managed execution workspace ancestry changed")
+    }
+    const pointer = await workspaceGitFile.readFile("utf8")
+    const pointerMatch = pointer.match(/^gitdir: ([^\r\n]+)\r?\n?$/)
+    const pointerTarget = pointerMatch
+      ? path.isAbsolute(pointerMatch[1])
+        ? path.normalize(pointerMatch[1])
+        : path.resolve(intent.workspacePath, pointerMatch[1])
+      : null
+    if (pointerTarget !== intent.gitDirectory) {
+      throw new Error("managed execution Git pointer changed")
+    }
+
+    const environment = Object.fromEntries(
+      Object.entries(process.env).filter(
+        ([key]) =>
+          !key.startsWith("GIT_") &&
+          !key.startsWith("DYLD_") &&
+          key !== "LD_PRELOAD",
+      ),
+    )
+    environment.GIT_DIR = intent.gitDirectory
+    environment.GIT_COMMON_DIR = intent.commonDirectory
+    environment.GIT_WORK_TREE = "."
+    environment.GIT_OPTIONAL_LOCKS = "0"
+    const options = {
+      cwd: "/",
+      env: environment,
+      maxBuffer: 10 * 1024 * 1024,
+      boundaryRequest: {
+        workspaceRoot: intent.workspaceRoot,
+        workspacePath: intent.workspacePath,
+        workspaceName: path.basename(intent.workspacePath),
+        workspaceGitFile: intent.workspaceGitFile,
+        workspaceGitFileContents: pointer,
+        gitDirectory: intent.gitDirectory,
+        commonDirectory: intent.commonDirectory,
+        workspaceRootIdentity: intent.workspaceRootIdentity,
+        workspaceIdentity: intent.workspaceIdentity,
+        workspaceGitFileIdentity: intent.workspaceGitFileIdentity,
+        gitDirectoryIdentity: intent.gitDirectoryIdentity,
+        commonDirectoryIdentity: intent.commonDirectoryIdentity,
+        branch: intent.branch,
+        head: intent.head,
+        tree: intent.tree,
+        cherryPickCommit: intent.cherryPickCommit,
+        operationMarkers: gitOperationMarkers,
+        operationDirectories: gitOperationDirectories,
+        env: environment,
+      },
+      stdio: [
+        "pipe",
+        "pipe",
+        "pipe",
+        workspaceRoot.fd,
+        workspace.fd,
+        workspaceGitFile.fd,
+        gitDirectory.fd,
+        commonDirectory.fd,
+        "pipe",
+      ],
+    }
+    return {
+      handles,
+      options,
+    }
+  } catch (error) {
+    await Promise.all(
+      handles.reverse().map((handle) => handle.close().catch(() => {})),
+    )
+    throw error
+  }
+}
+
+async function validateManagedExecutionTarget(intent, environment) {
+  const [branch, head, tree, status, branchHead, commitType] = await Promise.all([
+    git(["branch", "--show-current"], intent.workspacePath, {
+      env: environment,
+    }),
+    git(["rev-parse", "HEAD"], intent.workspacePath, { env: environment }),
+    git(["rev-parse", "HEAD^{tree}"], intent.workspacePath, {
+      env: environment,
+    }),
+    git(["status", "--porcelain=v1", "-z"], intent.workspacePath, {
+      trim: false,
+      env: environment,
+    }),
+    git(["rev-parse", `refs/heads/${intent.branch}`], intent.workspacePath, {
+      env: environment,
+    }),
+    git(
+      ["cat-file", "-t", `${intent.cherryPickCommit}^{commit}`],
+      intent.workspacePath,
+      { env: environment },
+    ),
+  ])
+  if (
+    branch !== intent.branch ||
+    head !== intent.head ||
+    tree !== intent.tree ||
+    status !== "" ||
+    branchHead !== intent.head ||
+    commitType !== "commit"
+  ) {
+    throw new Error("managed execution Git state changed")
+  }
+  for (const marker of gitOperationMarkers) {
+    if (await optionalPathExists(path.join(intent.gitDirectory, marker))) {
+      throw new Error("managed execution Git operation marker appeared")
+    }
+  }
+  for (const directory of gitOperationDirectories) {
+    if (await optionalPathExists(path.join(intent.gitDirectory, directory))) {
+      throw new Error("managed execution Git operation directory appeared")
+    }
+  }
+  const pathChecks = [
+    [intent.workspaceRoot, intent.workspaceRootIdentity, "directory"],
+    [intent.workspacePath, intent.workspaceIdentity, "directory"],
+    [intent.workspaceGitFile, intent.workspaceGitFileIdentity, "file"],
+    [intent.gitDirectory, intent.gitDirectoryIdentity, "directory"],
+    [intent.commonDirectory, intent.commonDirectoryIdentity, "directory"],
+  ]
+  for (const [targetPath, expected, type] of pathChecks) {
+    if (!sameFilesystemIdentity(await lstat(targetPath), expected, type)) {
+      throw new Error("managed execution path identity changed")
+    }
+    if ((await realpath(targetPath)) !== targetPath) {
+      throw new Error("managed execution path is no longer canonical")
+    }
+  }
+}
+
 export async function executeGitReconciliationCheckpointMutation({
   plan,
-  execute = (args, options) => execFileAsync("git", args, options),
+  execute = executePinnedGit,
+  beforeExecute = null,
 }) {
   if (!plan || plan.mode !== "execute" || !plan.record || !plan.proposal) {
     return rejected("managed_execution_plan")
@@ -4276,19 +4784,39 @@ export async function executeGitReconciliationCheckpointMutation({
     intent.tree !== proposal.tree ||
     intent.cherryPickCommit !== proposal.cherryPickCommit ||
     intent.gitDirectory !== proposal.gitDirectory ||
-    intent.commonDirectory !== proposal.commonDirectory
+    intent.commonDirectory !== proposal.commonDirectory ||
+    intent.schemaVersion !== 2 ||
+    !validManagedFilesystemIdentity(intent.workspaceRootIdentity, "directory") ||
+    !validManagedFilesystemIdentity(intent.workspaceIdentity, "directory") ||
+    !validManagedFilesystemIdentity(intent.workspaceGitFileIdentity, "file") ||
+    !validManagedFilesystemIdentity(intent.gitDirectoryIdentity, "directory") ||
+    !validManagedFilesystemIdentity(intent.commonDirectoryIdentity, "directory")
   ) {
     return rejected("managed_execution_plan_binding")
   }
+  let target
   try {
-    const environment = Object.fromEntries(
-      Object.entries(process.env).filter(
-        ([key]) =>
-          !key.startsWith("GIT_") &&
-          !key.startsWith("DYLD_") &&
-          key !== "LD_PRELOAD",
-      ),
+    target = await openManagedExecutionTarget(intent)
+    await validateManagedExecutionTarget(
+      intent,
+      target.options.boundaryRequest.env,
     )
+  } catch (error) {
+    if (target) {
+      await Promise.all(
+        target.handles.reverse().map((handle) => handle.close().catch(() => {})),
+      )
+    }
+    return rejected("managed_execution_boundary_changed", {
+      errorName: typeof error?.name === "string" ? error.name : "Error",
+    })
+  }
+  try {
+    if (execute === executePinnedGit) {
+      target.options.beforeMutation = beforeExecute
+    } else if (typeof beforeExecute === "function") {
+      await beforeExecute()
+    }
     await execute(
       [
         "-c",
@@ -4302,19 +4830,23 @@ export async function executeGitReconciliationCheckpointMutation({
         "cherry-pick",
         intent.cherryPickCommit,
       ],
-      {
-        cwd: intent.workspacePath,
-        encoding: "utf8",
-        env: environment,
-        maxBuffer: 10 * 1024 * 1024,
-      },
+      target.options,
     )
     return accepted({ executionId: intent.executionId })
   } catch (error) {
-    return rejected("managed_execution_git_failed", {
-      ...(typeof error?.code === "number" ? { exitCode: error.code } : {}),
-      errorName: typeof error?.name === "string" ? error.name : "Error",
-    })
+    return rejected(
+      error?.code === 78
+        ? "managed_execution_boundary_changed"
+        : "managed_execution_git_failed",
+      {
+        ...(typeof error?.code === "number" ? { exitCode: error.code } : {}),
+        errorName: typeof error?.name === "string" ? error.name : "Error",
+      },
+    )
+  } finally {
+    await Promise.all(
+      target.handles.reverse().map((handle) => handle.close().catch(() => {})),
+    )
   }
 }
 

@@ -1,6 +1,8 @@
 import { spawn } from "node:child_process"
 import { EventEmitter } from "node:events"
 import readline from "node:readline"
+
+const authoritativeTurnFailureWindowMs = 100
 import {
   compactCommandExecution,
   finalAgentMessageFromTurn,
@@ -320,6 +322,7 @@ export class AppServerClient extends EventEmitter {
     this.pending = new Map()
     this.mcpStatuses = new Map()
     this.seenTurnFailures = new Map()
+    this.provisionalTurnFailures = new Map()
     this.protocolDispatchTail = Promise.resolve()
     this.process = null
   }
@@ -412,6 +415,33 @@ export class AppServerClient extends EventEmitter {
     this.emit("turn_failure", turnFailure)
   }
 
+  #scheduleProvisionalTurnFailure(message, turnFailure) {
+    if (this.provisionalTurnFailures.has(turnFailure.eventId)) return
+    const provisional = { message, turnFailure, timer: null }
+    this.provisionalTurnFailures.set(turnFailure.eventId, provisional)
+    provisional.timer = setTimeout(() => {
+      const finalized = this.protocolDispatchTail.then(async () => {
+        if (
+          this.provisionalTurnFailures.get(turnFailure.eventId) !== provisional
+        ) {
+          return
+        }
+        this.provisionalTurnFailures.delete(turnFailure.eventId)
+        await this.#dispatchTurnFailure(message, turnFailure)
+      })
+      this.protocolDispatchTail = finalized.catch(() => {})
+      void finalized.catch((error) => {
+        Promise.resolve(
+          this.eventSink({
+            type: "protocol_dispatch_failed",
+            code: "APP_SERVER_PROTOCOL_DISPATCH_FAILED",
+          }),
+        ).catch(() => {})
+        this.emit("adapter_failure", error)
+      })
+    }, authoritativeTurnFailureWindowMs)
+  }
+
   async #dispatchProtocolMessage(message) {
     if (message.id !== undefined && !message.method) {
       const pending = this.pending.get(message.id)
@@ -437,6 +467,9 @@ export class AppServerClient extends EventEmitter {
 
     const turnFailure = appServerTurnFailureFromMessage(message)
     if (turnFailure) {
+      const provisional = this.provisionalTurnFailures.get(turnFailure.eventId)
+      if (provisional?.timer) clearTimeout(provisional.timer)
+      this.provisionalTurnFailures.delete(turnFailure.eventId)
       await this.#dispatchTurnFailure(message, turnFailure)
       return
     }
@@ -458,8 +491,11 @@ export class AppServerClient extends EventEmitter {
         this.emit("notification", message)
         return
       }
+      if (eventId && this.provisionalTurnFailures.has(eventId)) {
+        return
+      }
       if (failedCompletion) {
-        await this.#dispatchTurnFailure(message, failedCompletion)
+        this.#scheduleProvisionalTurnFailure(message, failedCompletion)
         return
       }
     }

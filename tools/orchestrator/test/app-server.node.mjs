@@ -90,6 +90,83 @@ async function runBlockedTerminalOrderingRace(iteration) {
   assert.equal(events.filter((event) => event.type === "turn_failed").length, 1)
 }
 
+async function runBlockedCompletionFirstOrderingRace(iteration) {
+  const suffix = String(iteration)
+  const threadId = `thread-completion-first-${suffix}`
+  const turnId = `turn-completion-first-${suffix}`
+  const failureSinkEntered = deferredBarrier()
+  const releaseFailureSink = deferredBarrier()
+  const events = []
+  const persisted = []
+  const dispatches = []
+  const client = new AppServerClient({
+    cwd: "/tmp",
+    eventSink: async (event) => {
+      events.push(event)
+      if (event.type === "turn_failed") {
+        failureSinkEntered.resolve()
+        await releaseFailureSink.promise
+      }
+    },
+  })
+  client.request = async (method) => {
+    assert.equal(method, "turn/start")
+    dispatches.push(
+      client.dispatchProtocolMessage({
+        method: "turn/completed",
+        params: {
+          threadId,
+          turn: { id: turnId, status: "failed", items: [] },
+        },
+      }),
+    )
+    await new Promise((resolve) => setTimeout(resolve, 5))
+    dispatches.push(
+      client.dispatchProtocolMessage({
+        method: "error",
+        params: {
+          threadId,
+          turnId,
+          willRetry: false,
+          error: { codexErrorInfo: "cyberPolicy" },
+        },
+      }),
+    )
+    return { turn: { id: turnId } }
+  }
+
+  let settled = false
+  const terminal = client
+    .runTurn({
+      threadId,
+      prompt: "Read-only completion-first review.",
+      cwd: "/tmp",
+      timeoutMs: 2_000,
+      onTurnFailed: async (failure) => persisted.push(failure),
+    })
+    .then((result) => {
+      settled = true
+      return result
+    })
+
+  await failureSinkEntered.promise
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.equal(settled, false, "provisional completion settled before failure")
+  releaseFailureSink.resolve()
+  const result = await terminal
+  await Promise.all(dispatches)
+
+  assert.equal(result.status, "failed")
+  assert.equal(result.turn.id, turnId)
+  assert.equal(result.appServerFailure.threadId, threadId)
+  assert.equal(result.appServerFailure.turnId, turnId)
+  assert.equal(result.appServerFailure.codexErrorInfo, "cyberPolicy")
+  assert.equal(result.appServerFailure.willRetry, false)
+  assert.equal(result.retryable, false)
+  assert.equal(persisted.length, 1)
+  assert.equal(events.filter((event) => event.type === "turn_failed").length, 1)
+}
+
 test("a terminal AppServer error is redacted and never enters EventEmitter's error channel", async () => {
   const events = []
   const persisted = []
@@ -175,6 +252,12 @@ test("terminal AppServer failure persistence cannot be overtaken by failed compl
 test("terminal AppServer ordering never returns a bare failed result across 100 races", async () => {
   for (let iteration = 0; iteration < 100; iteration += 1) {
     await runBlockedTerminalOrderingRace(iteration)
+  }
+})
+
+test("completion-first authoritative failures dominate across 100 blocked races", async () => {
+  for (let iteration = 0; iteration < 100; iteration += 1) {
+    await runBlockedCompletionFirstOrderingRace(iteration)
   }
 })
 

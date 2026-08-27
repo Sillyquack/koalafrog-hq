@@ -16,6 +16,28 @@ const activeLeaseTokens = new Set()
 const durablePendingSuffix = ".commit-pending"
 const durableTransactionKeyLeaf = ".durable-transaction.key"
 const currentProcessIdentity = `node-process:${randomUUID()}`
+let descriptorCapabilityCheck = null
+const advisoryCapabilityChecks = new Map()
+const descriptorCapabilityHelper = String.raw`
+import ctypes
+import os
+import platform
+
+if not hasattr(os, "O_NOFOLLOW") or not hasattr(os, "O_DIRECTORY"):
+    raise RuntimeError("descriptor flags unavailable")
+if os.open not in os.supports_dir_fd or os.mkdir not in os.supports_dir_fd:
+    raise RuntimeError("descriptor-relative operations unavailable")
+if os.stat not in os.supports_dir_fd or os.stat not in os.supports_follow_symlinks:
+    raise RuntimeError("descriptor-relative stat unavailable")
+libc = ctypes.CDLL(None, use_errno=True)
+if platform.system() == "Darwin":
+    getattr(libc, "renameatx_np")
+elif platform.system() == "Linux":
+    getattr(libc, "renameat2")
+else:
+    raise RuntimeError("descriptor-relative exclusive rename unsupported")
+print("READY", flush=True)
+`
 const descriptorDirectoryHelper = String.raw`
 import ctypes
 import errno
@@ -64,33 +86,72 @@ def rename_exclusive(parent_fd, source, destination):
 def open_child(parent_fd, name):
     return os.open(name, directory_flags, dir_fd=parent_fd)
 
+def open_ancestry(absolute_path):
+    if not os.path.isabs(absolute_path):
+        raise OSError(errno.EINVAL, "guarded parent path is not absolute")
+    opened = [os.open(os.path.sep, directory_flags)]
+    entries = []
+    current = opened[0]
+    for name in [part for part in absolute_path.split(os.path.sep) if part]:
+        child = open_child(current, name)
+        child_stat = os.fstat(child)
+        named_stat = os.stat(name, dir_fd=current, follow_symlinks=False)
+        if (
+            not stat.S_ISDIR(child_stat.st_mode)
+            or not stat.S_ISDIR(named_stat.st_mode)
+            or not same_identity(named_stat, identity(child_stat))
+        ):
+            os.close(child)
+            raise OSError(errno.ESTALE, "guarded ancestry identity changed")
+        entries.append((current, name, child, identity(child_stat)))
+        opened.append(child)
+        current = child
+    return current, opened, entries
+
+def validate_ancestry(entries):
+    for parent_fd, name, child_fd, expected in entries:
+        child_stat = os.fstat(child_fd)
+        named_stat = os.stat(name, dir_fd=parent_fd, follow_symlinks=False)
+        if (
+            not stat.S_ISDIR(child_stat.st_mode)
+            or not stat.S_ISDIR(named_stat.st_mode)
+            or not same_identity(child_stat, expected)
+            or not same_identity(named_stat, expected)
+        ):
+            raise OSError(errno.ESTALE, "guarded ancestry identity changed")
+
 def publish_child(parent_fd, name):
     candidate = ".%s.%s.mkdir-candidate" % (name, uuid.uuid4())
     candidate_fd = None
     try:
+        validate_ancestry(ancestry_entries)
         os.mkdir(candidate, 0o700, dir_fd=parent_fd)
         candidate_fd = open_child(parent_fd, candidate)
         candidate_stat = os.fstat(candidate_fd)
         if not stat.S_ISDIR(candidate_stat.st_mode):
             raise OSError(errno.ENOTDIR, "created component is not a directory")
         try:
+            validate_ancestry(ancestry_entries)
             rename_exclusive(parent_fd, candidate, name)
         except OSError as error:
             if error.errno not in (errno.EEXIST, errno.ENOTEMPTY):
                 raise
             os.close(candidate_fd)
             candidate_fd = None
+            validate_ancestry(ancestry_entries)
             os.rmdir(candidate, dir_fd=parent_fd)
             return open_child(parent_fd, name), False
         published = os.stat(name, dir_fd=parent_fd, follow_symlinks=False)
         if not same_identity(published, identity(candidate_stat)):
             raise OSError(errno.ESTALE, "published directory identity changed")
+        validate_ancestry(ancestry_entries)
         os.fsync(parent_fd)
         return candidate_fd, True
     except BaseException:
         if candidate_fd is not None:
             os.close(candidate_fd)
         try:
+            validate_ancestry(ancestry_entries)
             os.rmdir(candidate, dir_fd=parent_fd)
         except OSError:
             pass
@@ -103,10 +164,12 @@ def descend(parent_fd, name):
         return publish_child(parent_fd, name)
 
 root_fd = None
+ancestry_fds = []
+ancestry_entries = []
 current_fd = None
 try:
     parent_path = os.path.abspath(request["parentPath"])
-    root_fd = os.open(parent_path, directory_flags)
+    root_fd, ancestry_fds, ancestry_entries = open_ancestry(parent_path)
     parent_stat = os.fstat(root_fd)
     if not same_identity(parent_stat, expected_parent):
         raise OSError(errno.ESTALE, "guarded parent identity changed")
@@ -129,8 +192,11 @@ try:
     named_stat = os.stat(request["leafName"], dir_fd=root_fd, follow_symlinks=False)
     if not stat.S_ISDIR(named_stat.st_mode) or not same_identity(named_stat, identity(current_stat)):
         raise OSError(errno.ESTALE, "named directory identity changed before mutation")
+    validate_ancestry(ancestry_entries)
     os.fchmod(current_fd, 0o700)
+    validate_ancestry(ancestry_entries)
     os.fsync(current_fd)
+    validate_ancestry(ancestry_entries)
     final_stat = os.stat(request["leafName"], dir_fd=root_fd, follow_symlinks=False)
     if not stat.S_ISDIR(final_stat.st_mode) or not same_identity(final_stat, identity(current_stat)):
         raise OSError(errno.ESTALE, "named directory identity changed after mutation")
@@ -143,8 +209,8 @@ except BaseException as error:
 finally:
     if current_fd is not None:
         os.close(current_fd)
-    if root_fd is not None:
-        os.close(root_fd)
+    for descriptor in reversed(ancestry_fds):
+        os.close(descriptor)
 `
 
 export class UnsafeFilesystemShapeError extends Error {
@@ -237,6 +303,7 @@ async function ensureDirectoryDescriptorRelative(
       path.basename(directory),
     )
   }
+  await preflightDescriptorCapability()
   const request = {
     target: path.resolve(directory),
     parentPath: parentGuard.canonicalPath,
@@ -1801,8 +1868,154 @@ function defaultLockfSpec() {
   }
   throw new UnsafeFilesystemShapeError(
     "FILESYSTEM_ADVISORY_LOCK_UNSUPPORTED",
-    path.basename(guardPath),
+    "filesystem",
   )
+}
+
+async function runCapabilityProcess(
+  command,
+  args,
+  stdio = ["ignore", "pipe", "pipe"],
+) {
+  let child
+  try {
+    child = spawn(command, args, { stdio })
+  } catch (cause) {
+    return { ok: false, cause, stdout: "" }
+  }
+  let stdout = ""
+  child.stdout?.on("data", (chunk) => {
+    stdout += chunk.toString("utf8")
+  })
+  child.stderr?.resume()
+  child.stdin?.end()
+  const result = await new Promise((resolve) => {
+    let settled = false
+    let timer = null
+    const finish = (value) => {
+      if (settled) return
+      settled = true
+      if (timer) clearTimeout(timer)
+      resolve(value)
+    }
+    timer = setTimeout(() => {
+      child.kill("SIGKILL")
+      finish({ ok: false, timeout: true, stdout })
+    }, 2_000)
+    child.once("error", (cause) => finish({ ok: false, cause, stdout }))
+    child.once("exit", (code) =>
+      finish({ ok: code === 0 && /\bREADY\b/.test(stdout), code, stdout }),
+    )
+  })
+  return result
+}
+
+async function preflightDescriptorCapability() {
+  descriptorCapabilityCheck ??= runCapabilityProcess(
+    "/usr/bin/python3",
+    ["-I", "-c", descriptorCapabilityHelper],
+  ).then((result) => {
+    if (!result.ok) {
+      throw new UnsafeFilesystemShapeError(
+        "FILESYSTEM_DESCRIPTOR_DIRECTORY_UNAVAILABLE",
+        "filesystem",
+      )
+    }
+  })
+  return descriptorCapabilityCheck
+}
+
+function advisoryLockSpec(lockfSpec, guardPath) {
+  let spec
+  try {
+    spec = lockfSpec(guardPath)
+  } catch (cause) {
+    throw new FileLeaseMetadataError({
+      code: "FILE_LEASE_GUARD_UNAVAILABLE",
+      leafName: "filesystem",
+      recovery: "install the platform advisory-lock primitive before retrying",
+      cause,
+    })
+  }
+  if (
+    !spec ||
+    typeof spec.command !== "string" ||
+    !spec.command ||
+    !Array.isArray(spec.args) ||
+    !(spec.busyCodes instanceof Set)
+  ) {
+    throw new FileLeaseMetadataError({
+      code: "FILE_LEASE_GUARD_UNAVAILABLE",
+      leafName: "filesystem",
+      recovery: "configure a valid platform advisory-lock primitive",
+    })
+  }
+  return spec
+}
+
+async function preflightAdvisoryCapability(
+  lockfSpec,
+  { cache = true, guardPath = "/dev/null" } = {},
+) {
+  const spec = advisoryLockSpec(lockfSpec, guardPath)
+  const capabilityKey = JSON.stringify([
+    spec.command,
+    spec.args,
+    [...spec.busyCodes].sort(),
+  ])
+  let check = cache ? advisoryCapabilityChecks.get(capabilityKey) : null
+  if (!check) {
+    check = (async () => {
+      let handle
+      try {
+        handle = await open(
+          spec.command,
+          constants.O_RDONLY | constants.O_NOFOLLOW,
+        )
+        const commandInfo = await handle.stat()
+        if (!commandInfo.isFile()) throw new Error("helper is not a file")
+      } catch (cause) {
+        await handle?.close().catch(() => {})
+        throw new FileLeaseMetadataError({
+          code: "FILE_LEASE_GUARD_UNAVAILABLE",
+          leafName: "filesystem",
+          recovery: "install the platform advisory-lock primitive before retrying",
+          cause,
+        })
+      }
+      let result
+      try {
+        result = await runCapabilityProcess(
+          spec.command,
+          spec.args,
+          ["pipe", "pipe", "pipe", handle.fd],
+        )
+      } finally {
+        await handle.close().catch(() => {})
+      }
+      if (!result.ok && !spec.busyCodes.has(result.code)) {
+        throw new FileLeaseMetadataError({
+          code: "FILE_LEASE_GUARD_UNAVAILABLE",
+          leafName: "filesystem",
+          recovery: "install the platform advisory-lock primitive before retrying",
+          cause: result.cause ?? null,
+        })
+      }
+    })()
+    if (cache) advisoryCapabilityChecks.set(capabilityKey, check)
+  }
+  await check
+  return spec
+}
+
+export async function preflightDurableFilesystemCapabilities({
+  lockfSpec = defaultLockfSpec,
+  guardPaths = ["/dev/null"],
+} = {}) {
+  await preflightDescriptorCapability()
+  for (const guardPath of guardPaths) {
+    await preflightAdvisoryCapability(lockfSpec, { guardPath })
+  }
 }
 
 async function openAdvisoryGuardLeaf(directoryGuard, guardLeaf, hooks) {
@@ -1854,13 +2067,16 @@ async function acquireAdvisoryGuard(
   guardLeaf,
   { hooks = null, lockfSpec = defaultLockfSpec } = {},
 ) {
+  const guardPath = leafPath(directoryGuard, guardLeaf)
+  const spec = await preflightAdvisoryCapability(lockfSpec, {
+    guardPath,
+  })
   const opened = await openAdvisoryGuardLeaf(
     directoryGuard,
     guardLeaf,
     hooks,
   )
   await callHook(hooks, "beforeAdvisoryAcquire", { leafName: guardLeaf })
-  const spec = lockfSpec(leafPath(directoryGuard, guardLeaf))
   return new Promise((resolve, reject) => {
     const child = spawn(spec.command, spec.args, {
       stdio: ["pipe", "pipe", "pipe", opened.handle.fd],

@@ -7,6 +7,7 @@ import {
   durableAtomicWriteFile,
   ensurePrivateDirectory,
   fileLeaseIsActive,
+  preflightDurableFilesystemCapabilities,
   readJsonNoFollow,
   recoverDurableFileReplace,
   releaseCrashSafeFileLease,
@@ -147,6 +148,9 @@ export class QueueClaimStore {
   }
 
   async #ensureDirectories() {
+    await preflightDurableFilesystemCapabilities({
+      ...(this.lockfSpec ? { lockfSpec: this.lockfSpec } : {}),
+    })
     const root = await ensurePrivateDirectory(this.stateDirectory)
     const queue = await ensurePrivateDirectory(this.directory, {
       parentGuard: root,
@@ -175,6 +179,10 @@ export class QueueClaimStore {
   }
 
   async #acquire(lockPath) {
+    await preflightDurableFilesystemCapabilities({
+      ...(this.lockfSpec ? { lockfSpec: this.lockfSpec } : {}),
+      guardPaths: [`${lockPath}.takeover`],
+    })
     await this.#ensureDirectories()
     return acquireCrashSafeFileLease({
       directoryGuard: this.#guardFor(lockPath),
