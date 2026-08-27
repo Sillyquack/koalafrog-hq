@@ -1561,6 +1561,115 @@ test("restart finalizes one durably observed non-retryable AppServer failure", a
   assert.equal(persisted.runs[0].resultArtifact.failure.codexErrorInfo, "cyberPolicy")
 })
 
+test("back-to-back terminal error and failed completion schedule zero retries", async (t) => {
+  const directory = await mkdtemp(
+    path.join(os.tmpdir(), "koalafrog-app-server-terminal-order-"),
+  )
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const block = controlBlock({ instructionId: "app-server-terminal-order-001" })
+  const comments = [{ body: block }]
+  const posted = []
+  const store = new StateStore({
+    stateDirectory: directory,
+    repository: "Sillyquack/koalafrog-hq",
+    issueNumber: 53,
+  })
+  let releaseFailureSink
+  let markFailureSinkEntered
+  const failureSinkEntered = new Promise((resolve) => {
+    markFailureSinkEntered = resolve
+  })
+  const failureSinkRelease = new Promise((resolve) => {
+    releaseFailureSink = resolve
+  })
+  const appServer = new AppServerClient({
+    cwd: "/tmp",
+    eventSink: async (event) => {
+      if (event.type === "turn_failed") {
+        markFailureSinkEntered()
+        await failureSinkRelease
+        await store.appendEventOnce(event.eventId, event)
+      } else {
+        await store.appendEvent(event)
+      }
+    },
+  })
+  let turnStarts = 0
+  appServer.process = {
+    stdin: {
+      writable: true,
+      write(line) {
+        const request = JSON.parse(line)
+        assert.equal(request.method, "turn/start")
+        turnStarts += 1
+        const turnId = `turn-terminal-order-${turnStarts}`
+        void appServer.dispatchProtocolMessage({
+          id: request.id,
+          result: { turn: { id: turnId } },
+        })
+        void appServer.dispatchProtocolMessage({
+          method: "error",
+          params: {
+            threadId: "thread-terminal-order",
+            turnId,
+            willRetry: false,
+            error: { codexErrorInfo: "cyberPolicy" },
+          },
+        })
+        void appServer.dispatchProtocolMessage({
+          method: "turn/completed",
+          params: {
+            threadId: "thread-terminal-order",
+            turn: { id: turnId, status: "failed", items: [] },
+          },
+        })
+      },
+    },
+  }
+  appServer.start = async () => {}
+  appServer.stop = async () => {}
+  appServer.startThread = async () => ({
+    thread: { id: "thread-terminal-order" },
+  })
+  appServer.waitForMcpReady = async () => {}
+
+  const orchestrator = new Orchestrator(runtimeConfig(directory), {
+    appServer,
+    store,
+    workspace: fakeWorkspace(),
+    controlPlane: {
+      async fetchTask() {
+        return { issue: { body: "" }, comments }
+      },
+      async postComment(body) {
+        posted.push(body)
+        comments.push({ body })
+      },
+    },
+  })
+
+  const run = orchestrator.runOnce()
+  await failureSinkEntered
+  assert.equal(turnStarts, 1)
+  releaseFailureSink()
+  assert.equal((await run).status, "failed")
+  assert.equal(turnStarts, 1)
+  assert.equal(
+    await store.findEvent(
+      "turn_retry_scheduled:thread-terminal-order:turn-terminal-order-1",
+    ),
+    null,
+  )
+  const persisted = await store.load()
+  assert.equal(persisted.activeInstruction, null)
+  assert.equal(persisted.runs.length, 1)
+  assert.equal(persisted.runs[0].turnCount, 1)
+  assert.equal(persisted.runs[0].resultArtifact.failure.willRetry, false)
+  assert.equal(posted.filter((body) => body.includes("agent_result:")).length, 1)
+  assert.equal((await orchestrator.runOnce()).status, "idle")
+  assert.equal(turnStarts, 1)
+})
+
 test("restart fail-closes a failed thread whose notification was not persisted", async (t) => {
   const directory = await mkdtemp(
     path.join(os.tmpdir(), "koalafrog-app-server-failure-readback-"),

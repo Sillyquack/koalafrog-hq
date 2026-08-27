@@ -8,6 +8,88 @@ import {
   classifyServerRequest,
 } from "../src/app-server.mjs"
 
+function deferredBarrier() {
+  let resolve
+  const promise = new Promise((resolve_) => {
+    resolve = resolve_
+  })
+  return { promise, resolve }
+}
+
+async function runBlockedTerminalOrderingRace(iteration) {
+  const suffix = String(iteration)
+  const threadId = `thread-terminal-order-${suffix}`
+  const turnId = `turn-terminal-order-${suffix}`
+  const failureSinkEntered = deferredBarrier()
+  const releaseFailureSink = deferredBarrier()
+  const events = []
+  const persisted = []
+  const dispatches = []
+  const client = new AppServerClient({
+    cwd: "/tmp",
+    eventSink: async (event) => {
+      events.push(event)
+      if (event.type === "turn_failed") {
+        failureSinkEntered.resolve()
+        await releaseFailureSink.promise
+      }
+    },
+  })
+  client.request = async (method) => {
+    assert.equal(method, "turn/start")
+    dispatches.push(
+      client.dispatchProtocolMessage({
+        method: "error",
+        params: {
+          threadId,
+          turnId,
+          willRetry: false,
+          error: { codexErrorInfo: "cyberPolicy" },
+        },
+      }),
+      client.dispatchProtocolMessage({
+        method: "turn/completed",
+        params: {
+          threadId,
+          turn: { id: turnId, status: "failed", items: [] },
+        },
+      }),
+    )
+    return { turn: { id: turnId } }
+  }
+
+  let settled = false
+  const terminal = client
+    .runTurn({
+      threadId,
+      prompt: "Read-only review.",
+      cwd: "/tmp",
+      timeoutMs: 2_000,
+      onTurnFailed: async (failure) => persisted.push(failure),
+    })
+    .then((result) => {
+      settled = true
+      return result
+    })
+
+  await failureSinkEntered.promise
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.equal(settled, false, "completion overtook durable failure persistence")
+  releaseFailureSink.resolve()
+  const result = await terminal
+  await Promise.all(dispatches)
+
+  assert.equal(result.status, "failed")
+  assert.equal(result.turn.id, turnId)
+  assert.equal(result.appServerFailure.threadId, threadId)
+  assert.equal(result.appServerFailure.turnId, turnId)
+  assert.equal(result.appServerFailure.codexErrorInfo, "cyberPolicy")
+  assert.equal(result.appServerFailure.willRetry, false)
+  assert.equal(result.retryable, false)
+  assert.equal(persisted.length, 1)
+  assert.equal(events.filter((event) => event.type === "turn_failed").length, 1)
+}
+
 test("a terminal AppServer error is redacted and never enters EventEmitter's error channel", async () => {
   const events = []
   const persisted = []
@@ -84,6 +166,168 @@ test("a terminal AppServer error is redacted and never enters EventEmitter's err
     }),
     (error) => error.code === "APP_SERVER_TURN_FAILURE_CONFLICT",
   )
+})
+
+test("terminal AppServer failure persistence cannot be overtaken by failed completion", async () => {
+  await runBlockedTerminalOrderingRace("single")
+})
+
+test("terminal AppServer ordering never returns a bare failed result across 100 races", async () => {
+  for (let iteration = 0; iteration < 100; iteration += 1) {
+    await runBlockedTerminalOrderingRace(iteration)
+  }
+})
+
+test("turn-start durability blocks later terminal protocol dispatch", async () => {
+  const startPersistenceEntered = deferredBarrier()
+  const releaseStartPersistence = deferredBarrier()
+  let failurePersisted = false
+  const dispatches = []
+  const client = new AppServerClient({
+    cwd: "/tmp",
+    eventSink: async (event) => {
+      if (event.type === "turn_failed") failurePersisted = true
+    },
+  })
+  client.process = {
+    stdin: {
+      writable: true,
+      write(line) {
+        const request = JSON.parse(line)
+        dispatches.push(
+          client.dispatchProtocolMessage({
+            id: request.id,
+            result: { turn: { id: "turn-start-barrier" } },
+          }),
+          client.dispatchProtocolMessage({
+            method: "error",
+            params: {
+              threadId: "thread-start-barrier",
+              turnId: "turn-start-barrier",
+              willRetry: false,
+              error: { codexErrorInfo: "cyberPolicy" },
+            },
+          }),
+          client.dispatchProtocolMessage({
+            method: "turn/completed",
+            params: {
+              threadId: "thread-start-barrier",
+              turn: {
+                id: "turn-start-barrier",
+                status: "failed",
+                items: [],
+              },
+            },
+          }),
+        )
+      },
+    },
+  }
+
+  const terminal = client.runTurn({
+    threadId: "thread-start-barrier",
+    prompt: "Persist the turn before its failure.",
+    cwd: "/tmp",
+    timeoutMs: 2_000,
+    onTurnStarted: async () => {
+      startPersistenceEntered.resolve()
+      await releaseStartPersistence.promise
+    },
+  })
+
+  await startPersistenceEntered.promise
+  await new Promise((resolve) => setImmediate(resolve))
+  assert.equal(failurePersisted, false)
+  releaseStartPersistence.resolve()
+  const result = await terminal
+  await Promise.all(dispatches)
+  assert.equal(failurePersisted, true)
+  assert.equal(result.appServerFailure.willRetry, false)
+  assert.equal(result.retryable, false)
+})
+
+test("a failed completion without provider retry metadata fails closed", async () => {
+  const events = []
+  const client = new AppServerClient({
+    cwd: "/tmp",
+    eventSink: async (event) => events.push(event),
+  })
+  client.request = async () => {
+    void client.dispatchProtocolMessage({
+      method: "turn/completed",
+      params: {
+        threadId: "thread-ambiguous-failure",
+        turn: {
+          id: "turn-ambiguous-failure",
+          status: "failed",
+          items: [],
+        },
+      },
+    })
+    return { turn: { id: "turn-ambiguous-failure" } }
+  }
+
+  const result = await client.runTurn({
+    threadId: "thread-ambiguous-failure",
+    prompt: "Fail closed.",
+    cwd: "/tmp",
+    timeoutMs: 1_000,
+  })
+
+  assert.equal(result.appServerFailure.codexErrorInfo, "unknown")
+  assert.equal(result.appServerFailure.willRetry, false)
+  assert.equal(result.retryable, false)
+  assert.equal(events.filter((event) => event.type === "turn_failed").length, 1)
+  await assert.rejects(
+    client.dispatchProtocolMessage({
+      method: "turn/completed",
+      params: { turn: { id: "turn-invalid", status: "failed" } },
+    }),
+    (error) => error.code === "APP_SERVER_FAILED_COMPLETION_IDENTITY_INVALID",
+  )
+})
+
+test("approval evidence suppresses an upstream retry before async decision handling settles", async () => {
+  const client = new AppServerClient({ cwd: "/tmp", eventSink: async () => {} })
+  client.respond = () => {}
+  client.request = async () => {
+    setTimeout(() => {
+      void client.dispatchProtocolMessage({
+        id: 701,
+        method: "item/commandExecution/requestApproval",
+        params: {
+          threadId: "thread-approval-failure",
+          turnId: "turn-approval-failure",
+          itemId: "command-approval-failure",
+          reason: "Exact pending action",
+        },
+      })
+      void client.dispatchProtocolMessage({
+        method: "error",
+        params: {
+          threadId: "thread-approval-failure",
+          turnId: "turn-approval-failure",
+          willRetry: true,
+          error: { codexErrorInfo: "transient" },
+        },
+      })
+    }, 0)
+    return { turn: { id: "turn-approval-failure" } }
+  }
+
+  const result = await client.runTurn({
+    threadId: "thread-approval-failure",
+    prompt: "Continue only with owner approval.",
+    cwd: "/tmp",
+    timeoutMs: 1_000,
+    resolveApprovalRequest: async () => {
+      await new Promise((resolve) => setTimeout(resolve, 20))
+      return { decision: "accept" }
+    },
+  })
+
+  assert.equal(result.appServerFailure.willRetry, true)
+  assert.equal(result.retryable, false)
 })
 
 test("protocol method names cannot address reserved EventEmitter channels", async () => {

@@ -71,6 +71,28 @@ export function appServerTurnFailureFromMessage(message) {
   }
 }
 
+function appServerTurnFailureFromFailedCompletion(message) {
+  if (
+    message?.method !== "turn/completed" ||
+    message.params?.turn?.status !== "failed"
+  ) {
+    return null
+  }
+  const threadId = stableProtocolIdentifier(message.params?.threadId)
+  const turnId = stableProtocolIdentifier(message.params?.turn?.id)
+  if (!threadId || !turnId) return null
+  return {
+    eventId: `turn_failed:${threadId}:${turnId}`,
+    errorClass: "AppServerTurnError",
+    code: "APP_SERVER_TURN_ERROR",
+    category: "unknown",
+    codexErrorInfo: "unknown",
+    willRetry: false,
+    threadId,
+    turnId,
+  }
+}
+
 function requestSummary(params = {}) {
   return (
     params.reason ??
@@ -298,6 +320,7 @@ export class AppServerClient extends EventEmitter {
     this.pending = new Map()
     this.mcpStatuses = new Map()
     this.seenTurnFailures = new Map()
+    this.protocolDispatchTail = Promise.resolve()
     this.process = null
   }
 
@@ -361,7 +384,35 @@ export class AppServerClient extends EventEmitter {
     })
   }
 
-  async dispatchProtocolMessage(message) {
+  dispatchProtocolMessage(message) {
+    const dispatched = this.protocolDispatchTail.then(() =>
+      this.#dispatchProtocolMessage(message),
+    )
+    this.protocolDispatchTail = dispatched.catch(() => {})
+    return dispatched
+  }
+
+  async #dispatchTurnFailure(message, turnFailure) {
+    const serialized = JSON.stringify(turnFailure)
+    const prior = this.seenTurnFailures.get(turnFailure.eventId)
+    if (prior && prior !== serialized) {
+      const error = new Error("AppServer turn failure identity conflicts")
+      error.code = "APP_SERVER_TURN_FAILURE_CONFLICT"
+      throw error
+    }
+    if (prior) return
+    this.seenTurnFailures.set(turnFailure.eventId, serialized)
+    try {
+      await this.eventSink({ type: "turn_failed", ...turnFailure })
+    } catch (error) {
+      this.seenTurnFailures.delete(turnFailure.eventId)
+      throw error
+    }
+    this.emit("notification", message)
+    this.emit("turn_failure", turnFailure)
+  }
+
+  async #dispatchProtocolMessage(message) {
     if (message.id !== undefined && !message.method) {
       const pending = this.pending.get(message.id)
       if (!pending) return
@@ -374,31 +425,43 @@ export class AppServerClient extends EventEmitter {
           ),
         )
       } else {
-        pending.resolve(message.result)
+        try {
+          await pending.onResponse?.(message.result)
+          pending.resolve(message.result)
+        } catch (error) {
+          pending.reject(error)
+        }
       }
       return
     }
 
     const turnFailure = appServerTurnFailureFromMessage(message)
     if (turnFailure) {
-      const serialized = JSON.stringify(turnFailure)
-      const prior = this.seenTurnFailures.get(turnFailure.eventId)
-      if (prior && prior !== serialized) {
-        const error = new Error("AppServer turn failure identity conflicts")
-        error.code = "APP_SERVER_TURN_FAILURE_CONFLICT"
-        throw error
-      }
-      if (prior) return
-      this.seenTurnFailures.set(turnFailure.eventId, serialized)
-      try {
-        await this.eventSink({ type: "turn_failed", ...turnFailure })
-      } catch (error) {
-        this.seenTurnFailures.delete(turnFailure.eventId)
-        throw error
-      }
-      this.emit("notification", message)
-      this.emit("turn_failure", turnFailure)
+      await this.#dispatchTurnFailure(message, turnFailure)
       return
+    }
+
+    if (message.method === "turn/completed") {
+      const failedCompletion = appServerTurnFailureFromFailedCompletion(message)
+      if (message.params?.turn?.status === "failed" && !failedCompletion) {
+        const error = new Error(
+          "AppServer failed turn completion lacks stable turn identity",
+        )
+        error.code = "APP_SERVER_FAILED_COMPLETION_IDENTITY_INVALID"
+        throw error
+      }
+      const threadId = stableProtocolIdentifier(message.params?.threadId)
+      const turnId = stableProtocolIdentifier(message.params?.turn?.id)
+      const eventId =
+        threadId && turnId ? `turn_failed:${threadId}:${turnId}` : null
+      if (eventId && this.seenTurnFailures.has(eventId)) {
+        this.emit("notification", message)
+        return
+      }
+      if (failedCompletion) {
+        await this.#dispatchTurnFailure(message, failedCompletion)
+        return
+      }
     }
 
     if (message.method === "mcpServer/startupStatus/updated") {
@@ -435,7 +498,12 @@ export class AppServerClient extends EventEmitter {
     this.pending.clear()
   }
 
-  request(method, params = {}, timeoutMs = this.requestTimeoutMs) {
+  request(
+    method,
+    params = {},
+    timeoutMs = this.requestTimeoutMs,
+    { onResponse = null } = {},
+  ) {
     if (!this.process?.stdin?.writable) {
       return Promise.reject(new Error("Codex App Server is not running"))
     }
@@ -443,6 +511,7 @@ export class AppServerClient extends EventEmitter {
     this.nextRequestId += 1
     const pending = deferred()
     pending.method = method
+    pending.onResponse = onResponse
     pending.timer = setTimeout(() => {
       this.pending.delete(id)
       pending.reject(new Error(`App Server request timed out: ${method}`))
@@ -547,7 +616,9 @@ export class AppServerClient extends EventEmitter {
     let interruptedTurnCompletion = null
     const pendingProtocolFailures = new Map()
     let protocolFailureInFlight = false
+    let turnStartPersistence = null
     let approvalGranted = false
+    let approvalEvidenceObserved = false
     const activeCommandExecutions = new Set()
     const commandExecutionItems = new Map()
     const completedCommandExecutions = []
@@ -661,6 +732,13 @@ export class AppServerClient extends EventEmitter {
     }
     const onTurnCompleted = (params) => {
       if (params?.threadId !== threadId || params?.turn?.id !== turnId) return
+      const pendingFailure = pendingProtocolFailures.get(turnId)
+      if (protocolFailureInFlight || pendingFailure) {
+        if (pendingFailure && turnStartPersistence) {
+          void finishProtocolFailure(pendingFailure)
+        }
+        return
+      }
       if (turnTimedOut && activeCommandExecutions.size > 0) {
         interruptedTurnCompletion = params.turn
         return
@@ -676,33 +754,39 @@ export class AppServerClient extends EventEmitter {
       ) {
         return
       }
-      protocolFailureInFlight = true
-      const retryable =
-        failure.willRetry &&
-        !approvalGranted &&
-        activeCommandExecutions.size === 0 &&
-        completedCommandExecutions.length === 0
-      const result = {
-        status: "failed",
-        turn: {
-          id: turnId,
-          status: "failed",
-          items: [],
-          error: {
-            errorClass: failure.errorClass,
-            code: failure.code,
-            category: failure.category,
-            codexErrorInfo: failure.codexErrorInfo,
-            willRetry: failure.willRetry,
-          },
-        },
-        pendingOwnerRequest: null,
-        agentMessage,
-        commandExecutions: completedCommandExecutions,
-        appServerFailure: failure,
-        retryable,
+      if (!turnStartPersistence) {
+        pendingProtocolFailures.set(failure.turnId, failure)
+        return
       }
+      protocolFailureInFlight = true
       try {
+        await turnStartPersistence
+        const retryable =
+          failure.willRetry &&
+          !approvalGranted &&
+          !approvalEvidenceObserved &&
+          activeCommandExecutions.size === 0 &&
+          completedCommandExecutions.length === 0
+        const result = {
+          status: "failed",
+          turn: {
+            id: turnId,
+            status: "failed",
+            items: [],
+            error: {
+              errorClass: failure.errorClass,
+              code: failure.code,
+              category: failure.category,
+              codexErrorInfo: failure.codexErrorInfo,
+              willRetry: failure.willRetry,
+            },
+          },
+          pendingOwnerRequest: null,
+          agentMessage,
+          commandExecutions: completedCommandExecutions,
+          appServerFailure: failure,
+          retryable,
+        }
         await onTurnFailed(result)
         complete(result)
       } catch (error) {
@@ -711,7 +795,7 @@ export class AppServerClient extends EventEmitter {
     }
     const onTurnFailure = (failure) => {
       if (failure?.threadId !== threadId) return
-      if (turnId) {
+      if (turnId && turnStartPersistence) {
         if (failure.turnId === turnId) void finishProtocolFailure(failure)
         return
       }
@@ -829,6 +913,20 @@ export class AppServerClient extends EventEmitter {
         return
       }
       handledServerRequestIds.add(requestKey)
+      const observedRequest = classifyServerRequest(
+        message,
+        message.method === "mcpServer/elicitation/request"
+          ? matchingMcpToolCall(message, mcpToolCalls)
+          : null,
+      )
+      if (
+        observedRequest?.threadId === threadId &&
+        (!observedRequest.turnId ||
+          !turnId ||
+          observedRequest.turnId === turnId)
+      ) {
+        approvalEvidenceObserved = true
+      }
       void handleServerRequest(message)
     }
     const timeout = setTimeout(() => {
@@ -854,6 +952,19 @@ export class AppServerClient extends EventEmitter {
     this.on("turn_failure", onTurnFailure)
     this.on("adapter_failure", onAdapterFailure)
 
+    const persistStartedTurn = async (response) => {
+      const responseTurnId = stableProtocolIdentifier(response?.turn?.id)
+      if (!responseTurnId) {
+        throw new Error("AppServer turn/start returned an invalid turn identity")
+      }
+      if (turnId && turnId !== responseTurnId) {
+        throw new Error("AppServer turn/start identity conflicts with active turn")
+      }
+      turnId = responseTurnId
+      turnStartPersistence ??= Promise.resolve().then(() => onTurnStarted(turnId))
+      await turnStartPersistence
+    }
+
     try {
       const response = await this.request(
         "turn/start",
@@ -864,9 +975,9 @@ export class AppServerClient extends EventEmitter {
           ...(approvalPolicy ? { approvalPolicy } : {}),
         },
         60_000,
+        { onResponse: persistStartedTurn },
       )
-      turnId = response.turn.id
-      await onTurnStarted(turnId)
+      await persistStartedTurn(response)
       const pendingProtocolFailure = pendingProtocolFailures.get(turnId)
       if (pendingProtocolFailure) {
         await finishProtocolFailure(pendingProtocolFailure)
