@@ -246,6 +246,29 @@ export function resultArtifactFromTurnResult(
   capturedAt = new Date().toISOString(),
 ) {
   const turn = turnResult?.turn ?? null
+  const terminality = turnResult?.terminalityReconciliation
+    ? {
+        reconciliationId:
+          turnResult.terminalityReconciliation.reconciliationId ?? null,
+        classification:
+          turnResult.terminalityReconciliation.classification ?? null,
+        terminalOutcome:
+          turnResult.terminalityReconciliation.terminalOutcome ?? null,
+        evidenceIdentity:
+          turnResult.terminalityReconciliation.evidenceIdentity ?? null,
+        originIssueNumber:
+          turnResult.terminalityReconciliation.originIssueNumber ?? null,
+        instructionId:
+          turnResult.terminalityReconciliation.instructionId ?? null,
+        threadId: turnResult.terminalityReconciliation.threadId ?? null,
+        turnId: turnResult.terminalityReconciliation.turnId ?? turn?.id ?? null,
+        itemIds: Array.isArray(turnResult.terminalityReconciliation.itemIds)
+          ? turnResult.terminalityReconciliation.itemIds
+          : [],
+        evidenceSummary:
+          turnResult.terminalityReconciliation.evidenceSummary ?? null,
+      }
+    : null
   const appServerFailure = turnResult?.appServerFailure
     ? {
         eventId: turnResult.appServerFailure.eventId ?? null,
@@ -256,6 +279,16 @@ export function resultArtifactFromTurnResult(
         willRetry: turnResult.appServerFailure.willRetry === true,
         threadId: turnResult.appServerFailure.threadId ?? null,
         turnId: turnResult.appServerFailure.turnId ?? turn?.id ?? null,
+        ...(Number.isSafeInteger(
+          turnResult.appServerFailure.terminalGeneration,
+        ) && turnResult.appServerFailure.terminalGeneration > 0
+          ? {
+              terminalGeneration:
+                turnResult.appServerFailure.terminalGeneration,
+              terminalTransactionId:
+                turnResult.appServerFailure.terminalTransactionId ?? null,
+            }
+          : {}),
       }
     : null
   const finalMessage = bounded(
@@ -277,17 +310,20 @@ export function resultArtifactFromTurnResult(
   )
   return redactForLog({
     version: 1,
-    source: appServerFailure
-      ? "app_server_turn_failure"
-      : finalMessage
-        ? "completed_turn_final_message"
-        : commandExecutions.length
-          ? "completed_turn_execution_evidence"
-          : "completed_turn_unverified",
+    source: terminality
+      ? "interrupted_command_terminality_reconciliation"
+      : appServerFailure
+        ? "app_server_turn_failure"
+        : finalMessage
+          ? "completed_turn_final_message"
+          : commandExecutions.length
+            ? "completed_turn_execution_evidence"
+            : "completed_turn_unverified",
     capturedAt,
     turnId: turn?.id ?? null,
     turnStatus: turn?.status ?? turnResult?.status ?? null,
     ...(appServerFailure ? { failure: appServerFailure } : {}),
+    ...(terminality ? { terminality } : {}),
     finalMessage,
     checks,
     findings: extractFindings(finalMessage),

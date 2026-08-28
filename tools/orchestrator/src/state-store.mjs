@@ -17,7 +17,7 @@ import {
 } from "./durable-filesystem.mjs"
 import { normalizeTurnAccounting } from "./turn-accounting.mjs"
 
-export const currentStateSchemaVersion = 9
+export const currentStateSchemaVersion = 10
 
 const stateLockAttempts = 400
 const stateLockDelayMs = 5
@@ -96,10 +96,17 @@ function stateTransactionIdentity(contents) {
 }
 
 function validStateTransaction(predecessor, successor) {
-  if (successor?.kind !== "state" || successor.schemaVersion !== 9) return false
+  if (
+    successor?.kind !== "state" ||
+    !new Set([9, currentStateSchemaVersion]).has(successor.schemaVersion)
+  ) {
+    return false
+  }
   if (predecessor?.kind === "missing") return successor.revision === 1
   return Boolean(
     predecessor?.kind === "state" &&
+      (predecessor.schemaVersion !== currentStateSchemaVersion ||
+        successor.schemaVersion === currentStateSchemaVersion) &&
       successor.repository === predecessor.repository &&
       successor.issueNumber === predecessor.issueNumber &&
       successor.originIssueNumber === predecessor.originIssueNumber &&
@@ -175,6 +182,88 @@ function eventPayload(event) {
   return canonicalLogValue(payload)
 }
 
+function stableTurnFailureIdentity(eventId) {
+  const match = String(eventId ?? "").match(
+    /^turn_failed:([A-Za-z0-9._:/-]{1,160}):([A-Za-z0-9._:/-]{1,160})$/,
+  )
+  return match ? { threadId: match[1], turnId: match[2] } : null
+}
+
+function normalizedTurnFailureObservation(value, eventId) {
+  const failure = typeof value === "function" ? value() : value
+  const identity = stableTurnFailureIdentity(eventId)
+  if (
+    !identity ||
+    failure?.eventId !== eventId ||
+    failure?.errorClass !== "AppServerTurnError" ||
+    failure?.code !== "APP_SERVER_TURN_ERROR" ||
+    failure?.threadId !== identity.threadId ||
+    failure?.turnId !== identity.turnId ||
+    typeof failure?.codexErrorInfo !== "string" ||
+    !/^[A-Za-z0-9._:/-]{1,160}$/.test(failure.codexErrorInfo) ||
+    failure.category !== failure.codexErrorInfo ||
+    typeof failure.willRetry !== "boolean"
+  ) {
+    const error = new Error("Turn failure terminalization input is invalid")
+    error.code = "TURN_FAILURE_TERMINALIZATION_INVALID"
+    throw error
+  }
+  return redactForLog({
+    eventId,
+    errorClass: "AppServerTurnError",
+    code: "APP_SERVER_TURN_ERROR",
+    category: failure.codexErrorInfo,
+    codexErrorInfo: failure.codexErrorInfo,
+    willRetry: failure.willRetry,
+    ...identity,
+  })
+}
+
+function turnFailureAuthority(failure) {
+  return failure.codexErrorInfo === "unknown" ? 1 : 2
+}
+
+function turnFailureTerminalizationId(eventId, generation) {
+  return `${eventId}:terminalization:${generation}`
+}
+
+function turnFailureTerminalizations(events, eventId) {
+  const records = events.filter(
+    (event) =>
+      event.type === "turn_failure_terminalization" &&
+      event.terminalEventId === eventId,
+  )
+  let generation = 0
+  let strongest = null
+  for (const record of records) {
+    if (
+      record.schemaVersion !== 1 ||
+      record.generation !== generation + 1 ||
+      record.predecessorGeneration !== generation ||
+      record.transactionId !==
+        turnFailureTerminalizationId(eventId, record.generation) ||
+      !new Set(["provisional", "authoritative"]).has(record.authority)
+    ) {
+      const error = new Error("Turn failure terminalization history is invalid")
+      error.code = "TURN_FAILURE_TERMINALIZATION_INVALID"
+      throw error
+    }
+    const failure = normalizedTurnFailureObservation(record.failure, eventId)
+    const authority = turnFailureAuthority(failure)
+    if (
+      authority !== (record.authority === "authoritative" ? 2 : 1) ||
+      (strongest && authority < turnFailureAuthority(strongest))
+    ) {
+      const error = new Error("Turn failure terminalization authority regressed")
+      error.code = "TURN_FAILURE_TERMINALIZATION_INVALID"
+      throw error
+    }
+    generation = record.generation
+    strongest = failure
+  }
+  return { generation, strongest }
+}
+
 export function redactForLog(value, seen = new WeakSet()) {
   if (typeof value === "string") return redactString(value)
   if (value === null || typeof value !== "object") return value
@@ -227,6 +316,7 @@ export function initialState({ repository, issueNumber, issueUrl = null }) {
     workspaceBranchReconciliations: [],
     gitReconciliationCheckpoints: [],
     checkpointActivationRecoveries: [],
+    terminalityReconciliations: [],
     runs: [],
     updatedAt: new Date().toISOString(),
   }
@@ -267,8 +357,12 @@ export function migrateState(state, { repository, issueNumber }) {
     state.ownerGateAcknowledgements ??= []
   }
   if (state.schemaVersion === 8) {
-    state.schemaVersion = currentStateSchemaVersion
+    state.schemaVersion = 9
     state.stateRevision = 0
+  }
+  if (state.schemaVersion === 9) {
+    state.schemaVersion = currentStateSchemaVersion
+    state.terminalityReconciliations ??= []
   }
   if (state.schemaVersion !== currentStateSchemaVersion) {
     throw new Error(`Unsupported state schema: ${state.schemaVersion}`)
@@ -291,6 +385,7 @@ export function migrateState(state, { repository, issueNumber }) {
   state.workspaceBranchReconciliations ??= []
   state.gitReconciliationCheckpoints ??= []
   state.checkpointActivationRecoveries ??= []
+  state.terminalityReconciliations ??= []
   durableRevision(state.stateRevision)
   return normalizeTurnAccounting(state)
 }
@@ -528,7 +623,145 @@ export class StateStore {
     )
   }
 
-  async appendEventOnce(eventId, event) {
+  async canonicalizeTurnFailure(
+    eventId,
+    failureOrProvider,
+    { finalize = false } = {},
+  ) {
+    if (!stableTurnFailureIdentity(eventId)) {
+      const error = new Error("Turn failure terminalization identity is invalid")
+      error.code = "TURN_FAILURE_TERMINALIZATION_INVALID"
+      throw error
+    }
+    await this.ensureDirectory()
+    const lock = await this.#acquireWriteLock()
+    try {
+      const contents = await readFileNoFollow(
+        this.directoryGuard,
+        path.basename(this.eventPath),
+        { allowMissing: true },
+      )
+      const events = parseEventLog(contents)
+      const canonical = events.filter((candidate) => candidate.eventId === eventId)
+      if (canonical.length > 1) {
+        const error = new Error("Durable turn failure identity is ambiguous")
+        error.code = "EVENT_ID_AMBIGUOUS"
+        throw error
+      }
+      let terminalization = turnFailureTerminalizations(events, eventId)
+      const current = () =>
+        normalizedTurnFailureObservation(failureOrProvider, eventId)
+      if (canonical.length === 1) {
+        const observed = current()
+        const committed = normalizedTurnFailureObservation(canonical[0], eventId)
+        if (
+          terminalization.generation > 0 &&
+          (canonical[0].terminalGeneration !== terminalization.generation ||
+            canonical[0].terminalTransactionId !==
+              turnFailureTerminalizationId(
+                eventId,
+                terminalization.generation,
+              ))
+        ) {
+          const error = new Error(
+            "Durable turn failure terminal transaction binding is invalid",
+          )
+          error.code = "TURN_FAILURE_TERMINALIZATION_INVALID"
+          throw error
+        }
+        if (JSON.stringify(eventPayload(observed)) !== JSON.stringify(eventPayload(committed))) {
+          const error = new Error(
+            turnFailureAuthority(observed) > turnFailureAuthority(committed)
+              ? "Authoritative turn failure arrived after canonical terminalization"
+              : "Durable turn failure identity conflicts",
+          )
+          error.code =
+            turnFailureAuthority(observed) > turnFailureAuthority(committed)
+              ? "TURN_FAILURE_POST_LINEARIZATION_CONTRADICTION"
+              : "EVENT_ID_CONFLICT"
+          throw error
+        }
+        return {
+          created: false,
+          finalized: true,
+          generation: canonical[0].terminalGeneration ?? terminalization.generation,
+          event: canonical[0],
+        }
+      }
+
+      let committedEvent = null
+      let committedGeneration = terminalization.generation
+      await appendFileNoFollow(
+        this.directoryGuard,
+        path.basename(this.eventPath),
+        () => {
+          const candidate = current()
+          const candidateAuthority = turnFailureAuthority(candidate)
+          const strongestAuthority = terminalization.strongest
+            ? turnFailureAuthority(terminalization.strongest)
+            : 0
+          if (
+            terminalization.strongest &&
+            candidateAuthority === strongestAuthority &&
+            JSON.stringify(candidate) !== JSON.stringify(terminalization.strongest)
+          ) {
+            const error = new Error("Turn failure observation conflicts")
+            error.code = "TURN_FAILURE_TERMINALIZATION_CONFLICT"
+            throw error
+          }
+          const lines = []
+          if (candidateAuthority > strongestAuthority) {
+            committedGeneration = terminalization.generation + 1
+            terminalization = {
+              generation: committedGeneration,
+              strongest: candidate,
+            }
+            lines.push({
+              at: new Date().toISOString(),
+              type: "turn_failure_terminalization",
+              schemaVersion: 1,
+              terminalEventId: eventId,
+              transactionId: turnFailureTerminalizationId(
+                eventId,
+                committedGeneration,
+              ),
+              generation: committedGeneration,
+              predecessorGeneration: committedGeneration - 1,
+              authority:
+                candidateAuthority === 2 ? "authoritative" : "provisional",
+              failure: candidate,
+            })
+          }
+          if (finalize) {
+            committedEvent = {
+              at: new Date().toISOString(),
+              type: "turn_failed",
+              ...terminalization.strongest,
+              eventId,
+              terminalGeneration: terminalization.generation,
+              terminalTransactionId: turnFailureTerminalizationId(
+                eventId,
+                terminalization.generation,
+              ),
+            }
+            lines.push(committedEvent)
+          }
+          return lines.map((record) => `${JSON.stringify(record)}\n`).join("")
+        },
+        { hooks: this.fileSystemHooks },
+      )
+      return {
+        created: true,
+        finalized: Boolean(finalize),
+        generation: committedGeneration,
+        event: committedEvent,
+      }
+    } finally {
+      await this.#releaseWriteLock(lock)
+    }
+  }
+
+  async appendEventOnce(eventId, eventOrProvider) {
     if (
       typeof eventId !== "string" ||
       !/^[A-Za-z0-9._:/-]{1,512}$/.test(eventId)
@@ -536,11 +769,6 @@ export class StateStore {
       throw new Error("Cannot persist an event with an unsafe identity")
     }
     await this.ensureDirectory()
-    const record = {
-      at: new Date().toISOString(),
-      ...redactForLog(event),
-      eventId,
-    }
     const lock = await this.#acquireWriteLock()
     try {
       const contents = await readFileNoFollow(
@@ -556,7 +784,19 @@ export class StateStore {
         error.code = "EVENT_ID_AMBIGUOUS"
         throw error
       }
+      const resolveRecord = () => {
+        const event =
+          typeof eventOrProvider === "function"
+            ? eventOrProvider()
+            : eventOrProvider
+        return {
+          at: new Date().toISOString(),
+          ...redactForLog(event),
+          eventId,
+        }
+      }
       if (matches.length === 1) {
+        const record = resolveRecord()
         if (
           JSON.stringify(eventPayload(matches[0])) !==
           JSON.stringify(eventPayload(record))
@@ -567,13 +807,17 @@ export class StateStore {
         }
         return { created: false, event: matches[0] }
       }
+      let committedRecord = null
       await appendFileNoFollow(
         this.directoryGuard,
         path.basename(this.eventPath),
-        `${JSON.stringify(record)}\n`,
+        () => {
+          committedRecord = resolveRecord()
+          return `${JSON.stringify(committedRecord)}\n`
+        },
         { hooks: this.fileSystemHooks },
       )
-      return { created: true, event: record }
+      return { created: true, event: committedRecord }
     } finally {
       await this.#releaseWriteLock(lock)
     }
@@ -603,6 +847,21 @@ export class StateStore {
         throw error
       }
       return matches[0] ?? null
+    } finally {
+      await this.#releaseWriteLock(lock)
+    }
+  }
+
+  async readEvents() {
+    await this.ensureDirectory()
+    const lock = await this.#acquireWriteLock()
+    try {
+      const contents = await readFileNoFollow(
+        this.directoryGuard,
+        path.basename(this.eventPath),
+        { allowMissing: true },
+      )
+      return parseEventLog(contents)
     } finally {
       await this.#releaseWriteLock(lock)
     }

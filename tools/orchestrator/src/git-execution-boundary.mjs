@@ -35,10 +35,14 @@ import stat
 import subprocess
 import sys
 
-if platform.system() == "Darwin":
-    import fcntl
+import fcntl
 
 request = json.loads(sys.stdin.readline())
+
+if request.get("brokerVersion") != 1:
+    raise RuntimeError("mutation broker version changed")
+if not isinstance(request.get("brokerDigest"), str) or len(request["brokerDigest"]) != 64:
+    raise RuntimeError("mutation broker digest is invalid")
 
 def same_identity(value, expected, kind):
     type_matches = stat.S_ISREG(value.st_mode) if kind == "file" else stat.S_ISDIR(value.st_mode)
@@ -72,19 +76,52 @@ def require_git_file():
     finally:
         os.close(descriptor)
 
-def require_boundary():
+def require_branch_ref():
+    value = os.fstat(8)
+    if not same_identity(value, request["branchRefIdentity"], "file"):
+        raise RuntimeError("branch ref descriptor identity changed")
+    os.lseek(8, 0, os.SEEK_SET)
+    contents = os.read(8, 4097).decode("utf-8")
+    if len(contents) > 4096 or contents != request["branchRefContents"]:
+        raise RuntimeError("branch ref contents changed")
+
+def require_boundary(include_branch_ref=True):
     require_descriptor(3, request["workspaceRootIdentity"], "directory")
     require_descriptor(4, request["workspaceIdentity"], "directory")
     require_descriptor(5, request["workspaceGitFileIdentity"], "file")
     require_descriptor(6, request["gitDirectoryIdentity"], "directory")
     require_descriptor(7, request["commonDirectoryIdentity"], "directory")
+    if include_branch_ref:
+        require_descriptor(8, request["branchRefIdentity"], "file")
+    require_descriptor(10, request["objectsDirectoryIdentity"], "directory")
+    require_descriptor(11, request["refsDirectoryIdentity"], "directory")
+    require_descriptor(12, request["branchRefParentIdentity"], "directory")
     require_named(request["workspaceRoot"], request["workspaceRootIdentity"], "directory")
     require_named(request["workspacePath"], request["workspaceIdentity"], "directory")
     require_named(request["workspaceGitFile"], request["workspaceGitFileIdentity"], "file")
     require_named(request["gitDirectory"], request["gitDirectoryIdentity"], "directory")
     require_named(request["commonDirectory"], request["commonDirectoryIdentity"], "directory")
+    if include_branch_ref:
+        require_named(request["branchRef"], request["branchRefIdentity"], "file")
+    require_named(request["objectsDirectory"], request["objectsDirectoryIdentity"], "directory")
+    require_named(request["refsDirectory"], request["refsDirectoryIdentity"], "directory")
+    require_named(request["branchRefParent"], request["branchRefParentIdentity"], "directory")
     require_workspace_entry()
     require_git_file()
+    if include_branch_ref:
+        require_branch_ref()
+
+def require_post_branch_ref(head):
+    value = os.stat(os.path.basename(request["branchRef"]), dir_fd=12, follow_symlinks=False)
+    if not stat.S_ISREG(value.st_mode) or value.st_nlink != 1:
+        raise RuntimeError("post branch ref shape changed")
+    descriptor = os.open(os.path.basename(request["branchRef"]), os.O_RDONLY | os.O_NOFOLLOW, dir_fd=12)
+    try:
+        contents = os.read(descriptor, 4097).decode("utf-8")
+        if len(contents) > 4096 or contents.strip() != head:
+            raise RuntimeError("post branch ref contents changed")
+    finally:
+        os.close(descriptor)
 
 def descriptor_path(fd, expected):
     if platform.system() == "Darwin":
@@ -99,31 +136,42 @@ def descriptor_path(fd, expected):
     require_named(value, expected, "directory")
     return value
 
-def git(args, binary=False):
+def git(args, environment, binary=False):
     result = subprocess.run(
         ["/usr/bin/git", *args],
-        env=request["env"],
+        env=environment,
         check=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.DEVNULL,
     )
     return result.stdout if binary else result.stdout.decode("utf-8").strip()
 
-def main():
-    require_boundary()
-    os.fchdir(4)
-    if git(["branch", "--show-current"]) != request["branch"]:
+def pinned_environment(optional_locks=True):
+    environment = dict(request["env"])
+    environment["GIT_DIR"] = descriptor_path(6, request["gitDirectoryIdentity"])
+    environment["GIT_COMMON_DIR"] = descriptor_path(7, request["commonDirectoryIdentity"])
+    environment["GIT_WORK_TREE"] = "."
+    environment["GIT_OBJECT_DIRECTORY"] = descriptor_path(10, request["objectsDirectoryIdentity"])
+    if optional_locks:
+        environment["GIT_OPTIONAL_LOCKS"] = "0"
+    else:
+        environment.pop("GIT_OPTIONAL_LOCKS", None)
+    return environment
+
+def require_git_state(environment):
+    if git(["branch", "--show-current"], environment) != request["branch"]:
         raise RuntimeError("branch changed")
-    if git(["rev-parse", "HEAD"]) != request["head"]:
+    if git(["rev-parse", "HEAD"], environment) != request["head"]:
         raise RuntimeError("HEAD changed")
-    if git(["rev-parse", "HEAD^{tree}"]) != request["tree"]:
+    if git(["rev-parse", "HEAD^{tree}"], environment) != request["tree"]:
         raise RuntimeError("tree changed")
-    if git(["status", "--porcelain=v1", "-z"], binary=True) != b"":
+    if git(["status", "--porcelain=v1", "-z"], environment, binary=True) != b"":
         raise RuntimeError("workspace is dirty")
-    if git(["rev-parse", "refs/heads/%s" % request["branch"]]) != request["head"]:
+    if git(["rev-parse", "refs/heads/%s" % request["branch"]], environment) != request["head"]:
         raise RuntimeError("branch ref changed")
-    if git(["cat-file", "-t", "%s^{commit}" % request["cherryPickCommit"]]) != "commit":
+    if git(["rev-parse", "%s^{commit}" % request["cherryPickCommit"]], environment) != request["cherryPickCommit"]:
         raise RuntimeError("target commit changed")
+    require_branch_ref()
     for marker in request["operationMarkers"]:
         try:
             os.stat(marker, dir_fd=6, follow_symlinks=False)
@@ -136,25 +184,83 @@ def main():
             raise RuntimeError("Git operation directory appeared")
         except FileNotFoundError:
             pass
+
+def require_post_state(environment):
+    if git(["branch", "--show-current"], environment) != request["branch"]:
+        raise RuntimeError("post branch changed")
+    head = git(["rev-parse", "HEAD"], environment)
+    if git(["rev-parse", "HEAD^"], environment) != request["head"]:
+        raise RuntimeError("post parent changed")
+    if git(["rev-parse", "HEAD^{tree}"], environment) != request["cherryPickTargetTree"]:
+        raise RuntimeError("post tree changed")
+    if git(["status", "--porcelain=v1", "-z"], environment, binary=True) != b"":
+        raise RuntimeError("post workspace is dirty")
+    if git(["rev-parse", "refs/heads/%s" % request["branch"]], environment) != head:
+        raise RuntimeError("post branch ref changed")
+    changed = git(["diff", "--name-only", "%s..%s" % (request["head"], head)], environment).splitlines()
+    if sorted(changed) != request["sourceChangedFiles"]:
+        raise RuntimeError("post changed-file scope changed")
+    return head
+
+def main():
+    try:
+        fcntl.flock(7, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        sys.exit(75)
     require_boundary()
-    os.write(8, b"BOUNDARY_READY\n")
+    os.fchdir(4)
+    validation_environment = pinned_environment(optional_locks=True)
+    require_git_state(validation_environment)
+    require_boundary()
+    os.write(9, b"BOUNDARY_READY\n")
     if sys.stdin.readline() != "continue\n":
         raise RuntimeError("managed execution boundary handshake failed")
     require_boundary()
-    environment = dict(request["env"])
-    environment["GIT_DIR"] = descriptor_path(6, request["gitDirectoryIdentity"])
-    environment["GIT_COMMON_DIR"] = descriptor_path(7, request["commonDirectoryIdentity"])
-    environment["GIT_WORK_TREE"] = "."
-    environment.pop("GIT_OPTIONAL_LOCKS", None)
+    validation_environment = pinned_environment(optional_locks=True)
+    require_git_state(validation_environment)
     require_boundary()
-    os.execve("/usr/bin/git", ["/usr/bin/git", *request["args"]], environment)
+    environment = pinned_environment(optional_locks=False)
+    require_git_state(validation_environment)
+    require_boundary()
+    result = subprocess.run(
+        ["/usr/bin/git", *request["args"]],
+        env=environment,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    if result.returncode != 0:
+        require_boundary()
+        sys.exit(70)
+    if request.get("pauseAfterMutation"):
+        os.write(9, b"MUTATION_COMMITTED\n")
+        if sys.stdin.readline() != "verify\n":
+            raise RuntimeError("managed execution post-mutation handshake failed")
+    require_boundary(include_branch_ref=False)
+    post_environment = pinned_environment(optional_locks=True)
+    post_head = require_post_state(post_environment)
+    require_post_branch_ref(post_head)
+    require_boundary(include_branch_ref=False)
+    print(json.dumps({
+        "schemaVersion": 1,
+        "brokerVersion": request["brokerVersion"],
+        "brokerDigest": request["brokerDigest"],
+        "executionId": request["executionId"],
+        "parentHead": request["head"],
+        "head": post_head,
+        "tree": request["cherryPickTargetTree"],
+        "sourceChangedFiles": request["sourceChangedFiles"],
+    }, separators=(",", ":"), sort_keys=True), flush=True)
 
 try:
     main()
-except BaseException:
+except Exception:
     sys.stderr.write("KOALAFROG_MANAGED_BOUNDARY_REJECTED\n")
     sys.exit(78)
 `
+const managedGitExecutionBrokerVersion = 1
+const managedGitExecutionBrokerDigest = createHash("sha256")
+  .update(managedGitExecutionHelper)
+  .digest("hex")
 const checkpointIssueNumber = 63
 const checkpointBranch =
   "agent/issue-63-production-day1-integration-001"
@@ -297,7 +403,7 @@ async function git(
     const result = await execFileAsync("git", args, {
       cwd,
       encoding: "utf8",
-      ...(env ? { env } : {}),
+      env: env ?? { ...process.env, GIT_OPTIONAL_LOCKS: "0" },
       maxBuffer: 10 * 1024 * 1024,
     })
     return trim ? result.stdout.trim() : result.stdout
@@ -3399,16 +3505,18 @@ async function linkedWorktreeMetadataDecision({
     "heads",
     ...state.branch.split("/"),
   )
+  const refsDirectory = path.join(commonDirectory, "refs")
+  const branchRefParent = path.dirname(branchRef)
+  const branchRefContents = await stageOperation(
+    "metadata_branch_ref_read",
+    () => readSmallFile(branchRef),
+  )
   if (
     !exactPathWithin(path.join(commonDirectory, "refs", "heads"), branchRef) ||
     !(await stageOperation("metadata_branch_ref_type", () =>
       regularPath(branchRef, "file"),
     )) ||
-    (
-      await stageOperation("metadata_branch_ref_read", () =>
-        readSmallFile(branchRef),
-      )
-    )?.trim() !== record.head
+    branchRefContents?.trim() !== record.head
   ) {
     return rejected("activation_metadata_branch_ref")
   }
@@ -3438,6 +3546,10 @@ async function linkedWorktreeMetadataDecision({
     workspaceGitFileIdentity,
     gitDirectoryIdentity,
     commonDirectoryIdentity,
+    branchRefIdentity,
+    objectsDirectoryIdentity,
+    refsDirectoryIdentity,
+    branchRefParentIdentity,
   ] = await Promise.all([
     stageOperation("metadata_workspace_root_identity", () =>
       pathFilesystemIdentity(rootReal, "directory"),
@@ -3454,13 +3566,29 @@ async function linkedWorktreeMetadataDecision({
     stageOperation("metadata_common_directory_identity", () =>
       pathFilesystemIdentity(commonDirectory, "directory"),
     ),
+    stageOperation("metadata_branch_ref_identity", () =>
+      pathFilesystemIdentity(branchRef, "file"),
+    ),
+    stageOperation("metadata_objects_directory_identity", () =>
+      pathFilesystemIdentity(objectsDirectory, "directory"),
+    ),
+    stageOperation("metadata_refs_directory_identity", () =>
+      pathFilesystemIdentity(refsDirectory, "directory"),
+    ),
+    stageOperation("metadata_branch_ref_parent_identity", () =>
+      pathFilesystemIdentity(branchRefParent, "directory"),
+    ),
   ])
   if (
     !workspaceRootIdentity ||
     !workspaceIdentity ||
     !workspaceGitFileIdentity ||
     !gitDirectoryIdentity ||
-    !commonDirectoryIdentity
+    !commonDirectoryIdentity ||
+    !branchRefIdentity ||
+    !objectsDirectoryIdentity ||
+    !refsDirectoryIdentity ||
+    !branchRefParentIdentity
   ) {
     return rejected("activation_metadata_identity")
   }
@@ -3471,10 +3599,21 @@ async function linkedWorktreeMetadataDecision({
     workspaceRootIdentity,
     workspaceIdentity,
     workspaceGitFileIdentity,
+    workspaceGitFileContentsDigest: sha256(pointer),
     gitDirectory,
     commonDirectory,
     gitDirectoryIdentity,
     commonDirectoryIdentity,
+    branchRef,
+    branchRefIdentity,
+    branchRefContents,
+    branchRefContentsDigest: sha256(branchRefContents),
+    objectsDirectory,
+    objectsDirectoryIdentity,
+    refsDirectory,
+    refsDirectoryIdentity,
+    branchRefParent,
+    branchRefParentIdentity,
     writablePaths: [
       gitDirectory,
       objectsDirectory,
@@ -3871,17 +4010,37 @@ function managedExecutionRecordBinding(record) {
     cherryPickTargetTree: record.cherryPickTargetTree,
     sourceChangedFilesDigest: record.sourceChangedFilesDigest,
     sourceChangedFileCount: record.sourceChangedFileCount,
+    sourceChangedFiles: record.sourceChangedFiles,
     changedFilesDigest: record.changedFilesDigest,
     changedFileCount: record.changedFileCount,
+    workspaceRoot: record.workspaceRoot,
+    workspaceGitFile: record.workspaceGitFile,
+    workspaceRootIdentity: record.workspaceRootIdentity,
+    workspaceIdentity: record.workspaceIdentity,
+    workspaceGitFileIdentity: record.workspaceGitFileIdentity,
+    workspaceGitFileContentsDigest: record.workspaceGitFileContentsDigest,
     gitDirectory: record.gitDirectory,
     commonDirectory: record.commonDirectory,
+    gitDirectoryIdentity: record.gitDirectoryIdentity,
+    commonDirectoryIdentity: record.commonDirectoryIdentity,
+    branchRef: record.branchRef,
+    branchRefIdentity: record.branchRefIdentity,
+    branchRefContentsDigest: record.branchRefContentsDigest,
+    objectsDirectory: record.objectsDirectory,
+    objectsDirectoryIdentity: record.objectsDirectoryIdentity,
+    refsDirectory: record.refsDirectory,
+    refsDirectoryIdentity: record.refsDirectoryIdentity,
+    branchRefParent: record.branchRefParent,
+    branchRefParentIdentity: record.branchRefParentIdentity,
+    brokerVersion: record.brokerVersion,
+    brokerDigest: record.brokerDigest,
   }
 }
 
 function managedExecutionId(binding) {
   return `git-reconciliation-checkpoint-execution:${sha256(
     stableJson({
-      version: 1,
+      version: 3,
       binding: {
         ...managedExecutionRecordBinding(binding),
         executionId: null,
@@ -4303,8 +4462,9 @@ export async function prepareGitReconciliationCheckpointExecution({
     if (!sourceChangedFiles.length) {
       return finish(rejected("managed_execution_source_empty"))
     }
+    const intent = intents[0] ?? null
     const binding = {
-      schemaVersion: 2,
+      schemaVersion: 4,
       kind: "execution_intent",
       executionId: null,
       checkpointId: proposal.checkpointId,
@@ -4330,6 +4490,7 @@ export async function prepareGitReconciliationCheckpointExecution({
       cherryPickTargetTree: proposal.cherryPickTargetTree,
       sourceChangedFilesDigest: sha256(JSON.stringify(sourceChangedFiles)),
       sourceChangedFileCount: sourceChangedFiles.length,
+      sourceChangedFiles,
       changedFilesDigest: proposal.changedFilesDigest,
       changedFileCount: proposal.changedFileCount,
       workspaceRoot: metadata.value.workspaceRoot,
@@ -4337,14 +4498,32 @@ export async function prepareGitReconciliationCheckpointExecution({
       workspaceRootIdentity: metadata.value.workspaceRootIdentity,
       workspaceIdentity: metadata.value.workspaceIdentity,
       workspaceGitFileIdentity: metadata.value.workspaceGitFileIdentity,
+      workspaceGitFileContentsDigest:
+        metadata.value.workspaceGitFileContentsDigest,
       gitDirectory: metadata.value.gitDirectory,
       commonDirectory: metadata.value.commonDirectory,
       gitDirectoryIdentity: metadata.value.gitDirectoryIdentity,
       commonDirectoryIdentity: metadata.value.commonDirectoryIdentity,
+      branchRef: metadata.value.branchRef,
+      branchRefIdentity:
+        currentHead === proposal.head || !intent
+          ? metadata.value.branchRefIdentity
+          : intent.branchRefIdentity,
+      branchRefContentsDigest:
+        currentHead === proposal.head || !intent
+          ? metadata.value.branchRefContentsDigest
+          : intent.branchRefContentsDigest,
+      objectsDirectory: metadata.value.objectsDirectory,
+      objectsDirectoryIdentity: metadata.value.objectsDirectoryIdentity,
+      refsDirectory: metadata.value.refsDirectory,
+      refsDirectoryIdentity: metadata.value.refsDirectoryIdentity,
+      branchRefParent: metadata.value.branchRefParent,
+      branchRefParentIdentity: metadata.value.branchRefParentIdentity,
+      brokerVersion: managedGitExecutionBrokerVersion,
+      brokerDigest: managedGitExecutionBrokerDigest,
     }
     binding.executionId = managedExecutionId(binding)
     const record = { ...binding, createdAt: now.toISOString() }
-    const intent = intents[0] ?? null
     if (
       intent &&
       (intent.executionId !== record.executionId ||
@@ -4426,6 +4605,8 @@ export async function prepareGitReconciliationCheckpointExecution({
       cherryPickCommit: intent.cherryPickCommit,
       sourceChangedFilesDigest: intent.sourceChangedFilesDigest,
       sourceChangedFileCount: intent.sourceChangedFileCount,
+      brokerVersion: intent.brokerVersion,
+      brokerDigest: intent.brokerDigest,
       remoteIntegrationBranch: "absent",
       pullRequestCount: 0,
       completedAt: now.toISOString(),
@@ -4515,6 +4696,7 @@ function executePinnedGit(
   {
     boundaryRequest,
     beforeMutation = null,
+    afterMutation = null,
     maxBuffer = 10 * 1024 * 1024,
     ...options
   },
@@ -4528,7 +4710,9 @@ function executePinnedGit(
     let stdout = ""
     let stderr = ""
     let boundaryReady = ""
+    let boundaryHandshakeHandled = false
     let settled = false
+    let boundaryAbortError = null
     const fail = (error) => {
       if (settled) return
       settled = true
@@ -4545,23 +4729,55 @@ function executePinnedGit(
         fail(error)
       }
     })
-    child.stdin.write(`${JSON.stringify({ ...boundaryRequest, args })}\n`)
-    child.stdio[8].on("data", (chunk) => {
+    child.stdin.write(
+      `${JSON.stringify({
+        ...boundaryRequest,
+        args,
+        pauseAfterMutation: typeof afterMutation === "function",
+      })}\n`,
+    )
+    child.stdio[9].on("data", (chunk) => {
       if (settled) return
       boundaryReady += chunk.toString("utf8")
       if (!boundaryReady.includes("\n")) return
-      if (boundaryReady !== "BOUNDARY_READY\n") {
+      const lines = boundaryReady.split("\n")
+      const line = `${lines.shift()}\n`
+      boundaryReady = lines.join("\n")
+      if (!boundaryHandshakeHandled) {
+        boundaryHandshakeHandled = true
+      } else if (line === "MUTATION_COMMITTED\n") {
+        Promise.resolve(
+          afterMutation({ terminateBroker: () => child.kill("SIGKILL") }),
+        ).then(
+          () => child.stdin.end("verify\n"),
+          (error) => {
+            boundaryAbortError = error
+            child.kill("SIGKILL")
+          },
+        )
+        return
+      } else {
+        return
+      }
+      if (line !== "BOUNDARY_READY\n") {
+        boundaryAbortError = new Error("managed Git boundary handshake was invalid")
+        boundaryAbortError.code = 78
         child.kill("SIGKILL")
-        fail(new Error("managed Git boundary handshake was invalid"))
         return
       }
       Promise.resolve(
-        typeof beforeMutation === "function" ? beforeMutation() : undefined,
+        typeof beforeMutation === "function"
+          ? beforeMutation({ terminateBroker: () => child.kill("SIGKILL") })
+          : undefined,
       ).then(
-        () => child.stdin.end("continue\n"),
+        () => {
+          if (typeof afterMutation === "function") child.stdin.write("continue\n")
+          else child.stdin.end("continue\n")
+        },
         (error) => {
+          boundaryAbortError = error
+          boundaryAbortError.code = 78
           child.kill("SIGKILL")
-          fail(error)
         },
       )
     })
@@ -4577,13 +4793,17 @@ function executePinnedGit(
     child.once("error", fail)
     child.once("close", (code, signal) => {
       if (settled) return
+      if (boundaryAbortError) {
+        fail(boundaryAbortError)
+        return
+      }
       settled = true
       if (code === 0) {
         resolve({ stdout, stderr })
         return
       }
       const error = new Error("managed Git command failed")
-      error.code = code
+      error.code = signal ? "BROKER_LOST" : code
       error.signal = signal
       error.stdout = stdout
       error.stderr = stderr
@@ -4625,6 +4845,30 @@ async function openManagedExecutionTarget(intent) {
       "directory",
     )
     handles.push(commonDirectory)
+    const branchRef = await openPinnedManagedPath(
+      intent.branchRef,
+      intent.branchRefIdentity,
+      "file",
+    )
+    handles.push(branchRef)
+    const objectsDirectory = await openPinnedManagedPath(
+      intent.objectsDirectory,
+      intent.objectsDirectoryIdentity,
+      "directory",
+    )
+    handles.push(objectsDirectory)
+    const refsDirectory = await openPinnedManagedPath(
+      intent.refsDirectory,
+      intent.refsDirectoryIdentity,
+      "directory",
+    )
+    handles.push(refsDirectory)
+    const branchRefParent = await openPinnedManagedPath(
+      intent.branchRefParent,
+      intent.branchRefParentIdentity,
+      "directory",
+    )
+    handles.push(branchRefParent)
 
     if (
       path.dirname(intent.workspacePath) !== intent.workspaceRoot ||
@@ -4642,6 +4886,16 @@ async function openManagedExecutionTarget(intent) {
       : null
     if (pointerTarget !== intent.gitDirectory) {
       throw new Error("managed execution Git pointer changed")
+    }
+    if (sha256(pointer) !== intent.workspaceGitFileContentsDigest) {
+      throw new Error("managed execution Git pointer binding changed")
+    }
+    const branchRefContents = await branchRef.readFile("utf8")
+    if (
+      branchRefContents.trim() !== intent.head ||
+      sha256(branchRefContents) !== intent.branchRefContentsDigest
+    ) {
+      throw new Error("managed execution branch ref binding changed")
     }
 
     const environment = Object.fromEntries(
@@ -4661,6 +4915,9 @@ async function openManagedExecutionTarget(intent) {
       env: environment,
       maxBuffer: 10 * 1024 * 1024,
       boundaryRequest: {
+        brokerVersion: intent.brokerVersion,
+        brokerDigest: intent.brokerDigest,
+        executionId: intent.executionId,
         workspaceRoot: intent.workspaceRoot,
         workspacePath: intent.workspacePath,
         workspaceName: path.basename(intent.workspacePath),
@@ -4668,15 +4925,26 @@ async function openManagedExecutionTarget(intent) {
         workspaceGitFileContents: pointer,
         gitDirectory: intent.gitDirectory,
         commonDirectory: intent.commonDirectory,
+        branchRef: intent.branchRef,
+        objectsDirectory: intent.objectsDirectory,
+        refsDirectory: intent.refsDirectory,
+        branchRefParent: intent.branchRefParent,
         workspaceRootIdentity: intent.workspaceRootIdentity,
         workspaceIdentity: intent.workspaceIdentity,
         workspaceGitFileIdentity: intent.workspaceGitFileIdentity,
         gitDirectoryIdentity: intent.gitDirectoryIdentity,
         commonDirectoryIdentity: intent.commonDirectoryIdentity,
+        branchRefIdentity: intent.branchRefIdentity,
+        objectsDirectoryIdentity: intent.objectsDirectoryIdentity,
+        refsDirectoryIdentity: intent.refsDirectoryIdentity,
+        branchRefParentIdentity: intent.branchRefParentIdentity,
+        branchRefContents,
         branch: intent.branch,
         head: intent.head,
         tree: intent.tree,
         cherryPickCommit: intent.cherryPickCommit,
+        cherryPickTargetTree: intent.cherryPickTargetTree,
+        sourceChangedFiles: intent.sourceChangedFiles,
         operationMarkers: gitOperationMarkers,
         operationDirectories: gitOperationDirectories,
         env: environment,
@@ -4690,7 +4958,11 @@ async function openManagedExecutionTarget(intent) {
         workspaceGitFile.fd,
         gitDirectory.fd,
         commonDirectory.fd,
+        branchRef.fd,
         "pipe",
+        objectsDirectory.fd,
+        refsDirectory.fd,
+        branchRefParent.fd,
       ],
     }
     return {
@@ -4706,6 +4978,25 @@ async function openManagedExecutionTarget(intent) {
 }
 
 async function validateManagedExecutionTarget(intent, environment) {
+  const pathChecks = [
+    [intent.workspaceRoot, intent.workspaceRootIdentity, "directory"],
+    [intent.workspacePath, intent.workspaceIdentity, "directory"],
+    [intent.workspaceGitFile, intent.workspaceGitFileIdentity, "file"],
+    [intent.gitDirectory, intent.gitDirectoryIdentity, "directory"],
+    [intent.commonDirectory, intent.commonDirectoryIdentity, "directory"],
+    [intent.branchRef, intent.branchRefIdentity, "file"],
+    [intent.objectsDirectory, intent.objectsDirectoryIdentity, "directory"],
+    [intent.refsDirectory, intent.refsDirectoryIdentity, "directory"],
+    [intent.branchRefParent, intent.branchRefParentIdentity, "directory"],
+  ]
+  for (const [targetPath, expected, type] of pathChecks) {
+    if (!sameFilesystemIdentity(await lstat(targetPath), expected, type)) {
+      throw new Error("managed execution path identity changed")
+    }
+    if ((await realpath(targetPath)) !== targetPath) {
+      throw new Error("managed execution path is no longer canonical")
+    }
+  }
   const [branch, head, tree, status, branchHead, commitType] = await Promise.all([
     git(["branch", "--show-current"], intent.workspacePath, {
       env: environment,
@@ -4747,13 +5038,6 @@ async function validateManagedExecutionTarget(intent, environment) {
       throw new Error("managed execution Git operation directory appeared")
     }
   }
-  const pathChecks = [
-    [intent.workspaceRoot, intent.workspaceRootIdentity, "directory"],
-    [intent.workspacePath, intent.workspaceIdentity, "directory"],
-    [intent.workspaceGitFile, intent.workspaceGitFileIdentity, "file"],
-    [intent.gitDirectory, intent.gitDirectoryIdentity, "directory"],
-    [intent.commonDirectory, intent.commonDirectoryIdentity, "directory"],
-  ]
   for (const [targetPath, expected, type] of pathChecks) {
     if (!sameFilesystemIdentity(await lstat(targetPath), expected, type)) {
       throw new Error("managed execution path identity changed")
@@ -4762,12 +5046,22 @@ async function validateManagedExecutionTarget(intent, environment) {
       throw new Error("managed execution path is no longer canonical")
     }
   }
+  if (
+    sha256(await readFile(intent.workspaceGitFile, "utf8")) !==
+      intent.workspaceGitFileContentsDigest ||
+    sha256(await readFile(intent.branchRef, "utf8")) !==
+      intent.branchRefContentsDigest
+  ) {
+    throw new Error("managed execution metadata contents changed")
+  }
 }
 
 export async function executeGitReconciliationCheckpointMutation({
   plan,
   execute = executePinnedGit,
   beforeExecute = null,
+  continueAfterBeforeExecute = false,
+  afterExecuteMutation = null,
 }) {
   if (!plan || plan.mode !== "execute" || !plan.record || !plan.proposal) {
     return rejected("managed_execution_plan")
@@ -4785,12 +5079,32 @@ export async function executeGitReconciliationCheckpointMutation({
     intent.cherryPickCommit !== proposal.cherryPickCommit ||
     intent.gitDirectory !== proposal.gitDirectory ||
     intent.commonDirectory !== proposal.commonDirectory ||
-    intent.schemaVersion !== 2 ||
+    intent.schemaVersion !== 4 ||
+    intent.brokerVersion !== managedGitExecutionBrokerVersion ||
+    intent.brokerDigest !== managedGitExecutionBrokerDigest ||
+    !Array.isArray(intent.sourceChangedFiles) ||
+    intent.sourceChangedFiles.length !== intent.sourceChangedFileCount ||
+    sha256(JSON.stringify(intent.sourceChangedFiles)) !==
+      intent.sourceChangedFilesDigest ||
     !validManagedFilesystemIdentity(intent.workspaceRootIdentity, "directory") ||
     !validManagedFilesystemIdentity(intent.workspaceIdentity, "directory") ||
     !validManagedFilesystemIdentity(intent.workspaceGitFileIdentity, "file") ||
     !validManagedFilesystemIdentity(intent.gitDirectoryIdentity, "directory") ||
-    !validManagedFilesystemIdentity(intent.commonDirectoryIdentity, "directory")
+    !validManagedFilesystemIdentity(intent.commonDirectoryIdentity, "directory") ||
+    !validManagedFilesystemIdentity(intent.branchRefIdentity, "file") ||
+    !validManagedFilesystemIdentity(intent.objectsDirectoryIdentity, "directory") ||
+    !validManagedFilesystemIdentity(intent.refsDirectoryIdentity, "directory") ||
+    !validManagedFilesystemIdentity(intent.branchRefParentIdentity, "directory") ||
+    !digestPattern.test(intent.workspaceGitFileContentsDigest ?? "") ||
+    typeof intent.branchRef !== "string" ||
+    typeof intent.objectsDirectory !== "string" ||
+    typeof intent.refsDirectory !== "string" ||
+    typeof intent.branchRefParent !== "string" ||
+    !digestPattern.test(intent.branchRefContentsDigest ?? "") ||
+    !exactPathWithin(intent.commonDirectory, intent.branchRef) ||
+    !exactPathWithin(intent.commonDirectory, intent.objectsDirectory) ||
+    !exactPathWithin(intent.commonDirectory, intent.refsDirectory) ||
+    !exactPathWithin(intent.refsDirectory, intent.branchRefParent)
   ) {
     return rejected("managed_execution_plan_binding")
   }
@@ -4813,11 +5127,30 @@ export async function executeGitReconciliationCheckpointMutation({
   }
   try {
     if (execute === executePinnedGit) {
-      target.options.beforeMutation = beforeExecute
+      target.options.beforeMutation = async (brokerControl) => {
+        if (typeof beforeExecute === "function") {
+          await beforeExecute(brokerControl)
+        }
+        await validateManagedExecutionTarget(
+          intent,
+          target.options.boundaryRequest.env,
+        )
+        if (
+          typeof beforeExecute === "function" &&
+          !continueAfterBeforeExecute
+        ) {
+          const error = new Error(
+            "managed execution pre-mutation race probe completed without an allowed mutation",
+          )
+          error.code = 78
+          throw error
+        }
+      }
+      target.options.afterMutation = afterExecuteMutation
     } else if (typeof beforeExecute === "function") {
       await beforeExecute()
     }
-    await execute(
+    const brokerResult = await execute(
       [
         "-c",
         "core.hooksPath=/dev/null",
@@ -4832,12 +5165,48 @@ export async function executeGitReconciliationCheckpointMutation({
       ],
       target.options,
     )
+    if (execute === executePinnedGit) {
+      let receipt
+      try {
+        receipt = JSON.parse(String(brokerResult.stdout).trim())
+      } catch {
+        return rejected("managed_execution_broker_receipt_invalid")
+      }
+      if (
+        receipt?.schemaVersion !== 1 ||
+        receipt.brokerVersion !== intent.brokerVersion ||
+        receipt.brokerDigest !== intent.brokerDigest ||
+        receipt.executionId !== intent.executionId ||
+        receipt.parentHead !== intent.head ||
+        receipt.tree !== intent.cherryPickTargetTree ||
+        !fullShaPattern.test(receipt.head ?? "") ||
+        !sameStringArray(receipt.sourceChangedFiles, intent.sourceChangedFiles)
+      ) {
+        return rejected("managed_execution_broker_receipt_invalid")
+      }
+      return accepted({ executionId: intent.executionId, brokerReceipt: receipt })
+    }
     return accepted({ executionId: intent.executionId })
   } catch (error) {
+    let boundaryChanged = error?.code === 78
+    if (!boundaryChanged) {
+      try {
+        await validateManagedExecutionTarget(
+          intent,
+          target.options.boundaryRequest.env,
+        )
+      } catch {
+        boundaryChanged = true
+      }
+    }
     return rejected(
-      error?.code === 78
+      boundaryChanged
         ? "managed_execution_boundary_changed"
-        : "managed_execution_git_failed",
+        : error?.code === 75
+          ? "managed_execution_broker_busy"
+          : error?.code === "BROKER_LOST"
+            ? "managed_execution_broker_lost"
+            : "managed_execution_git_failed",
       {
         ...(typeof error?.code === "number" ? { exitCode: error.code } : {}),
         errorName: typeof error?.name === "string" ? error.name : "Error",

@@ -21,6 +21,7 @@ const runtimeFiles = [
   "src/control-plane.mjs",
   "src/durable-filesystem.mjs",
   "src/git-execution-boundary.mjs",
+  "src/trusted-mutation-broker.mjs",
   "src/github-control-plane.mjs",
   "src/launchd.mjs",
   "src/orchestrator.mjs",
@@ -31,6 +32,7 @@ const runtimeFiles = [
   "src/runtime-bundle.mjs",
   "src/runtime-policy.mjs",
   "src/state-store.mjs",
+  "src/terminality-reconciliation.mjs",
   "src/turn-accounting.mjs",
   "src/workspace.mjs",
 ]

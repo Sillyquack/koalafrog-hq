@@ -32,6 +32,8 @@ function compactProtocolMessage(message) {
   if (params.turn?.status !== undefined) compact.status = params.turn.status
   if (params.item?.type !== undefined) compact.itemType = params.item.type
   if (params.item?.status !== undefined) compact.itemStatus = params.item.status
+  const exitCode = params.item?.exitCode ?? params.item?.exit_code
+  if (Number.isInteger(exitCode)) compact.exitCode = exitCode
   if (params.name !== undefined) compact.name = params.name
   if (params.reason !== undefined) compact.reason = String(params.reason).slice(0, 500)
   if (params.message !== undefined) compact.summary = String(params.message).slice(0, 500)
@@ -93,6 +95,59 @@ function appServerTurnFailureFromFailedCompletion(message) {
     threadId,
     turnId,
   }
+}
+
+function persistedTurnFailure(event) {
+  const candidate = event?.event ?? event
+  if (!candidate || candidate.type !== "turn_failed") return null
+  const threadId = stableProtocolIdentifier(candidate.threadId)
+  const turnId = stableProtocolIdentifier(candidate.turnId)
+  const eventId =
+    typeof candidate.eventId === "string" &&
+    /^[A-Za-z0-9._:/-]{1,512}$/.test(candidate.eventId)
+      ? candidate.eventId
+      : null
+  if (!threadId || !turnId || eventId !== `turn_failed:${threadId}:${turnId}`) {
+    return null
+  }
+  const codexErrorInfo = stableProtocolIdentifier(candidate.codexErrorInfo)
+  if (!codexErrorInfo || typeof candidate.willRetry !== "boolean") return null
+  const terminalGeneration = Number.isSafeInteger(candidate.terminalGeneration) &&
+    candidate.terminalGeneration > 0
+      ? candidate.terminalGeneration
+      : null
+  const terminalTransactionId =
+    terminalGeneration &&
+    candidate.terminalTransactionId ===
+      `${eventId}:terminalization:${terminalGeneration}`
+      ? candidate.terminalTransactionId
+      : null
+  return {
+    eventId,
+    errorClass: "AppServerTurnError",
+    code: "APP_SERVER_TURN_ERROR",
+    category: codexErrorInfo,
+    codexErrorInfo,
+    willRetry: candidate.willRetry,
+    threadId,
+    turnId,
+    ...(terminalTransactionId
+      ? { terminalGeneration, terminalTransactionId }
+      : {}),
+  }
+}
+
+function serializedTurnFailureIdentity(failure) {
+  return JSON.stringify({
+    eventId: failure.eventId,
+    errorClass: failure.errorClass,
+    code: failure.code,
+    category: failure.category,
+    codexErrorInfo: failure.codexErrorInfo,
+    willRetry: failure.willRetry,
+    threadId: failure.threadId,
+    turnId: failure.turnId,
+  })
 }
 
 function requestSummary(params = {}) {
@@ -303,6 +358,7 @@ export class AppServerClient extends EventEmitter {
     requestTimeoutMs = 30_000,
     turnTerminationTimeoutMs = 60_000,
     eventSink = () => {},
+    turnFailureSink = null,
     stderrSink = () => {},
   }) {
     super()
@@ -317,12 +373,16 @@ export class AppServerClient extends EventEmitter {
     this.requestTimeoutMs = requestTimeoutMs
     this.turnTerminationTimeoutMs = turnTerminationTimeoutMs
     this.eventSink = eventSink
+    this.turnFailureSink = turnFailureSink
     this.stderrSink = stderrSink
     this.nextRequestId = 1
     this.pending = new Map()
     this.mcpStatuses = new Map()
     this.seenTurnFailures = new Map()
+    this.authoritativeTurnFailures = new Map()
+    this.inflightProvisionalTurnFailures = new Map()
     this.provisionalTurnFailures = new Map()
+    this.turnFailureObservations = new Map()
     this.protocolDispatchTail = Promise.resolve()
     this.process = null
   }
@@ -388,6 +448,14 @@ export class AppServerClient extends EventEmitter {
   }
 
   dispatchProtocolMessage(message) {
+    const authoritativeFailure = appServerTurnFailureFromMessage(message)
+    if (authoritativeFailure) {
+      try {
+        this.#observeAuthoritativeTurnFailure(authoritativeFailure)
+      } catch (error) {
+        return Promise.reject(error)
+      }
+    }
     const dispatched = this.protocolDispatchTail.then(() =>
       this.#dispatchProtocolMessage(message),
     )
@@ -395,8 +463,41 @@ export class AppServerClient extends EventEmitter {
     return dispatched
   }
 
-  async #dispatchTurnFailure(message, turnFailure) {
-    const serialized = JSON.stringify(turnFailure)
+  #observeAuthoritativeTurnFailure(turnFailure) {
+    const serialized = serializedTurnFailureIdentity(turnFailure)
+    const prior = this.authoritativeTurnFailures.get(turnFailure.eventId)
+    if (prior && prior.serialized !== serialized) {
+      const error = new Error("AppServer turn failure identity conflicts")
+      error.code = "APP_SERVER_TURN_FAILURE_CONFLICT"
+      throw error
+    }
+    if (!prior) {
+      this.authoritativeTurnFailures.set(turnFailure.eventId, {
+        failure: turnFailure,
+        serialized,
+      })
+    }
+    const provisional = this.provisionalTurnFailures.get(turnFailure.eventId)
+    if (provisional?.timer) clearTimeout(provisional.timer)
+    this.provisionalTurnFailures.delete(turnFailure.eventId)
+    const inflight = this.inflightProvisionalTurnFailures.get(
+      turnFailure.eventId,
+    )
+    if (inflight) {
+      inflight.failure = turnFailure
+    }
+  }
+
+  async #dispatchTurnFailure(
+    message,
+    turnFailure,
+    { provisional = false } = {},
+  ) {
+    const authoritative = this.authoritativeTurnFailures.get(
+      turnFailure.eventId,
+    )?.failure
+    if (provisional && authoritative) return
+    const serialized = serializedTurnFailureIdentity(turnFailure)
     const prior = this.seenTurnFailures.get(turnFailure.eventId)
     if (prior && prior !== serialized) {
       const error = new Error("AppServer turn failure identity conflicts")
@@ -404,20 +505,78 @@ export class AppServerClient extends EventEmitter {
       throw error
     }
     if (prior) return
-    this.seenTurnFailures.set(turnFailure.eventId, serialized)
-    try {
-      await this.eventSink({ type: "turn_failed", ...turnFailure })
-    } catch (error) {
-      this.seenTurnFailures.delete(turnFailure.eventId)
-      throw error
+    const transaction = provisional
+      ? { failure: turnFailure }
+      : null
+    if (transaction) {
+      this.inflightProvisionalTurnFailures.set(
+        turnFailure.eventId,
+        transaction,
+      )
     }
-    this.emit("notification", message)
-    this.emit("turn_failure", turnFailure)
+    const effectiveFailure = () =>
+      this.authoritativeTurnFailures.get(turnFailure.eventId)?.failure ??
+      transaction?.failure ??
+      turnFailure
+    const effectiveEvent = () => ({ type: "turn_failed", ...effectiveFailure() })
+    try {
+      await this.turnFailureObservations.get(turnFailure.eventId)
+      const persisted = this.turnFailureSink
+        ? await this.turnFailureSink(
+            turnFailure.eventId,
+            effectiveFailure,
+            { finalize: true },
+          )
+        : await this.eventSink(effectiveEvent, {
+            eventId: turnFailure.eventId,
+            turnFailureTransaction: true,
+            currentEvent: effectiveEvent,
+            currentFailure: effectiveFailure,
+            finalize: true,
+          })
+      const committedFailure = persistedTurnFailure(persisted)
+      if (!committedFailure) {
+        const error = new Error(
+          "AppServer turn failure persistence did not verify its committed value",
+        )
+        error.code = "APP_SERVER_TURN_FAILURE_PERSISTENCE_UNVERIFIED"
+        throw error
+      }
+      const committedSerialized = serializedTurnFailureIdentity(committedFailure)
+      const committedPrior = this.seenTurnFailures.get(turnFailure.eventId)
+      if (committedPrior && committedPrior !== committedSerialized) {
+        const error = new Error("AppServer turn failure identity conflicts")
+        error.code = "APP_SERVER_TURN_FAILURE_CONFLICT"
+        throw error
+      }
+      if (!committedPrior) {
+        this.seenTurnFailures.set(turnFailure.eventId, committedSerialized)
+        this.emit("notification", message)
+        this.emit("turn_failure", committedFailure)
+      }
+    } finally {
+      if (
+        transaction &&
+        this.inflightProvisionalTurnFailures.get(turnFailure.eventId) ===
+          transaction
+      ) {
+        this.inflightProvisionalTurnFailures.delete(turnFailure.eventId)
+      }
+      this.turnFailureObservations.delete(turnFailure.eventId)
+    }
   }
 
   #scheduleProvisionalTurnFailure(message, turnFailure) {
     if (this.provisionalTurnFailures.has(turnFailure.eventId)) return
-    const provisional = { message, turnFailure, timer: null }
+    const observation = this.turnFailureSink
+      ? Promise.resolve(
+          this.turnFailureSink(turnFailure.eventId, () => turnFailure, {
+            finalize: false,
+          }),
+        )
+      : Promise.resolve()
+    this.turnFailureObservations.set(turnFailure.eventId, observation)
+    const provisional = { message, turnFailure, timer: null, observation }
     this.provisionalTurnFailures.set(turnFailure.eventId, provisional)
     provisional.timer = setTimeout(() => {
       const finalized = this.protocolDispatchTail.then(async () => {
@@ -427,7 +586,10 @@ export class AppServerClient extends EventEmitter {
           return
         }
         this.provisionalTurnFailures.delete(turnFailure.eventId)
-        await this.#dispatchTurnFailure(message, turnFailure)
+        await provisional.observation
+        await this.#dispatchTurnFailure(message, turnFailure, {
+          provisional: true,
+        })
       })
       this.protocolDispatchTail = finalized.catch(() => {})
       void finalized.catch((error) => {
@@ -506,9 +668,16 @@ export class AppServerClient extends EventEmitter {
     }
 
     const kind = message.id === undefined ? "notification" : "server_request"
-    Promise.resolve(
-      this.eventSink({ type: kind, message: compactProtocolMessage(message) }),
-    ).catch(() => {})
+    const event = { type: kind, message: compactProtocolMessage(message) }
+    if (
+      new Set(["item/started", "item/completed", "turn/completed"]).has(
+        message.method,
+      )
+    ) {
+      await this.eventSink(event)
+    } else {
+      Promise.resolve(this.eventSink(event)).catch(() => {})
+    }
     this.emit(kind, message)
     switch (message.method) {
       case "item/completed":
@@ -634,6 +803,7 @@ export class AppServerClient extends EventEmitter {
     timeoutMs,
     approvalPolicy = null,
     onTurnStarted = () => {},
+    onTurnTimedOut = () => {},
     onTurnFailed = () => {},
     onOwnerStop = () => {},
     resolveApprovalRequest = () => null,
@@ -649,6 +819,8 @@ export class AppServerClient extends EventEmitter {
     let settled = false
     let turnTimedOut = false
     let timeoutInterruption = null
+    let turnTimeoutPersistence = Promise.resolve()
+    let turnTimedOutAt = null
     let interruptedTurnCompletion = null
     const pendingProtocolFailures = new Map()
     let protocolFailureInFlight = false
@@ -667,7 +839,11 @@ export class AppServerClient extends EventEmitter {
       if (settled) return
       settled = true
       cleanup()
-      Promise.all([ownerStopPersistence, approvedActionPersistence]).then(
+      Promise.all([
+        ownerStopPersistence,
+        approvedActionPersistence,
+        turnTimeoutPersistence,
+      ]).then(
         () => terminal.resolve(result),
         (error) => terminal.reject(error),
       )
@@ -676,13 +852,18 @@ export class AppServerClient extends EventEmitter {
       if (settled) return
       settled = true
       cleanup()
-      Promise.all([ownerStopPersistence, approvedActionPersistence]).then(
+      Promise.all([
+        ownerStopPersistence,
+        approvedActionPersistence,
+        turnTimeoutPersistence,
+      ]).then(
         () => terminal.reject(error),
         (persistenceError) => terminal.reject(persistenceError),
       )
     }
     const interruptTimedOutTurn = () => {
       if (!turnId || timeoutInterruption || settled) return
+      turnTimedOutAt ??= new Date().toISOString()
       turnTerminationTimer = setTimeout(
         () =>
           fail(
@@ -692,13 +873,18 @@ export class AppServerClient extends EventEmitter {
           ),
         this.turnTerminationTimeoutMs,
       )
-      timeoutInterruption = this.interruptTurn(threadId, turnId).catch((error) => {
-        fail(
-          new Error(
-            `Failed to interrupt timed-out turn ${turnId}: ${error.message}`,
-          ),
-        )
-      })
+      turnTimeoutPersistence = turnStartPersistence.then(() =>
+        onTurnTimedOut({ threadId, turnId, timedOutAt: turnTimedOutAt }),
+      )
+      timeoutInterruption = turnTimeoutPersistence
+        .then(() => this.interruptTurn(threadId, turnId))
+        .catch((error) => {
+          fail(
+            new Error(
+              `Failed to persist or interrupt timed-out turn ${turnId}: ${error.message}`,
+            ),
+          )
+        })
     }
     const scheduleOwnerStopFallback = () => {
       clearTimeout(ownerStopTimer)

@@ -80,6 +80,14 @@ import {
 
 const execFileAsync = promisify(execFile)
 
+function deferredBarrier() {
+  let resolve
+  const promise = new Promise((resolve_) => {
+    resolve = resolve_
+  })
+  return { promise, resolve }
+}
+
 async function git(cwd, ...args) {
   const result = await execFileAsync("git", args, { cwd, encoding: "utf8" })
   return result.stdout.trim()
@@ -4875,7 +4883,6 @@ test("managed checkpoint execution writes only the selected linked worktree and 
   assert.equal(initial.value.record.generationId, setup.proposal.generationId)
   assert.equal(initial.value.record.gitDirectory, setup.proposal.gitDirectory)
   assert.notEqual(initial.value.record.gitDirectory, siblingGitDirectory)
-
   setup.state.gitReconciliationCheckpoints.push(initial.value.record)
   const persisted = await prepareGitReconciliationCheckpointExecution(setup.input)
   assert.equal(persisted.accepted, true)
@@ -4912,6 +4919,82 @@ test("managed checkpoint execution writes only the selected linked worktree and 
     1,
   )
   assert.deepEqual(await fileSnapshot(siblingGitDirectory), siblingBefore)
+})
+
+test("fixed mutation broker serializes duplicate cooperating executions", async (t) => {
+  const setup = await managedExecutionSetup(t)
+  const prepared = await prepareGitReconciliationCheckpointExecution(setup.input)
+  assert.equal(prepared.accepted, true)
+  const entered = deferredBarrier()
+  const release = deferredBarrier()
+  const first = executeGitReconciliationCheckpointMutation({
+    plan: prepared.value,
+    continueAfterBeforeExecute: true,
+    beforeExecute: async () => {
+      entered.resolve()
+      await release.promise
+    },
+  })
+  await entered.promise
+  const duplicate = await executeGitReconciliationCheckpointMutation({
+    plan: prepared.value,
+  })
+  assert.equal(duplicate.accepted, false)
+  assert.equal(duplicate.rejection.code, "managed_execution_broker_busy")
+  assert.equal(await git(setup.workspacePath, "rev-parse", "HEAD"), setup.head)
+  release.resolve()
+  const owner = await first
+  assert.equal(owner.accepted, true, JSON.stringify(owner))
+  assert.equal(
+    await git(setup.workspacePath, "rev-list", "--count", `${setup.head}..HEAD`),
+    "1",
+  )
+})
+
+test("fixed mutation broker loss before mutation fails closed", async (t) => {
+  const setup = await managedExecutionSetup(t)
+  const prepared = await prepareGitReconciliationCheckpointExecution(setup.input)
+  assert.equal(prepared.accepted, true)
+  const result = await executeGitReconciliationCheckpointMutation({
+    plan: prepared.value,
+    continueAfterBeforeExecute: true,
+    beforeExecute: async ({ terminateBroker }) => {
+      terminateBroker()
+    },
+  })
+  assert.equal(result.accepted, false)
+  assert.equal(result.rejection.code, "managed_execution_broker_lost")
+  assert.equal(await git(setup.workspacePath, "rev-parse", "HEAD"), setup.head)
+})
+
+test("broker termination after mutation reconciles one receipt without replay", async (t) => {
+  const setup = await managedExecutionSetup(t)
+  const prepared = await prepareGitReconciliationCheckpointExecution(setup.input)
+  assert.equal(prepared.accepted, true)
+  setup.state.gitReconciliationCheckpoints.push(prepared.value.record)
+  const interrupted = await executeGitReconciliationCheckpointMutation({
+    plan: prepared.value,
+    afterExecuteMutation: async ({ terminateBroker }) => {
+      terminateBroker()
+    },
+  })
+  assert.equal(interrupted.accepted, false)
+  assert.equal(
+    await git(setup.workspacePath, "rev-list", "--count", `${setup.head}..HEAD`),
+    "1",
+  )
+  const recovered = await prepareGitReconciliationCheckpointExecution(setup.input)
+  assert.equal(recovered.accepted, true, JSON.stringify(recovered))
+  assert.equal(recovered.value.mode, "recover")
+  assert.equal(recovered.value.isNewReceipt, true)
+  setup.state.gitReconciliationCheckpoints.push(recovered.value.receipt)
+  const replay = await prepareGitReconciliationCheckpointExecution(setup.input)
+  assert.equal(replay.accepted, true)
+  assert.equal(replay.value.mode, "complete")
+  assert.equal(
+    await git(setup.workspacePath, "rev-list", "--count", `${setup.head}..HEAD`),
+    "1",
+  )
 })
 
 test("managed execution pins the authorized worktree and rejects final path or Git metadata replacement", async (t) => {
@@ -4995,6 +5078,150 @@ test("managed execution pins the authorized worktree and rejects final path or G
       }
     }
   })
+
+  await t.test("HEAD replacement after BOUNDARY_READY", async (t) => {
+    const setup = await managedExecutionSetup(t)
+    const prepared = await prepareGitReconciliationCheckpointExecution(setup.input)
+    assert.equal(prepared.accepted, true)
+    const branchRef = `refs/heads/${setup.proposal.branch}`
+    let changed = false
+    try {
+      const result = await executeGitReconciliationCheckpointMutation({
+        plan: prepared.value,
+        beforeExecute: async () => {
+          await git(
+            setup.workspacePath,
+            "update-ref",
+            branchRef,
+            setup.proposal.cherryPickCommit,
+            setup.head,
+          )
+          changed = true
+        },
+      })
+      assert.equal(result.accepted, false)
+      assert.equal(result.rejection.code, "managed_execution_boundary_changed")
+      assert.equal(
+        await git(setup.workspacePath, "rev-parse", "HEAD"),
+        setup.proposal.cherryPickCommit,
+      )
+    } finally {
+      if (changed) {
+        await git(
+          setup.workspacePath,
+          "update-ref",
+          branchRef,
+          setup.head,
+          setup.proposal.cherryPickCommit,
+        )
+      }
+    }
+    assert.equal(await git(setup.workspacePath, "rev-parse", "HEAD"), setup.head)
+  })
+
+  for (const drift of [
+    "branch",
+    "cleanliness",
+    "operation marker",
+    "selected gitdir",
+    "common directory",
+    "object directory",
+    "refs directory",
+  ]) {
+    await t.test(`${drift} drift after BOUNDARY_READY`, async (t) => {
+      const setup = await managedExecutionSetup(t)
+      const prepared = await prepareGitReconciliationCheckpointExecution(
+        setup.input,
+      )
+      assert.equal(prepared.accepted, true)
+      const intent = prepared.value.record
+      const headFile = path.join(intent.gitDirectory, "HEAD")
+      const originalHeadFile = await readFile(headFile, "utf8")
+      const dirtyFile = path.join(setup.workspacePath, "post-boundary-drift.txt")
+      const markerFile = path.join(intent.gitDirectory, "CHERRY_PICK_HEAD")
+      const movedGitDirectory = `${intent.gitDirectory}.authorized-moved`
+      const movedCommonDirectory = `${intent.commonDirectory}.authorized-moved`
+      const movedObjectsDirectory = `${intent.objectsDirectory}.authorized-moved`
+      const movedRefsDirectory = `${intent.refsDirectory}.authorized-moved`
+      let cleanup = async () => {}
+      try {
+        const result = await executeGitReconciliationCheckpointMutation({
+          plan: prepared.value,
+          beforeExecute: async () => {
+            if (drift === "branch") {
+              await writeFile(headFile, "ref: refs/heads/unreviewed-branch\n")
+              cleanup = () => writeFile(headFile, originalHeadFile)
+            } else if (drift === "cleanliness") {
+              await writeFile(dirtyFile, "unreviewed\n")
+              cleanup = () => unlink(dirtyFile)
+            } else if (drift === "operation marker") {
+              await writeFile(markerFile, `${setup.proposal.cherryPickCommit}\n`)
+              cleanup = () => unlink(markerFile)
+            } else if (drift === "selected gitdir") {
+              await rename(intent.gitDirectory, movedGitDirectory)
+              await mkdir(intent.gitDirectory, { mode: 0o700 })
+              cleanup = async () => {
+                await rm(intent.gitDirectory, { recursive: true, force: true })
+                await rename(movedGitDirectory, intent.gitDirectory)
+              }
+            } else if (drift === "common directory") {
+              await rename(intent.commonDirectory, movedCommonDirectory)
+              await mkdir(intent.commonDirectory, { mode: 0o700 })
+              cleanup = async () => {
+                await rm(intent.commonDirectory, { recursive: true, force: true })
+                await rename(movedCommonDirectory, intent.commonDirectory)
+              }
+            } else if (drift === "object directory") {
+              await rename(intent.objectsDirectory, movedObjectsDirectory)
+              await symlink(movedObjectsDirectory, intent.objectsDirectory)
+              cleanup = async () => {
+                await unlink(intent.objectsDirectory)
+                await rename(movedObjectsDirectory, intent.objectsDirectory)
+              }
+            } else {
+              await rename(intent.refsDirectory, movedRefsDirectory)
+              await mkdir(intent.branchRefParent, { recursive: true, mode: 0o700 })
+              const movedBranchRef = path.join(
+                movedRefsDirectory,
+                path.relative(intent.refsDirectory, intent.branchRef),
+              )
+              await writeFile(
+                intent.branchRef,
+                await readFile(movedBranchRef),
+                { mode: 0o600 },
+              )
+              cleanup = async () => {
+                assert.equal((await readFile(movedBranchRef, "utf8")).trim(), setup.head)
+                await rm(intent.refsDirectory, { recursive: true, force: true })
+                await rename(movedRefsDirectory, intent.refsDirectory)
+                assert.equal((await readFile(intent.branchRef, "utf8")).trim(), setup.head)
+              }
+            }
+          },
+        })
+        assert.equal(result.accepted, false)
+        assert.equal(
+          result.rejection.code,
+          "managed_execution_boundary_changed",
+          JSON.stringify(result),
+        )
+      } finally {
+        await cleanup()
+      }
+      assert.equal(await readFile(headFile, "utf8"), originalHeadFile)
+      const restoredRef = path.join(
+        intent.commonDirectory,
+        originalHeadFile.trim().slice("ref: ".length),
+      )
+      assert.equal(restoredRef, intent.branchRef)
+      assert.equal((await readFile(restoredRef, "utf8")).trim(), setup.head)
+      assert.equal(
+        await git(setup.workspacePath, "cat-file", "-t", setup.head),
+        "commit",
+      )
+      assert.equal(await git(setup.workspacePath, "rev-parse", "HEAD"), setup.head)
+    })
+  }
 })
 
 test("managed execution rejects tampered plans, destination drift, and ambiguous records", async (t) => {
@@ -5010,6 +5237,72 @@ test("managed execution rejects tampered plans, destination drift, and ambiguous
       },
     })
     assert.equal(result.rejection.code, "managed_execution_plan_binding")
+    assert.equal(await git(setup.workspacePath, "rev-parse", "HEAD"), setup.head)
+  })
+
+  await t.test("filesystem identities are immutable execution inputs", async (t) => {
+    const setup = await managedExecutionSetup(t)
+    const prepared = await prepareGitReconciliationCheckpointExecution(setup.input)
+    assert.equal(prepared.accepted, true)
+    for (const field of [
+      "workspaceRootIdentity",
+      "workspaceIdentity",
+      "workspaceGitFileIdentity",
+      "gitDirectoryIdentity",
+      "commonDirectoryIdentity",
+      "branchRefIdentity",
+      "objectsDirectoryIdentity",
+      "refsDirectoryIdentity",
+      "branchRefParentIdentity",
+    ]) {
+      const tampered = structuredClone(prepared.value)
+      tampered.record[field].ino += 1
+      const result = await executeGitReconciliationCheckpointMutation({
+        plan: tampered,
+        execute: () => {
+          throw new Error("must not execute")
+        },
+      })
+      assert.equal(result.accepted, false, field)
+      assert.equal(result.rejection.code, "managed_execution_plan_binding", field)
+    }
+    for (const field of [
+      "workspaceGitFileContentsDigest",
+      "branchRefContentsDigest",
+    ]) {
+      const tampered = structuredClone(prepared.value)
+      tampered.record[field] = "f".repeat(64)
+      const result = await executeGitReconciliationCheckpointMutation({
+        plan: tampered,
+        execute: () => {
+          throw new Error("must not execute")
+        },
+      })
+      assert.equal(result.accepted, false, field)
+      assert.equal(result.rejection.code, "managed_execution_plan_binding", field)
+    }
+    assert.equal(await git(setup.workspacePath, "rev-parse", "HEAD"), setup.head)
+  })
+
+  await t.test("broker identity is an immutable authorization input", async (t) => {
+    const setup = await managedExecutionSetup(t)
+    const prepared = await prepareGitReconciliationCheckpointExecution(setup.input)
+    assert.equal(prepared.accepted, true)
+    for (const [field, value] of [
+      ["brokerVersion", prepared.value.record.brokerVersion + 1],
+      ["brokerDigest", "f".repeat(64)],
+    ]) {
+      const tampered = structuredClone(prepared.value)
+      tampered.record[field] = value
+      const result = await executeGitReconciliationCheckpointMutation({
+        plan: tampered,
+        execute: () => {
+          throw new Error("must not execute")
+        },
+      })
+      assert.equal(result.accepted, false, field)
+      assert.equal(result.rejection.code, "managed_execution_plan_binding", field)
+    }
     assert.equal(await git(setup.workspacePath, "rev-parse", "HEAD"), setup.head)
   })
 

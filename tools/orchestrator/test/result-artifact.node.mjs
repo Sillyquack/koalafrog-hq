@@ -49,6 +49,39 @@ test("terminal AppServer failure artifacts retain redacted turn provenance", () 
   assert.equal(artifact.checks.tests.status, "unknown")
 })
 
+test("interrupted-command reconciliation artifacts retain exact safe evidence identity", () => {
+  const artifact = resultArtifactFromTurnResult({
+    status: "needs_review",
+    turn: {
+      id: "turn-interrupted",
+      status: "interrupted",
+      items: [],
+    },
+    terminalityReconciliation: {
+      reconciliationId: `terminality_reconciliation:${"a".repeat(64)}`,
+      classification: "terminality_unprovable",
+      terminalOutcome: null,
+      evidenceIdentity: "b".repeat(64),
+      originIssueNumber: 70,
+      instructionId: "interrupted-054",
+      threadId: "thread-interrupted",
+      turnId: "turn-interrupted",
+      itemIds: ["exec-interrupted"],
+      evidenceSummary:
+        "turn=turn-interrupted; classification=terminality_unprovable; items=exec-interrupted=unproven/none",
+    },
+  })
+
+  assert.equal(
+    artifact.source,
+    "interrupted_command_terminality_reconciliation",
+  )
+  assert.equal(artifact.terminality.classification, "terminality_unprovable")
+  assert.equal(artifact.terminality.turnId, "turn-interrupted")
+  assert.deepEqual(artifact.terminality.itemIds, ["exec-interrupted"])
+  assert.equal(artifact.checks.tests.status, "unknown")
+})
+
 test("Issue #63/004 final message produces faithful checks and findings", () => {
   const artifact = resultArtifactFromTurnResult(
     {

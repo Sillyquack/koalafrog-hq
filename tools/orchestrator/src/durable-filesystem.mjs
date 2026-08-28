@@ -1,6 +1,19 @@
 import { spawn } from "node:child_process"
 import { createHash, createHmac, randomBytes, randomUUID } from "node:crypto"
-import { constants } from "node:fs"
+import {
+  closeSync,
+  constants,
+  fchmodSync,
+  fstatSync,
+  fsyncSync,
+  linkSync,
+  lstatSync,
+  openSync,
+  realpathSync,
+  renameSync,
+  unlinkSync,
+  writeFileSync,
+} from "node:fs"
 import {
   link,
   lstat,
@@ -10,7 +23,13 @@ import {
   rename,
   unlink,
 } from "node:fs/promises"
+import os from "node:os"
 import path from "node:path"
+import {
+  trustedAdvisoryLockBrokerDigest,
+  trustedAdvisoryLockBrokerSpec,
+  trustedMutationBrokerVersion,
+} from "./trusted-mutation-broker.mjs"
 
 const activeLeaseTokens = new Set()
 const durablePendingSuffix = ".commit-pending"
@@ -120,39 +139,57 @@ def validate_ancestry(entries):
         ):
             raise OSError(errno.ESTALE, "guarded ancestry identity changed")
 
+def mutate_while_attached(phase, action):
+    validate_ancestry(ancestry_entries)
+    if request.get("pauseBeforeOperations"):
+        print(json.dumps({"phase": "beforeOperation", "operation": phase}), flush=True)
+        if sys.stdin.readline().strip() != "continue":
+            raise OSError(errno.ECANCELED, "directory mutation was cancelled")
+        validate_ancestry(ancestry_entries)
+    result = action()
+    validate_ancestry(ancestry_entries)
+    return result
+
 def publish_child(parent_fd, name):
     candidate = ".%s.%s.mkdir-candidate" % (name, uuid.uuid4())
     candidate_fd = None
     try:
-        validate_ancestry(ancestry_entries)
-        os.mkdir(candidate, 0o700, dir_fd=parent_fd)
+        mutate_while_attached(
+            "mkdir",
+            lambda: os.mkdir(candidate, 0o700, dir_fd=parent_fd),
+        )
         candidate_fd = open_child(parent_fd, candidate)
         candidate_stat = os.fstat(candidate_fd)
         if not stat.S_ISDIR(candidate_stat.st_mode):
             raise OSError(errno.ENOTDIR, "created component is not a directory")
         try:
-            validate_ancestry(ancestry_entries)
-            rename_exclusive(parent_fd, candidate, name)
+            mutate_while_attached(
+                "rename",
+                lambda: rename_exclusive(parent_fd, candidate, name),
+            )
         except OSError as error:
             if error.errno not in (errno.EEXIST, errno.ENOTEMPTY):
                 raise
             os.close(candidate_fd)
             candidate_fd = None
-            validate_ancestry(ancestry_entries)
-            os.rmdir(candidate, dir_fd=parent_fd)
+            mutate_while_attached(
+                "rmdir",
+                lambda: os.rmdir(candidate, dir_fd=parent_fd),
+            )
             return open_child(parent_fd, name), False
         published = os.stat(name, dir_fd=parent_fd, follow_symlinks=False)
         if not same_identity(published, identity(candidate_stat)):
             raise OSError(errno.ESTALE, "published directory identity changed")
-        validate_ancestry(ancestry_entries)
-        os.fsync(parent_fd)
+        mutate_while_attached("parentFsync", lambda: os.fsync(parent_fd))
         return candidate_fd, True
     except BaseException:
         if candidate_fd is not None:
             os.close(candidate_fd)
         try:
-            validate_ancestry(ancestry_entries)
-            os.rmdir(candidate, dir_fd=parent_fd)
+            mutate_while_attached(
+                "cleanupRmdir",
+                lambda: os.rmdir(candidate, dir_fd=parent_fd),
+            )
         except OSError:
             pass
         raise
@@ -185,18 +222,10 @@ try:
     named_stat = os.stat(request["leafName"], dir_fd=root_fd, follow_symlinks=False)
     if not stat.S_ISDIR(named_stat.st_mode) or not same_identity(named_stat, identity(current_stat)):
         raise OSError(errno.ESTALE, "named directory identity changed")
-    if request.get("pauseBeforeMutation"):
-        print(json.dumps({"phase": "beforeMutation", **identity(current_stat)}), flush=True)
-        if sys.stdin.readline().strip() != "continue":
-            raise OSError(errno.ECANCELED, "directory mutation was cancelled")
-    named_stat = os.stat(request["leafName"], dir_fd=root_fd, follow_symlinks=False)
-    if not stat.S_ISDIR(named_stat.st_mode) or not same_identity(named_stat, identity(current_stat)):
-        raise OSError(errno.ESTALE, "named directory identity changed before mutation")
-    validate_ancestry(ancestry_entries)
-    os.fchmod(current_fd, 0o700)
-    validate_ancestry(ancestry_entries)
-    os.fsync(current_fd)
-    validate_ancestry(ancestry_entries)
+    if stat.S_IMODE(current_stat.st_mode) != 0o700:
+        mutate_while_attached("fchmod", lambda: os.fchmod(current_fd, 0o700))
+    if created or stat.S_IMODE(current_stat.st_mode) != 0o700:
+        mutate_while_attached("childFsync", lambda: os.fsync(current_fd))
     final_stat = os.stat(request["leafName"], dir_fd=root_fd, follow_symlinks=False)
     if not stat.S_ISDIR(final_stat.st_mode) or not same_identity(final_stat, identity(current_stat)):
         raise OSError(errno.ESTALE, "named directory identity changed after mutation")
@@ -312,7 +341,8 @@ async function ensureDirectoryDescriptorRelative(
       ? { dev: expectedChild.dev, ino: expectedChild.ino }
       : null,
     leafName: path.basename(directory),
-    pauseBeforeMutation:
+    pauseBeforeOperations:
+      typeof hooks?.beforeDescriptorDirectoryOperation === "function" ||
       typeof hooks?.beforeDescriptorDirectoryMutation === "function",
   }
   await callHook(hooks, "beforeDescriptorDirectoryOpen", {
@@ -338,15 +368,30 @@ async function ensureDirectoryDescriptorRelative(
       } catch {
         message = null
       }
-      if (message?.phase === "beforeMutation") {
+      if (message?.phase === "beforeOperation") {
         hookWork = hookWork
           .then(async () => {
-            await callHook(hooks, "beforeDescriptorDirectoryMutation", {
+            const details = {
               leafName: request.leafName,
               expectedChild: request.expectedChild,
-              openedChild: { dev: message.dev, ino: message.ino },
-            })
-            child.stdin.end("continue\n")
+              operation: message.operation,
+            }
+            await callHook(
+              hooks,
+              "beforeDescriptorDirectoryOperation",
+              details,
+            )
+            if (
+              message.operation === "fchmod" &&
+              typeof hooks?.beforeDescriptorDirectoryMutation === "function"
+            ) {
+              await callHook(
+                hooks,
+                "beforeDescriptorDirectoryMutation",
+                details,
+              )
+            }
+            child.stdin.write("continue\n")
           })
           .catch((error) => {
             hookError = error
@@ -360,7 +405,7 @@ async function ensureDirectoryDescriptorRelative(
   })
   child.stderr.resume()
   child.stdin.write(`${JSON.stringify(request)}\n`)
-  if (!request.pauseBeforeMutation) child.stdin.end()
+  if (!request.pauseBeforeOperations) child.stdin.end()
   const result = await new Promise((resolve, reject) => {
     child.once("error", reject)
     child.once("exit", (code) => resolve(code))
@@ -409,12 +454,12 @@ async function guardExistingDirectory(directory) {
     )
   }
   const canonical = await realpath(resolved)
-  const handle = await open(
+  const descriptorFd = openSync(
     canonical,
     constants.O_RDONLY | constants.O_DIRECTORY | constants.O_NOFOLLOW,
   )
   try {
-    const descriptor = await handle.stat()
+    const descriptor = fstatSync(descriptorFd)
     if (!descriptor.isDirectory() || !sameIdentity(before, descriptor)) {
       throw new UnsafeFilesystemShapeError(
         "FILESYSTEM_DIRECTORY_REPLACED",
@@ -440,7 +485,7 @@ async function guardExistingDirectory(directory) {
       ino: descriptor.ino,
     }
   } finally {
-    await handle.close()
+    closeSync(descriptorFd)
   }
 }
 
@@ -603,18 +648,57 @@ export async function assertDirectoryStable(directoryGuard) {
   }
 }
 
+function assertDirectoryStableSync(directoryGuard) {
+  const info = lstatSync(directoryGuard.path)
+  if (
+    info.isSymbolicLink() ||
+    !info.isDirectory() ||
+    info.dev !== directoryGuard.dev ||
+    info.ino !== directoryGuard.ino ||
+    realpathSync(directoryGuard.path) !== directoryGuard.canonicalPath
+  ) {
+    throw new UnsafeFilesystemShapeError(
+      "FILESYSTEM_DIRECTORY_REPLACED",
+      path.basename(directoryGuard.path),
+    )
+  }
+}
+
+function statRegularLeafSync(
+  directoryGuard,
+  leafName,
+  { allowMissing = false, allowMultipleLinks = false } = {},
+) {
+  try {
+    const info = lstatSync(leafPath(directoryGuard, leafName))
+    if (info.isSymbolicLink()) {
+      throw new UnsafeFilesystemShapeError("FILESYSTEM_LEAF_SYMLINK", leafName)
+    }
+    if (!info.isFile()) {
+      throw new UnsafeFilesystemShapeError("FILESYSTEM_LEAF_NOT_REGULAR", leafName)
+    }
+    if (!allowMultipleLinks && info.nlink !== 1) {
+      throw new UnsafeFilesystemShapeError("FILESYSTEM_LEAF_LINK_COUNT", leafName)
+    }
+    return info
+  } catch (error) {
+    if (allowMissing && error.code === "ENOENT") return null
+    throw error
+  }
+}
+
 export async function syncDirectory(
   directoryGuard,
   { hooks = null, phase = "directory_sync", leafName = "directory" } = {},
 ) {
   await callHook(hooks, "beforeDirectorySync", { phase, leafName })
-  await assertDirectoryStable(directoryGuard)
-  const handle = await open(
+  assertDirectoryStableSync(directoryGuard)
+  const descriptor = openSync(
     directoryGuard.canonicalPath,
     constants.O_RDONLY | constants.O_DIRECTORY | constants.O_NOFOLLOW,
   )
   try {
-    const info = await handle.stat()
+    const info = fstatSync(descriptor)
     if (
       !info.isDirectory() ||
       info.dev !== directoryGuard.dev ||
@@ -625,11 +709,12 @@ export async function syncDirectory(
         path.basename(directoryGuard.path),
       )
     }
-    await handle.sync()
+    assertDirectoryStableSync(directoryGuard)
+    fsyncSync(descriptor)
   } finally {
-    await handle.close()
+    closeSync(descriptor)
   }
-  await assertDirectoryStable(directoryGuard)
+  assertDirectoryStableSync(directoryGuard)
 }
 
 async function openExistingLeaf(
@@ -637,7 +722,7 @@ async function openExistingLeaf(
   leafName,
   { allowMissing = false, allowMultipleLinks = false } = {},
 ) {
-  await assertDirectoryStable(directoryGuard)
+  assertDirectoryStableSync(directoryGuard)
   const before = await statRegularLeaf(directoryGuard, leafName, {
     allowMissing,
     allowMultipleLinks,
@@ -705,11 +790,11 @@ export async function readJsonNoFollow(
 export async function appendFileNoFollow(
   directoryGuard,
   leafName,
-  contents,
+  contentsOrProvider,
   { hooks = null } = {},
 ) {
-  await assertDirectoryStable(directoryGuard)
-  const before = await statRegularLeaf(directoryGuard, leafName, {
+  assertDirectoryStableSync(directoryGuard)
+  const before = statRegularLeafSync(directoryGuard, leafName, {
     allowMissing: true,
   })
   const flags =
@@ -717,20 +802,24 @@ export async function appendFileNoFollow(
     constants.O_CREAT |
     constants.O_APPEND |
     constants.O_NOFOLLOW
-  const handle = await open(leafPath(directoryGuard, leafName), flags, 0o600)
+  const descriptorFd = openSync(leafPath(directoryGuard, leafName), flags, 0o600)
   try {
-    const descriptor = await handle.stat()
+    const descriptor = fstatSync(descriptorFd)
     if (!descriptor.isFile() || descriptor.nlink !== 1) {
       throw new UnsafeFilesystemShapeError("FILESYSTEM_LEAF_NOT_REGULAR", leafName)
     }
-    const after = await statRegularLeaf(directoryGuard, leafName)
+    const after = statRegularLeafSync(directoryGuard, leafName)
     if (!sameIdentity(descriptor, after)) {
       throw new UnsafeFilesystemShapeError("FILESYSTEM_LEAF_REPLACED", leafName)
     }
     await callHook(hooks, "beforeFileChmod", { phase: "append", leafName })
-    await handle.chmod(0o600)
+    assertDirectoryStableSync(directoryGuard)
+    const currentMode = fstatSync(descriptorFd).mode & 0o777
+    if (before && currentMode !== 0o600) {
+      throw new UnsafeFilesystemShapeError("FILESYSTEM_LEAF_MODE_UNSAFE", leafName)
+    }
     if (!before) {
-      await handle.sync()
+      fsyncSync(descriptorFd)
       await syncDirectory(directoryGuard, {
         hooks,
         phase: "append_create",
@@ -738,14 +827,20 @@ export async function appendFileNoFollow(
       })
     }
     await callHook(hooks, "beforeAppendWrite", { leafName })
-    const finalLeaf = await statRegularLeaf(directoryGuard, leafName)
+    assertDirectoryStableSync(directoryGuard)
+    const finalLeaf = statRegularLeafSync(directoryGuard, leafName)
     if (!sameIdentity(descriptor, finalLeaf)) {
       throw new UnsafeFilesystemShapeError("FILESYSTEM_LEAF_REPLACED", leafName)
     }
-    await handle.writeFile(contents)
-    await handle.sync()
+    const contents =
+      typeof contentsOrProvider === "function"
+        ? contentsOrProvider()
+        : contentsOrProvider
+    assertDirectoryStableSync(directoryGuard)
+    writeFileSync(descriptorFd, contents)
+    fsyncSync(descriptorFd)
   } finally {
-    await handle.close()
+    closeSync(descriptorFd)
   }
 }
 
@@ -778,8 +873,8 @@ async function unlinkRegularLeaf(
     )
   }
   await callHook(hooks, "beforeLeafUnlink", { leafName })
-  await assertDirectoryStable(directoryGuard)
-  const current = await statRegularLeaf(directoryGuard, leafName, {
+  assertDirectoryStableSync(directoryGuard)
+  const current = statRegularLeafSync(directoryGuard, leafName, {
     allowMissing,
     allowMultipleLinks: inspectMultipleLinks,
   })
@@ -795,7 +890,8 @@ async function unlinkRegularLeaf(
       leafName,
     )
   }
-  await unlink(leafPath(directoryGuard, leafName))
+  assertDirectoryStableSync(directoryGuard)
+  unlinkSync(leafPath(directoryGuard, leafName))
   if (sync) {
     await syncDirectory(directoryGuard, {
       hooks,
@@ -1080,10 +1176,10 @@ async function readTransactionKey(
     secret: secret.toString("base64"),
   }
   const candidate = transactionKeyCandidateLeafName()
-  let handle = null
+  let descriptorFd = null
   try {
-    await assertDirectoryStable(directoryGuard)
-    handle = await open(
+    assertDirectoryStableSync(directoryGuard)
+    descriptorFd = openSync(
       leafPath(directoryGuard, candidate),
       constants.O_WRONLY |
         constants.O_CREAT |
@@ -1091,15 +1187,16 @@ async function readTransactionKey(
         constants.O_NOFOLLOW,
       0o600,
     )
-    await handle.chmod(0o600)
-    await handle.writeFile(`${JSON.stringify(record)}\n`)
-    await handle.sync()
-    const candidateInfo = await handle.stat()
-    await handle.close()
-    handle = null
+    assertDirectoryStableSync(directoryGuard)
+    fchmodSync(descriptorFd, 0o600)
+    writeFileSync(descriptorFd, `${JSON.stringify(record)}\n`)
+    fsyncSync(descriptorFd)
+    const candidateInfo = fstatSync(descriptorFd)
+    closeSync(descriptorFd)
+    descriptorFd = null
     try {
-      await assertDirectoryStable(directoryGuard)
-      await link(
+      assertDirectoryStableSync(directoryGuard)
+      linkSync(
         leafPath(directoryGuard, candidate),
         leafPath(directoryGuard, durableTransactionKeyLeaf),
       )
@@ -1134,7 +1231,7 @@ async function readTransactionKey(
     )
     return { key: secret, keyId: record.keyId }
   } finally {
-    await handle?.close().catch(() => {})
+    if (descriptorFd !== null) closeSync(descriptorFd)
   }
 }
 
@@ -1378,11 +1475,11 @@ async function writeTransactionJournal(
 ) {
   const pending = pendingLeafName(leafName)
   const candidate = journalCandidateLeafName(pending)
-  let handle = null
+  let descriptorFd = null
   let published = false
   try {
-    await assertDirectoryStable(directoryGuard)
-    handle = await open(
+    assertDirectoryStableSync(directoryGuard)
+    descriptorFd = openSync(
       leafPath(directoryGuard, candidate),
       constants.O_WRONLY |
         constants.O_CREAT |
@@ -1390,12 +1487,13 @@ async function writeTransactionJournal(
         constants.O_NOFOLLOW,
       0o600,
     )
-    await handle.chmod(0o600)
-    await handle.writeFile(`${JSON.stringify(record)}\n`)
-    await handle.sync()
-    const descriptor = await handle.stat()
-    await handle.close()
-    handle = null
+    assertDirectoryStableSync(directoryGuard)
+    fchmodSync(descriptorFd, 0o600)
+    writeFileSync(descriptorFd, `${JSON.stringify(record)}\n`)
+    fsyncSync(descriptorFd)
+    const descriptor = fstatSync(descriptorFd)
+    closeSync(descriptorFd)
+    descriptorFd = null
     const candidateInfo = await statRegularLeaf(directoryGuard, candidate)
     if (!sameIdentity(descriptor, candidateInfo)) {
       throw new UnsafeFilesystemShapeError(
@@ -1403,8 +1501,8 @@ async function writeTransactionJournal(
         candidate,
       )
     }
-    await assertDirectoryStable(directoryGuard)
-    await link(
+    assertDirectoryStableSync(directoryGuard)
+    linkSync(
       leafPath(directoryGuard, candidate),
       leafPath(directoryGuard, pending),
     )
@@ -1434,7 +1532,7 @@ async function writeTransactionJournal(
     }
     throw cause
   } finally {
-    await handle?.close().catch(() => {})
+    if (descriptorFd !== null) closeSync(descriptorFd)
     if (published) {
       await unlinkOwnedCanonicalCandidate(
         directoryGuard,
@@ -1580,8 +1678,8 @@ export async function recoverDurableFileReplace(
         phase: "recovery",
         leafName,
       })
-      await assertDirectoryStable(directoryGuard)
-      await rename(
+      assertDirectoryStableSync(directoryGuard)
+      renameSync(
         leafPath(directoryGuard, record.successor.tempLeafName),
         leafPath(directoryGuard, leafName),
       )
@@ -1654,12 +1752,12 @@ export async function durableAtomicWriteFile(
   })
 
   const temporary = temporaryLeafName(leafName)
-  let handle = null
+  let descriptorFd = null
   let temporaryIdentity = null
   let intentCreated = false
   try {
-    await assertDirectoryStable(directoryGuard)
-    handle = await open(
+    assertDirectoryStableSync(directoryGuard)
+    descriptorFd = openSync(
       leafPath(directoryGuard, temporary),
       constants.O_WRONLY |
         constants.O_CREAT |
@@ -1671,13 +1769,15 @@ export async function durableAtomicWriteFile(
       phase: "atomic_replace",
       leafName,
     })
-    await handle.chmod(0o600)
-    await handle.writeFile(contents)
+    assertDirectoryStableSync(directoryGuard)
+    fchmodSync(descriptorFd, 0o600)
+    writeFileSync(descriptorFd, contents)
     await callHook(hooks, "beforeFileSync", { leafName })
-    await handle.sync()
-    temporaryIdentity = await handle.stat()
-    await handle.close()
-    handle = null
+    assertDirectoryStableSync(directoryGuard)
+    fsyncSync(descriptorFd)
+    temporaryIdentity = fstatSync(descriptorFd)
+    closeSync(descriptorFd)
+    descriptorFd = null
 
     await callHook(hooks, "afterTemporaryFileSynced", {
       leafName,
@@ -1745,8 +1845,8 @@ export async function durableAtomicWriteFile(
         leafName,
       })
     }
-    await assertDirectoryStable(directoryGuard)
-    await rename(
+    assertDirectoryStableSync(directoryGuard)
+    renameSync(
       leafPath(directoryGuard, temporary),
       leafPath(directoryGuard, leafName),
     )
@@ -1769,7 +1869,7 @@ export async function durableAtomicWriteFile(
     }
     throw error
   } finally {
-    await handle?.close().catch(() => {})
+    if (descriptorFd !== null) closeSync(descriptorFd)
     if (!intentCreated) {
       await unlinkRegularLeaf(directoryGuard, temporary, {
         allowMissing: true,
@@ -1840,31 +1940,8 @@ async function leaseOwnerDecision(
 }
 
 function defaultLockfSpec() {
-  if (process.platform === "darwin") {
-    return {
-      command: "/bin/sh",
-      args: [
-        "-c",
-        "/usr/bin/lockf -s -t 0 3 || exit $?; " +
-          '/usr/bin/stat -Lf "READY %d %i" /dev/fd/3; ' +
-          "/bin/cat >/dev/null",
-        "koalafrog-lockf-fd",
-      ],
-      busyCodes: new Set([75]),
-    }
-  }
-  if (process.platform === "linux") {
-    return {
-      command: "/bin/sh",
-      args: [
-        "-c",
-        "/usr/bin/flock -n 3 || exit $?; " +
-          '/usr/bin/stat -Lc "READY %d %i" /proc/self/fd/3; ' +
-          "/bin/cat >/dev/null",
-        "koalafrog-flock-fd",
-      ],
-      busyCodes: new Set([1]),
-    }
+  if (process.platform === "darwin" || process.platform === "linux") {
+    return trustedAdvisoryLockBrokerSpec()
   }
   throw new UnsafeFilesystemShapeError(
     "FILESYSTEM_ADVISORY_LOCK_UNSUPPORTED",
@@ -1942,7 +2019,14 @@ function advisoryLockSpec(lockfSpec, guardPath) {
     typeof spec.command !== "string" ||
     !spec.command ||
     !Array.isArray(spec.args) ||
-    !(spec.busyCodes instanceof Set)
+    !(spec.busyCodes instanceof Set) ||
+    !Number.isSafeInteger(spec.protocolVersion) ||
+    spec.protocolVersion < 1 ||
+    typeof spec.contentDigest !== "string" ||
+    !/^[0-9a-f]{64}$/.test(spec.contentDigest) ||
+    spec.request?.mode !== "advisory_hold" ||
+    spec.request?.protocolVersion !== spec.protocolVersion ||
+    spec.request?.contentDigest !== spec.contentDigest
   ) {
     throw new FileLeaseMetadataError({
       code: "FILE_LEASE_GUARD_UNAVAILABLE",
@@ -1953,29 +2037,200 @@ function advisoryLockSpec(lockfSpec, guardPath) {
   return spec
 }
 
+function exactReadyIdentity(stdout, spec) {
+  const match = String(stdout).match(
+    /^READY\s+(\d+)\s+([0-9a-f]{64})\s+(\d+)\s+(\d+)\r?\n?$/,
+  )
+  if (!match) return null
+  try {
+    if (
+      Number(match[1]) !== spec.protocolVersion ||
+      match[2] !== spec.contentDigest
+    ) {
+      return null
+    }
+    return {
+      dev: BigInt(match[3]).toString(),
+      ino: BigInt(match[4]).toString(),
+    }
+  } catch {
+    return null
+  }
+}
+
+function startAdvisoryCapabilityProbe(spec, descriptor) {
+  const child = spawn(spec.command, spec.args, {
+    stdio: ["pipe", "pipe", "pipe", descriptor],
+  })
+  let stdout = ""
+  let settled = false
+  let resolveDisposition
+  const disposition = new Promise((resolve) => {
+    resolveDisposition = resolve
+  })
+  const finish = (value) => {
+    if (settled) return
+    settled = true
+    resolveDisposition({ ...value, stdout })
+  }
+  child.stdout.on("data", (chunk) => {
+    stdout += chunk.toString("utf8")
+    if (stdout.includes("\n")) finish({ kind: "output" })
+  })
+  child.stderr.resume()
+  child.once("error", (cause) => finish({ kind: "error", cause }))
+  child.once("exit", (code) => finish({ kind: "exit", code }))
+  child.stdin.write(`${JSON.stringify(spec.request)}\n`)
+  return { child, disposition, stdout: () => stdout }
+}
+
+async function waitForAdvisoryProbe(probe, timeoutMs = 2_000) {
+  let timer
+  const timeout = new Promise((resolve) => {
+    timer = setTimeout(() => resolve({ kind: "timeout", stdout: probe.stdout() }), timeoutMs)
+  })
+  const result = await Promise.race([probe.disposition, timeout])
+  clearTimeout(timer)
+  if (result.kind === "timeout") probe.child.kill("SIGKILL")
+  return result
+}
+
+async function proveAdvisoryCapability(
+  spec,
+  holderDescriptor,
+  contenderDescriptor,
+  commandIdentity,
+) {
+  const holder = startAdvisoryCapabilityProbe(spec, holderDescriptor)
+  let contender = null
+  try {
+    const holderDisposition = await waitForAdvisoryProbe(holder)
+    const holderIdentity = exactReadyIdentity(holderDisposition.stdout, spec)
+    if (
+      holderDisposition.kind !== "output" ||
+      !holderIdentity ||
+      holderIdentity.dev !== commandIdentity.dev ||
+      holderIdentity.ino !== commandIdentity.ino
+    ) {
+      throw new Error("advisory helper READY identity was not proven")
+    }
+
+    contender = startAdvisoryCapabilityProbe(spec, contenderDescriptor)
+    contender.child.stdin.end()
+    const contenderDisposition = await waitForAdvisoryProbe(contender)
+    if (
+      contenderDisposition.kind !== "exit" ||
+      !spec.busyCodes.has(contenderDisposition.code) ||
+      contenderDisposition.stdout !== ""
+    ) {
+      throw new Error("advisory helper mutual exclusion was not proven")
+    }
+
+    holder.child.stdin.end()
+    const holderExit = await new Promise((resolve) => {
+      if (holder.child.exitCode !== null) resolve(holder.child.exitCode)
+      else holder.child.once("exit", resolve)
+    })
+    if (holderExit !== 0) {
+      throw new Error("advisory helper did not release cleanly")
+    }
+  } finally {
+    if (holder.child.exitCode === null) holder.child.kill("SIGKILL")
+    if (contender?.child.exitCode === null) contender.child.kill("SIGKILL")
+  }
+}
+
 async function preflightAdvisoryCapability(
   lockfSpec,
   { cache = true, guardPath = "/dev/null" } = {},
 ) {
   const spec = advisoryLockSpec(lockfSpec, guardPath)
   const capabilityKey = JSON.stringify([
+    guardPath,
     spec.command,
     spec.args,
     [...spec.busyCodes].sort(),
+    spec.protocolVersion,
+    spec.contentDigest,
+    spec.request,
   ])
   let check = cache ? advisoryCapabilityChecks.get(capabilityKey) : null
   if (!check) {
     check = (async () => {
-      let handle
+      let commandHandle
+      let probeHandle
+      let contenderProbeHandle
+      let probePath = null
       try {
-        handle = await open(
+        commandHandle = await open(
           spec.command,
           constants.O_RDONLY | constants.O_NOFOLLOW,
         )
-        const commandInfo = await handle.stat()
-        if (!commandInfo.isFile()) throw new Error("helper is not a file")
+        const commandInfo = await commandHandle.stat({ bigint: true })
+        if (
+          !commandInfo.isFile() ||
+          commandInfo.uid !== 0n ||
+          (commandInfo.mode & 0o022n) !== 0n
+        ) {
+          throw new Error(
+            "helper identity or immutable ownership failed capability preflight",
+          )
+        }
+        const commandIdentity = {
+          dev: commandInfo.dev.toString(),
+          ino: commandInfo.ino.toString(),
+        }
+
+        probePath = path.join(
+          os.tmpdir(),
+          `.koalafrog-lock-capability.${process.pid}.${randomUUID()}`,
+        )
+        probeHandle = await open(
+          probePath,
+          constants.O_RDWR |
+            constants.O_CREAT |
+            constants.O_EXCL |
+            constants.O_NOFOLLOW,
+          0o600,
+        )
+        contenderProbeHandle = await open(
+          probePath,
+          constants.O_RDWR | constants.O_NOFOLLOW,
+        )
+        const probeInfo = await probeHandle.stat({ bigint: true })
+        const contenderProbeInfo = await contenderProbeHandle.stat({ bigint: true })
+        if (
+          !probeInfo.isFile() ||
+          !contenderProbeInfo.isFile() ||
+          probeInfo.dev !== contenderProbeInfo.dev ||
+          probeInfo.ino !== contenderProbeInfo.ino
+        ) {
+          throw new Error("capability probe identity changed")
+        }
+        const probeIdentity = {
+          dev: probeInfo.dev.toString(),
+          ino: probeInfo.ino.toString(),
+        }
+        try {
+          await proveAdvisoryCapability(
+            spec,
+            probeHandle.fd,
+            contenderProbeHandle.fd,
+            probeIdentity,
+          )
+        } finally {
+          await unlink(probePath).catch(() => {})
+          probePath = null
+          await probeHandle.close().catch(() => {})
+          await contenderProbeHandle.close().catch(() => {})
+          await commandHandle.close().catch(() => {})
+        }
+        return { ...spec, commandIdentity }
       } catch (cause) {
-        await handle?.close().catch(() => {})
+        if (probePath) await unlink(probePath).catch(() => {})
+        await probeHandle?.close().catch(() => {})
+        await contenderProbeHandle?.close().catch(() => {})
+        await commandHandle?.close().catch(() => {})
         throw new FileLeaseMetadataError({
           code: "FILE_LEASE_GUARD_UNAVAILABLE",
           leafName: "filesystem",
@@ -1983,29 +2238,10 @@ async function preflightAdvisoryCapability(
           cause,
         })
       }
-      let result
-      try {
-        result = await runCapabilityProcess(
-          spec.command,
-          spec.args,
-          ["pipe", "pipe", "pipe", handle.fd],
-        )
-      } finally {
-        await handle.close().catch(() => {})
-      }
-      if (!result.ok && !spec.busyCodes.has(result.code)) {
-        throw new FileLeaseMetadataError({
-          code: "FILE_LEASE_GUARD_UNAVAILABLE",
-          leafName: "filesystem",
-          recovery: "install the platform advisory-lock primitive before retrying",
-          cause: result.cause ?? null,
-        })
-      }
     })()
     if (cache) advisoryCapabilityChecks.set(capabilityKey, check)
   }
-  await check
-  return spec
+  return check
 }
 
 export async function preflightDurableFilesystemCapabilities({
@@ -2023,7 +2259,8 @@ async function openAdvisoryGuardLeaf(directoryGuard, guardLeaf, hooks) {
   const before = await statRegularLeaf(directoryGuard, guardLeaf, {
     allowMissing: true,
   })
-  const handle = await open(
+  assertDirectoryStableSync(directoryGuard)
+  const descriptorFd = openSync(
     leafPath(directoryGuard, guardLeaf),
     constants.O_RDWR |
       constants.O_CREAT |
@@ -2032,7 +2269,7 @@ async function openAdvisoryGuardLeaf(directoryGuard, guardLeaf, hooks) {
     0o600,
   )
   try {
-    const descriptor = await handle.stat()
+    const descriptor = fstatSync(descriptorFd)
     if (!descriptor.isFile() || descriptor.nlink !== 1) {
       throw new UnsafeFilesystemShapeError(
         "FILESYSTEM_LEAF_NOT_REGULAR",
@@ -2046,19 +2283,69 @@ async function openAdvisoryGuardLeaf(directoryGuard, guardLeaf, hooks) {
         guardLeaf,
       )
     }
-    await handle.chmod(0o600)
-    await handle.sync()
+    if (before && (descriptor.mode & 0o777) !== 0o600) {
+      throw new UnsafeFilesystemShapeError(
+        "FILESYSTEM_LEAF_MODE_UNSAFE",
+        guardLeaf,
+      )
+    }
     if (!before) {
+      assertDirectoryStableSync(directoryGuard)
+      if ((descriptor.mode & 0o777) !== 0o600) fchmodSync(descriptorFd, 0o600)
+      fsyncSync(descriptorFd)
       await syncDirectory(directoryGuard, {
         hooks,
         phase: "advisory_guard_create",
         leafName: guardLeaf,
       })
     }
-    return { handle, identity: descriptor }
+    return { fd: descriptorFd, identity: descriptor }
   } catch (error) {
-    await handle.close().catch(() => {})
+    closeSync(descriptorFd)
     throw error
+  }
+}
+
+async function proveActiveAdvisoryExclusion(
+  spec,
+  directoryGuard,
+  guardLeaf,
+  expectedIdentity,
+) {
+  const contenderHandle = await open(
+    leafPath(directoryGuard, guardLeaf),
+    constants.O_RDWR | constants.O_NOFOLLOW,
+  )
+  let contender = null
+  try {
+    const contenderInfo = await contenderHandle.stat()
+    if (
+      !contenderInfo.isFile() ||
+      contenderInfo.nlink !== 1 ||
+      !sameIdentity(contenderInfo, expectedIdentity)
+    ) {
+      throw new UnsafeFilesystemShapeError(
+        "FILESYSTEM_LEAF_REPLACED",
+        guardLeaf,
+      )
+    }
+    contender = startAdvisoryCapabilityProbe(spec, contenderHandle.fd)
+    contender.child.stdin.end()
+    const disposition = await waitForAdvisoryProbe(contender)
+    if (
+      disposition.kind !== "exit" ||
+      !spec.busyCodes.has(disposition.code) ||
+      disposition.stdout !== ""
+    ) {
+      throw new FileLeaseMetadataError({
+        code: "FILE_LEASE_GUARD_UNAVAILABLE",
+        leafName: guardLeaf,
+        recovery: "restore the proven advisory-lock helper before retrying",
+      })
+    }
+  } finally {
+    if (contender?.child.exitCode === null) contender.child.kill("SIGKILL")
+    await contenderHandle.close().catch(() => {})
   }
 }
 
@@ -2071,19 +2358,60 @@ async function acquireAdvisoryGuard(
   const spec = await preflightAdvisoryCapability(lockfSpec, {
     guardPath,
   })
+  let commandHandle
+  try {
+    commandHandle = await open(
+      spec.command,
+      constants.O_RDONLY | constants.O_NOFOLLOW,
+    )
+    const commandInfo = await commandHandle.stat({ bigint: true })
+    if (
+      !commandInfo.isFile() ||
+      commandInfo.dev.toString() !== spec.commandIdentity.dev ||
+      commandInfo.ino.toString() !== spec.commandIdentity.ino
+    ) {
+      throw new Error("advisory helper identity changed after preflight")
+    }
+  } catch (cause) {
+    await commandHandle?.close().catch(() => {})
+    throw new FileLeaseMetadataError({
+      code: "FILE_LEASE_GUARD_UNAVAILABLE",
+      leafName: guardLeaf,
+      recovery: "restore the preflighted advisory-lock helper before retrying",
+      cause,
+    })
+  }
   const opened = await openAdvisoryGuardLeaf(
     directoryGuard,
     guardLeaf,
     hooks,
-  )
-  await callHook(hooks, "beforeAdvisoryAcquire", { leafName: guardLeaf })
+  ).catch(async (error) => {
+    await commandHandle.close().catch(() => {})
+    throw error
+  })
+  try {
+    await callHook(hooks, "beforeAdvisoryAcquire", { leafName: guardLeaf })
+  } catch (error) {
+    closeSync(opened.fd)
+    await commandHandle.close().catch(() => {})
+    throw error
+  }
   return new Promise((resolve, reject) => {
     const child = spawn(spec.command, spec.args, {
-      stdio: ["pipe", "pipe", "pipe", opened.handle.fd],
+      stdio: [
+        "pipe",
+        "pipe",
+        "pipe",
+        opened.fd,
+        commandHandle.fd,
+      ],
     })
-    void opened.handle.close().catch(() => {})
+    child.stdin.write(`${JSON.stringify(spec.request)}\n`)
+    closeSync(opened.fd)
+    void commandHandle.close().catch(() => {})
     let stdout = ""
     let settled = false
+    let readyAccepted = false
     const timer = setTimeout(() => {
       if (settled) return
       settled = true
@@ -2116,13 +2444,13 @@ async function acquireAdvisoryGuard(
     })
     child.stdout.on("data", async (chunk) => {
       stdout += chunk.toString("utf8")
-      const ready = stdout.match(/READY\s+(\d+)\s+(\d+)/)
+      const ready = exactReadyIdentity(stdout, spec)
       if (!ready || settled) return
       try {
-        await callHook(hooks, "afterAdvisoryAcquire", { leafName: guardLeaf })
         const current = await statRegularLeaf(directoryGuard, guardLeaf)
         if (
-          opened.identity.ino !== Number(ready[2]) ||
+          opened.identity.dev.toString() !== ready.dev ||
+          opened.identity.ino.toString() !== ready.ino ||
           !sameIdentity(current, opened.identity)
         ) {
           throw new UnsafeFilesystemShapeError(
@@ -2142,11 +2470,55 @@ async function acquireAdvisoryGuard(
               guardLeaf,
             )
           }
-          await handle.chmod(0o600)
+          if ((descriptor.mode & 0o777) !== 0o600) {
+            throw new UnsafeFilesystemShapeError(
+              "FILESYSTEM_LEAF_MODE_UNSAFE",
+              guardLeaf,
+            )
+          }
         } finally {
           await handle.close()
         }
-        finish({ child })
+        await proveActiveAdvisoryExclusion(
+          spec,
+          directoryGuard,
+          guardLeaf,
+          opened.identity,
+        )
+        const guard = {
+          child,
+          lost: false,
+          assertHeld() {
+            if (this.lost || child.exitCode !== null || child.signalCode !== null) {
+              throw new FileLeaseMetadataError({
+                code: "FILE_LEASE_GUARD_LOST",
+                leafName: guardLeaf,
+                recovery: "retry only after the fixed mutation broker can retain its lock",
+              })
+            }
+          },
+        }
+        child.once("exit", () => {
+          guard.lost = true
+        })
+        readyAccepted = true
+        await callHook(hooks, "afterAdvisoryAcquire", {
+          leafName: guardLeaf,
+          terminateBroker: () =>
+            new Promise((resolve) => {
+              child.once("exit", resolve)
+              child.kill("SIGKILL")
+            }),
+        })
+        guard.assertHeld()
+        const finalGuard = await statRegularLeaf(directoryGuard, guardLeaf)
+        if (!sameIdentity(finalGuard, opened.identity)) {
+          throw new UnsafeFilesystemShapeError(
+            "FILESYSTEM_LEAF_REPLACED",
+            guardLeaf,
+          )
+        }
+        finish(guard)
       } catch (error) {
         child.stdin.end()
         finish(null, error)
@@ -2159,7 +2531,9 @@ async function acquireAdvisoryGuard(
         finish(
           null,
           new FileLeaseMetadataError({
-            code: "FILE_LEASE_GUARD_FAILED",
+            code: readyAccepted
+              ? "FILE_LEASE_GUARD_LOST"
+              : "FILE_LEASE_GUARD_FAILED",
             leafName: guardLeaf,
             recovery: "verify the private state directory and retry",
           }),
@@ -2246,8 +2620,8 @@ async function writeLeaseRecord(
   await cleanupOrphanLeaseCandidates(directoryGuard, lockLeaf)
   const candidate = leaseCandidateLeafName(lockLeaf)
   let descriptor = null
-  await assertDirectoryStable(directoryGuard)
-  const handle = await open(
+  assertDirectoryStableSync(directoryGuard)
+  const descriptorFd = openSync(
     leafPath(directoryGuard, candidate),
     constants.O_WRONLY |
       constants.O_CREAT |
@@ -2257,12 +2631,13 @@ async function writeLeaseRecord(
   )
   let published = false
   try {
-    await handle.chmod(0o600)
-    await handle.writeFile(`${JSON.stringify(record)}\n`)
-    await handle.sync()
-    descriptor = await handle.stat()
+    assertDirectoryStableSync(directoryGuard)
+    fchmodSync(descriptorFd, 0o600)
+    writeFileSync(descriptorFd, `${JSON.stringify(record)}\n`)
+    fsyncSync(descriptorFd)
+    descriptor = fstatSync(descriptorFd)
   } finally {
-    await handle.close()
+    closeSync(descriptorFd)
   }
   try {
     await callHook(hooks, "afterLeaseCandidateSynced", {
@@ -2275,8 +2650,8 @@ async function writeLeaseRecord(
         candidate,
       )
     }
-    await assertDirectoryStable(directoryGuard)
-    await link(
+    assertDirectoryStableSync(directoryGuard)
+    linkSync(
       leafPath(directoryGuard, candidate),
       leafPath(directoryGuard, lockLeaf),
     )
@@ -2400,7 +2775,9 @@ export async function acquireCrashSafeFileLease({
   })
   if (guard.busy) return { acquired: false, reason: "lease_busy" }
   try {
+    guard.assertHeld()
     await cleanupOrphanLeaseCandidates(directoryGuard, lockLeaf)
+    guard.assertHeld()
     const processIdentity = await getProcessIdentity(pid)
     if (!processIdentity) {
       throw new FileLeaseMetadataError({
@@ -2416,6 +2793,7 @@ export async function acquireCrashSafeFileLease({
       getProcessIdentity,
     }
     for (const candidate of [reaperLeaf, lockLeaf]) {
+      guard.assertHeld()
       const existing = await inspectLeaseLeaf(
         directoryGuard,
         candidate,
@@ -2433,6 +2811,7 @@ export async function acquireCrashSafeFileLease({
             "stop the recorded process and retry, or verify task scope before removing the legacy marker",
         }
       }
+      guard.assertHeld()
       await unlinkRegularLeaf(directoryGuard, candidate, {
         allowMissing: true,
         sync: true,
@@ -2452,7 +2831,9 @@ export async function acquireCrashSafeFileLease({
       acquiredAt: now().toISOString(),
     }
     try {
+      guard.assertHeld()
       await writeLeaseRecord(directoryGuard, lockLeaf, record, { hooks })
+      guard.assertHeld()
     } catch (error) {
       await removeOwnedLeaseRecord(
         directoryGuard,

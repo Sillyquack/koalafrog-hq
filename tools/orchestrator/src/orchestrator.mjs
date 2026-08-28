@@ -14,7 +14,6 @@ import {
   agentResultBindingDigest,
   agentResultPublicationDecision,
   controlPlaneBindingDigest,
-  findExistingResult,
   findExistingPickup,
   formatCompletionPacket,
   formatPickupPacket,
@@ -47,6 +46,11 @@ import {
   redactForLog,
   StateStore,
 } from "./state-store.mjs"
+import {
+  interruptedCommandTerminalityDecision,
+  sameTerminalityReconciliation,
+  terminalityReconciliationRecordIsValid,
+} from "./terminality-reconciliation.mjs"
 import {
   canStartInstructionTurn,
   instructionTurnCount,
@@ -974,6 +978,30 @@ export function recordCompletedTurnResult(
           retryable: turnResult.retryable === true,
         }
       : {}),
+    ...(turnResult?.terminalityReconciliation
+      ? {
+          terminalityReconciliation: {
+            reconciliationId:
+              turnResult.terminalityReconciliation.reconciliationId,
+            classification:
+              turnResult.terminalityReconciliation.classification,
+            terminalOutcome:
+              turnResult.terminalityReconciliation.terminalOutcome,
+            evidenceIdentity:
+              turnResult.terminalityReconciliation.evidenceIdentity,
+            originIssueNumber:
+              turnResult.terminalityReconciliation.originIssueNumber,
+            instructionId:
+              turnResult.terminalityReconciliation.instructionId,
+            threadId: turnResult.terminalityReconciliation.threadId,
+            turnId: turnResult.terminalityReconciliation.turnId,
+            itemIds: turnResult.terminalityReconciliation.itemIds,
+            evidenceSummary:
+              turnResult.terminalityReconciliation.evidenceSummary,
+          },
+          retryable: false,
+        }
+      : {}),
     resultArtifact,
   })
   state.activeInstruction.resultArtifact = persisted.resultArtifact
@@ -981,6 +1009,61 @@ export function recordCompletedTurnResult(
   if (state.activeInstruction.phase !== "owner_stopped") {
     state.activeInstruction.phase = "turn_completed"
   }
+  return persisted
+}
+
+export function recordInterruptedCommandTerminalityReconciliation(
+  state,
+  decision,
+) {
+  if (!decision?.applicable || !decision.record || !decision.turnResult) {
+    throw new Error("Cannot persist an inapplicable terminality reconciliation")
+  }
+  const active = state.activeInstruction
+  const record = decision.record
+  if (
+    !terminalityReconciliationRecordIsValid(record) ||
+    active?.phase !== "turn_started" ||
+    active.instructionId !== record.instructionId ||
+    active.turnId !== record.turnId ||
+    state.threadId !== record.threadId ||
+    state.task.originIssueNumber !== record.originIssueNumber ||
+    state.task.originIssueUrl !== record.originIssueUrl
+  ) {
+    throw new Error("Terminality reconciliation is not bound to the active turn")
+  }
+  state.terminalityReconciliations ??= []
+  const sameId = state.terminalityReconciliations.filter(
+    (candidate) => candidate.reconciliationId === record.reconciliationId,
+  )
+  if (sameId.length > 1) {
+    throw new Error("Terminality reconciliation identity is ambiguous")
+  }
+  if (sameId.length === 1) {
+    if (!sameTerminalityReconciliation(sameId[0], record)) {
+      throw new Error("Terminality reconciliation identity conflicts")
+    }
+  } else {
+    const conflictingBinding = state.terminalityReconciliations.find(
+      (candidate) =>
+        candidate.instructionId === record.instructionId &&
+        candidate.threadId === record.threadId &&
+        candidate.turnId === record.turnId,
+    )
+    if (conflictingBinding) {
+      throw new Error("Interrupted turn already has different terminality evidence")
+    }
+    state.terminalityReconciliations.push(record)
+  }
+  const persisted = recordCompletedTurnResult(state, {
+    ...decision.turnResult,
+    terminalityReconciliation: sameId[0] ?? record,
+  })
+  state.status =
+    record.classification === "terminality_unprovable" ||
+    record.terminalOutcome === "completed"
+      ? "needs_review"
+      : "failed"
   return persisted
 }
 
@@ -1024,7 +1107,21 @@ function turnResultFromAppServerFailureEvent(state, event) {
     willRetry: event.willRetry,
     threadId,
     turnId,
+    ...(Number.isSafeInteger(event.terminalGeneration) &&
+    event.terminalGeneration > 0 &&
+    event.terminalTransactionId ===
+      `${event.eventId}:terminalization:${event.terminalGeneration}`
+      ? {
+          terminalGeneration: event.terminalGeneration,
+          terminalTransactionId: event.terminalTransactionId,
+        }
+      : {}),
   }
+  const preservedFinalMessage =
+    state.activeInstruction?.resultArtifact?.turnId === turnId &&
+    typeof state.activeInstruction.resultArtifact.finalMessage === "string"
+      ? state.activeInstruction.resultArtifact.finalMessage
+      : ""
   return {
     status: "failed",
     turn: {
@@ -1040,7 +1137,7 @@ function turnResultFromAppServerFailureEvent(state, event) {
       },
     },
     pendingOwnerRequest: null,
-    agentMessage: "",
+    agentMessage: preservedFinalMessage,
     commandExecutions: [],
     appServerFailure: failure,
     // A recovered notification does not prove that no command was active when
@@ -1076,7 +1173,13 @@ function appServerFailureEventFromRecoveredTurn(state, turn) {
 function prepareAppServerFailureRetry(state, maxRetries) {
   const active = state.activeInstruction
   const completed = active?.completedTurnResult
-  if (!completed?.appServerFailure || completed.retryable !== true) return false
+  if (
+    !completed?.appServerFailure ||
+    completed.appServerFailure.willRetry !== true ||
+    completed.retryable !== true
+  ) {
+    return false
+  }
   const attempt = active.attempts ?? 0
   if (!Number.isSafeInteger(attempt) || attempt < 0 || attempt >= maxRetries) {
     return false
@@ -1211,14 +1314,22 @@ export async function ensureTaskThread({
       ? { config: { "features.exec_permission_approvals": true } }
       : {}),
   }
-  const response = state.threadId
-    ? await appServer.resumeThread(state.threadId, common)
-    : await appServer.startThread({
-        ...common,
-        ...(model ? { model } : {}),
-        serviceName: "koalafrog_local_orchestrator",
-        threadSource: "appServer",
-      })
+  let response
+  try {
+    response = state.threadId
+      ? await appServer.resumeThread(state.threadId, common)
+      : await appServer.startThread({
+          ...common,
+          ...(model ? { model } : {}),
+          serviceName: "koalafrog_local_orchestrator",
+          threadSource: "appServer",
+        })
+  } catch (error) {
+    if (state.threadId && state.activeInstruction.phase === "turn_started") {
+      return null
+    }
+    throw error
+  }
   state.threadId = response.thread.id
   if (!durableTurnPhase) state.activeInstruction.phase = "thread_ready"
   await save(state)
@@ -1241,10 +1352,23 @@ export class Orchestrator {
       new AppServerClient({
         binary: config.codexBinary,
         cwd: config.checkoutPath,
-        eventSink: (event) =>
-          event.type === "turn_failed" && event.eventId
-            ? this.store.appendEventOnce(event.eventId, event)
-            : this.store.appendEvent(event),
+        eventSink: (eventOrProvider, persistence = null) =>
+          persistence?.turnFailureTransaction && persistence.eventId
+            ? this.store.appendEventOnce(
+                persistence.eventId,
+                eventOrProvider,
+              )
+            : this.store.appendEvent(
+                typeof eventOrProvider === "function"
+                  ? eventOrProvider()
+                  : eventOrProvider,
+              ),
+        turnFailureSink: (eventId, failureOrProvider, options) =>
+          this.store.canonicalizeTurnFailure(
+            eventId,
+            failureOrProvider,
+            options,
+          ),
         stderrSink: (text) => this.store.appendStderr(text),
       })
     this.controlPlane = dependencies.controlPlane ?? null
@@ -1340,6 +1464,18 @@ export class Orchestrator {
     packet = redactForLog(packet)
     state.activeInstruction.phase = "result_pending"
     state.activeInstruction.packet = packet
+    if (
+      packet.resultArtifact?.source === "app_server_turn_failure" &&
+      packet.resultArtifact?.failure?.willRetry === false
+    ) {
+      state.status = packet.status
+    }
+    if (
+      packet.resultArtifact?.source ===
+      "interrupted_command_terminality_reconciliation"
+    ) {
+      state.status = packet.status
+    }
     await this.#save(state)
 
     const completionComment = formatCompletionPacket(packet)
@@ -1409,15 +1545,35 @@ export class Orchestrator {
       correctionIds.delete(packet.instructionId)
       state.resultCorrectionInstructionIds = [...correctionIds]
     } else {
-      const existingResult = findExistingResult(comments, packet.instructionId)
-      if (!existingResult) {
+      const publicationDecision = agentResultPublicationDecision({
+        comments,
+        instructionId: packet.instructionId,
+        expectedPacket: packet,
+      })
+      if (
+        !publicationDecision.accepted &&
+        publicationDecision.rejection.code === "result_publication_missing"
+      ) {
         await this.controlPlane.postComment(completionComment)
+      } else if (!publicationDecision.accepted) {
+        await this.store.appendEventOnce(
+          `result_publication_rejected:${packet.instructionId}:${publicationDecision.rejection.code}`,
+          {
+            type: "result_publication_rejected",
+            instructionId: packet.instructionId,
+            issueNumber: state.task.originIssueNumber,
+            ...publicationDecision.rejection,
+          },
+        )
+        throw new Error(
+          `Result publication rejected: ${publicationDecision.rejection.code}`,
+        )
       } else if (
         correctionIds.has(packet.instructionId) &&
-        Number.isSafeInteger(existingResult.id)
+        Number.isSafeInteger(publicationDecision.value.commentId)
       ) {
         await this.controlPlane.updateComment(
-          existingResult.id,
+          publicationDecision.value.commentId,
           completionComment,
         )
         correctionIds.delete(packet.instructionId)
@@ -1484,6 +1640,32 @@ export class Orchestrator {
       recoveries[0].turnId = state.activeInstruction.turnId ?? null
       recoveries[0].resultPacket = packet
     }
+    const terminality = packet.resultArtifact?.terminality ?? null
+    if (terminality) {
+      const records = (state.terminalityReconciliations ?? []).filter(
+        (record) => record.reconciliationId === terminality.reconciliationId,
+      )
+      if (
+        records.length !== 1 ||
+        !terminalityReconciliationRecordIsValid(records[0]) ||
+        records[0].status !== "recorded" ||
+        records[0].finalizedAt !== null ||
+        records[0].instructionId !== packet.instructionId ||
+        records[0].originIssueNumber !== packet.originIssueNumber ||
+        records[0].threadId !== packet.codexThreadId ||
+        records[0].turnId !== terminality.turnId ||
+        records[0].classification !== terminality.classification ||
+        records[0].terminalOutcome !== terminality.terminalOutcome ||
+        records[0].instructionId !== terminality.instructionId ||
+        records[0].evidenceIdentity !== terminality.evidenceIdentity ||
+        JSON.stringify(records[0].itemIds) !== JSON.stringify(terminality.itemIds)
+      ) {
+        throw new Error("Refusing to finalize an ambiguous terminality reconciliation")
+      }
+      records[0].status = "finalized"
+      records[0].finalizedAt = new Date().toISOString()
+      records[0].resultStatus = packet.status
+    }
     state.activeInstruction = null
     state.retryCount = 0
     await this.#save(state)
@@ -1528,7 +1710,11 @@ export class Orchestrator {
       this.config.allowedPaths,
     )
 
-    if (turnResult.status === "completed" && this.config.autoCommit) {
+    if (
+      turnResult.status === "completed" &&
+      !turnResult.terminalityReconciliation &&
+      this.config.autoCommit
+    ) {
       await this.workspace.commitWorkspaceChanges(
         state.workspacePath,
         `chore(orchestrator): complete ${instruction.instructionId}`,
@@ -1551,12 +1737,19 @@ export class Orchestrator {
       resultArtifactFromTurnResult(turnResult)
     const findings = resultArtifact.findings ?? {}
     const finalMessage = resultArtifact.finalMessage ?? ""
+    const terminality =
+      turnResult.terminalityReconciliation ?? resultArtifact.terminality ?? null
     const completed = turnResult.status === "completed" && validation.pass
-    const status = ownerRequest
-      ? "needs_owner"
-      : completed
+    const status = terminality
+      ? terminality.classification === "terminality_unprovable" ||
+        terminality.terminalOutcome === "completed"
         ? "needs_review"
         : "failed"
+      : ownerRequest
+        ? "needs_owner"
+        : completed
+          ? "needs_review"
+          : "failed"
     return {
       instructionId: instruction.instructionId,
       originIssueNumber: state.task.originIssueNumber,
@@ -1574,10 +1767,20 @@ export class Orchestrator {
         findings.ownerGates?.[0] ??
         null,
       ownerRequest: structuredOwnerRequest,
-      blockers: [...(findings.blockers ?? [])],
+      blockers: [
+        ...(terminality?.classification === "terminality_unprovable"
+          ? ["terminality_unprovable"]
+          : []),
+        ...(findings.blockers ?? []),
+      ],
       ownerGates: [...(findings.ownerGates ?? [])],
       productionReadback: [...(findings.productionReadback ?? [])],
-      safetyFindings: [...(findings.safetyFindings ?? [])],
+      safetyFindings: [
+        ...(terminality?.evidenceSummary
+          ? [terminality.evidenceSummary]
+          : []),
+        ...(findings.safetyFindings ?? []),
+      ],
       branchPushState: [...(findings.branchPushState ?? [])],
       resultArtifact,
       detail: [
@@ -1586,6 +1789,9 @@ export class Orchestrator {
           : `Orchestrator workspace validation failed: ${validation.detail || turnResult.turn?.error?.message || "unknown error"}`,
         ownerRequest
           ? "The Codex turn stopped for owner input after the request was cancelled or interrupted fail-closed."
+          : null,
+        terminality
+          ? `Interrupted-command terminality reconciliation: ${terminality.evidenceSummary}`
           : null,
         finalMessage
           ? `Final Codex report (redacted):\n\n${finalMessage}`
@@ -1686,6 +1892,24 @@ export class Orchestrator {
               turnId,
               decisionIds: availableDecisionIds,
             })
+          }
+        },
+        onTurnTimedOut: async ({ threadId, turnId, timedOutAt }) => {
+          if (
+            state.activeInstruction?.phase !== "turn_started" ||
+            state.activeInstruction.turnId !== turnId ||
+            state.threadId !== threadId ||
+            !Number.isFinite(Date.parse(timedOutAt ?? ""))
+          ) {
+            throw new Error("Refusing to persist timeout for another turn")
+          }
+          const existing = state.activeInstruction.turnTimedOutAt ?? null
+          if (existing && existing !== timedOutAt) {
+            throw new Error("Durable turn timeout identity conflicts")
+          }
+          if (!existing) {
+            state.activeInstruction.turnTimedOutAt = timedOutAt
+            await this.#save(state)
           }
         },
         onTurnFailed: async (failedTurnResult) => {
@@ -1873,6 +2097,62 @@ export class Orchestrator {
           })
         },
       })
+      if (!result.appServerFailure && state.activeInstruction?.turnId) {
+        const eventId = appServerFailureEventId(
+          state.threadId,
+          state.activeInstruction.turnId,
+        )
+        const durableFailure = await this.store.findEvent?.(eventId)
+        if (durableFailure) {
+          const canonicalFailure = turnResultFromAppServerFailureEvent(
+            state,
+            durableFailure,
+          )
+          const persistedFailure =
+            state.activeInstruction.completedTurnResult?.appServerFailure
+              ?.eventId === eventId
+              ? state.activeInstruction.completedTurnResult
+              : null
+          if (persistedFailure) {
+            if (
+              JSON.stringify(persistedFailure.appServerFailure) !==
+              JSON.stringify(canonicalFailure.appServerFailure)
+            ) {
+              throw new Error(
+                "Persisted AppServer failure conflicts with its durable event",
+              )
+            }
+            if (
+              !persistedFailure.resultArtifact?.finalMessage &&
+              result.agentMessage
+            ) {
+              canonicalFailure.agentMessage = result.agentMessage
+              canonicalFailure.commandExecutions = Array.isArray(
+                result.commandExecutions,
+              )
+                ? result.commandExecutions
+                : []
+              result = recordCompletedTurnResult(state, canonicalFailure)
+              await this.#save(state)
+            } else {
+              result = persistedFailure
+            }
+          } else {
+            const terminalFailure = canonicalFailure
+            terminalFailure.agentMessage =
+              result.agentMessage ||
+              state.activeInstruction.resultArtifact?.finalMessage ||
+              ""
+            terminalFailure.commandExecutions = Array.isArray(
+              result.commandExecutions,
+            )
+              ? result.commandExecutions
+              : []
+            result = recordCompletedTurnResult(state, terminalFailure)
+            await this.#save(state)
+          }
+        }
+      }
       if (result.status === "completed" || result.status === "needs_owner") {
         return result
       }
@@ -2774,13 +3054,38 @@ export class Orchestrator {
         )
         await this.#save(state)
       }
-      const recovered = turnResult
-        ? null
-        : await this.appServer.readThread(state.threadId)
+      let recovered = null
+      let readbackError = null
+      if (!turnResult) {
+        const terminalityEvents =
+          typeof this.store.readEvents === "function"
+            ? await this.store.readEvents()
+            : []
+        try {
+          recovered = await this.appServer.readThread(state.threadId)
+        } catch (error) {
+          readbackError = error
+        }
+        const terminalityDecision = interruptedCommandTerminalityDecision({
+          state,
+          threadReadback: recovered,
+          readbackError,
+          events: terminalityEvents,
+        })
+        if (terminalityDecision.applicable) {
+          turnResult = recordInterruptedCommandTerminalityReconciliation(
+            state,
+            terminalityDecision,
+          )
+          await this.#save(state)
+        } else if (readbackError) {
+          throw readbackError
+        }
+      }
       const priorTurn = recovered?.thread?.turns?.find(
         (turn) => turn.id === state.activeInstruction.turnId,
       )
-      if (priorTurn?.status === "completed") {
+      if (!turnResult && priorTurn?.status === "completed") {
         turnResult = recordCompletedTurnResult(state, {
           status: "completed",
           turn: priorTurn,
@@ -2793,10 +3098,16 @@ export class Orchestrator {
           state,
           priorTurn,
         )
-        await this.store.appendEventOnce(
-          recoveredFailure.eventId,
-          recoveredFailure,
-        )
+        await (this.store.canonicalizeTurnFailure
+          ? this.store.canonicalizeTurnFailure(
+              recoveredFailure.eventId,
+              recoveredFailure,
+              { finalize: true },
+            )
+          : this.store.appendEventOnce(
+              recoveredFailure.eventId,
+              recoveredFailure,
+            ))
         turnResult = recordCompletedTurnResult(
           state,
           turnResultFromAppServerFailureEvent(state, recoveredFailure),

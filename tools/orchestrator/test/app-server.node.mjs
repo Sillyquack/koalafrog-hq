@@ -16,6 +16,18 @@ function deferredBarrier() {
   return { promise, resolve }
 }
 
+function resolveEvent(eventOrProvider) {
+  return typeof eventOrProvider === "function"
+    ? eventOrProvider()
+    : eventOrProvider
+}
+
+async function persistTestEvent(eventOrProvider, events = null) {
+  const event = structuredClone(resolveEvent(eventOrProvider))
+  if (Array.isArray(events)) events.push(event)
+  return { event }
+}
+
 async function runBlockedTerminalOrderingRace(iteration) {
   const suffix = String(iteration)
   const threadId = `thread-terminal-order-${suffix}`
@@ -27,12 +39,21 @@ async function runBlockedTerminalOrderingRace(iteration) {
   const dispatches = []
   const client = new AppServerClient({
     cwd: "/tmp",
-    eventSink: async (event) => {
-      events.push(event)
-      if (event.type === "turn_failed") {
-        failureSinkEntered.resolve()
-        await releaseFailureSink.promise
-      }
+    eventSink: (eventOrProvider) => persistTestEvent(eventOrProvider, events),
+    turnFailureSink: async (eventId, failureOrProvider, { finalize }) => {
+      if (!finalize) return { finalized: false, generation: 1, event: null }
+      failureSinkEntered.resolve()
+      await releaseFailureSink.promise
+      const failure = resolveEvent(failureOrProvider)
+      return persistTestEvent(
+        {
+          type: "turn_failed",
+          ...failure,
+          terminalGeneration: 2,
+          terminalTransactionId: `${eventId}:terminalization:2`,
+        },
+        events,
+      )
     },
   })
   client.request = async (method) => {
@@ -85,6 +106,11 @@ async function runBlockedTerminalOrderingRace(iteration) {
   assert.equal(result.appServerFailure.turnId, turnId)
   assert.equal(result.appServerFailure.codexErrorInfo, "cyberPolicy")
   assert.equal(result.appServerFailure.willRetry, false)
+  assert.equal(result.appServerFailure.terminalGeneration, 2)
+  assert.equal(
+    result.appServerFailure.terminalTransactionId,
+    `turn_failed:${threadId}:${turnId}:terminalization:2`,
+  )
   assert.equal(result.retryable, false)
   assert.equal(persisted.length, 1)
   assert.equal(events.filter((event) => event.type === "turn_failed").length, 1)
@@ -101,12 +127,21 @@ async function runBlockedCompletionFirstOrderingRace(iteration) {
   const dispatches = []
   const client = new AppServerClient({
     cwd: "/tmp",
-    eventSink: async (event) => {
-      events.push(event)
-      if (event.type === "turn_failed") {
-        failureSinkEntered.resolve()
-        await releaseFailureSink.promise
-      }
+    eventSink: (eventOrProvider) => persistTestEvent(eventOrProvider, events),
+    turnFailureSink: async (eventId, failureOrProvider, { finalize }) => {
+      if (!finalize) return { finalized: false, generation: 1, event: null }
+      failureSinkEntered.resolve()
+      await releaseFailureSink.promise
+      const failure = resolveEvent(failureOrProvider)
+      return persistTestEvent(
+        {
+          type: "turn_failed",
+          ...failure,
+          terminalGeneration: 2,
+          terminalTransactionId: `${eventId}:terminalization:2`,
+        },
+        events,
+      )
     },
   })
   client.request = async (method) => {
@@ -120,7 +155,7 @@ async function runBlockedCompletionFirstOrderingRace(iteration) {
         },
       }),
     )
-    await new Promise((resolve) => setTimeout(resolve, 5))
+    await failureSinkEntered.promise
     dispatches.push(
       client.dispatchProtocolMessage({
         method: "error",
@@ -132,6 +167,9 @@ async function runBlockedCompletionFirstOrderingRace(iteration) {
         },
       }),
     )
+    await new Promise((resolve) => setImmediate(resolve))
+    assert.equal(settled, false, "provisional completion settled before failure")
+    releaseFailureSink.resolve()
     return { turn: { id: turnId } }
   }
 
@@ -150,9 +188,6 @@ async function runBlockedCompletionFirstOrderingRace(iteration) {
     })
 
   await failureSinkEntered.promise
-  await new Promise((resolve) => setImmediate(resolve))
-  assert.equal(settled, false, "provisional completion settled before failure")
-  releaseFailureSink.resolve()
   const result = await terminal
   await Promise.all(dispatches)
 
@@ -162,6 +197,11 @@ async function runBlockedCompletionFirstOrderingRace(iteration) {
   assert.equal(result.appServerFailure.turnId, turnId)
   assert.equal(result.appServerFailure.codexErrorInfo, "cyberPolicy")
   assert.equal(result.appServerFailure.willRetry, false)
+  assert.equal(result.appServerFailure.terminalGeneration, 2)
+  assert.equal(
+    result.appServerFailure.terminalTransactionId,
+    `turn_failed:${threadId}:${turnId}:terminalization:2`,
+  )
   assert.equal(result.retryable, false)
   assert.equal(persisted.length, 1)
   assert.equal(events.filter((event) => event.type === "turn_failed").length, 1)
@@ -172,7 +212,7 @@ test("a terminal AppServer error is redacted and never enters EventEmitter's err
   const persisted = []
   const client = new AppServerClient({
     cwd: "/tmp",
-    eventSink: async (event) => events.push(event),
+    eventSink: (event) => persistTestEvent(event, events),
   })
   client.request = async (method) => {
     assert.equal(method, "turn/start")
@@ -269,7 +309,9 @@ test("turn-start durability blocks later terminal protocol dispatch", async () =
   const client = new AppServerClient({
     cwd: "/tmp",
     eventSink: async (event) => {
-      if (event.type === "turn_failed") failurePersisted = true
+      const persisted = await persistTestEvent(event)
+      if (persisted.event.type === "turn_failed") failurePersisted = true
+      return persisted
     },
   })
   client.process = {
@@ -333,7 +375,7 @@ test("a failed completion without provider retry metadata fails closed", async (
   const events = []
   const client = new AppServerClient({
     cwd: "/tmp",
-    eventSink: async (event) => events.push(event),
+    eventSink: (event) => persistTestEvent(event, events),
   })
   client.request = async () => {
     void client.dispatchProtocolMessage({
@@ -371,7 +413,7 @@ test("a failed completion without provider retry metadata fails closed", async (
 })
 
 test("approval evidence suppresses an upstream retry before async decision handling settles", async () => {
-  const client = new AppServerClient({ cwd: "/tmp", eventSink: async () => {} })
+  const client = new AppServerClient({ cwd: "/tmp", eventSink: persistTestEvent })
   client.respond = () => {}
   client.request = async () => {
     setTimeout(() => {
@@ -418,7 +460,7 @@ test("protocol method names cannot address reserved EventEmitter channels", asyn
   const protocolEvents = []
   const client = new AppServerClient({
     cwd: "/tmp",
-    eventSink: async (event) => protocolEvents.push(event),
+    eventSink: (event) => persistTestEvent(event, protocolEvents),
   })
   client.on("notification", (message) => notifications.push(message.method))
   let errorEvents = 0
@@ -439,6 +481,50 @@ test("protocol method names cannot address reserved EventEmitter channels", asyn
   )
 })
 
+test("authoritative command lifecycle notifications persist before turn listeners consume them", async () => {
+  let releasePersistence
+  let announcePersistence
+  const persistenceEntered = new Promise((resolve) => {
+    announcePersistence = resolve
+  })
+  const persistenceGate = new Promise((resolve) => {
+    releasePersistence = resolve
+  })
+  const events = []
+  const client = new AppServerClient({
+    cwd: "/tmp",
+    eventSink: async (event) => {
+      events.push(event)
+      announcePersistence()
+      await persistenceGate
+    },
+  })
+  let listenerCalls = 0
+  client.on("item/completed", () => {
+    listenerCalls += 1
+  })
+
+  const dispatch = client.dispatchProtocolMessage({
+    method: "item/completed",
+    params: {
+      threadId: "thread-durable-command",
+      turnId: "turn-durable-command",
+      item: {
+        id: "exec-durable-command",
+        type: "commandExecution",
+        status: "completed",
+        exitCode: 7,
+      },
+    },
+  })
+  await persistenceEntered
+  assert.equal(listenerCalls, 0)
+  assert.equal(events[0].message.exitCode, 7)
+  releasePersistence()
+  await dispatch
+  assert.equal(listenerCalls, 1)
+})
+
 test("turn failure normalization requires stable active-turn identity", () => {
   assert.equal(
     appServerTurnFailureFromMessage({
@@ -454,7 +540,7 @@ test("turn failure normalization requires stable active-turn identity", () => {
 })
 
 test("upstream retry disposition cannot replay a turn with command evidence", async () => {
-  const client = new AppServerClient({ cwd: "/tmp", eventSink: async () => {} })
+  const client = new AppServerClient({ cwd: "/tmp", eventSink: persistTestEvent })
   client.request = async () => {
     setTimeout(async () => {
       client.emit("item/started", {

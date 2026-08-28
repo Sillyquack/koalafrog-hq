@@ -232,6 +232,173 @@ test("a deferred authorized retry cannot downgrade an existing completed claim",
   assert.equal(record.attempt, 1)
 })
 
+test("a durable terminal result completes an interrupted queue claim without replaying its callback", async (t) => {
+  const directory = await mkdtemp(
+    path.join(os.tmpdir(), "koalafrog-terminal-queue-completion-"),
+  )
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const store = new QueueClaimStore({
+    stateDirectory: directory,
+    retryBaseMs: 60_000,
+  })
+  const instructionId = "orchestrator-bootstrap-direct-canonical-review-047"
+  let callbacks = 0
+  await assert.rejects(
+    store.withClaim(
+      {
+        instructionId,
+        originIssueNumber: 70,
+        originIssueUrl: "https://github.com/Sillyquack/koalafrog-hq/issues/70",
+      },
+      async () => {
+        callbacks += 1
+        throw new Error("simulated process loss before queue completion")
+      },
+    ),
+    /simulated process loss/,
+  )
+
+  const completion = await store.completeClaimFromDurableTerminalFailure({
+    instructionId,
+    originIssueNumber: 70,
+    originIssueUrl: "https://github.com/Sillyquack/koalafrog-hq/issues/70",
+    resultStatus: "failed",
+  })
+  assert.equal(completion.completed, true)
+  assert.equal(callbacks, 1)
+  const replay = await store.completeClaimFromDurableTerminalFailure({
+    instructionId,
+    originIssueNumber: 70,
+    originIssueUrl: "https://github.com/Sillyquack/koalafrog-hq/issues/70",
+    resultStatus: "failed",
+  })
+  assert.equal(replay.completed, false)
+  assert.equal(replay.reason, "already_completed")
+  assert.equal(callbacks, 1)
+  const record = JSON.parse(
+    await readFile(
+      path.join(store.recordDirectory, `${instructionId}.json`),
+      "utf8",
+    ),
+  )
+  assert.equal(record.status, "completed")
+  assert.equal(record.resultStatus, "failed")
+  assert.equal(record.attempt, 2)
+})
+
+test("a fail-closed needs_review terminality result completes its queue claim once", async (t) => {
+  const directory = await mkdtemp(
+    path.join(os.tmpdir(), "koalafrog-terminality-queue-completion-"),
+  )
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const store = new QueueClaimStore({ stateDirectory: directory })
+  const binding = {
+    instructionId: "orchestrator-cooperative-local-process-model-finalization-054",
+    originIssueNumber: 70,
+    originIssueUrl: "https://github.com/Sillyquack/koalafrog-hq/issues/70",
+  }
+  let callbacks = 0
+  await assert.rejects(
+    store.withClaim(binding, async () => {
+      callbacks += 1
+      throw new Error("simulated crash after terminality finalization")
+    }),
+    /simulated crash/,
+  )
+
+  const completed = await store.completeClaimFromDurableTerminalResult({
+    ...binding,
+    resultStatus: "needs_review",
+  })
+  assert.equal(completed.completed, true)
+  const replay = await store.completeClaimFromDurableTerminalResult({
+    ...binding,
+    resultStatus: "needs_review",
+  })
+  assert.equal(replay.completed, false)
+  assert.equal(replay.reason, "already_completed")
+  assert.equal(callbacks, 1)
+  const record = JSON.parse(
+    await readFile(
+      path.join(store.recordDirectory, `${binding.instructionId}.json`),
+      "utf8",
+    ),
+  )
+  assert.equal(record.status, "completed")
+  assert.equal(record.resultStatus, "needs_review")
+})
+
+test("terminal queue completion recovers across both durable write crash boundaries", async (t) => {
+  for (const failedWrite of [1, 2]) {
+    await t.test(`write_${failedWrite}`, async (t) => {
+      const directory = await mkdtemp(
+        path.join(os.tmpdir(), `koalafrog-terminal-queue-write-${failedWrite}-`),
+      )
+      t.after(() => rm(directory, { recursive: true, force: true }))
+      const instructionId = `terminal-queue-write-${failedWrite}-047`
+      const binding = {
+        instructionId,
+        originIssueNumber: 70,
+        originIssueUrl:
+          "https://github.com/Sillyquack/koalafrog-hq/issues/70",
+      }
+      let callbacks = 0
+      const initial = new QueueClaimStore({ stateDirectory: directory })
+      await assert.rejects(
+        initial.withClaim(binding, async () => {
+          callbacks += 1
+          throw new Error("simulated runner crash")
+        }),
+        /simulated runner crash/,
+      )
+
+      let commitSyncs = 0
+      const interrupted = new QueueClaimStore({
+        stateDirectory: directory,
+        fileSystemHooks: {
+          beforeDirectorySync: async ({ phase, leafName }) => {
+            if (phase !== "commit" || leafName !== `${instructionId}.json`) {
+              return
+            }
+            commitSyncs += 1
+            if (commitSyncs === failedWrite) {
+              throw new Error(`injected terminal queue write ${failedWrite}`)
+            }
+          },
+        },
+      })
+      await assert.rejects(
+        interrupted.completeClaimFromDurableTerminalFailure({
+          ...binding,
+          resultStatus: "failed",
+        }),
+        (error) =>
+          error.code === "DURABLE_COMMIT_PENDING" &&
+          error.cause?.message === `injected terminal queue write ${failedWrite}`,
+      )
+
+      const restarted = new QueueClaimStore({ stateDirectory: directory })
+      const completion =
+        await restarted.completeClaimFromDurableTerminalFailure({
+          ...binding,
+          resultStatus: "failed",
+        })
+      assert.ok(
+        completion.completed || completion.reason === "already_completed",
+      )
+      assert.equal(callbacks, 1)
+      const record = JSON.parse(
+        await readFile(
+          path.join(restarted.recordDirectory, `${instructionId}.json`),
+          "utf8",
+        ),
+      )
+      assert.equal(record.status, "completed")
+      assert.equal(record.resultStatus, "failed")
+    })
+  }
+})
+
 test("a stale issue claim cannot survive loss or replacement of its durable lease", async (t) => {
   const directory = await mkdtemp(path.join(os.tmpdir(), "koalafrog-issue-lease-loss-"))
   t.after(() => rm(directory, { recursive: true, force: true }))

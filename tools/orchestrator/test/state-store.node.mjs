@@ -18,6 +18,7 @@ import path from "node:path"
 import test from "node:test"
 import { setTimeout as delay } from "node:timers/promises"
 import {
+  currentStateSchemaVersion,
   StateRevisionConflictError,
   StateRevisionOverflowError,
   StateStore,
@@ -25,6 +26,7 @@ import {
 import {
   DurableCommitPendingError,
   DurableTransactionError,
+  appendFileNoFollow,
   ensurePrivateDirectory,
 } from "../src/durable-filesystem.mjs"
 import { QueueClaimStore } from "../src/queue-claim-store.mjs"
@@ -34,6 +36,49 @@ const repository = "Sillyquack/koalafrog-hq"
 function options(stateDirectory) {
   return { stateDirectory, repository, issueNumber: 63 }
 }
+
+test("schema-nine state gains an empty terminality reconciliation ledger", async (t) => {
+  const directory = await mkdtemp(
+    path.join(os.tmpdir(), "koalafrog-state-terminality-migration-"),
+  )
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const store = new StateStore(options(directory))
+  const legacy = await store.load()
+  legacy.schemaVersion = 9
+  delete legacy.terminalityReconciliations
+  await writeFile(store.statePath, `${JSON.stringify(legacy, null, 2)}\n`)
+
+  const migrated = await store.load()
+  assert.equal(migrated.schemaVersion, currentStateSchemaVersion)
+  assert.deepEqual(migrated.terminalityReconciliations, [])
+  assert.equal(migrated.stateRevision, legacy.stateRevision + 1)
+})
+
+test("durable protocol events can be reconstructed for terminality readback", async (t) => {
+  const directory = await mkdtemp(
+    path.join(os.tmpdir(), "koalafrog-state-terminality-events-"),
+  )
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const store = new StateStore(options(directory))
+  await store.load()
+  await store.appendEvent({
+    at: "2026-08-27T18:54:41.403Z",
+    type: "notification",
+    message: {
+      method: "item/started",
+      threadId: "thread-054",
+      turnId: "turn-054",
+      itemId: "exec-054",
+      itemType: "commandExecution",
+      itemStatus: "inProgress",
+    },
+  })
+
+  const events = await store.readEvents()
+  assert.equal(events.length, 1)
+  assert.equal(events[0].at, "2026-08-27T18:54:41.403Z")
+  assert.equal(events[0].message.itemId, "exec-054")
+})
 
 test("state revision CAS rejects a stale whole-state replacement", async (t) => {
   const directory = await mkdtemp(path.join(os.tmpdir(), "koalafrog-state-cas-"))
@@ -301,6 +346,136 @@ test("descriptor mutation rejects a parent displaced outside guarded ancestry be
   assert.deepEqual(await readdir(replacementPath), [])
 })
 
+test("every descriptor directory mutation edge revalidates guarded ancestry before mutation", async (t) => {
+  const operations = ["mkdir", "rename", "parentFsync", "fchmod", "childFsync"]
+
+  for (const operation of operations) {
+    await t.test(operation, async () => {
+      const directory = await mkdtemp(
+        path.join(os.tmpdir(), `koalafrog-ancestry-${operation}-`),
+      )
+      const outside = await mkdtemp(
+        path.join(os.tmpdir(), `koalafrog-ancestry-outside-${operation}-`),
+      )
+      t.after(() => rm(directory, { recursive: true, force: true }))
+      t.after(() => rm(outside, { recursive: true, force: true }))
+      const guardedPath = path.join(directory, "guarded")
+      const replacementPath = path.join(directory, "replacement")
+      const displacedPath = path.join(outside, "displaced")
+      const childPath = path.join(guardedPath, "child")
+      await mkdir(guardedPath, { mode: 0o700 })
+      await mkdir(replacementPath, { mode: 0o700 })
+      const guard = await ensurePrivateDirectory(guardedPath)
+      if (operation === "fchmod" || operation === "childFsync") {
+        await mkdir(childPath, { mode: 0o755 })
+        await chmod(childPath, 0o755)
+        await writeFile(path.join(childPath, "sentinel"), "unchanged\n", {
+          mode: 0o600,
+        })
+      }
+      let attacked = false
+      let beforeDisplaced = null
+      let beforeChild = null
+      let beforeSentinel = null
+      let beforeContents = null
+
+      await assert.rejects(
+        ensurePrivateDirectory(childPath, {
+          parentGuard: guard,
+          hooks: {
+            beforeDescriptorDirectoryOperation: async ({ operation: phase }) => {
+              if (attacked || phase !== operation) return
+              await rename(guardedPath, displacedPath)
+              await symlink(replacementPath, guardedPath)
+              attacked = true
+              beforeDisplaced = await stat(displacedPath)
+              beforeChild = await stat(path.join(displacedPath, "child")).catch(
+                () => null,
+              )
+              if (beforeChild) {
+                const sentinelPath = path.join(displacedPath, "child", "sentinel")
+                beforeSentinel = await stat(sentinelPath).catch(() => null)
+                beforeContents = beforeSentinel
+                  ? await readFile(sentinelPath, "utf8")
+                  : null
+              }
+            },
+          },
+        }),
+        (error) => error.code === "FILESYSTEM_DIRECTORY_REPLACED",
+      )
+
+      assert.equal(attacked, true)
+      const afterDisplaced = await stat(displacedPath)
+      assert.equal(afterDisplaced.mode, beforeDisplaced.mode)
+      assert.equal(afterDisplaced.nlink, beforeDisplaced.nlink)
+      assert.equal(afterDisplaced.ctimeMs, beforeDisplaced.ctimeMs)
+      assert.deepEqual(await readdir(replacementPath), [])
+      if (beforeChild) {
+        const afterChild = await stat(path.join(displacedPath, "child"))
+        assert.equal(afterChild.mode, beforeChild.mode)
+        assert.equal(afterChild.nlink, beforeChild.nlink)
+        assert.equal(afterChild.ctimeMs, beforeChild.ctimeMs)
+      }
+      if (beforeSentinel) {
+        const sentinelPath = path.join(displacedPath, "child", "sentinel")
+        const afterSentinel = await stat(sentinelPath)
+        assert.equal(afterSentinel.mode, beforeSentinel.mode)
+        assert.equal(afterSentinel.nlink, beforeSentinel.nlink)
+        assert.equal(afterSentinel.ctimeMs, beforeSentinel.ctimeMs)
+        assert.equal(await readFile(sentinelPath, "utf8"), beforeContents)
+      }
+    })
+  }
+})
+
+test("append rejects displaced ancestry before mutating the opened leaf", async (t) => {
+  const parent = await mkdtemp(path.join(os.tmpdir(), "koalafrog-append-ancestry-"))
+  const guardedPath = path.join(parent, "guarded")
+  const displacedPath = path.join(parent, "displaced")
+  const outsidePath = path.join(parent, "outside")
+  await mkdir(guardedPath, { mode: 0o700 })
+  await mkdir(outsidePath, { mode: 0o700 })
+  const guard = await ensurePrivateDirectory(guardedPath)
+  const leaf = path.join(guardedPath, "events.jsonl")
+  const outsideSentinel = path.join(outsidePath, "sentinel")
+  await writeFile(leaf, "before\n", { mode: 0o644 })
+  await writeFile(outsideSentinel, "outside\n", { mode: 0o640 })
+  const beforeLeaf = await stat(leaf)
+  const beforeOutside = await stat(outsideSentinel)
+  let replaced = false
+  try {
+    await assert.rejects(
+      appendFileNoFollow(guard, "events.jsonl", "after\n", {
+        hooks: {
+          beforeFileChmod: async () => {
+            await rename(guardedPath, displacedPath)
+            await symlink(outsidePath, guardedPath)
+            replaced = true
+          },
+        },
+      }),
+      (error) => error.code === "FILESYSTEM_DIRECTORY_REPLACED",
+    )
+    const afterLeaf = await stat(path.join(displacedPath, "events.jsonl"))
+    const afterOutside = await stat(outsideSentinel)
+    assert.equal(await readFile(path.join(displacedPath, "events.jsonl"), "utf8"), "before\n")
+    assert.equal(afterLeaf.mode, beforeLeaf.mode)
+    assert.equal(afterLeaf.nlink, beforeLeaf.nlink)
+    assert.equal(afterLeaf.ctimeMs, beforeLeaf.ctimeMs)
+    assert.equal(await readFile(outsideSentinel, "utf8"), "outside\n")
+    assert.equal(afterOutside.mode, beforeOutside.mode)
+    assert.equal(afterOutside.nlink, beforeOutside.nlink)
+    assert.equal(afterOutside.ctimeMs, beforeOutside.ctimeMs)
+  } finally {
+    if (replaced) {
+      await unlink(guardedPath)
+      await rename(displacedPath, guardedPath)
+    }
+    await rm(parent, { recursive: true, force: true })
+  }
+})
+
 test("required advisory-lock capability failure occurs before state or queue filesystem mutation", async (t) => {
   const stateDirectory = await mkdtemp(
     path.join(os.tmpdir(), "koalafrog-capability-state-"),
@@ -358,6 +533,106 @@ test("required advisory-lock capability failure occurs before state or queue fil
   assert.equal(afterQueue.mode, beforeQueue.mode)
   assert.equal(afterQueue.nlink, beforeQueue.nlink)
   assert.equal(afterQueue.ctimeMs, beforeQueue.ctimeMs)
+})
+
+test("advisory-lock capability requires an exact READY descriptor handshake before mutation", async (t) => {
+  const cases = [
+    {
+      name: "missing",
+      command: "/definitely/missing/koalafrog-lock-helper",
+      args: [],
+    },
+    { name: "busy-only", command: "/bin/sh", args: ["-c", "exit 75"] },
+    {
+      name: "malformed-ready",
+      command: "/bin/sh",
+      args: ["-c", 'printf "READY malformed\\n"'],
+    },
+    {
+      name: "wrong-identity",
+      command: "/bin/sh",
+      args: ["-c", 'printf "READY 1 1\\n"'],
+    },
+    {
+      name: "wrong-fd",
+      command: "/bin/sh",
+      args: [
+        "-c",
+        "/usr/bin/python3 -I -c 'import os; value=os.fstat(4); print(f\"READY {value.st_dev} {value.st_ino}\")'",
+      ],
+    },
+    { name: "silent-success", command: "/bin/sh", args: ["-c", "exit 0"] },
+    {
+      name: "unlinked-probe-only",
+      command: "/usr/bin/python3",
+      args: [
+        "-I",
+        "-c",
+        "import fcntl, os, sys; value=os.fstat(3); " +
+          "(fcntl.flock(3, fcntl.LOCK_EX | fcntl.LOCK_NB) if value.st_nlink == 0 else None); " +
+          "print(f'READY {value.st_dev} {value.st_ino}', flush=True); sys.stdin.read()",
+      ],
+    },
+    { name: "incompatible", command: "/bin/sh", args: ["-c", "exit 2"] },
+    { name: "timeout", command: "/bin/sh", args: ["-c", "sleep 3"] },
+  ]
+
+  for (const failureCase of cases) {
+    await t.test(failureCase.name, async () => {
+      const stateDirectory = await mkdtemp(
+        path.join(os.tmpdir(), `koalafrog-capability-${failureCase.name}-state-`),
+      )
+      const queueDirectory = await mkdtemp(
+        path.join(os.tmpdir(), `koalafrog-capability-${failureCase.name}-queue-`),
+      )
+      const outsideDirectory = await mkdtemp(
+        path.join(os.tmpdir(), `koalafrog-capability-${failureCase.name}-outside-`),
+      )
+      t.after(() => rm(stateDirectory, { recursive: true, force: true }))
+      t.after(() => rm(queueDirectory, { recursive: true, force: true }))
+      t.after(() => rm(outsideDirectory, { recursive: true, force: true }))
+      await chmod(stateDirectory, 0o755)
+      await chmod(queueDirectory, 0o755)
+      const sentinel = path.join(outsideDirectory, "sentinel")
+      await writeFile(sentinel, "outside unchanged\n", { mode: 0o640 })
+      const beforeState = await stat(stateDirectory)
+      const beforeQueue = await stat(queueDirectory)
+      const beforeOutside = await stat(outsideDirectory)
+      const beforeSentinel = await stat(sentinel)
+      const lockfSpec = () => ({
+        command: failureCase.command,
+        args: failureCase.args,
+        busyCodes: new Set([75]),
+      })
+
+      await assert.rejects(
+        new StateStore({ ...options(stateDirectory), lockfSpec }).load(),
+        (error) => error.code === "FILE_LEASE_GUARD_UNAVAILABLE",
+      )
+      await assert.rejects(
+        new QueueClaimStore({ stateDirectory: queueDirectory, lockfSpec })
+          .withIssueClaim({ originIssueNumber: 63 }, async () => null),
+        (error) => error.code === "FILE_LEASE_GUARD_UNAVAILABLE",
+      )
+
+      const afterState = await stat(stateDirectory)
+      const afterQueue = await stat(queueDirectory)
+      assert.deepEqual(await readdir(stateDirectory), [])
+      assert.deepEqual(await readdir(queueDirectory), [])
+      assert.deepEqual(await readdir(outsideDirectory), ["sentinel"])
+      assert.equal(await readFile(sentinel, "utf8"), "outside unchanged\n")
+      for (const [before, after] of [
+        [beforeState, afterState],
+        [beforeQueue, afterQueue],
+        [beforeOutside, await stat(outsideDirectory)],
+        [beforeSentinel, await stat(sentinel)],
+      ]) {
+        assert.equal(after.mode, before.mode)
+        assert.equal(after.nlink, before.nlink)
+        assert.equal(after.ctimeMs, before.ctimeMs)
+      }
+    })
+  }
 })
 
 test("existing private-directory identity is immutable before permission normalization", async (t) => {
@@ -580,6 +855,31 @@ test("takeover crash phases converge without stealing or duplicating state", asy
       assert.equal(durable.stateRevision, 2)
     })
   }
+})
+
+test("fixed advisory broker loss prevents the protected state mutation", async (t) => {
+  const directory = await mkdtemp(
+    path.join(os.tmpdir(), "koalafrog-state-broker-loss-"),
+  )
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  let terminated = false
+  const store = new StateStore({
+    ...options(directory),
+    fileSystemHooks: {
+      afterAdvisoryAcquire: async ({ terminateBroker }) => {
+        if (terminated) return
+        terminated = true
+        await terminateBroker()
+      },
+    },
+  })
+  await assert.rejects(
+    store.load(),
+    (error) => error.code === "FILE_LEASE_GUARD_LOST",
+  )
+  const contents = await readdir(store.directory)
+  assert.equal(contents.includes("state.json"), false)
+  assert.equal(contents.includes("events.jsonl"), false)
 })
 
 test("event and stderr leaf symlinks are rejected without touching outside files", async (t) => {
@@ -1153,4 +1453,195 @@ test("durable turn failure events are idempotent and conflict-safe", async (t) =
     .split("\n")
     .map(JSON.parse)
   assert.equal(events.filter((candidate) => candidate.eventId === eventId).length, 1)
+})
+
+test("durable turn failure providers remain supersedable until the append write edge", async (t) => {
+  const directory = await mkdtemp(
+    path.join(os.tmpdir(), "koalafrog-state-turn-failure-supersession-"),
+  )
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  let releaseWrite
+  let markWriteEdge
+  const writeEdge = new Promise((resolve) => {
+    markWriteEdge = resolve
+  })
+  const writeRelease = new Promise((resolve) => {
+    releaseWrite = resolve
+  })
+  let block = false
+  const store = new StateStore({
+    ...options(directory),
+    fileSystemHooks: {
+      beforeAppendWrite: async () => {
+        if (!block) return
+        markWriteEdge()
+        await writeRelease
+      },
+    },
+  })
+  await store.load()
+  block = true
+  const eventId = "turn_failed:thread-supersession:turn-supersession"
+  let failure = {
+    type: "turn_failed",
+    eventId,
+    errorClass: "AppServerTurnError",
+    code: "APP_SERVER_TURN_ERROR",
+    category: "unknown",
+    codexErrorInfo: null,
+    willRetry: false,
+    threadId: "thread-supersession",
+    turnId: "turn-supersession",
+  }
+  const persistence = store.appendEventOnce(eventId, () => failure)
+  await writeEdge
+  failure = {
+    ...failure,
+    category: "cyberPolicy",
+    codexErrorInfo: "cyberPolicy",
+  }
+  releaseWrite()
+  assert.equal((await persistence).created, true)
+  const durable = await store.findEvent(eventId)
+  assert.equal(durable.category, "cyberPolicy")
+  assert.equal(durable.codexErrorInfo, "cyberPolicy")
+})
+
+test("turn failure terminalization advances generation before one canonical result", async (t) => {
+  const directory = await mkdtemp(
+    path.join(os.tmpdir(), "koalafrog-turn-terminalization-cas-"),
+  )
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  let releaseWrite
+  let markWriteEdge
+  const writeEdge = new Promise((resolve) => {
+    markWriteEdge = resolve
+  })
+  const writeRelease = new Promise((resolve) => {
+    releaseWrite = resolve
+  })
+  let blockFinalization = false
+  const store = new StateStore({
+    ...options(directory),
+    fileSystemHooks: {
+      beforeAppendWrite: async () => {
+        if (!blockFinalization) return
+        blockFinalization = false
+        markWriteEdge()
+        await writeRelease
+      },
+    },
+  })
+  await store.load()
+  const eventId = "turn_failed:thread-terminal-cas:turn-terminal-cas"
+  const provisional = {
+    eventId,
+    errorClass: "AppServerTurnError",
+    code: "APP_SERVER_TURN_ERROR",
+    category: "unknown",
+    codexErrorInfo: "unknown",
+    willRetry: false,
+    threadId: "thread-terminal-cas",
+    turnId: "turn-terminal-cas",
+  }
+  let current = provisional
+  const observed = await store.canonicalizeTurnFailure(eventId, provisional)
+  assert.equal(observed.generation, 1)
+  assert.equal(observed.finalized, false)
+  blockFinalization = true
+  const finalization = store.canonicalizeTurnFailure(eventId, () => current, {
+    finalize: true,
+  })
+  await writeEdge
+  current = {
+    ...provisional,
+    category: "cyberPolicy",
+    codexErrorInfo: "cyberPolicy",
+  }
+  releaseWrite()
+  const finalized = await finalization
+  assert.equal(finalized.generation, 2)
+  assert.equal(finalized.event.codexErrorInfo, "cyberPolicy")
+  assert.equal(finalized.event.willRetry, false)
+  const events = (await readFile(store.eventPath, "utf8"))
+    .trim()
+    .split("\n")
+    .map(JSON.parse)
+  const generations = events.filter(
+    (event) => event.type === "turn_failure_terminalization",
+  )
+  assert.deepEqual(generations.map((event) => event.generation), [1, 2])
+  assert.deepEqual(
+    generations.map((event) => event.transactionId),
+    [
+      `${eventId}:terminalization:1`,
+      `${eventId}:terminalization:2`,
+    ],
+  )
+  assert.equal(
+    finalized.event.terminalTransactionId,
+    `${eventId}:terminalization:2`,
+  )
+  assert.equal(events.filter((event) => event.eventId === eventId).length, 1)
+  await assert.rejects(
+    store.canonicalizeTurnFailure(
+      eventId,
+      { ...current, category: "transient", codexErrorInfo: "transient" },
+      { finalize: true },
+    ),
+    (error) => error.code === "EVENT_ID_CONFLICT",
+  )
+})
+
+test("turn failure terminalization survives restart at observation and finalization", async (t) => {
+  const directory = await mkdtemp(
+    path.join(os.tmpdir(), "koalafrog-turn-terminalization-restart-"),
+  )
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const eventId = "turn_failed:thread-terminal-restart:turn-terminal-restart"
+  const provisional = {
+    eventId,
+    errorClass: "AppServerTurnError",
+    code: "APP_SERVER_TURN_ERROR",
+    category: "unknown",
+    codexErrorInfo: "unknown",
+    willRetry: false,
+    threadId: "thread-terminal-restart",
+    turnId: "turn-terminal-restart",
+  }
+  const first = new StateStore(options(directory))
+  await first.load()
+  assert.equal(
+    (await first.canonicalizeTurnFailure(eventId, provisional)).generation,
+    1,
+  )
+  const authoritative = {
+    ...provisional,
+    category: "cyberPolicy",
+    codexErrorInfo: "cyberPolicy",
+  }
+  const restarted = new StateStore(options(directory))
+  const finalized = await restarted.canonicalizeTurnFailure(
+    eventId,
+    authoritative,
+    { finalize: true },
+  )
+  assert.equal(finalized.generation, 2)
+  assert.equal(finalized.event.codexErrorInfo, "cyberPolicy")
+  assert.equal(
+    finalized.event.terminalTransactionId,
+    `${eventId}:terminalization:2`,
+  )
+  const replayed = await new StateStore(options(directory)).canonicalizeTurnFailure(
+    eventId,
+    authoritative,
+    { finalize: true },
+  )
+  assert.equal(replayed.created, false)
+  assert.equal(replayed.event.codexErrorInfo, "cyberPolicy")
+  const events = (await readFile(restarted.eventPath, "utf8"))
+    .trim()
+    .split("\n")
+    .map(JSON.parse)
+  assert.equal(events.filter((event) => event.eventId === eventId).length, 1)
 })

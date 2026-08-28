@@ -1,6 +1,15 @@
 import assert from "node:assert/strict"
+import { readFile } from "node:fs/promises"
 import test from "node:test"
 import { normalizeTaskThreadParams } from "../src/runtime-policy.mjs"
+
+test("runtime documentation fixes the supported local-process trust boundary", async () => {
+  const readme = await readFile(new URL("../README.md", import.meta.url), "utf8")
+  assert.match(readme, /personal, single-owner service/)
+  assert.match(readme, /cooperating current, stale, and\s+restarted orchestrator processes/)
+  assert.match(readme, /Arbitrary unrelated applications.*same logged-in macOS\s+user are outside this isolation boundary/s)
+  assert.match(readme, /must not be used to weaken descriptor pinning/)
+})
 
 test("workspace-local task turns do not enter recursive app-server approval loops", () => {
   const normalized = normalizeTaskThreadParams({

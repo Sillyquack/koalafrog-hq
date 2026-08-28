@@ -26,6 +26,11 @@ If the persisted turn already completed, recovery records its redacted final
 agent message and compact command evidence without starting a duplicate turn.
 A completed-turn artifact is persisted before workspace inspection and result
 publication, so restart can reconstruct the same check states and final report.
+For an interrupted turn with a started command but no observed
+`item/completed`, restart reads the exact thread/turn/item state and binds any
+authoritative terminal evidence to one schema-versioned terminality
+reconciliation record. Missing or contradictory evidence finalizes the
+instruction as `terminality_unprovable`; it never opens a replacement turn.
 `action: continue` reuses that context;
 `action: start` deliberately creates a fresh instruction-specific worktree and
 thread.
@@ -43,6 +48,24 @@ search results are skipped on later polls except for persisted `needs_review`,
 `needs_owner`, and `failed` tasks, whose comments are refreshed because a new
 comment does not reliably advance the issue watermark. Durable run history and
 instruction claims still consume each continuation at most once.
+
+### Supported local-process trust boundary
+
+This is a personal, single-owner service running as one authenticated macOS
+user. Its supported isolation boundary covers cooperating current, stale, and
+restarted orchestrator processes; crashes; accidental concurrency; malformed,
+duplicated, or replayed durable work; result-publication mistakes; owner-gate
+mistakes; and cross-task or cross-worktree confusion. The fixed, content-bound
+mutation broker and every orchestrator process cooperate on the same advisory
+lock, and the broker retains that lock from final validation through the exact
+local mutation and post-state verification.
+
+Arbitrary unrelated applications already running as that same logged-in macOS
+user are outside this isolation boundary. Such a process already has the
+owner's filesystem authority and can bypass cooperative advisory locks. This
+assumption must not be used to weaken descriptor pinning, CAS, durable intent
+and receipt binding, replay protection, sibling-worktree denial, or any other
+orchestrator invariant within the supported boundary.
 
 ## Making an issue eligible
 
@@ -95,6 +118,11 @@ npm run orchestrator:repository:watch -- \
 Press `Ctrl-C` for a graceful stop. The current state, worktrees, and Codex
 threads are preserved for the next start. The LaunchAgent below is the normal
 hands-off runtime; these commands remain useful for diagnosis.
+
+A stopped-service recovery can scope a repository one-shot to one exact durable
+task without scanning or loading unrelated issue state by adding `--issue N` to
+`orchestrator:repository:once`. Omitting `--issue` preserves repository-wide
+discovery.
 
 Use `node tools/orchestrator/bin/orchestrator.mjs help` for every bounded-turn,
 timeout, retry, polling, model, state, and worktree option.
@@ -279,6 +307,11 @@ npm run schema:ts
 - A timed-out turn must report a matching terminal completion after interruption,
   and every observed command execution from that turn must also be terminal,
   before a retry can start. Missing command-terminal evidence fails closed;
-  unconfirmed restart recovery remains deferred.
+  restart recovery uses only authoritative `item/completed` protocol evidence
+  or exact `thread/read` item state. Process absence, elapsed time, silence,
+  EOF, timeout, `terminalInteraction`, and lack of later output are never
+  terminal proof. If terminality remains unprovable or evidence conflicts, the
+  existing instruction is durably finalized for review without retry,
+  auto-commit, reset, or worktree cleanup.
 - Durable history plus GitHub result comments consume each `instruction_id` at
   most once unless an audited local retry marker explicitly reopens it.

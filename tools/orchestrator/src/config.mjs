@@ -35,6 +35,7 @@ export function parseConfig(argv, cwd = process.cwd()) {
     command,
     repository: "Sillyquack/koalafrog-hq",
     issueNumber: 53,
+    issueNumberExplicit: false,
     checkoutPath: cwd,
     stateDirectory: defaultStateDirectory(),
     baseRef: "origin/main",
@@ -69,6 +70,7 @@ export function parseConfig(argv, cwd = process.cwd()) {
         break
       case "--issue":
         config.issueNumber = numeric(arg)
+        config.issueNumberExplicit = true
         break
       case "--checkout":
         config.checkoutPath = path.resolve(takeValue(args, index, arg))
