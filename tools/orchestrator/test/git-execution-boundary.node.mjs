@@ -79,6 +79,8 @@ import {
 } from "./fixtures/issue-63-production-day1-git-reconciliation-resume-010.mjs"
 
 const execFileAsync = promisify(execFile)
+const issue63OwnerAck027NoMutationStatement =
+  "No fallback path, sibling metadata access, source change, or production-side action occurred."
 
 function deferredBarrier() {
   let resolve
@@ -1224,6 +1226,16 @@ async function completedGenerationActivationRecoverySetup(t) {
   sourceRun.instructionId = instructionId
   sourceRun.completedAt = "2026-08-24T09:00:00.000Z"
   sourceRun.resultArtifact.turnId = "turn-owner-ack-027"
+  const priorNoMutationStatement = sourceRun.productionReadback[0]
+  sourceRun.productionReadback = [issue63OwnerAck027NoMutationStatement]
+  sourceRun.resultArtifact.findings.productionReadback = [
+    issue63OwnerAck027NoMutationStatement,
+  ]
+  sourceRun.resultArtifact.finalMessage =
+    sourceRun.resultArtifact.finalMessage.replace(
+      priorNoMutationStatement,
+      issue63OwnerAck027NoMutationStatement,
+    )
   setup.state.runs.push(sourceRun)
   setup.state.lastConsumedInstructionId = instructionId
   setup.state.status = "needs_review"
@@ -3099,6 +3111,108 @@ test("completed #63 owner acknowledgement 027 reconstructs its exact generation-
     false,
   )
   assert.equal(JSON.stringify(setup.state.runs), immutableRuns)
+})
+
+test("exact live #63 acknowledgement 027 safe-stop evidence passes mutation classification without weakening result binding", async (t) => {
+  const setup = await completedGenerationActivationRecoverySetup(t)
+  const missingResultTask = structuredClone(setup.task)
+  missingResultTask.comments = missingResultTask.comments.filter(
+    (comment) => comment.id !== 2702,
+  )
+  const nextBoundary = recoverCompletedCheckpointActivation({
+    state: structuredClone(setup.state),
+    task: missingResultTask,
+  })
+  assert.equal(nextBoundary.accepted, false)
+  assert.equal(
+    nextBoundary.rejection.code,
+    "checkpoint_activation_recovery_result_publication_missing",
+  )
+
+  const manipulatedStatements = [
+    {
+      value:
+        "Fallback path, sibling metadata access, source change, or production-side action occurred.",
+      predicate: "checkpoint_historical_mutation_ambiguous",
+    },
+    {
+      value:
+        "No fallback path, sibling metadata access, source change, or production-side action occurred",
+      predicate: "checkpoint_historical_mutation_ambiguous",
+    },
+    {
+      value: "Source change occurred.",
+      predicate: "checkpoint_historical_mutation_ambiguous",
+    },
+    {
+      value: "Production-side action occurred.",
+      predicate: "checkpoint_historical_mutation_ambiguous",
+    },
+    {
+      value: `${issue63OwnerAck027NoMutationStatement} Source change occurred.`,
+      predicate: "checkpoint_historical_mutation_ambiguous",
+    },
+    {
+      value: `${issue63OwnerAck027NoMutationStatement} A production mutation occurred.`,
+      predicate: "checkpoint_historical_mutation_conflict",
+    },
+  ]
+  for (const { value, predicate } of manipulatedStatements) {
+    const state = structuredClone(setup.state)
+    const sourceRun = state.runs.at(-1)
+    sourceRun.productionReadback = [value]
+    sourceRun.resultArtifact.findings.productionReadback = [value]
+    sourceRun.resultArtifact.finalMessage =
+      sourceRun.resultArtifact.finalMessage.replace(
+        issue63OwnerAck027NoMutationStatement,
+        value,
+      )
+    const rejected = recoverCompletedCheckpointActivation({
+      state,
+      task: structuredClone(setup.task),
+    })
+    assert.equal(rejected.accepted, false, value)
+    assert.equal(
+      rejected.rejection.code,
+      "checkpoint_activation_recovery_mutation_evidence",
+      value,
+    )
+    assert.equal(rejected.rejection.predicate, predicate, value)
+  }
+
+  const contradictedFinalState = structuredClone(setup.state)
+  const contradictedFinalRun = contradictedFinalState.runs.at(-1)
+  contradictedFinalRun.resultArtifact.finalMessage =
+    contradictedFinalRun.resultArtifact.finalMessage.replace(
+      issue63OwnerAck027NoMutationStatement,
+      `The next statement is false.\n\n${issue63OwnerAck027NoMutationStatement}`,
+    )
+  const contradictedFinal = recoverCompletedCheckpointActivation({
+    state: contradictedFinalState,
+    task: structuredClone(setup.task),
+  })
+  assert.equal(contradictedFinal.accepted, false)
+  assert.equal(
+    contradictedFinal.rejection.code,
+    "checkpoint_activation_recovery_mutation_evidence",
+  )
+
+  const conflictingFindingsState = structuredClone(setup.state)
+  conflictingFindingsState.runs.at(-1).resultArtifact.findings.productionReadback =
+    ["Source change occurred."]
+  const conflictingFindings = recoverCompletedCheckpointActivation({
+    state: conflictingFindingsState,
+    task: structuredClone(setup.task),
+  })
+  assert.equal(conflictingFindings.accepted, false)
+  assert.equal(
+    conflictingFindings.rejection.code,
+    "checkpoint_activation_recovery_mutation_evidence",
+  )
+  assert.equal(
+    conflictingFindings.rejection.predicate,
+    "checkpoint_historical_findings_shape",
+  )
 })
 
 test("repository instruction discovery selects live-shaped completed acknowledgement 027 only after normal controls are exhausted", async (t) => {

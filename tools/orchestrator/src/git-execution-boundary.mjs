@@ -313,6 +313,8 @@ const checkpointNegatedMutationStatements = [
   "No fallback, source change, remote Git mutation, deployment, migration, receipt, or production action occurred.",
   "No fallback Git path, sibling metadata access, source change, production action, deployment, migration, purchase, or receipt mutation occurred.",
 ]
+const checkpointOwnerAck027NoMutationStatement =
+  "No fallback path, sibling metadata access, source change, or production-side action occurred."
 
 function accepted(value, context = {}) {
   return { accepted: true, value, context }
@@ -1172,6 +1174,12 @@ function checkpointHistoricalContradictionDecision(
       instructionId: run.instructionId,
     })
   }
+  const ownerAck027NoMutationEvidence =
+    audit.productionReadback.length === 1 &&
+    audit.productionReadback[0] === checkpointOwnerAck027NoMutationStatement &&
+    finalMessage.endsWith(
+      `- Push/PR: **NOT ATTEMPTED**\n\n${checkpointOwnerAck027NoMutationStatement}`,
+    )
   const allEvidence = [
     ...durableFindingKeys.flatMap((key) => audit[key]),
     finalMessage,
@@ -1206,6 +1214,21 @@ function checkpointHistoricalContradictionDecision(
 
   const withoutKnownNegation = (value) => {
     let normalized = String(value)
+    if (
+      ownerAck027NoMutationEvidence &&
+      normalized === checkpointOwnerAck027NoMutationStatement
+    ) {
+      return ""
+    }
+    if (
+      ownerAck027NoMutationEvidence &&
+      normalized === finalMessage
+    ) {
+      normalized = normalized.slice(
+        0,
+        -checkpointOwnerAck027NoMutationStatement.length,
+      )
+    }
     for (const statement of [
       ...structuredNoMutationStatements,
       ...checkpointNegatedMutationStatements,
@@ -1226,7 +1249,7 @@ function checkpointHistoricalContradictionDecision(
   }
   if (
     unexplainedMutationEvidence.some((entry) =>
-      /\bmutation\b|\b(?:source change|production (?:write|action)|migration|deployment|purchase|receipts?|remote Git)\b[^.\n]{0,80}\b(?:occurred|attempted|completed|succeeded|unknown|status)\b/i.test(
+      /\bmutation\b|\b(?:source change|production(?:-side)? (?:write|action)|migration|deployment|purchase|receipts?|remote Git)\b[^.\n]{0,80}\b(?:occurred|attempted|completed|succeeded|unknown|status)\b/i.test(
         entry,
       ),
     )
