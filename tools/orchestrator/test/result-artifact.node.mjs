@@ -1,0 +1,317 @@
+import assert from "node:assert/strict"
+import test from "node:test"
+import {
+  checksFromResultArtifact,
+  resultArtifactFromTurnResult,
+} from "../src/result-artifact.mjs"
+import { issue63AcceptanceTurnResult } from "./fixtures/issue-63-production-day1-result-fidelity-acceptance-005.mjs"
+import { issue63CloseoutFinalMessage } from "./fixtures/issue-63-production-day1-review-closeout-004.mjs"
+
+test("terminal AppServer failure artifacts retain redacted turn provenance", () => {
+  const artifact = resultArtifactFromTurnResult(
+    {
+      status: "failed",
+      turn: {
+        id: "turn-cyber-policy",
+        status: "failed",
+        items: [],
+        error: { message: "Bearer should-not-persist" },
+      },
+      appServerFailure: {
+        eventId: "turn_failed:thread-review:turn-cyber-policy",
+        errorClass: "AppServerTurnError",
+        code: "APP_SERVER_TURN_ERROR",
+        category: "cyberPolicy",
+        codexErrorInfo: "cyberPolicy",
+        willRetry: false,
+        threadId: "thread-review",
+        turnId: "turn-cyber-policy",
+      },
+    },
+    "2026-08-26T12:00:00.000Z",
+  )
+
+  assert.equal(artifact.source, "app_server_turn_failure")
+  assert.equal(artifact.turnId, "turn-cyber-policy")
+  assert.equal(artifact.turnStatus, "failed")
+  assert.deepEqual(artifact.failure, {
+    eventId: "turn_failed:thread-review:turn-cyber-policy",
+    errorClass: "AppServerTurnError",
+    code: "APP_SERVER_TURN_ERROR",
+    category: "cyberPolicy",
+    codexErrorInfo: "cyberPolicy",
+    willRetry: false,
+    threadId: "thread-review",
+    turnId: "turn-cyber-policy",
+  })
+  assert.doesNotMatch(JSON.stringify(artifact), /should-not-persist/)
+  assert.equal(artifact.finalMessage, "")
+  assert.equal(artifact.checks.tests.status, "unknown")
+})
+
+test("interrupted-command reconciliation artifacts retain exact safe evidence identity", () => {
+  const artifact = resultArtifactFromTurnResult({
+    status: "needs_review",
+    turn: {
+      id: "turn-interrupted",
+      status: "interrupted",
+      items: [],
+    },
+    terminalityReconciliation: {
+      reconciliationId: `terminality_reconciliation:${"a".repeat(64)}`,
+      classification: "terminality_unprovable",
+      terminalOutcome: null,
+      evidenceIdentity: "b".repeat(64),
+      originIssueNumber: 70,
+      instructionId: "interrupted-054",
+      threadId: "thread-interrupted",
+      turnId: "turn-interrupted",
+      itemIds: ["exec-interrupted"],
+      evidenceSummary:
+        "turn=turn-interrupted; classification=terminality_unprovable; items=exec-interrupted=unproven/none",
+    },
+  })
+
+  assert.equal(
+    artifact.source,
+    "interrupted_command_terminality_reconciliation",
+  )
+  assert.equal(artifact.terminality.classification, "terminality_unprovable")
+  assert.equal(artifact.terminality.turnId, "turn-interrupted")
+  assert.deepEqual(artifact.terminality.itemIds, ["exec-interrupted"])
+  assert.equal(artifact.checks.tests.status, "unknown")
+})
+
+test("timeout cancellation artifacts retain authoritative command lineage", () => {
+  const artifact = resultArtifactFromTurnResult(
+    {
+      status: "needs_review",
+      turn: {
+        id: "turn-timeout-lineage",
+        status: "failed",
+        items: [],
+      },
+      commandExecutions: [
+        {
+          id: "exec-timeout-lineage",
+          command: "node --test test/*.node.mjs",
+          status: "failed",
+          exitCode: 1,
+        },
+      ],
+      timeoutCancellation: {
+        schemaVersion: 1,
+        threadId: "thread-timeout-lineage",
+        turnId: "turn-timeout-lineage",
+        reason: "turn_timeout",
+        requestedAt: "2026-08-29T10:00:00.000Z",
+        drainDeadlineAt: "2026-08-29T10:01:00.000Z",
+        itemIds: ["exec-timeout-lineage"],
+        terminalItemIds: ["exec-timeout-lineage"],
+        pendingItemIds: [],
+        status: "terminal",
+        provenance: "app_server_item_completed",
+      },
+    },
+    "2026-08-29T10:00:30.000Z",
+  )
+
+  assert.equal(artifact.source, "turn_timeout_command_terminality")
+  assert.equal(artifact.turnId, "turn-timeout-lineage")
+  assert.equal(
+    artifact.timeoutCancellation.threadId,
+    "thread-timeout-lineage",
+  )
+  assert.deepEqual(artifact.timeoutCancellation.itemIds, [
+    "exec-timeout-lineage",
+  ])
+  assert.deepEqual(artifact.timeoutCancellation.pendingItemIds, [])
+  assert.equal(artifact.timeoutCancellation.status, "terminal")
+  assert.equal(artifact.checks.tests.status, "fail")
+})
+
+test("Issue #63/004 final message produces faithful checks and findings", () => {
+  const artifact = resultArtifactFromTurnResult(
+    {
+      status: "completed",
+      turn: { id: "turn-63-004", status: "completed", items: [] },
+      agentMessage: issue63CloseoutFinalMessage,
+    },
+    "2026-08-21T17:58:00.000Z",
+  )
+
+  assert.deepEqual(checksFromResultArtifact(artifact), {
+    typecheck: "pass",
+    lint: "pass",
+    tests: "pass",
+    cloudflareReadiness: "pass",
+    build: "pass",
+    diffCheck: "pass",
+  })
+  assert.equal(artifact.turnId, "turn-63-004")
+  assert.equal(artifact.source, "completed_turn_final_message")
+  assert.match(artifact.finalMessage, /1,049 passed, 66 skipped/)
+  assert.doesNotMatch(artifact.finalMessage, /ghp_123456789/)
+  assert.match(artifact.finalMessage, /Diagnostic token: \[redacted\]/)
+  assert.ok(artifact.findings.blockers.some((line) => /unapplied/.test(line)))
+  assert.ok(
+    artifact.findings.ownerGates.some((line) => /explicit approval/.test(line)),
+  )
+  assert.ok(
+    artifact.findings.productionReadback.some((line) => /all four Aromantic/.test(line)),
+  )
+  assert.ok(
+    artifact.findings.safetyFindings.some((line) => /overlapping command/.test(line)),
+  )
+  assert.ok(
+    artifact.findings.branchPushState.some((line) => /pushed normally/.test(line)),
+  )
+})
+
+test("a completed turn without evidence is unknown rather than not_run", () => {
+  const artifact = resultArtifactFromTurnResult({
+    status: "completed",
+    turn: { id: "turn-unverified", status: "completed", items: [] },
+    agentMessage: "Implementation complete.",
+  })
+
+  assert.deepEqual(checksFromResultArtifact(artifact), {
+    typecheck: "unknown",
+    lint: "unknown",
+    tests: "unknown",
+    cloudflareReadiness: "unknown",
+    build: "unknown",
+    diffCheck: "unknown",
+  })
+  assert.equal(
+    Object.values(checksFromResultArtifact(artifact)).includes("not_run"),
+    false,
+  )
+})
+
+test("terminal command evidence can prove a check when the final message is absent", () => {
+  const artifact = resultArtifactFromTurnResult({
+    status: "completed",
+    turn: { id: "turn-command", status: "completed", items: [] },
+    commandExecutions: [
+      {
+        id: "command-lint",
+        type: "commandExecution",
+        command: "npm run lint",
+        status: "completed",
+        exitCode: 0,
+      },
+    ],
+  })
+
+  assert.equal(artifact.checks.lint.status, "pass")
+  assert.equal(artifact.checks.typecheck.status, "unknown")
+  assert.equal(artifact.source, "completed_turn_execution_evidence")
+})
+
+test("Issue #63/005 keeps canonical tests pass while preserving its later caveat", () => {
+  const artifact = resultArtifactFromTurnResult(
+    issue63AcceptanceTurnResult,
+    "2026-08-21T20:25:29.556Z",
+  )
+
+  assert.equal(artifact.checks.tests.status, "pass")
+  assert.deepEqual(
+    artifact.checks.tests.evidence.map(({ source, status }) => ({
+      source,
+      status,
+    })),
+    [
+      { source: "command_execution", status: "pass" },
+      { source: "final_message", status: "pass" },
+      { source: "final_message", status: "unknown" },
+    ],
+  )
+  assert.ok(
+    artifact.checks.tests.evidence.some(({ summary }) =>
+      /local-Supabase integration coverage/.test(summary),
+    ),
+  )
+  assert.match(
+    artifact.finalMessage,
+    /isolated execution of the proposed migration remains unverified and gated/,
+  )
+  assert.ok(
+    artifact.findings.ownerGates.some((line) =>
+      /migration still requires isolated rehearsal/.test(line),
+    ),
+  )
+})
+
+test("insufficient test evidence remains unknown", () => {
+  const artifact = resultArtifactFromTurnResult({
+    status: "completed",
+    turn: { id: "turn-tests-unknown", status: "completed", items: [] },
+    agentMessage:
+      "Tests include skipped local-Supabase integration coverage; isolated migration execution remains unverified.",
+  })
+
+  assert.equal(artifact.checks.tests.status, "unknown")
+  assert.deepEqual(
+    artifact.checks.tests.evidence.map(({ source, status }) => ({
+      source,
+      status,
+    })),
+    [{ source: "final_message", status: "unknown" }],
+  )
+})
+
+test("a nonzero canonical test command is definitive failure", () => {
+  const artifact = resultArtifactFromTurnResult({
+    status: "completed",
+    turn: { id: "turn-tests-nonzero", status: "completed", items: [] },
+    agentMessage: "Implementation complete.",
+    commandExecutions: [
+      {
+        id: "command-tests-nonzero",
+        type: "commandExecution",
+        command: "npm test",
+        status: "completed",
+        exitCode: 1,
+      },
+    ],
+  })
+
+  assert.equal(artifact.checks.tests.status, "fail")
+  assert.deepEqual(
+    artifact.checks.tests.evidence.map(({ source, status }) => ({
+      source,
+      status,
+    })),
+    [{ source: "command_execution", status: "fail" }],
+  )
+})
+
+test("optimistic prose cannot hide a failed canonical test command", () => {
+  const artifact = resultArtifactFromTurnResult({
+    status: "completed",
+    turn: { id: "turn-tests-failed", status: "completed", items: [] },
+    agentMessage: "| Tests | PASS | A prose summary without execution proof |",
+    commandExecutions: [
+      {
+        id: "command-tests-failed",
+        type: "commandExecution",
+        command: "npm test",
+        status: "failed",
+        exitCode: 1,
+      },
+    ],
+  })
+
+  assert.equal(artifact.checks.tests.status, "fail")
+  assert.deepEqual(
+    artifact.checks.tests.evidence.map(({ source, status }) => ({
+      source,
+      status,
+    })),
+    [
+      { source: "command_execution", status: "fail" },
+      { source: "final_message", status: "pass" },
+    ],
+  )
+})

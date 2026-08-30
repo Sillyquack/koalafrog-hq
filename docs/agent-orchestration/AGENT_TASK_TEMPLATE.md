@@ -1,6 +1,9 @@
 # Agent Task Template
 
-Use this content in a GitHub issue to trigger the bootstrap orchestrator once it is running.
+Use this content in the **body of a new open GitHub issue** to make it eligible
+for the repository-wide orchestrator. Do not reuse an `instruction_id`; it is a
+repository-wide idempotency key. Pull requests and ordinary issue prose are not
+tasks.
 
 ```yaml
 agent_control:
