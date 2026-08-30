@@ -1,4 +1,5 @@
 import assert from "node:assert/strict"
+import { createHash } from "node:crypto"
 import {
   chmod,
   link,
@@ -28,10 +29,53 @@ import {
   DurableTransactionError,
   appendFileNoFollow,
   ensurePrivateDirectory,
+  preflightDurableFilesystemCapabilities,
 } from "../src/durable-filesystem.mjs"
 import { QueueClaimStore } from "../src/queue-claim-store.mjs"
 
 const repository = "Sillyquack/koalafrog-hq"
+
+const delayedAdvisoryBrokerSource = (delaySeconds) => String.raw`
+import fcntl
+import json
+import os
+import sys
+import time
+
+request = json.loads(sys.stdin.readline())
+if request.get("mode") != "advisory_hold":
+    sys.exit(78)
+time.sleep(${delaySeconds})
+try:
+    fcntl.flock(3, fcntl.LOCK_EX | fcntl.LOCK_NB)
+except BlockingIOError:
+    sys.exit(75)
+value = os.fstat(3)
+print("READY %d %s %d %d" % (
+    request["protocolVersion"],
+    request["contentDigest"],
+    value.st_dev,
+    value.st_ino,
+), flush=True)
+sys.stdin.read()
+`
+
+function delayedAdvisoryLockSpec(delaySeconds = 2.2) {
+  const source = delayedAdvisoryBrokerSource(delaySeconds)
+  const contentDigest = createHash("sha256").update(source).digest("hex")
+  return {
+    command: "/usr/bin/python3",
+    args: ["-I", "-c", source],
+    busyCodes: new Set([75]),
+    protocolVersion: 1,
+    contentDigest,
+    request: {
+      mode: "advisory_hold",
+      protocolVersion: 1,
+      contentDigest,
+    },
+  }
+}
 
 function options(stateDirectory) {
   return { stateDirectory, repository, issueNumber: 63 }
@@ -118,6 +162,45 @@ test("state revision CAS rejects a stale whole-state replacement", async (t) => 
   assert.equal(durable.checkpointActivationRecoveries.length, 1)
   assert.equal(durable.ownerGateAcknowledgements.length, 1)
   assert.equal(staleState.stateRevision, 1)
+})
+
+test("repeated state lease transitions retain the preflighted fixed broker", async (t) => {
+  const directory = await mkdtemp(
+    path.join(os.tmpdir(), "koalafrog-state-lease-repeat-"),
+  )
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const store = new StateStore(options(directory))
+  const state = await store.load()
+
+  for (let index = 0; index < 20; index += 1) {
+    state.status = index % 2 === 0 ? "running" : "needs_review"
+    await store.save(state)
+    assert.equal((await store.load()).stateRevision, state.stateRevision)
+  }
+
+  assert.equal(state.stateRevision, 21)
+})
+
+test("bounded advisory READY wait tolerates scheduler delay without weakening identity", async () => {
+  await preflightDurableFilesystemCapabilities({
+    lockfSpec: () => delayedAdvisoryLockSpec(),
+    guardPaths: ["/dev/null"],
+  })
+})
+
+test("advisory READY and same-inode exclusion use separate bounded phases", async (t) => {
+  const directory = await mkdtemp(
+    path.join(os.tmpdir(), "koalafrog-advisory-phase-deadlines-"),
+  )
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const store = new StateStore({
+    ...options(directory),
+    lockfSpec: () => delayedAdvisoryLockSpec(1.2),
+  })
+
+  const state = await store.load()
+  assert.equal(state.stateRevision, 1)
+  assert.equal((await store.load()).stateRevision, 1)
 })
 
 test("concurrent state writers have one CAS winner and the loser can reload and recompute", async (t) => {
@@ -599,10 +682,20 @@ test("advisory-lock capability requires an exact READY descriptor handshake befo
       const beforeQueue = await stat(queueDirectory)
       const beforeOutside = await stat(outsideDirectory)
       const beforeSentinel = await stat(sentinel)
+      const contentDigest = createHash("sha256")
+        .update(JSON.stringify([failureCase.command, failureCase.args]))
+        .digest("hex")
       const lockfSpec = () => ({
         command: failureCase.command,
         args: failureCase.args,
         busyCodes: new Set([75]),
+        protocolVersion: 1,
+        contentDigest,
+        request: {
+          mode: "advisory_hold",
+          protocolVersion: 1,
+          contentDigest,
+        },
       })
 
       await assert.rejects(

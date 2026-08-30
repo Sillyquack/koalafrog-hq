@@ -19,6 +19,29 @@ function deferred() {
   return { promise, resolve, reject }
 }
 
+export class CommandTerminalityPendingError extends Error {
+  constructor({
+    threadId,
+    turnId,
+    itemIds,
+    requestedAt,
+    drainDeadlineAt,
+    awaitingTurnCompletion = false,
+  }) {
+    super(
+      `Timed-out turn ${turnId} is waiting for authoritative command terminal evidence`,
+    )
+    this.name = "CommandTerminalityPendingError"
+    this.code = "COMMAND_TERMINALITY_PENDING"
+    this.threadId = threadId
+    this.turnId = turnId
+    this.itemIds = [...itemIds]
+    this.requestedAt = requestedAt
+    this.drainDeadlineAt = drainDeadlineAt
+    this.awaitingTurnCompletion = awaitingTurnCompletion
+  }
+}
+
 function compactProtocolMessage(message) {
   const params = message.params ?? {}
   const compact = {
@@ -357,6 +380,7 @@ export class AppServerClient extends EventEmitter {
     cwd,
     requestTimeoutMs = 30_000,
     turnTerminationTimeoutMs = 60_000,
+    commandStartGuardMs = null,
     eventSink = () => {},
     turnFailureSink = null,
     stderrSink = () => {},
@@ -368,10 +392,19 @@ export class AppServerClient extends EventEmitter {
     ) {
       throw new Error("turnTerminationTimeoutMs must be a positive integer")
     }
+    if (
+      commandStartGuardMs !== null &&
+      (!Number.isSafeInteger(commandStartGuardMs) || commandStartGuardMs < 1)
+    ) {
+      throw new Error("commandStartGuardMs must be a positive integer")
+    }
     this.binary = binary
     this.cwd = cwd
     this.requestTimeoutMs = requestTimeoutMs
     this.turnTerminationTimeoutMs = turnTerminationTimeoutMs
+    this.commandStartGuardMs =
+      commandStartGuardMs ??
+      Math.min(Number.MAX_SAFE_INTEGER, turnTerminationTimeoutMs * 2)
     this.eventSink = eventSink
     this.turnFailureSink = turnFailureSink
     this.stderrSink = stderrSink
@@ -804,6 +837,9 @@ export class AppServerClient extends EventEmitter {
     approvalPolicy = null,
     onTurnStarted = () => {},
     onTurnTimedOut = () => {},
+    onCommandObservedDuringCancellation = () => {},
+    onCommandTerminal = () => {},
+    onCommandTerminalityPending = () => {},
     onTurnFailed = () => {},
     onOwnerStop = () => {},
     resolveApprovalRequest = () => null,
@@ -815,12 +851,18 @@ export class AppServerClient extends EventEmitter {
     let approvedActionPersistence = Promise.resolve()
     let ownerStopTimer = null
     let turnTerminationTimer = null
+    let commandAdmissionTimer = null
     let agentMessage = ""
     let settled = false
     let turnTimedOut = false
     let timeoutInterruption = null
     let turnTimeoutPersistence = Promise.resolve()
+    let commandTerminalPersistence = Promise.resolve()
+    let commandTerminalityPendingPersistence = Promise.resolve()
     let turnTimedOutAt = null
+    let cancellationDrainDeadlineAt = null
+    let cancellationReason = null
+    let cancellationDrainClosed = false
     let interruptedTurnCompletion = null
     const pendingProtocolFailures = new Map()
     let protocolFailureInFlight = false
@@ -829,11 +871,43 @@ export class AppServerClient extends EventEmitter {
     let approvalEvidenceObserved = false
     const activeCommandExecutions = new Set()
     const commandExecutionItems = new Map()
-    const completedCommandExecutions = []
+    const observedCommandExecutions = new Set()
+    const cancellationCommandExecutions = new Set()
+    const completedCommandExecutions = new Map()
     const mcpToolCalls = new Map()
     const approvedItems = new Map()
     const terminal = deferred()
     const handledServerRequestIds = new Set()
+    const turnBudgetStartedAt = Date.now()
+    const effectiveCommandStartGuardMs = Math.min(
+      this.commandStartGuardMs,
+      Math.max(1, Math.floor(timeoutMs / 5)),
+    )
+    const commandAdmissionDeadlineMs =
+      turnBudgetStartedAt + timeoutMs - effectiveCommandStartGuardMs
+    let commandAdmissionClosed = false
+
+    const compactCompletedCommands = () => [
+      ...completedCommandExecutions.values(),
+    ]
+    const commandCancellation = (status = "terminal") => ({
+      schemaVersion: 1,
+      threadId,
+      turnId,
+      reason: cancellationReason ?? "turn_timeout",
+      requestedAt: turnTimedOutAt,
+      drainDeadlineAt: cancellationDrainDeadlineAt,
+      itemIds: [...cancellationCommandExecutions].sort(),
+      terminalItemIds: [...completedCommandExecutions.keys()]
+        .filter((itemId) => cancellationCommandExecutions.has(itemId))
+        .sort(),
+      pendingItemIds: [...activeCommandExecutions]
+        .filter((itemId) => cancellationCommandExecutions.has(itemId))
+        .sort(),
+      status,
+      awaitingTurnCompletion: !interruptedTurnCompletion,
+      provenance: "app_server_item_completed",
+    })
 
     const complete = (result) => {
       if (settled) return
@@ -843,6 +917,8 @@ export class AppServerClient extends EventEmitter {
         ownerStopPersistence,
         approvedActionPersistence,
         turnTimeoutPersistence,
+        commandTerminalPersistence,
+        commandTerminalityPendingPersistence,
       ]).then(
         () => terminal.resolve(result),
         (error) => terminal.reject(error),
@@ -856,28 +932,84 @@ export class AppServerClient extends EventEmitter {
         ownerStopPersistence,
         approvedActionPersistence,
         turnTimeoutPersistence,
+        commandTerminalPersistence,
+        commandTerminalityPendingPersistence,
       ]).then(
         () => terminal.reject(error),
         (persistenceError) => terminal.reject(persistenceError),
       )
     }
-    const interruptTimedOutTurn = () => {
-      if (!turnId || timeoutInterruption || settled) return
+    const finishCancellationDrain = async () => {
+      await commandTerminalPersistence
+      if (settled) return
+      if (activeCommandExecutions.size > 0 || !interruptedTurnCompletion) {
+        cancellationDrainClosed = true
+        const pending = commandCancellation("terminality_pending")
+        commandTerminalityPendingPersistence = Promise.resolve(
+          onCommandTerminalityPending(pending),
+        )
+        await commandTerminalityPendingPersistence
+        if (settled) return
+        fail(new CommandTerminalityPendingError(pending))
+        return
+      }
+      finishTurn(interruptedTurnCompletion)
+    }
+    const interruptTimedOutTurn = (
+      reason = cancellationReason ?? "turn_timeout",
+    ) => {
+      if (timeoutInterruption || settled) return
+      cancellationReason ??= reason
       turnTimedOutAt ??= new Date().toISOString()
-      turnTerminationTimer = setTimeout(
-        () =>
-          fail(
-            new Error(
-              `Timed-out turn ${turnId} did not prove terminal command completion after interruption`,
+      if (!turnId) return
+      for (const itemId of activeCommandExecutions) {
+        cancellationCommandExecutions.add(itemId)
+      }
+      cancellationDrainDeadlineAt ??= new Date(
+        Date.now() + this.turnTerminationTimeoutMs,
+      ).toISOString()
+      turnTimeoutPersistence = turnStartPersistence.then(async () => {
+        await onTurnTimedOut({
+          threadId,
+          turnId,
+          timedOutAt: turnTimedOutAt,
+          cancellationReason,
+          drainDeadlineAt: cancellationDrainDeadlineAt,
+          activeCommandExecutions: [...cancellationCommandExecutions]
+            .sort()
+            .map((itemId) =>
+              completedCommandExecutions.get(itemId) ??
+              compactCommandExecution(commandExecutionItems.get(itemId)),
             ),
-          ),
-        this.turnTerminationTimeoutMs,
-      )
-      turnTimeoutPersistence = turnStartPersistence.then(() =>
-        onTurnTimedOut({ threadId, turnId, timedOutAt: turnTimedOutAt }),
-      )
+          awaitingTurnCompletion: true,
+        })
+      })
       timeoutInterruption = turnTimeoutPersistence
-        .then(() => this.interruptTurn(threadId, turnId))
+        .then(() => {
+          if (settled) return
+          turnTerminationTimer = setTimeout(
+            () =>
+              void this.protocolDispatchTail.then(
+                finishCancellationDrain,
+                fail,
+              ),
+            this.turnTerminationTimeoutMs,
+          )
+          return this.interruptTurn(threadId, turnId).catch((error) => {
+            if (observedCommandExecutions.size === 0) throw error
+            Promise.resolve(
+              this.eventSink({
+                type: "turn_interrupt_failed_during_command_drain",
+                message: {
+                  threadId,
+                  turnId,
+                  code: stableProtocolIdentifier(error?.code) ?? null,
+                },
+              }),
+            ).catch(() => {})
+            return null
+          })
+        })
         .catch((error) => {
           fail(
             new Error(
@@ -885,6 +1017,21 @@ export class AppServerClient extends EventEmitter {
             ),
           )
         })
+    }
+    const scheduleTimedOutTurn = (reason = "turn_timeout") => {
+      commandAdmissionClosed = true
+      void this.protocolDispatchTail.then(() => {
+        if (
+          settled ||
+          turnTimedOut ||
+          protocolFailureInFlight ||
+          (turnId && pendingProtocolFailures.has(turnId))
+        ) {
+          return
+        }
+        turnTimedOut = true
+        interruptTimedOutTurn(reason)
+      }, fail)
     }
     const scheduleOwnerStopFallback = () => {
       clearTimeout(ownerStopTimer)
@@ -895,7 +1042,7 @@ export class AppServerClient extends EventEmitter {
             turn: { id: turnId, status: "interrupted", items: [] },
             pendingOwnerRequest,
             agentMessage,
-            commandExecutions: completedCommandExecutions,
+            commandExecutions: compactCompletedCommands(),
           }),
         5_000,
       )
@@ -904,8 +1051,38 @@ export class AppServerClient extends EventEmitter {
       if (params?.threadId !== threadId) return
       if (turnId && params?.turnId !== turnId) return
       if (params.item?.type === "commandExecution" && params.item.id) {
-        activeCommandExecutions.add(params.item.id)
-        commandExecutionItems.set(params.item.id, params.item)
+        const itemId = stableProtocolIdentifier(params.item.id)
+        if (!itemId) {
+          fail(new Error("AppServer command execution identity is invalid"))
+          return
+        }
+        if (completedCommandExecutions.has(itemId)) {
+          fail(new Error("AppServer command restarted after terminal completion"))
+          return
+        }
+        observedCommandExecutions.add(itemId)
+        activeCommandExecutions.add(itemId)
+        commandExecutionItems.set(itemId, params.item)
+        if (commandAdmissionClosed || Date.now() >= commandAdmissionDeadlineMs) {
+          const cancellationWasInProgress = Boolean(timeoutInterruption)
+          commandAdmissionClosed = true
+          scheduleTimedOutTurn("command_start_budget_exhausted")
+          if (cancellationWasInProgress) {
+            cancellationCommandExecutions.add(itemId)
+            commandTerminalPersistence = Promise.all([
+              turnTimeoutPersistence,
+              commandTerminalPersistence,
+            ]).then(() =>
+              onCommandObservedDuringCancellation({
+                threadId,
+                turnId,
+                item: compactCommandExecution(params.item),
+                timeoutCancellation: commandCancellation("draining"),
+              }),
+            )
+            commandTerminalPersistence.catch(fail)
+          }
+        }
       }
       if (params.item?.type === "mcpToolCall") {
         mcpToolCalls.set(params.item.id, params.item)
@@ -920,11 +1097,21 @@ export class AppServerClient extends EventEmitter {
           }
         : turn
       complete({
-        status: pendingOwnerRequest ? "needs_owner" : completedTurn.status,
+        status: pendingOwnerRequest
+          ? "needs_owner"
+          : turnTimedOut
+            ? "needs_review"
+            : completedTurn.status,
         turn: completedTurn,
         pendingOwnerRequest,
         agentMessage: agentMessage || finalAgentMessageFromTurn(completedTurn),
-        commandExecutions: completedCommandExecutions,
+        commandExecutions: compactCompletedCommands(),
+        ...(turnTimedOut
+          ? {
+              timeoutCancellation: commandCancellation("terminal"),
+              retryable: false,
+            }
+          : {}),
       })
     }
     const onItemCompleted = (params) => {
@@ -932,9 +1119,41 @@ export class AppServerClient extends EventEmitter {
       if (turnId && params?.turnId !== turnId) return
       if (params.item?.type === "agentMessage") agentMessage = params.item.text ?? ""
       if (commandExecutionIsTerminal(params.item) && params.item.id) {
-        activeCommandExecutions.delete(params.item.id)
-        commandExecutionItems.delete(params.item.id)
-        completedCommandExecutions.push(compactCommandExecution(params.item))
+        const itemId = stableProtocolIdentifier(params.item.id)
+        if (!itemId) {
+          fail(new Error("AppServer terminal command identity is invalid"))
+          return
+        }
+        const completed = compactCommandExecution(params.item)
+        const existing = completedCommandExecutions.get(itemId)
+        if (existing && JSON.stringify(existing) !== JSON.stringify(completed)) {
+          const error = new Error(
+            `AppServer command ${itemId} has conflicting terminal evidence`,
+          )
+          error.code = "APP_SERVER_COMMAND_TERMINAL_CONFLICT"
+          fail(error)
+          return
+        }
+        observedCommandExecutions.add(itemId)
+        activeCommandExecutions.delete(itemId)
+        commandExecutionItems.delete(itemId)
+        if (!existing) {
+          completedCommandExecutions.set(itemId, completed)
+          if (turnTimedOut && !cancellationDrainClosed) {
+            commandTerminalPersistence = Promise.all([
+              turnTimeoutPersistence,
+              commandTerminalPersistence,
+            ]).then(() =>
+              onCommandTerminal({
+                threadId,
+                turnId,
+                item: completed,
+                timeoutCancellation: commandCancellation("draining"),
+              }),
+            )
+            commandTerminalPersistence.catch(fail)
+          }
+        }
       }
       if (params.item?.type === "mcpToolCall") mcpToolCalls.delete(params.item.id)
       const approved = approvedItems.get(params.item?.id)
@@ -948,7 +1167,11 @@ export class AppServerClient extends EventEmitter {
           }),
         )
       }
-      if (interruptedTurnCompletion && activeCommandExecutions.size === 0) {
+      if (
+        !cancellationDrainClosed &&
+        interruptedTurnCompletion &&
+        activeCommandExecutions.size === 0
+      ) {
         finishTurn(interruptedTurnCompletion)
       }
     }
@@ -988,7 +1211,7 @@ export class AppServerClient extends EventEmitter {
           !approvalGranted &&
           !approvalEvidenceObserved &&
           activeCommandExecutions.size === 0 &&
-          completedCommandExecutions.length === 0
+          completedCommandExecutions.size === 0
         const result = {
           status: "failed",
           turn: {
@@ -1005,7 +1228,7 @@ export class AppServerClient extends EventEmitter {
           },
           pendingOwnerRequest: null,
           agentMessage,
-          commandExecutions: completedCommandExecutions,
+          commandExecutions: compactCompletedCommands(),
           appServerFailure: failure,
           retryable,
         }
@@ -1097,6 +1320,23 @@ export class AppServerClient extends EventEmitter {
         autoResponseForBoundedElicitation(message, prompt) ??
         autoResponseForBoundedCommandApproval(message, prompt)
       if (autoResponse) {
+        if (commandAdmissionClosed || turnTimedOut || settled) {
+          const cancellationResponse = ownerStopResponse(message)
+          if (cancellationResponse) {
+            try {
+              this.respond(message.id, cancellationResponse)
+            } catch {
+              // A closed transport cannot turn a stale approval into consent.
+            }
+          }
+          Promise.resolve(
+            this.eventSink({
+              type: "server_request_admission_closed",
+              message: compactProtocolMessage(message),
+            }),
+          ).catch(() => {})
+          return
+        }
         try {
           approvalGranted = true
           this.respond(message.id, autoResponse)
@@ -1152,11 +1392,14 @@ export class AppServerClient extends EventEmitter {
       void handleServerRequest(message)
     }
     const timeout = setTimeout(() => {
-      turnTimedOut = true
-      interruptTimedOutTurn()
+      scheduleTimedOutTurn()
     }, timeoutMs)
+    commandAdmissionTimer = setTimeout(() => {
+      scheduleTimedOutTurn("command_start_budget_exhausted")
+    }, Math.max(0, commandAdmissionDeadlineMs - Date.now()))
     const cleanup = () => {
       clearTimeout(timeout)
+      clearTimeout(commandAdmissionTimer)
       clearTimeout(ownerStopTimer)
       clearTimeout(turnTerminationTimer)
       this.off("item/started", onItemStarted)
@@ -1204,7 +1447,7 @@ export class AppServerClient extends EventEmitter {
       if (pendingProtocolFailure) {
         await finishProtocolFailure(pendingProtocolFailure)
       }
-      if (turnTimedOut) interruptTimedOutTurn()
+      if (turnTimedOut) interruptTimedOutTurn(cancellationReason ?? "turn_timeout")
     } catch (error) {
       cleanup()
       throw error

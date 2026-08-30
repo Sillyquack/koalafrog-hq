@@ -82,6 +82,54 @@ test("interrupted-command reconciliation artifacts retain exact safe evidence id
   assert.equal(artifact.checks.tests.status, "unknown")
 })
 
+test("timeout cancellation artifacts retain authoritative command lineage", () => {
+  const artifact = resultArtifactFromTurnResult(
+    {
+      status: "needs_review",
+      turn: {
+        id: "turn-timeout-lineage",
+        status: "failed",
+        items: [],
+      },
+      commandExecutions: [
+        {
+          id: "exec-timeout-lineage",
+          command: "node --test test/*.node.mjs",
+          status: "failed",
+          exitCode: 1,
+        },
+      ],
+      timeoutCancellation: {
+        schemaVersion: 1,
+        threadId: "thread-timeout-lineage",
+        turnId: "turn-timeout-lineage",
+        reason: "turn_timeout",
+        requestedAt: "2026-08-29T10:00:00.000Z",
+        drainDeadlineAt: "2026-08-29T10:01:00.000Z",
+        itemIds: ["exec-timeout-lineage"],
+        terminalItemIds: ["exec-timeout-lineage"],
+        pendingItemIds: [],
+        status: "terminal",
+        provenance: "app_server_item_completed",
+      },
+    },
+    "2026-08-29T10:00:30.000Z",
+  )
+
+  assert.equal(artifact.source, "turn_timeout_command_terminality")
+  assert.equal(artifact.turnId, "turn-timeout-lineage")
+  assert.equal(
+    artifact.timeoutCancellation.threadId,
+    "thread-timeout-lineage",
+  )
+  assert.deepEqual(artifact.timeoutCancellation.itemIds, [
+    "exec-timeout-lineage",
+  ])
+  assert.deepEqual(artifact.timeoutCancellation.pendingItemIds, [])
+  assert.equal(artifact.timeoutCancellation.status, "terminal")
+  assert.equal(artifact.checks.tests.status, "fail")
+})
+
 test("Issue #63/004 final message produces faithful checks and findings", () => {
   const artifact = resultArtifactFromTurnResult(
     {

@@ -291,6 +291,32 @@ export function resultArtifactFromTurnResult(
           : {}),
       }
     : null
+  const timeoutCancellation = turnResult?.timeoutCancellation
+    ? {
+        schemaVersion: turnResult.timeoutCancellation.schemaVersion ?? 1,
+        threadId: turnResult.timeoutCancellation.threadId ?? null,
+        turnId: turnResult.timeoutCancellation.turnId ?? turn?.id ?? null,
+        reason: turnResult.timeoutCancellation.reason ?? null,
+        requestedAt: turnResult.timeoutCancellation.requestedAt ?? null,
+        drainDeadlineAt:
+          turnResult.timeoutCancellation.drainDeadlineAt ?? null,
+        itemIds: Array.isArray(turnResult.timeoutCancellation.itemIds)
+          ? [...turnResult.timeoutCancellation.itemIds]
+          : [],
+        terminalItemIds: Array.isArray(
+          turnResult.timeoutCancellation.terminalItemIds,
+        )
+          ? [...turnResult.timeoutCancellation.terminalItemIds]
+          : [],
+        pendingItemIds: Array.isArray(
+          turnResult.timeoutCancellation.pendingItemIds,
+        )
+          ? [...turnResult.timeoutCancellation.pendingItemIds]
+          : [],
+        status: turnResult.timeoutCancellation.status ?? null,
+        provenance: turnResult.timeoutCancellation.provenance ?? null,
+      }
+    : null
   const finalMessage = bounded(
     redactForLog(
       turnResult?.agentMessage || finalAgentMessageFromTurn(turn) || "",
@@ -314,6 +340,8 @@ export function resultArtifactFromTurnResult(
       ? "interrupted_command_terminality_reconciliation"
       : appServerFailure
         ? "app_server_turn_failure"
+        : timeoutCancellation
+          ? "turn_timeout_command_terminality"
         : finalMessage
           ? "completed_turn_final_message"
           : commandExecutions.length
@@ -324,6 +352,7 @@ export function resultArtifactFromTurnResult(
     turnStatus: turn?.status ?? turnResult?.status ?? null,
     ...(appServerFailure ? { failure: appServerFailure } : {}),
     ...(terminality ? { terminality } : {}),
+    ...(timeoutCancellation ? { timeoutCancellation } : {}),
     finalMessage,
     checks,
     findings: extractFindings(finalMessage),

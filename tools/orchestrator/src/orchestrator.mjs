@@ -1002,6 +1002,12 @@ export function recordCompletedTurnResult(
           retryable: false,
         }
       : {}),
+    ...(turnResult?.timeoutCancellation
+      ? {
+          timeoutCancellation: turnResult.timeoutCancellation,
+          retryable: false,
+        }
+      : {}),
     resultArtifact,
   })
   state.activeInstruction.resultArtifact = persisted.resultArtifact
@@ -1010,6 +1016,201 @@ export function recordCompletedTurnResult(
     state.activeInstruction.phase = "turn_completed"
   }
   return persisted
+}
+
+const commandCancellationReasons = new Set([
+  "turn_timeout",
+  "command_start_budget_exhausted",
+])
+const commandTerminalStatuses = new Set([
+  "completed",
+  "failed",
+  "interrupted",
+  "cancelled",
+  "canceled",
+  "declined",
+])
+
+function stableCommandLifecycleId(value) {
+  return typeof value === "string" && /^[A-Za-z0-9._:/-]{1,160}$/.test(value)
+    ? value
+    : null
+}
+
+function commandCancellationBindingMatches(state, record) {
+  return Boolean(
+    state.activeInstruction?.phase === "turn_started" &&
+      state.activeInstruction.turnId === record?.turnId &&
+      state.threadId === record?.threadId,
+  )
+}
+
+function sameCommandCancellationBinding(left, right) {
+  const immutable = (record) => ({
+    schemaVersion: record?.schemaVersion,
+    threadId: record?.threadId,
+    turnId: record?.turnId,
+    reason: record?.reason,
+    requestedAt: record?.requestedAt,
+    drainDeadlineAt: record?.drainDeadlineAt,
+    itemIds: record?.itemIds,
+    awaitingTurnCompletion: record?.awaitingTurnCompletion,
+  })
+  return JSON.stringify(immutable(left)) === JSON.stringify(immutable(right))
+}
+
+export function recordCommandCancellationRequested(state, observation) {
+  const itemIds = (observation?.activeCommandExecutions ?? [])
+    .map((item) => stableCommandLifecycleId(item?.id))
+    .filter(Boolean)
+    .sort()
+  if (
+    observation?.schemaVersion !== 1 ||
+    !stableCommandLifecycleId(observation.threadId) ||
+    !stableCommandLifecycleId(observation.turnId) ||
+    !commandCancellationReasons.has(observation.reason) ||
+    !Number.isFinite(Date.parse(observation.requestedAt ?? "")) ||
+    !Number.isFinite(Date.parse(observation.drainDeadlineAt ?? "")) ||
+    Date.parse(observation.drainDeadlineAt) <= Date.parse(observation.requestedAt) ||
+    (observation.awaitingTurnCompletion ?? true) !== true ||
+    itemIds.length !== (observation.activeCommandExecutions ?? []).length ||
+    itemIds.length !== new Set(itemIds).size
+  ) {
+    throw new Error("Command cancellation observation is invalid")
+  }
+  const record = {
+    schemaVersion: 1,
+    threadId: observation.threadId,
+    turnId: observation.turnId,
+    reason: observation.reason,
+    requestedAt: observation.requestedAt,
+    drainDeadlineAt: observation.drainDeadlineAt,
+    itemIds,
+    terminalItems: [],
+    awaitingTurnCompletion: true,
+    status: "draining",
+    pendingAt: null,
+    resolvedAt: null,
+  }
+  if (!commandCancellationBindingMatches(state, record)) {
+    throw new Error("Command cancellation is not bound to the active turn")
+  }
+  const existing = state.activeInstruction.commandTerminality ?? null
+  if (existing) {
+    if (!sameCommandCancellationBinding(existing, record)) {
+      throw new Error("Durable command cancellation identity conflicts")
+    }
+    return existing
+  }
+  state.activeInstruction.commandTerminality = record
+  return record
+}
+
+export function recordCommandObservedDuringCancellation(state, observation) {
+  const record = state.activeInstruction?.commandTerminality ?? null
+  const itemId = stableCommandLifecycleId(observation?.item?.id)
+  if (
+    !record ||
+    !commandCancellationBindingMatches(state, record) ||
+    observation?.threadId !== record.threadId ||
+    observation?.turnId !== record.turnId ||
+    !itemId ||
+    !new Set(["draining", "terminality_pending"]).has(record.status) ||
+    record.resolvedAt !== null
+  ) {
+    throw new Error("Late command observation is not bound to active cancellation")
+  }
+  if (record.itemIds.includes(itemId)) {
+    return { record, inserted: false, itemId }
+  }
+  record.itemIds.push(itemId)
+  record.itemIds.sort()
+  return { record, inserted: true, itemId }
+}
+
+export function recordCommandTerminalEvidence(state, observation) {
+  const record = state.activeInstruction?.commandTerminality ?? null
+  const itemId = stableCommandLifecycleId(observation?.item?.id)
+  const status = observation?.item?.status
+  const exitCode = observation?.item?.exitCode ?? null
+  if (
+    !record ||
+    !commandCancellationBindingMatches(state, record) ||
+    observation?.threadId !== record.threadId ||
+    observation?.turnId !== record.turnId ||
+    !itemId ||
+    !record.itemIds.includes(itemId) ||
+    !commandTerminalStatuses.has(status) ||
+    (exitCode !== null && !Number.isInteger(exitCode))
+  ) {
+    throw new Error("Command terminal evidence is not bound to the cancellation")
+  }
+  const terminal = redactForLog({
+    id: itemId,
+    command: observation.item.command ?? "",
+    status,
+    exitCode,
+    source: "item/completed",
+  })
+  const existing = record.terminalItems.find((item) => item.id === itemId)
+  if (existing) {
+    if (JSON.stringify(existing) !== JSON.stringify(terminal)) {
+      throw new Error("Durable command terminal evidence conflicts")
+    }
+    return { record, inserted: false, terminal: existing }
+  }
+  record.terminalItems.push(terminal)
+  record.terminalItems.sort((left, right) => left.id.localeCompare(right.id))
+  if (record.terminalItems.length === record.itemIds.length) {
+    record.status = "terminal"
+    record.resolvedAt = new Date().toISOString()
+  }
+  return { record, inserted: true, terminal }
+}
+
+export function recordCommandTerminalityPending(state, observation) {
+  const record = state.activeInstruction?.commandTerminality ?? null
+  const pendingItemIds = [...(observation?.pendingItemIds ?? [])].sort()
+  const expectedPending = record
+    ? record.itemIds
+        .filter(
+          (itemId) => !record.terminalItems.some((item) => item.id === itemId),
+        )
+        .sort()
+    : []
+  if (
+    !record ||
+    !commandCancellationBindingMatches(state, record) ||
+    observation?.threadId !== record.threadId ||
+    observation?.turnId !== record.turnId ||
+    JSON.stringify(pendingItemIds) !== JSON.stringify(expectedPending) ||
+    (pendingItemIds.length === 0 && !record.awaitingTurnCompletion)
+  ) {
+    throw new Error("Pending command terminality does not match durable state")
+  }
+  record.status = "terminality_pending"
+  record.pendingAt ??= new Date().toISOString()
+  return record
+}
+
+function timeoutCancellationFromRecord(record, status = record?.status) {
+  if (!record) return null
+  return {
+    schemaVersion: 1,
+    threadId: record.threadId,
+    turnId: record.turnId,
+    reason: record.reason,
+    requestedAt: record.requestedAt,
+    drainDeadlineAt: record.drainDeadlineAt,
+    itemIds: [...record.itemIds],
+    terminalItemIds: record.terminalItems.map((item) => item.id).sort(),
+    pendingItemIds: record.itemIds
+      .filter((itemId) => !record.terminalItems.some((item) => item.id === itemId))
+      .sort(),
+    awaitingTurnCompletion: Boolean(record.awaitingTurnCompletion),
+    status,
+    provenance: "app_server_item_completed",
+  }
 }
 
 export function recordInterruptedCommandTerminalityReconciliation(
@@ -1740,7 +1941,9 @@ export class Orchestrator {
     const terminality =
       turnResult.terminalityReconciliation ?? resultArtifact.terminality ?? null
     const completed = turnResult.status === "completed" && validation.pass
-    const status = terminality
+    const status = turnResult.timeoutCancellation
+      ? "needs_review"
+      : terminality
       ? terminality.classification === "terminality_unprovable" ||
         terminality.terminalOutcome === "completed"
         ? "needs_review"
@@ -1894,7 +2097,15 @@ export class Orchestrator {
             })
           }
         },
-        onTurnTimedOut: async ({ threadId, turnId, timedOutAt }) => {
+        onTurnTimedOut: async ({
+          threadId,
+          turnId,
+          timedOutAt,
+          cancellationReason = "turn_timeout",
+          drainDeadlineAt = null,
+          activeCommandExecutions = [],
+          awaitingTurnCompletion = true,
+        }) => {
           if (
             state.activeInstruction?.phase !== "turn_started" ||
             state.activeInstruction.turnId !== turnId ||
@@ -1909,8 +2120,93 @@ export class Orchestrator {
           }
           if (!existing) {
             state.activeInstruction.turnTimedOutAt = timedOutAt
-            await this.#save(state)
           }
+          const effectiveDrainDeadlineAt =
+            drainDeadlineAt ??
+            new Date(Date.parse(timedOutAt) + 60_000).toISOString()
+          const cancellation = recordCommandCancellationRequested(state, {
+            schemaVersion: 1,
+            threadId,
+            turnId,
+            reason: cancellationReason,
+            requestedAt: timedOutAt,
+            drainDeadlineAt: effectiveDrainDeadlineAt,
+            activeCommandExecutions,
+            awaitingTurnCompletion,
+          })
+          await this.#save(state)
+          await this.store.appendEventOnce(
+            `turn_command_cancellation_requested:${threadId}:${turnId}`,
+            {
+              type: "turn_command_cancellation_requested",
+              instructionId: instruction.instructionId,
+              threadId,
+              turnId,
+              reason: cancellation.reason,
+              requestedAt: cancellation.requestedAt,
+              drainDeadlineAt: cancellation.drainDeadlineAt,
+              itemIds: cancellation.itemIds,
+            },
+          )
+        },
+        onCommandObservedDuringCancellation: async ({
+          threadId,
+          turnId,
+          item,
+        }) => {
+          const observed = recordCommandObservedDuringCancellation(state, {
+            threadId,
+            turnId,
+            item,
+          })
+          if (!observed.inserted) return
+          await this.#save(state)
+          await this.store.appendEventOnce(
+            `turn_command_observed_during_cancellation:${threadId}:${turnId}:${observed.itemId}`,
+            {
+              type: "turn_command_observed_during_cancellation",
+              instructionId: instruction.instructionId,
+              threadId,
+              turnId,
+              itemId: observed.itemId,
+            },
+          )
+        },
+        onCommandTerminal: async ({ threadId, turnId, item }) => {
+          const terminal = recordCommandTerminalEvidence(state, {
+            threadId,
+            turnId,
+            item,
+          })
+          if (!terminal.inserted) return
+          await this.#save(state)
+          await this.store.appendEventOnce(
+            `turn_command_terminal:${threadId}:${turnId}:${terminal.terminal.id}`,
+            {
+              type: "turn_command_terminal",
+              instructionId: instruction.instructionId,
+              threadId,
+              turnId,
+              item: terminal.terminal,
+            },
+          )
+        },
+        onCommandTerminalityPending: async (pending) => {
+          const record = recordCommandTerminalityPending(state, pending)
+          await this.#save(state)
+          await this.store.appendEventOnce(
+            `turn_command_terminality_pending:${record.threadId}:${record.turnId}`,
+            {
+              type: "turn_command_terminality_pending",
+              instructionId: instruction.instructionId,
+              threadId: record.threadId,
+              turnId: record.turnId,
+              requestedAt: record.requestedAt,
+              drainDeadlineAt: record.drainDeadlineAt,
+              itemIds: record.itemIds,
+              pendingItemIds: pending.pendingItemIds,
+            },
+          )
         },
         onTurnFailed: async (failedTurnResult) => {
           if (
@@ -2154,6 +2450,9 @@ export class Orchestrator {
         }
       }
       if (result.status === "completed" || result.status === "needs_owner") {
+        return result
+      }
+      if (result.timeoutCancellation) {
         return result
       }
       if (result.appServerFailure) {
@@ -3072,14 +3371,115 @@ export class Orchestrator {
           readbackError,
           events: terminalityEvents,
         })
+        const pendingCommandTerminality =
+          state.activeInstruction.commandTerminality ?? null
         if (terminalityDecision.applicable) {
+          const pendingReasons = terminalityDecision.record.evidence.reasons
+          const onlyPendingEvidence =
+            terminalityDecision.record.classification ===
+              "terminality_unprovable" &&
+            pendingReasons.length > 0 &&
+            pendingReasons.every(
+              (reason) =>
+                reason === "readback_turn_not_terminal" ||
+                reason.startsWith("missing_authoritative_item_terminal_evidence:") ||
+                reason.startsWith("non_terminal_item_evidence:"),
+            )
+          if (pendingCommandTerminality && onlyPendingEvidence) {
+            pendingCommandTerminality.status = "terminality_pending"
+            pendingCommandTerminality.pendingAt ??= new Date().toISOString()
+            await this.#save(state)
+            await this.store.appendEventOnce(
+              `turn_command_terminality_recovery_deferred:${state.threadId}:${state.activeInstruction.turnId}`,
+              {
+                type: "turn_command_terminality_recovery_deferred",
+                instructionId: instruction.instructionId,
+                threadId: state.threadId,
+                turnId: state.activeInstruction.turnId,
+                itemIds: pendingCommandTerminality.itemIds,
+                reasons: pendingReasons,
+              },
+            )
+            return {
+              status: "claim_deferred",
+              instructionId: instruction.instructionId,
+            }
+          }
+          let decisionToPersist = terminalityDecision
+          if (
+            pendingCommandTerminality &&
+            terminalityDecision.record.classification === "terminality_proven"
+          ) {
+            for (const item of terminalityDecision.turnResult.commandExecutions) {
+              if (!pendingCommandTerminality.itemIds.includes(item.id)) {
+                recordCommandObservedDuringCancellation(state, {
+                  threadId: state.threadId,
+                  turnId: state.activeInstruction.turnId,
+                  item,
+                })
+              }
+              recordCommandTerminalEvidence(state, {
+                threadId: state.threadId,
+                turnId: state.activeInstruction.turnId,
+                item,
+              })
+            }
+            pendingCommandTerminality.status = "terminal"
+            pendingCommandTerminality.awaitingTurnCompletion = false
+            pendingCommandTerminality.resolvedAt ??= new Date().toISOString()
+            decisionToPersist = {
+              ...terminalityDecision,
+              turnResult: {
+                ...terminalityDecision.turnResult,
+                status: "needs_review",
+                timeoutCancellation: timeoutCancellationFromRecord(
+                  pendingCommandTerminality,
+                  "terminal",
+                ),
+                retryable: false,
+              },
+            }
+          }
           turnResult = recordInterruptedCommandTerminalityReconciliation(
             state,
-            terminalityDecision,
+            decisionToPersist,
           )
           await this.#save(state)
         } else if (readbackError) {
+          if (pendingCommandTerminality) {
+            await this.store.appendEventOnce(
+              `turn_command_terminality_recovery_deferred:${state.threadId}:${state.activeInstruction.turnId}`,
+              {
+                type: "turn_command_terminality_recovery_deferred",
+                instructionId: instruction.instructionId,
+                threadId: state.threadId,
+                turnId: state.activeInstruction.turnId,
+                itemIds: pendingCommandTerminality.itemIds,
+                reasons: ["authoritative_readback_unavailable"],
+              },
+            )
+            return {
+              status: "claim_deferred",
+              instructionId: instruction.instructionId,
+            }
+          }
           throw readbackError
+        } else if (pendingCommandTerminality) {
+          await this.store.appendEventOnce(
+            `turn_command_terminality_recovery_deferred:${state.threadId}:${state.activeInstruction.turnId}`,
+            {
+              type: "turn_command_terminality_recovery_deferred",
+              instructionId: instruction.instructionId,
+              threadId: state.threadId,
+              turnId: state.activeInstruction.turnId,
+              itemIds: pendingCommandTerminality.itemIds,
+              reasons: ["authoritative_terminality_not_observed"],
+            },
+          )
+          return {
+            status: "claim_deferred",
+            instructionId: instruction.instructionId,
+          }
         }
       }
       const priorTurn = recovered?.thread?.turns?.find(

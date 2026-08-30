@@ -27,6 +27,10 @@ import {
   beginInstruction,
   ensureTaskThread,
   Orchestrator,
+  recordCommandCancellationRequested,
+  recordCommandObservedDuringCancellation,
+  recordCommandTerminalEvidence,
+  recordCommandTerminalityPending,
   recordCompletedTurnResult,
 } from "../src/orchestrator.mjs"
 import {
@@ -2819,7 +2823,7 @@ test("persisted turn timeout uses its stable start time and does not defer forev
   assert.equal(runTurnCalls, 0)
 })
 
-test("a timeout retry starts only after the interrupted turn command is terminal", async (t) => {
+test("a timed-out command terminalizes without starting a retry turn", async (t) => {
   const directory = await mkdtemp(path.join(os.tmpdir(), "koalafrog-retry-isolation-"))
   t.after(() => rm(directory, { recursive: true, force: true }))
   const block = controlBlock({ instructionId: "retry-isolation-001" })
@@ -2920,7 +2924,7 @@ test("a timeout retry starts only after the interrupted turn command is terminal
   const result = await orchestrator.runOnce()
 
   assert.equal(result.status, "needs_review")
-  assert.equal(turnStarts, 2)
+  assert.equal(turnStarts, 1)
   assert.equal(interruptRequests, 1)
   assert.equal(activeCommand, false)
 })
@@ -2993,11 +2997,261 @@ test("a timed-out turn fails closed when an interrupted command never becomes te
         timeoutPersisted = true
       },
     }),
-    /did not prove terminal command completion/,
+    (error) => error.code === "COMMAND_TERMINALITY_PENDING",
   )
   assert.equal(turnStarts, 1)
   assert.equal(interruptRequests, 1)
   assert.equal(timeoutPersisted, true)
+})
+
+test("restart keeps cancellation terminality pending until authoritative item evidence arrives", async (t) => {
+  const directory = await mkdtemp(
+    path.join(os.tmpdir(), "koalafrog-command-terminality-pending-"),
+  )
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const block = controlBlock({ instructionId: "command-pending-recovery-001" })
+  const [instruction] = extractAgentControls(block)
+  const store = new StateStore({
+    stateDirectory: directory,
+    repository: "Sillyquack/koalafrog-hq",
+    issueNumber: 53,
+  })
+  const state = await store.load()
+  beginInstruction(state, instruction)
+  state.threadId = "thread-command-pending"
+  state.workspacePath = "/tmp/workspace-command-pending"
+  state.branch = "agent/command-pending-recovery-001"
+  recordInstructionTurnStarted(state, {
+    turnId: "turn-command-pending",
+    attempt: 0,
+    startedAt: "2026-08-29T09:40:22.250Z",
+  })
+  state.activeInstruction.turnTimedOutAt = "2026-08-29T10:00:22.250Z"
+  recordCommandCancellationRequested(state, {
+    schemaVersion: 1,
+    threadId: state.threadId,
+    turnId: state.activeInstruction.turnId,
+    reason: "turn_timeout",
+    requestedAt: state.activeInstruction.turnTimedOutAt,
+    drainDeadlineAt: "2026-08-29T10:01:22.250Z",
+    activeCommandExecutions: [
+      {
+        id: "exec-command-pending",
+        command: "node --test test/*.node.mjs",
+        status: "inProgress",
+        exitCode: null,
+      },
+    ],
+  })
+  recordCommandTerminalityPending(state, {
+    threadId: state.threadId,
+    turnId: state.activeInstruction.turnId,
+    pendingItemIds: ["exec-command-pending"],
+  })
+  await store.save(state)
+  await store.appendEvent({
+    type: "notification",
+    message: {
+      method: "item/started",
+      threadId: state.threadId,
+      turnId: state.activeInstruction.turnId,
+      itemId: "exec-command-pending",
+      itemType: "commandExecution",
+      itemStatus: "inProgress",
+    },
+  })
+
+  let readbackTerminal = false
+  let turnStarts = 0
+  const comments = [{ body: block }]
+  const appServer = {
+    async start() {},
+    async resumeThread(threadId) {
+      return { thread: { id: threadId } }
+    },
+    async waitForMcpReady() {},
+    async readThread() {
+      return {
+        thread: {
+          turns: [
+            {
+              id: "turn-command-pending",
+              status: "interrupted",
+              items: [
+                {
+                  id: "exec-command-pending",
+                  type: "commandExecution",
+                  command: "node --test test/*.node.mjs",
+                  status: readbackTerminal ? "failed" : "inProgress",
+                  exitCode: readbackTerminal ? 1 : null,
+                },
+              ],
+            },
+          ],
+        },
+      }
+    },
+    async runTurn() {
+      turnStarts += 1
+      throw new Error("Pending command terminality must not start another turn")
+    },
+    async stop() {},
+  }
+  const orchestrator = new Orchestrator(
+    runtimeConfig(directory),
+    {
+      appServer,
+      controlPlane: {
+        async fetchTask() {
+          return { issue: { body: block }, comments }
+        },
+        async postComment(body) {
+          comments.push({ body })
+        },
+      },
+      store,
+      workspace: fakeWorkspace(),
+    },
+  )
+
+  const deferred = await orchestrator.runOnce()
+  assert.equal(deferred.status, "claim_deferred")
+  assert.equal(turnStarts, 0)
+  let durable = await store.load()
+  assert.equal(durable.activeInstruction.phase, "turn_started")
+  assert.equal(
+    durable.activeInstruction.commandTerminality.status,
+    "terminality_pending",
+  )
+  assert.equal(durable.runs.length, 0)
+
+  readbackTerminal = true
+  const finalized = await orchestrator.runOnce()
+  assert.equal(finalized.status, "needs_review")
+  assert.equal(turnStarts, 0)
+  durable = await store.load()
+  assert.equal(durable.activeInstruction, null)
+  assert.equal(durable.runs.length, 1)
+  assert.equal(durable.runs[0].status, "needs_review")
+  assert.equal(durable.terminalityReconciliations.length, 1)
+  assert.equal(
+    durable.terminalityReconciliations[0].classification,
+    "terminality_proven",
+  )
+  assert.equal(
+    durable.runs[0].resultArtifact.timeoutCancellation.turnId,
+    "turn-command-pending",
+  )
+  assert.deepEqual(
+    durable.runs[0].resultArtifact.timeoutCancellation.itemIds,
+    ["exec-command-pending"],
+  )
+  assert.equal((await orchestrator.runOnce()).status, "idle")
+  assert.equal(durable.runs.length, 1)
+})
+
+test("durable command terminal evidence is idempotent and conflicting status rejects", async () => {
+  const state = {
+    threadId: "thread-durable-command-terminal",
+    activeInstruction: {
+      instructionId: "durable-command-terminal-001",
+      phase: "turn_started",
+      turnId: "turn-durable-command-terminal",
+    },
+  }
+  recordCommandCancellationRequested(state, {
+    schemaVersion: 1,
+    threadId: state.threadId,
+    turnId: state.activeInstruction.turnId,
+    reason: "turn_timeout",
+    requestedAt: "2026-08-29T10:00:00.000Z",
+    drainDeadlineAt: "2026-08-29T10:01:00.000Z",
+    activeCommandExecutions: [
+      {
+        id: "exec-durable-command-terminal",
+        status: "inProgress",
+      },
+    ],
+  })
+  const evidence = {
+    threadId: state.threadId,
+    turnId: state.activeInstruction.turnId,
+    item: {
+      id: "exec-durable-command-terminal",
+      command: "node --test",
+      status: "failed",
+      exitCode: 1,
+    },
+  }
+  assert.equal(recordCommandTerminalEvidence(state, evidence).inserted, true)
+  assert.equal(recordCommandTerminalEvidence(state, evidence).inserted, false)
+  assert.throws(
+    () =>
+      recordCommandTerminalEvidence(state, {
+        ...evidence,
+        item: { ...evidence.item, status: "completed", exitCode: 0 },
+      }),
+    /terminal evidence conflicts/,
+  )
+})
+
+test("a command observed after the timeout snapshot is durably bound before terminal evidence", async () => {
+  const state = {
+    threadId: "thread-late-command-observation",
+    activeInstruction: {
+      instructionId: "late-command-observation-001",
+      phase: "turn_started",
+      turnId: "turn-late-command-observation",
+    },
+  }
+  recordCommandCancellationRequested(state, {
+    schemaVersion: 1,
+    threadId: state.threadId,
+    turnId: state.activeInstruction.turnId,
+    reason: "turn_timeout",
+    requestedAt: "2026-08-29T10:00:00.000Z",
+    drainDeadlineAt: "2026-08-29T10:01:00.000Z",
+    activeCommandExecutions: [],
+  })
+
+  const observation = {
+    threadId: state.threadId,
+    turnId: state.activeInstruction.turnId,
+    item: {
+      id: "exec-late-command-observation",
+      command: "node --test",
+      status: "inProgress",
+    },
+  }
+  assert.equal(
+    recordCommandObservedDuringCancellation(state, observation).inserted,
+    true,
+  )
+  assert.equal(
+    recordCommandObservedDuringCancellation(state, observation).inserted,
+    false,
+  )
+  assert.deepEqual(
+    state.activeInstruction.commandTerminality.itemIds,
+    ["exec-late-command-observation"],
+  )
+
+  const evidence = {
+    threadId: state.threadId,
+    turnId: state.activeInstruction.turnId,
+    item: {
+      ...observation.item,
+      status: "failed",
+      exitCode: 1,
+    },
+  }
+  assert.equal(recordCommandTerminalEvidence(state, evidence).inserted, true)
+  assert.deepEqual(
+    state.activeInstruction.commandTerminality.terminalItems.map(
+      (item) => item.id,
+    ),
+    ["exec-late-command-observation"],
+  )
 })
 
 test("exact live-shaped Issue #70/054 terminalizes unprovable once without retry or worktree mutation", async (t) => {

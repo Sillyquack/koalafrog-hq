@@ -37,6 +37,10 @@ const durableTransactionKeyLeaf = ".durable-transaction.key"
 const currentProcessIdentity = `node-process:${randomUUID()}`
 let descriptorCapabilityCheck = null
 const advisoryCapabilityChecks = new Map()
+// The broker acquires locks non-blockingly, so a delayed READY is process
+// startup/scheduling latency rather than lock-owner serialization. Keep that
+// latency bounded without using the former two-second host-load-sensitive cap.
+const advisoryHelperReadyTimeoutMs = 10_000
 const descriptorCapabilityHelper = String.raw`
 import ctypes
 import os
@@ -2084,7 +2088,10 @@ function startAdvisoryCapabilityProbe(spec, descriptor) {
   return { child, disposition, stdout: () => stdout }
 }
 
-async function waitForAdvisoryProbe(probe, timeoutMs = 2_000) {
+async function waitForAdvisoryProbe(
+  probe,
+  timeoutMs = advisoryHelperReadyTimeoutMs,
+) {
   let timer
   const timeout = new Promise((resolve) => {
     timer = setTimeout(() => resolve({ kind: "timeout", stdout: probe.stdout() }), timeoutMs)
@@ -2423,7 +2430,7 @@ async function acquireAdvisoryGuard(
           recovery: "retry after the active orchestrator lease exits",
         }),
       )
-    }, 2_000)
+    }, advisoryHelperReadyTimeoutMs)
     const finish = (value, error = null) => {
       if (settled) return
       settled = true
@@ -2445,7 +2452,12 @@ async function acquireAdvisoryGuard(
     child.stdout.on("data", async (chunk) => {
       stdout += chunk.toString("utf8")
       const ready = exactReadyIdentity(stdout, spec)
-      if (!ready || settled) return
+      if (!ready || settled || readyAccepted) return
+      // READY proves that the holder owns this descriptor. End its scheduling
+      // deadline before starting the separately bounded same-inode contender
+      // proof; nesting both phases under one timer caused false timeouts.
+      readyAccepted = true
+      clearTimeout(timer)
       try {
         const current = await statRegularLeaf(directoryGuard, guardLeaf)
         if (
@@ -2501,7 +2513,6 @@ async function acquireAdvisoryGuard(
         child.once("exit", () => {
           guard.lost = true
         })
-        readyAccepted = true
         await callHook(hooks, "afterAdvisoryAcquire", {
           leafName: guardLeaf,
           terminateBroker: () =>
