@@ -1,0 +1,1230 @@
+import { spawn } from "node:child_process"
+import { EventEmitter } from "node:events"
+import readline from "node:readline"
+
+const authoritativeTurnFailureWindowMs = 100
+import {
+  compactCommandExecution,
+  finalAgentMessageFromTurn,
+} from "./result-artifact.mjs"
+import { redactForLog } from "./state-store.mjs"
+
+function deferred() {
+  let resolve
+  let reject
+  const promise = new Promise((res, rej) => {
+    resolve = res
+    reject = rej
+  })
+  return { promise, resolve, reject }
+}
+
+function compactProtocolMessage(message) {
+  const params = message.params ?? {}
+  const compact = {
+    method: message.method,
+    ...(message.id === undefined ? {} : { id: message.id }),
+    threadId: params.threadId ?? null,
+    turnId: params.turnId ?? params.turn?.id ?? null,
+    itemId: params.itemId ?? params.item?.id ?? null,
+  }
+  if (params.status !== undefined) compact.status = params.status
+  if (params.turn?.status !== undefined) compact.status = params.turn.status
+  if (params.item?.type !== undefined) compact.itemType = params.item.type
+  if (params.item?.status !== undefined) compact.itemStatus = params.item.status
+  const exitCode = params.item?.exitCode ?? params.item?.exit_code
+  if (Number.isInteger(exitCode)) compact.exitCode = exitCode
+  if (params.name !== undefined) compact.name = params.name
+  if (params.reason !== undefined) compact.reason = String(params.reason).slice(0, 500)
+  if (params.message !== undefined) compact.summary = String(params.message).slice(0, 500)
+  if (params.request?.message !== undefined) {
+    compact.summary = String(params.request.message).slice(0, 500)
+  }
+  if (Array.isArray(params.data)) compact.itemCount = params.data.length
+  if (typeof params.diff === "string") compact.diffBytes = Buffer.byteLength(params.diff)
+  if (typeof params.delta === "string") compact.deltaBytes = Buffer.byteLength(params.delta)
+  return compact
+}
+
+function stableProtocolIdentifier(value, fallback = null) {
+  return typeof value === "string" &&
+    /^[A-Za-z0-9._:/-]{1,160}$/.test(value)
+    ? value
+    : fallback
+}
+
+export function appServerTurnFailureFromMessage(message) {
+  if (message?.method !== "error" || message.id !== undefined) return null
+  const params = message.params ?? {}
+  const threadId = stableProtocolIdentifier(params.threadId)
+  const turnId = stableProtocolIdentifier(params.turnId ?? params.turn?.id)
+  if (!threadId || !turnId) return null
+  const codexErrorInfo = stableProtocolIdentifier(
+    params.error?.codexErrorInfo,
+    "unknown",
+  )
+  return {
+    eventId: `turn_failed:${threadId}:${turnId}`,
+    errorClass: "AppServerTurnError",
+    code: "APP_SERVER_TURN_ERROR",
+    category: codexErrorInfo,
+    codexErrorInfo,
+    willRetry: params.willRetry === true,
+    threadId,
+    turnId,
+  }
+}
+
+function appServerTurnFailureFromFailedCompletion(message) {
+  if (
+    message?.method !== "turn/completed" ||
+    message.params?.turn?.status !== "failed"
+  ) {
+    return null
+  }
+  const threadId = stableProtocolIdentifier(message.params?.threadId)
+  const turnId = stableProtocolIdentifier(message.params?.turn?.id)
+  if (!threadId || !turnId) return null
+  return {
+    eventId: `turn_failed:${threadId}:${turnId}`,
+    errorClass: "AppServerTurnError",
+    code: "APP_SERVER_TURN_ERROR",
+    category: "unknown",
+    codexErrorInfo: "unknown",
+    willRetry: false,
+    threadId,
+    turnId,
+  }
+}
+
+function persistedTurnFailure(event) {
+  const candidate = event?.event ?? event
+  if (!candidate || candidate.type !== "turn_failed") return null
+  const threadId = stableProtocolIdentifier(candidate.threadId)
+  const turnId = stableProtocolIdentifier(candidate.turnId)
+  const eventId =
+    typeof candidate.eventId === "string" &&
+    /^[A-Za-z0-9._:/-]{1,512}$/.test(candidate.eventId)
+      ? candidate.eventId
+      : null
+  if (!threadId || !turnId || eventId !== `turn_failed:${threadId}:${turnId}`) {
+    return null
+  }
+  const codexErrorInfo = stableProtocolIdentifier(candidate.codexErrorInfo)
+  if (!codexErrorInfo || typeof candidate.willRetry !== "boolean") return null
+  const terminalGeneration = Number.isSafeInteger(candidate.terminalGeneration) &&
+    candidate.terminalGeneration > 0
+      ? candidate.terminalGeneration
+      : null
+  const terminalTransactionId =
+    terminalGeneration &&
+    candidate.terminalTransactionId ===
+      `${eventId}:terminalization:${terminalGeneration}`
+      ? candidate.terminalTransactionId
+      : null
+  return {
+    eventId,
+    errorClass: "AppServerTurnError",
+    code: "APP_SERVER_TURN_ERROR",
+    category: codexErrorInfo,
+    codexErrorInfo,
+    willRetry: candidate.willRetry,
+    threadId,
+    turnId,
+    ...(terminalTransactionId
+      ? { terminalGeneration, terminalTransactionId }
+      : {}),
+  }
+}
+
+function serializedTurnFailureIdentity(failure) {
+  return JSON.stringify({
+    eventId: failure.eventId,
+    errorClass: failure.errorClass,
+    code: failure.code,
+    category: failure.category,
+    codexErrorInfo: failure.codexErrorInfo,
+    willRetry: failure.willRetry,
+    threadId: failure.threadId,
+    turnId: failure.turnId,
+  })
+}
+
+function requestSummary(params = {}) {
+  return (
+    params.reason ??
+    params.message ??
+    params.request?.message ??
+    params.questions?.map((question) => question.question).join("; ") ??
+    null
+  )
+}
+
+function toolNameFromSummary(summary) {
+  return String(summary ?? "").match(/\btool\s+["'`]([^"'`]+)["'`]/i)?.[1] ?? null
+}
+
+function matchingMcpToolCall(message, toolCalls) {
+  const calls = [...toolCalls.values()]
+  if (!calls.length) return null
+
+  const itemId = message.params?.itemId
+  if (itemId && toolCalls.has(itemId)) return toolCalls.get(itemId)
+
+  const summary = String(requestSummary(message.params) ?? "").toLowerCase()
+  const toolMatches = calls.filter((item) =>
+    [item.tool, `${item.server}.${item.tool}`]
+      .filter(Boolean)
+      .some((name) => summary.includes(String(name).toLowerCase())),
+  )
+  if (toolMatches.length === 1) return toolMatches[0]
+
+  const serverName = String(message.params?.serverName ?? "").toLowerCase()
+  const serverMatches = calls.filter(
+    (item) => serverName && String(item.server).toLowerCase() === serverName,
+  )
+  if (serverMatches.length === 1) return serverMatches[0]
+  return calls.length === 1 ? calls[0] : null
+}
+
+export function classifyServerRequest(message, mcpToolCall = null) {
+  const ownerMethods = new Set([
+    "item/commandExecution/requestApproval",
+    "item/fileChange/requestApproval",
+    "item/tool/requestUserInput",
+    "tool/requestUserInput",
+    "item/permissions/requestApproval",
+    "mcpServer/elicitation/request",
+    "applyPatchApproval",
+    "execCommandApproval",
+  ])
+  if (message?.id === undefined || !message.method) return null
+
+  const params = message.params ?? {}
+  const summary = requestSummary(params)
+  const reason =
+    summary ??
+    `${ownerMethods.has(message.method) ? "Codex requires owner input" : "The orchestrator cannot safely answer the server request"} for ${message.method}.`
+  const {
+    threadId: _threadId,
+    turnId: _turnId,
+    itemId: _itemId,
+    ...requestDetails
+  } = params
+  const serverName = params.serverName ?? mcpToolCall?.server ?? null
+  const toolName =
+    params.toolName ??
+    params.tool ??
+    params.request?.toolName ??
+    params.request?.tool ??
+    toolNameFromSummary(summary) ??
+    mcpToolCall?.tool ??
+    null
+  const toolArguments =
+    params.arguments ??
+    params.toolArguments ??
+    params.request?.arguments ??
+    params.request?.params?.arguments ??
+    mcpToolCall?.arguments ??
+    null
+  return {
+    requestId: message.id,
+    method: message.method,
+    threadId: params.threadId ?? null,
+    turnId: params.turnId ?? null,
+    itemId: params.itemId ?? mcpToolCall?.id ?? null,
+    serverName,
+    toolName,
+    arguments: redactForLog(toolArguments),
+    details: redactForLog({
+      ...requestDetails,
+      ...(mcpToolCall?.appContext
+        ? { appContext: mcpToolCall.appContext }
+        : {}),
+    }),
+    reason: redactForLog(String(reason)),
+  }
+}
+
+function ownerStopResponse(message) {
+  if (
+    new Set([
+      "item/commandExecution/requestApproval",
+      "item/fileChange/requestApproval",
+    ]).has(message?.method)
+  ) {
+    return { decision: "cancel" }
+  }
+  if (message?.method === "mcpServer/elicitation/request") {
+    return { action: "cancel", content: null }
+  }
+  return null
+}
+
+function approvedItemSucceeded(item) {
+  const exitCode = item?.exitCode ?? item?.exit_code ?? null
+  return (
+    item?.status === "completed" &&
+    (exitCode === null || exitCode === 0)
+  )
+}
+
+const terminalCommandStatuses = new Set([
+  "completed",
+  "failed",
+  "interrupted",
+  "cancelled",
+  "canceled",
+  "declined",
+])
+
+function commandExecutionIsTerminal(item) {
+  return (
+    item?.type === "commandExecution" &&
+    terminalCommandStatuses.has(item.status)
+  )
+}
+
+const boundedGitHubApprovalMessages = [
+  /^Allow GitHub to create a Git tree\?$/i,
+  /^Allow GitHub to create a commit\?$/i,
+  /^Allow GitHub to (?:create|update) a Git (?:reference|ref)\?$/i,
+  /^Allow GitHub to update (?:a|the) Git (?:reference|ref)\?$/i,
+  /^Allow GitHub to update .*branch.*\?$/i,
+  /^Allow GitHub to push .*branch.*\?$/i,
+]
+
+const boundedOrchestratorCommandApprovalMessages = [
+  /^Allow (?:me to )?(?:apply|carry|copy) the (?:explicitly owner-approved )?(?:already-)?audited (?:Issue #53 )?(?:local )?orchestrator (?:implementation )?(?:commit )?stack (?:to|onto) this isolated (?:fix|diagnostic) branch(?: so I can .*?)?\?$/i,
+  /^Allow the explicitly authorized audited orchestrator commits to be copied onto this isolated diagnostic branch for the repository-discovery fix\?$/i,
+  /^Owner-approved: copy only the audited local orchestrator commits onto this isolated diagnostic branch\.?$/i,
+  /^Apply the explicitly owner-approved audited Issue #53 orchestrator implementation stack to this isolated fix branch\?$/i,
+]
+
+export function autoResponseForBoundedElicitation(message, prompt = "") {
+  if (message?.method !== "mcpServer/elicitation/request") return null
+
+  const normalizedPrompt = String(prompt)
+  const hasExplicitOwnerApproval =
+    /Owner approval(?:\s+remains)?\s+(?:is\s+)?(?:explicitly\s+)?granted/i.test(
+      normalizedPrompt,
+    ) &&
+    /create the Git tree\/commit/i.test(normalizedPrompt) &&
+    /push(?: that commit| the existing review branch| the existing branch)?/i.test(
+      normalizedPrompt,
+    )
+
+  if (!hasExplicitOwnerApproval) return null
+
+  const summary = String(
+    message.params?.message ?? message.params?.request?.message ?? "",
+  ).trim()
+  if (!boundedGitHubApprovalMessages.some((pattern) => pattern.test(summary))) {
+    return null
+  }
+
+  return { action: "accept", content: {} }
+}
+
+export function autoResponseForBoundedCommandApproval(message, prompt = "") {
+  if (message?.method !== "item/commandExecution/requestApproval") return null
+
+  const normalizedPrompt = String(prompt)
+  const hasExplicitOwnerApproval =
+    /Owner approval(?:\s+is)?\s+(?:explicitly\s+)?granted/i.test(
+      normalizedPrompt,
+    ) &&
+    /audited Issue #53 orchestrator implementation stack/i.test(normalizedPrompt) &&
+    /isolated (?:fix )?branch/i.test(normalizedPrompt)
+
+  if (!hasExplicitOwnerApproval) return null
+
+  const reason = String(message.params?.reason ?? "").trim()
+  if (
+    !boundedOrchestratorCommandApprovalMessages.some((pattern) =>
+      pattern.test(reason),
+    )
+  ) {
+    return null
+  }
+
+  return { decision: "accept" }
+}
+
+export class AppServerClient extends EventEmitter {
+  constructor({
+    binary = "codex",
+    cwd,
+    requestTimeoutMs = 30_000,
+    turnTerminationTimeoutMs = 60_000,
+    eventSink = () => {},
+    turnFailureSink = null,
+    stderrSink = () => {},
+  }) {
+    super()
+    if (
+      !Number.isSafeInteger(turnTerminationTimeoutMs) ||
+      turnTerminationTimeoutMs < 1
+    ) {
+      throw new Error("turnTerminationTimeoutMs must be a positive integer")
+    }
+    this.binary = binary
+    this.cwd = cwd
+    this.requestTimeoutMs = requestTimeoutMs
+    this.turnTerminationTimeoutMs = turnTerminationTimeoutMs
+    this.eventSink = eventSink
+    this.turnFailureSink = turnFailureSink
+    this.stderrSink = stderrSink
+    this.nextRequestId = 1
+    this.pending = new Map()
+    this.mcpStatuses = new Map()
+    this.seenTurnFailures = new Map()
+    this.authoritativeTurnFailures = new Map()
+    this.inflightProvisionalTurnFailures = new Map()
+    this.provisionalTurnFailures = new Map()
+    this.turnFailureObservations = new Map()
+    this.protocolDispatchTail = Promise.resolve()
+    this.process = null
+  }
+
+  async start() {
+    if (this.process) return
+    this.process = spawn(this.binary, ["app-server", "--stdio"], {
+      cwd: this.cwd,
+      env: process.env,
+      stdio: ["pipe", "pipe", "pipe"],
+      shell: false,
+    })
+
+    const stdout = readline.createInterface({ input: this.process.stdout })
+    stdout.on("line", (line) => this.#handleLine(line))
+    this.process.stderr.on("data", (chunk) => {
+      Promise.resolve(this.stderrSink(chunk.toString())).catch(() => {})
+    })
+    this.process.once("error", (error) => this.#failPending(error))
+    this.process.once("exit", (code, signal) => {
+      const error = new Error(
+        `Codex App Server exited (code=${String(code)}, signal=${String(signal)})`,
+      )
+      this.#failPending(error)
+      this.emit("exit", error)
+      this.process = null
+    })
+
+    await this.request("initialize", {
+      clientInfo: {
+        name: "koalafrog_local_orchestrator",
+        title: "Koalafrog Local Orchestrator",
+        version: "0.1.0",
+      },
+      capabilities: null,
+    })
+    this.notify("initialized")
+  }
+
+  #handleLine(line) {
+    let message
+    try {
+      message = JSON.parse(line)
+    } catch {
+      Promise.resolve(
+        this.eventSink({
+          type: "protocol_parse_error",
+          bytes: Buffer.byteLength(line),
+        }),
+      ).catch(() => {})
+      return
+    }
+
+    void this.dispatchProtocolMessage(message).catch((error) => {
+      Promise.resolve(
+        this.eventSink({
+          type: "protocol_dispatch_failed",
+          code: "APP_SERVER_PROTOCOL_DISPATCH_FAILED",
+        }),
+      ).catch(() => {})
+      this.emit("adapter_failure", error)
+    })
+  }
+
+  dispatchProtocolMessage(message) {
+    const authoritativeFailure = appServerTurnFailureFromMessage(message)
+    if (authoritativeFailure) {
+      try {
+        this.#observeAuthoritativeTurnFailure(authoritativeFailure)
+      } catch (error) {
+        return Promise.reject(error)
+      }
+    }
+    const dispatched = this.protocolDispatchTail.then(() =>
+      this.#dispatchProtocolMessage(message),
+    )
+    this.protocolDispatchTail = dispatched.catch(() => {})
+    return dispatched
+  }
+
+  #observeAuthoritativeTurnFailure(turnFailure) {
+    const serialized = serializedTurnFailureIdentity(turnFailure)
+    const prior = this.authoritativeTurnFailures.get(turnFailure.eventId)
+    if (prior && prior.serialized !== serialized) {
+      const error = new Error("AppServer turn failure identity conflicts")
+      error.code = "APP_SERVER_TURN_FAILURE_CONFLICT"
+      throw error
+    }
+    if (!prior) {
+      this.authoritativeTurnFailures.set(turnFailure.eventId, {
+        failure: turnFailure,
+        serialized,
+      })
+    }
+    const provisional = this.provisionalTurnFailures.get(turnFailure.eventId)
+    if (provisional?.timer) clearTimeout(provisional.timer)
+    this.provisionalTurnFailures.delete(turnFailure.eventId)
+    const inflight = this.inflightProvisionalTurnFailures.get(
+      turnFailure.eventId,
+    )
+    if (inflight) {
+      inflight.failure = turnFailure
+    }
+  }
+
+  async #dispatchTurnFailure(
+    message,
+    turnFailure,
+    { provisional = false } = {},
+  ) {
+    const authoritative = this.authoritativeTurnFailures.get(
+      turnFailure.eventId,
+    )?.failure
+    if (provisional && authoritative) return
+    const serialized = serializedTurnFailureIdentity(turnFailure)
+    const prior = this.seenTurnFailures.get(turnFailure.eventId)
+    if (prior && prior !== serialized) {
+      const error = new Error("AppServer turn failure identity conflicts")
+      error.code = "APP_SERVER_TURN_FAILURE_CONFLICT"
+      throw error
+    }
+    if (prior) return
+    const transaction = provisional
+      ? { failure: turnFailure }
+      : null
+    if (transaction) {
+      this.inflightProvisionalTurnFailures.set(
+        turnFailure.eventId,
+        transaction,
+      )
+    }
+    const effectiveFailure = () =>
+      this.authoritativeTurnFailures.get(turnFailure.eventId)?.failure ??
+      transaction?.failure ??
+      turnFailure
+    const effectiveEvent = () => ({ type: "turn_failed", ...effectiveFailure() })
+    try {
+      await this.turnFailureObservations.get(turnFailure.eventId)
+      const persisted = this.turnFailureSink
+        ? await this.turnFailureSink(
+            turnFailure.eventId,
+            effectiveFailure,
+            { finalize: true },
+          )
+        : await this.eventSink(effectiveEvent, {
+            eventId: turnFailure.eventId,
+            turnFailureTransaction: true,
+            currentEvent: effectiveEvent,
+            currentFailure: effectiveFailure,
+            finalize: true,
+          })
+      const committedFailure = persistedTurnFailure(persisted)
+      if (!committedFailure) {
+        const error = new Error(
+          "AppServer turn failure persistence did not verify its committed value",
+        )
+        error.code = "APP_SERVER_TURN_FAILURE_PERSISTENCE_UNVERIFIED"
+        throw error
+      }
+      const committedSerialized = serializedTurnFailureIdentity(committedFailure)
+      const committedPrior = this.seenTurnFailures.get(turnFailure.eventId)
+      if (committedPrior && committedPrior !== committedSerialized) {
+        const error = new Error("AppServer turn failure identity conflicts")
+        error.code = "APP_SERVER_TURN_FAILURE_CONFLICT"
+        throw error
+      }
+      if (!committedPrior) {
+        this.seenTurnFailures.set(turnFailure.eventId, committedSerialized)
+        this.emit("notification", message)
+        this.emit("turn_failure", committedFailure)
+      }
+    } finally {
+      if (
+        transaction &&
+        this.inflightProvisionalTurnFailures.get(turnFailure.eventId) ===
+          transaction
+      ) {
+        this.inflightProvisionalTurnFailures.delete(turnFailure.eventId)
+      }
+      this.turnFailureObservations.delete(turnFailure.eventId)
+    }
+  }
+
+  #scheduleProvisionalTurnFailure(message, turnFailure) {
+    if (this.provisionalTurnFailures.has(turnFailure.eventId)) return
+    const observation = this.turnFailureSink
+      ? Promise.resolve(
+          this.turnFailureSink(turnFailure.eventId, () => turnFailure, {
+            finalize: false,
+          }),
+        )
+      : Promise.resolve()
+    this.turnFailureObservations.set(turnFailure.eventId, observation)
+    const provisional = { message, turnFailure, timer: null, observation }
+    this.provisionalTurnFailures.set(turnFailure.eventId, provisional)
+    provisional.timer = setTimeout(() => {
+      const finalized = this.protocolDispatchTail.then(async () => {
+        if (
+          this.provisionalTurnFailures.get(turnFailure.eventId) !== provisional
+        ) {
+          return
+        }
+        this.provisionalTurnFailures.delete(turnFailure.eventId)
+        await provisional.observation
+        await this.#dispatchTurnFailure(message, turnFailure, {
+          provisional: true,
+        })
+      })
+      this.protocolDispatchTail = finalized.catch(() => {})
+      void finalized.catch((error) => {
+        Promise.resolve(
+          this.eventSink({
+            type: "protocol_dispatch_failed",
+            code: "APP_SERVER_PROTOCOL_DISPATCH_FAILED",
+          }),
+        ).catch(() => {})
+        this.emit("adapter_failure", error)
+      })
+    }, authoritativeTurnFailureWindowMs)
+  }
+
+  async #dispatchProtocolMessage(message) {
+    if (message.id !== undefined && !message.method) {
+      const pending = this.pending.get(message.id)
+      if (!pending) return
+      clearTimeout(pending.timer)
+      this.pending.delete(message.id)
+      if (message.error) {
+        pending.reject(
+          new Error(
+            `App Server ${pending.method} failed: ${message.error.message ?? JSON.stringify(message.error)}`,
+          ),
+        )
+      } else {
+        try {
+          await pending.onResponse?.(message.result)
+          pending.resolve(message.result)
+        } catch (error) {
+          pending.reject(error)
+        }
+      }
+      return
+    }
+
+    const turnFailure = appServerTurnFailureFromMessage(message)
+    if (turnFailure) {
+      const provisional = this.provisionalTurnFailures.get(turnFailure.eventId)
+      if (provisional?.timer) clearTimeout(provisional.timer)
+      this.provisionalTurnFailures.delete(turnFailure.eventId)
+      await this.#dispatchTurnFailure(message, turnFailure)
+      return
+    }
+
+    if (message.method === "turn/completed") {
+      const failedCompletion = appServerTurnFailureFromFailedCompletion(message)
+      if (message.params?.turn?.status === "failed" && !failedCompletion) {
+        const error = new Error(
+          "AppServer failed turn completion lacks stable turn identity",
+        )
+        error.code = "APP_SERVER_FAILED_COMPLETION_IDENTITY_INVALID"
+        throw error
+      }
+      const threadId = stableProtocolIdentifier(message.params?.threadId)
+      const turnId = stableProtocolIdentifier(message.params?.turn?.id)
+      const eventId =
+        threadId && turnId ? `turn_failed:${threadId}:${turnId}` : null
+      if (eventId && this.seenTurnFailures.has(eventId)) {
+        this.emit("notification", message)
+        return
+      }
+      if (eventId && this.provisionalTurnFailures.has(eventId)) {
+        return
+      }
+      if (failedCompletion) {
+        this.#scheduleProvisionalTurnFailure(message, failedCompletion)
+        return
+      }
+    }
+
+    if (message.method === "mcpServer/startupStatus/updated") {
+      const key = `${message.params?.threadId}:${message.params?.name}`
+      this.mcpStatuses.set(key, message.params?.status)
+    }
+
+    const kind = message.id === undefined ? "notification" : "server_request"
+    const event = { type: kind, message: compactProtocolMessage(message) }
+    if (
+      new Set(["item/started", "item/completed", "turn/completed"]).has(
+        message.method,
+      )
+    ) {
+      await this.eventSink(event)
+    } else {
+      Promise.resolve(this.eventSink(event)).catch(() => {})
+    }
+    this.emit(kind, message)
+    switch (message.method) {
+      case "item/completed":
+        this.emit("item/completed", message.params, message)
+        break
+      case "item/started":
+        this.emit("item/started", message.params, message)
+        break
+      case "mcpServer/startupStatus/updated":
+        this.emit("mcpServer/startupStatus/updated", message.params, message)
+        break
+      case "turn/completed":
+        this.emit("turn/completed", message.params, message)
+        break
+    }
+  }
+
+  #failPending(error) {
+    for (const pending of this.pending.values()) {
+      clearTimeout(pending.timer)
+      pending.reject(error)
+    }
+    this.pending.clear()
+  }
+
+  request(
+    method,
+    params = {},
+    timeoutMs = this.requestTimeoutMs,
+    { onResponse = null } = {},
+  ) {
+    if (!this.process?.stdin?.writable) {
+      return Promise.reject(new Error("Codex App Server is not running"))
+    }
+    const id = this.nextRequestId
+    this.nextRequestId += 1
+    const pending = deferred()
+    pending.method = method
+    pending.onResponse = onResponse
+    pending.timer = setTimeout(() => {
+      this.pending.delete(id)
+      pending.reject(new Error(`App Server request timed out: ${method}`))
+    }, timeoutMs)
+    this.pending.set(id, pending)
+    this.process.stdin.write(`${JSON.stringify({ method, id, params })}\n`)
+    return pending.promise
+  }
+
+  respond(requestId, result) {
+    if (!this.process?.stdin?.writable) {
+      throw new Error("Codex App Server is not running")
+    }
+    this.process.stdin.write(`${JSON.stringify({ id: requestId, result })}\n`)
+  }
+
+  notify(method, params) {
+    if (!this.process?.stdin?.writable) {
+      throw new Error("Codex App Server is not running")
+    }
+    const message = params === undefined ? { method } : { method, params }
+    this.process.stdin.write(`${JSON.stringify(message)}\n`)
+  }
+
+  async startThread(params) {
+    return this.request("thread/start", params, 60_000)
+  }
+
+  async resumeThread(threadId, params = {}) {
+    return this.request(
+      "thread/resume",
+      { threadId, ...params },
+      60_000,
+    )
+  }
+
+  async readThread(threadId) {
+    return this.request("thread/read", { threadId, includeTurns: true })
+  }
+
+  async interruptTurn(threadId, turnId) {
+    return this.request("turn/interrupt", { threadId, turnId }, 60_000)
+  }
+
+  async waitForMcpReady(threadId, server = "codex_apps", timeoutMs = 45_000) {
+    const key = `${threadId}:${server}`
+    if (this.mcpStatuses.get(key) === "ready") return
+
+    await new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        cleanup()
+        reject(new Error(`MCP server did not become ready: ${server}`))
+      }, timeoutMs)
+      const listener = (params) => {
+        if (params?.threadId !== threadId || params?.name !== server) return
+        if (params.status === "ready") {
+          cleanup()
+          resolve()
+        } else if (params.status === "failed") {
+          cleanup()
+          reject(new Error(`MCP server failed: ${server}`))
+        }
+      }
+      const cleanup = () => {
+        clearTimeout(timer)
+        this.off("mcpServer/startupStatus/updated", listener)
+      }
+      this.on("mcpServer/startupStatus/updated", listener)
+    })
+  }
+
+  async callMcpTool({ threadId, server, tool, arguments: toolArguments }) {
+    return this.request(
+      "mcpServer/tool/call",
+      { threadId, server, tool, arguments: toolArguments },
+      120_000,
+    )
+  }
+
+  async runTurn({
+    threadId,
+    prompt,
+    cwd,
+    timeoutMs,
+    approvalPolicy = null,
+    onTurnStarted = () => {},
+    onTurnTimedOut = () => {},
+    onTurnFailed = () => {},
+    onOwnerStop = () => {},
+    resolveApprovalRequest = () => null,
+    onApprovedActionCompleted = () => {},
+  }) {
+    let turnId = null
+    let pendingOwnerRequest = null
+    let ownerStopPersistence = Promise.resolve()
+    let approvedActionPersistence = Promise.resolve()
+    let ownerStopTimer = null
+    let turnTerminationTimer = null
+    let agentMessage = ""
+    let settled = false
+    let turnTimedOut = false
+    let timeoutInterruption = null
+    let turnTimeoutPersistence = Promise.resolve()
+    let turnTimedOutAt = null
+    let interruptedTurnCompletion = null
+    const pendingProtocolFailures = new Map()
+    let protocolFailureInFlight = false
+    let turnStartPersistence = null
+    let approvalGranted = false
+    let approvalEvidenceObserved = false
+    const activeCommandExecutions = new Set()
+    const commandExecutionItems = new Map()
+    const completedCommandExecutions = []
+    const mcpToolCalls = new Map()
+    const approvedItems = new Map()
+    const terminal = deferred()
+    const handledServerRequestIds = new Set()
+
+    const complete = (result) => {
+      if (settled) return
+      settled = true
+      cleanup()
+      Promise.all([
+        ownerStopPersistence,
+        approvedActionPersistence,
+        turnTimeoutPersistence,
+      ]).then(
+        () => terminal.resolve(result),
+        (error) => terminal.reject(error),
+      )
+    }
+    const fail = (error) => {
+      if (settled) return
+      settled = true
+      cleanup()
+      Promise.all([
+        ownerStopPersistence,
+        approvedActionPersistence,
+        turnTimeoutPersistence,
+      ]).then(
+        () => terminal.reject(error),
+        (persistenceError) => terminal.reject(persistenceError),
+      )
+    }
+    const interruptTimedOutTurn = () => {
+      if (!turnId || timeoutInterruption || settled) return
+      turnTimedOutAt ??= new Date().toISOString()
+      turnTerminationTimer = setTimeout(
+        () =>
+          fail(
+            new Error(
+              `Timed-out turn ${turnId} did not prove terminal command completion after interruption`,
+            ),
+          ),
+        this.turnTerminationTimeoutMs,
+      )
+      turnTimeoutPersistence = turnStartPersistence.then(() =>
+        onTurnTimedOut({ threadId, turnId, timedOutAt: turnTimedOutAt }),
+      )
+      timeoutInterruption = turnTimeoutPersistence
+        .then(() => this.interruptTurn(threadId, turnId))
+        .catch((error) => {
+          fail(
+            new Error(
+              `Failed to persist or interrupt timed-out turn ${turnId}: ${error.message}`,
+            ),
+          )
+        })
+    }
+    const scheduleOwnerStopFallback = () => {
+      clearTimeout(ownerStopTimer)
+      ownerStopTimer = setTimeout(
+        () =>
+          complete({
+            status: "needs_owner",
+            turn: { id: turnId, status: "interrupted", items: [] },
+            pendingOwnerRequest,
+            agentMessage,
+            commandExecutions: completedCommandExecutions,
+          }),
+        5_000,
+      )
+    }
+    const onItemStarted = (params) => {
+      if (params?.threadId !== threadId) return
+      if (turnId && params?.turnId !== turnId) return
+      if (params.item?.type === "commandExecution" && params.item.id) {
+        activeCommandExecutions.add(params.item.id)
+        commandExecutionItems.set(params.item.id, params.item)
+      }
+      if (params.item?.type === "mcpToolCall") {
+        mcpToolCalls.set(params.item.id, params.item)
+      }
+    }
+    const finishTurn = (turn) => {
+      const completedTurn = turnTimedOut
+        ? {
+            ...turn,
+            status: "failed",
+            error: { message: `Turn timed out after ${timeoutMs}ms` },
+          }
+        : turn
+      complete({
+        status: pendingOwnerRequest ? "needs_owner" : completedTurn.status,
+        turn: completedTurn,
+        pendingOwnerRequest,
+        agentMessage: agentMessage || finalAgentMessageFromTurn(completedTurn),
+        commandExecutions: completedCommandExecutions,
+      })
+    }
+    const onItemCompleted = (params) => {
+      if (params?.threadId !== threadId) return
+      if (turnId && params?.turnId !== turnId) return
+      if (params.item?.type === "agentMessage") agentMessage = params.item.text ?? ""
+      if (commandExecutionIsTerminal(params.item) && params.item.id) {
+        activeCommandExecutions.delete(params.item.id)
+        commandExecutionItems.delete(params.item.id)
+        completedCommandExecutions.push(compactCommandExecution(params.item))
+      }
+      if (params.item?.type === "mcpToolCall") mcpToolCalls.delete(params.item.id)
+      const approved = approvedItems.get(params.item?.id)
+      if (approved) {
+        approvedItems.delete(params.item.id)
+        approvedActionPersistence = approvedActionPersistence.then(() =>
+          onApprovedActionCompleted({
+            ...approved,
+            item: params.item,
+            succeeded: approvedItemSucceeded(params.item),
+          }),
+        )
+      }
+      if (interruptedTurnCompletion && activeCommandExecutions.size === 0) {
+        finishTurn(interruptedTurnCompletion)
+      }
+    }
+    const onTurnCompleted = (params) => {
+      if (params?.threadId !== threadId || params?.turn?.id !== turnId) return
+      const pendingFailure = pendingProtocolFailures.get(turnId)
+      if (protocolFailureInFlight || pendingFailure) {
+        if (pendingFailure && turnStartPersistence) {
+          void finishProtocolFailure(pendingFailure)
+        }
+        return
+      }
+      if (turnTimedOut && activeCommandExecutions.size > 0) {
+        interruptedTurnCompletion = params.turn
+        return
+      }
+      finishTurn(params.turn)
+    }
+    const finishProtocolFailure = async (failure) => {
+      if (
+        settled ||
+        protocolFailureInFlight ||
+        !turnId ||
+        failure.turnId !== turnId
+      ) {
+        return
+      }
+      if (!turnStartPersistence) {
+        pendingProtocolFailures.set(failure.turnId, failure)
+        return
+      }
+      protocolFailureInFlight = true
+      try {
+        await turnStartPersistence
+        const retryable =
+          failure.willRetry &&
+          !approvalGranted &&
+          !approvalEvidenceObserved &&
+          activeCommandExecutions.size === 0 &&
+          completedCommandExecutions.length === 0
+        const result = {
+          status: "failed",
+          turn: {
+            id: turnId,
+            status: "failed",
+            items: [],
+            error: {
+              errorClass: failure.errorClass,
+              code: failure.code,
+              category: failure.category,
+              codexErrorInfo: failure.codexErrorInfo,
+              willRetry: failure.willRetry,
+            },
+          },
+          pendingOwnerRequest: null,
+          agentMessage,
+          commandExecutions: completedCommandExecutions,
+          appServerFailure: failure,
+          retryable,
+        }
+        await onTurnFailed(result)
+        complete(result)
+      } catch (error) {
+        fail(error)
+      }
+    }
+    const onTurnFailure = (failure) => {
+      if (failure?.threadId !== threadId) return
+      if (turnId && turnStartPersistence) {
+        if (failure.turnId === turnId) void finishProtocolFailure(failure)
+        return
+      }
+      pendingProtocolFailures.set(failure.turnId, failure)
+    }
+    const onAdapterFailure = (error) => fail(error)
+    const stopForOwner = async (message, ownerRequest) => {
+      pendingOwnerRequest = ownerRequest
+      ownerStopPersistence = ownerStopPersistence.then(() =>
+        onOwnerStop(pendingOwnerRequest),
+      )
+      await ownerStopPersistence
+      const response = ownerStopResponse(message)
+      let requestResolved = false
+      if (response) {
+        try {
+          this.respond(message.id, response)
+          requestResolved = true
+          Promise.resolve(
+            this.eventSink({
+              type: "server_request_owner_stopped",
+              message: compactProtocolMessage(message),
+            }),
+          ).catch(() => {})
+        } catch (error) {
+          pendingOwnerRequest = {
+            ...ownerRequest,
+            reason: `Failed to cancel owner-gated server request: ${error.message}`,
+          }
+          ownerStopPersistence = ownerStopPersistence.then(() =>
+            onOwnerStop(pendingOwnerRequest),
+          )
+          await ownerStopPersistence
+        }
+      }
+      const responseInterruptsTurn =
+        requestResolved &&
+        message.method === "item/commandExecution/requestApproval"
+      if (!responseInterruptsTurn && turnId) {
+        void this.request("turn/interrupt", { threadId, turnId }).catch(() => {})
+      }
+      scheduleOwnerStopFallback()
+    }
+    const handleServerRequest = async (message) => {
+      const ownerRequest = classifyServerRequest(
+        message,
+        message.method === "mcpServer/elicitation/request"
+          ? matchingMcpToolCall(message, mcpToolCalls)
+          : null,
+      )
+      if (!ownerRequest || ownerRequest.threadId !== threadId) return
+      if (turnId && ownerRequest.turnId && ownerRequest.turnId !== turnId) return
+      if (!turnId && ownerRequest.turnId) turnId = ownerRequest.turnId
+      let matchedResponse = null
+      try {
+        matchedResponse = ownerRequest
+          ? await resolveApprovalRequest(ownerRequest, {
+              commandExecution: ownerRequest.itemId
+                ? commandExecutionItems.get(ownerRequest.itemId) ?? null
+                : null,
+            })
+          : null
+      } catch (error) {
+        await stopForOwner(message, {
+          ...ownerRequest,
+          reason: `Failed to consume a matched owner decision: ${error.message}`,
+        })
+        return
+      }
+      const matchedResolution = matchedResponse?.response
+        ? matchedResponse
+        : matchedResponse
+          ? { response: matchedResponse, decisionId: null }
+          : null
+      const autoResponse =
+        matchedResolution?.response ??
+        autoResponseForBoundedElicitation(message, prompt) ??
+        autoResponseForBoundedCommandApproval(message, prompt)
+      if (autoResponse) {
+        try {
+          approvalGranted = true
+          this.respond(message.id, autoResponse)
+          if (matchedResolution?.decisionId && ownerRequest.itemId) {
+            approvedItems.set(ownerRequest.itemId, {
+              decisionId: matchedResolution.decisionId,
+              ownerRequest,
+            })
+          }
+          Promise.resolve(
+            this.eventSink({
+              type: "server_request_auto_resolved",
+              message: compactProtocolMessage(message),
+            }),
+          ).catch(() => {})
+        } catch (error) {
+          await stopForOwner(message, {
+            ...classifyServerRequest(message),
+            reason: `Failed to resolve approved server request: ${error.message}`,
+          })
+        }
+        return
+      }
+
+      await stopForOwner(message, ownerRequest)
+    }
+    const onServerRequest = (message) => {
+      const requestKey = `${message?.method ?? "unknown"}:${String(message?.id)}`
+      if (handledServerRequestIds.has(requestKey)) {
+        Promise.resolve(
+          this.eventSink({
+            type: "duplicate_server_request_ignored",
+            message: compactProtocolMessage(message),
+          }),
+        ).catch(() => {})
+        return
+      }
+      handledServerRequestIds.add(requestKey)
+      const observedRequest = classifyServerRequest(
+        message,
+        message.method === "mcpServer/elicitation/request"
+          ? matchingMcpToolCall(message, mcpToolCalls)
+          : null,
+      )
+      if (
+        observedRequest?.threadId === threadId &&
+        (!observedRequest.turnId ||
+          !turnId ||
+          observedRequest.turnId === turnId)
+      ) {
+        approvalEvidenceObserved = true
+      }
+      void handleServerRequest(message)
+    }
+    const timeout = setTimeout(() => {
+      turnTimedOut = true
+      interruptTimedOutTurn()
+    }, timeoutMs)
+    const cleanup = () => {
+      clearTimeout(timeout)
+      clearTimeout(ownerStopTimer)
+      clearTimeout(turnTerminationTimer)
+      this.off("item/started", onItemStarted)
+      this.off("item/completed", onItemCompleted)
+      this.off("turn/completed", onTurnCompleted)
+      this.off("server_request", onServerRequest)
+      this.off("turn_failure", onTurnFailure)
+      this.off("adapter_failure", onAdapterFailure)
+    }
+
+    this.on("item/started", onItemStarted)
+    this.on("item/completed", onItemCompleted)
+    this.on("turn/completed", onTurnCompleted)
+    this.on("server_request", onServerRequest)
+    this.on("turn_failure", onTurnFailure)
+    this.on("adapter_failure", onAdapterFailure)
+
+    const persistStartedTurn = async (response) => {
+      const responseTurnId = stableProtocolIdentifier(response?.turn?.id)
+      if (!responseTurnId) {
+        throw new Error("AppServer turn/start returned an invalid turn identity")
+      }
+      if (turnId && turnId !== responseTurnId) {
+        throw new Error("AppServer turn/start identity conflicts with active turn")
+      }
+      turnId = responseTurnId
+      turnStartPersistence ??= Promise.resolve().then(() => onTurnStarted(turnId))
+      await turnStartPersistence
+    }
+
+    try {
+      const response = await this.request(
+        "turn/start",
+        {
+          threadId,
+          cwd,
+          input: [{ type: "text", text: prompt, text_elements: [] }],
+          ...(approvalPolicy ? { approvalPolicy } : {}),
+        },
+        60_000,
+        { onResponse: persistStartedTurn },
+      )
+      await persistStartedTurn(response)
+      const pendingProtocolFailure = pendingProtocolFailures.get(turnId)
+      if (pendingProtocolFailure) {
+        await finishProtocolFailure(pendingProtocolFailure)
+      }
+      if (turnTimedOut) interruptTimedOutTurn()
+    } catch (error) {
+      cleanup()
+      throw error
+    }
+
+    return terminal.promise
+  }
+
+  async stop() {
+    if (!this.process) return
+    const child = this.process
+    child.kill("SIGTERM")
+    await Promise.race([
+      new Promise((resolve) => child.once("exit", resolve)),
+      new Promise((resolve) =>
+        setTimeout(() => {
+          if (child.exitCode === null) child.kill("SIGKILL")
+          resolve()
+        }, 5_000),
+      ),
+    ])
+  }
+}
