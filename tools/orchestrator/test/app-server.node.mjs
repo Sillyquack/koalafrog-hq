@@ -1117,3 +1117,641 @@ test("completed turns return the final agent message and compact command evidenc
   ])
   assert.equal("aggregatedOutput" in result.commandExecutions[0], false)
 })
+
+for (const terminalStatus of ["completed", "failed"]) {
+  test(`timeout drain persists authoritative ${terminalStatus} command terminality`, async () => {
+    const client = new AppServerClient({
+      cwd: "/tmp",
+      turnTerminationTimeoutMs: 100,
+      commandStartGuardMs: 10,
+    })
+    const persistedTimeouts = []
+    const persistedTerminals = []
+    let interrupts = 0
+    client.request = async (method) => {
+      if (method === "turn/start") {
+        setTimeout(
+          () =>
+            client.emit("item/started", {
+              threadId: "thread-timeout-terminal",
+              turnId: "turn-timeout-terminal",
+              item: {
+                id: "exec-timeout-terminal",
+                type: "commandExecution",
+                command: "node --test",
+                status: "inProgress",
+              },
+            }),
+          0,
+        )
+        return { turn: { id: "turn-timeout-terminal" } }
+      }
+      if (method === "turn/interrupt") {
+        interrupts += 1
+        setTimeout(
+          () =>
+            client.emit("turn/completed", {
+              threadId: "thread-timeout-terminal",
+              turn: {
+                id: "turn-timeout-terminal",
+                status: "interrupted",
+                items: [],
+              },
+            }),
+          1,
+        )
+        setTimeout(
+          () =>
+            client.emit("item/completed", {
+              threadId: "thread-timeout-terminal",
+              turnId: "turn-timeout-terminal",
+              item: {
+                id: "exec-timeout-terminal",
+                type: "commandExecution",
+                command: "node --test",
+                status: terminalStatus,
+                exitCode: terminalStatus === "completed" ? 0 : 1,
+              },
+            }),
+          15,
+        )
+        return {}
+      }
+      throw new Error(`Unexpected request: ${method}`)
+    }
+
+    const result = await client.runTurn({
+      threadId: "thread-timeout-terminal",
+      prompt: "Run a bounded command.",
+      cwd: "/tmp",
+      timeoutMs: 30,
+      onTurnTimedOut: async (observation) => persistedTimeouts.push(observation),
+      onCommandTerminal: async (observation) =>
+        persistedTerminals.push(observation),
+    })
+
+    assert.equal(interrupts, 1)
+    assert.equal(result.status, "needs_review")
+    assert.equal(result.retryable, false)
+    assert.equal(result.turn.id, "turn-timeout-terminal")
+    assert.deepEqual(result.timeoutCancellation.itemIds, [
+      "exec-timeout-terminal",
+    ])
+    assert.deepEqual(result.timeoutCancellation.terminalItemIds, [
+      "exec-timeout-terminal",
+    ])
+    assert.deepEqual(result.timeoutCancellation.pendingItemIds, [])
+    assert.equal(result.commandExecutions[0].status, terminalStatus)
+    assert.equal(persistedTimeouts.length, 1)
+    assert.equal(persistedTerminals.length, 1)
+  })
+}
+
+test("command completion and timeout ordering converges across 100 repetitions each", async () => {
+  for (const ordering of ["completion-first", "timeout-first"]) {
+    for (let iteration = 0; iteration < 100; iteration += 1) {
+      const suffix = `${ordering}-${iteration}`
+      const threadId = `thread-timeout-order-${suffix}`
+      const turnId = `turn-timeout-order-${suffix}`
+      const itemId = `exec-timeout-order-${suffix}`
+      const client = new AppServerClient({
+        cwd: "/tmp",
+        turnTerminationTimeoutMs: 50,
+        commandStartGuardMs: 5,
+      })
+      let terminalWrites = 0
+      let interrupts = 0
+      client.request = async (method) => {
+        if (method === "turn/start") {
+          client.emit("item/started", {
+            threadId,
+            turnId,
+            item: {
+              id: itemId,
+              type: "commandExecution",
+              status: "inProgress",
+            },
+          })
+          if (ordering === "completion-first") {
+            client.emit("item/completed", {
+              threadId,
+              turnId,
+              item: {
+                id: itemId,
+                type: "commandExecution",
+                status: "completed",
+                exitCode: 0,
+              },
+            })
+          }
+          return { turn: { id: turnId } }
+        }
+        if (method === "turn/interrupt") {
+          interrupts += 1
+          client.emit("turn/completed", {
+            threadId,
+            turn: { id: turnId, status: "interrupted", items: [] },
+          })
+          if (ordering === "timeout-first") {
+            setTimeout(
+              () =>
+                client.emit("item/completed", {
+                  threadId,
+                  turnId,
+                  item: {
+                    id: itemId,
+                    type: "commandExecution",
+                    status: "failed",
+                    exitCode: 1,
+                  },
+                }),
+              0,
+            )
+          }
+          return {}
+        }
+        throw new Error(`Unexpected request: ${method}`)
+      }
+
+      const result = await client.runTurn({
+        threadId,
+        prompt: "Converge command completion with timeout.",
+        cwd: "/tmp",
+        timeoutMs: 30,
+        onTurnTimedOut: async () => {},
+        onCommandTerminal: async () => {
+          terminalWrites += 1
+        },
+      })
+
+      assert.equal(interrupts, 1)
+      assert.equal(result.status, "needs_review")
+      assert.equal(result.retryable, false)
+      assert.equal(result.commandExecutions.length, 1)
+      assert.equal(result.commandExecutions[0].id, itemId)
+      assert.deepEqual(result.timeoutCancellation.pendingItemIds, [])
+      assert.equal(terminalWrites, ordering === "timeout-first" ? 1 : 0)
+    }
+  }
+})
+
+test("timeout drain persists terminality-pending without fabricating command completion", async () => {
+  const client = new AppServerClient({
+    cwd: "/tmp",
+    turnTerminationTimeoutMs: 25,
+    commandStartGuardMs: 5,
+  })
+  const pending = []
+  client.request = async (method) => {
+    if (method === "turn/start") {
+      setTimeout(
+        () =>
+          client.emit("item/started", {
+            threadId: "thread-timeout-pending",
+            turnId: "turn-timeout-pending",
+            item: {
+              id: "exec-timeout-pending",
+              type: "commandExecution",
+              status: "inProgress",
+            },
+          }),
+        0,
+      )
+      return { turn: { id: "turn-timeout-pending" } }
+    }
+    if (method === "turn/interrupt") {
+      setTimeout(
+        () =>
+          client.emit("turn/completed", {
+            threadId: "thread-timeout-pending",
+            turn: {
+              id: "turn-timeout-pending",
+              status: "interrupted",
+              items: [],
+            },
+          }),
+        0,
+      )
+      return {}
+    }
+    throw new Error(`Unexpected request: ${method}`)
+  }
+
+  await assert.rejects(
+    client.runTurn({
+      threadId: "thread-timeout-pending",
+      prompt: "Keep unknown terminality fail closed.",
+      cwd: "/tmp",
+      timeoutMs: 10,
+      onTurnTimedOut: async () => {},
+      onCommandTerminalityPending: async (observation) => pending.push(observation),
+    }),
+    (error) => {
+      assert.equal(error.code, "COMMAND_TERMINALITY_PENDING")
+      assert.equal(error.turnId, "turn-timeout-pending")
+      assert.deepEqual(error.itemIds, ["exec-timeout-pending"])
+      return true
+    },
+  )
+  assert.equal(pending.length, 1)
+  assert.deepEqual(pending[0].pendingItemIds, ["exec-timeout-pending"])
+  assert.deepEqual(pending[0].terminalItemIds, [])
+})
+
+test("a hung interrupt request cannot consume the command terminal drain", async () => {
+  const client = new AppServerClient({
+    cwd: "/tmp",
+    turnTerminationTimeoutMs: 25,
+    commandStartGuardMs: 5,
+  })
+  const pending = []
+  client.request = async (method) => {
+    if (method === "turn/start") {
+      client.emit("item/started", {
+        threadId: "thread-hung-interrupt",
+        turnId: "turn-hung-interrupt",
+        item: {
+          id: "exec-hung-interrupt",
+          type: "commandExecution",
+          status: "inProgress",
+        },
+      })
+      return { turn: { id: "turn-hung-interrupt" } }
+    }
+    if (method === "turn/interrupt") return new Promise(() => {})
+    throw new Error(`Unexpected request: ${method}`)
+  }
+
+  await assert.rejects(
+    client.runTurn({
+      threadId: "thread-hung-interrupt",
+      prompt: "Keep the terminal channel bounded and fail closed.",
+      cwd: "/tmp",
+      timeoutMs: 10,
+      onTurnTimedOut: async () => {},
+      onCommandTerminalityPending: async (observation) => pending.push(observation),
+    }),
+    (error) => error.code === "COMMAND_TERMINALITY_PENDING",
+  )
+  assert.equal(pending.length, 1)
+  assert.deepEqual(pending[0].pendingItemIds, ["exec-hung-interrupt"])
+})
+
+test("duplicate command terminal evidence is idempotent and conflict fails closed", async () => {
+  const duplicateClient = new AppServerClient({
+    cwd: "/tmp",
+    turnTerminationTimeoutMs: 100,
+    commandStartGuardMs: 5,
+  })
+  let terminalWrites = 0
+  duplicateClient.request = async (method) => {
+    if (method === "turn/start") {
+      setTimeout(
+        () =>
+          duplicateClient.emit("item/started", {
+            threadId: "thread-duplicate-terminal",
+            turnId: "turn-duplicate-terminal",
+            item: {
+              id: "exec-duplicate-terminal",
+              type: "commandExecution",
+              status: "inProgress",
+            },
+          }),
+        0,
+      )
+      return { turn: { id: "turn-duplicate-terminal" } }
+    }
+    if (method === "turn/interrupt") {
+      const terminal = {
+        threadId: "thread-duplicate-terminal",
+        turnId: "turn-duplicate-terminal",
+        item: {
+          id: "exec-duplicate-terminal",
+          type: "commandExecution",
+          status: "failed",
+          exitCode: 1,
+        },
+      }
+      setTimeout(() => {
+        duplicateClient.emit("item/completed", structuredClone(terminal))
+        duplicateClient.emit("item/completed", structuredClone(terminal))
+        duplicateClient.emit("turn/completed", {
+          threadId: "thread-duplicate-terminal",
+          turn: {
+            id: "turn-duplicate-terminal",
+            status: "interrupted",
+            items: [],
+          },
+        })
+      }, 5)
+      return {}
+    }
+    throw new Error(`Unexpected request: ${method}`)
+  }
+  const duplicateResult = await duplicateClient.runTurn({
+    threadId: "thread-duplicate-terminal",
+    prompt: "Deduplicate terminal evidence.",
+    cwd: "/tmp",
+    timeoutMs: 10,
+    onTurnTimedOut: async () => {},
+    onCommandTerminal: async () => {
+      terminalWrites += 1
+    },
+  })
+  assert.equal(duplicateResult.status, "needs_review")
+  assert.equal(terminalWrites, 1)
+  assert.equal(duplicateResult.commandExecutions.length, 1)
+
+  const conflictClient = new AppServerClient({ cwd: "/tmp" })
+  conflictClient.request = async () => {
+    setTimeout(() => {
+      conflictClient.emit("item/started", {
+        threadId: "thread-conflict-terminal",
+        turnId: "turn-conflict-terminal",
+        item: {
+          id: "exec-conflict-terminal",
+          type: "commandExecution",
+          status: "inProgress",
+        },
+      })
+      conflictClient.emit("item/completed", {
+        threadId: "thread-conflict-terminal",
+        turnId: "turn-conflict-terminal",
+        item: {
+          id: "exec-conflict-terminal",
+          type: "commandExecution",
+          status: "failed",
+          exitCode: 1,
+        },
+      })
+      conflictClient.emit("item/completed", {
+        threadId: "thread-conflict-terminal",
+        turnId: "turn-conflict-terminal",
+        item: {
+          id: "exec-conflict-terminal",
+          type: "commandExecution",
+          status: "completed",
+          exitCode: 0,
+        },
+      })
+    }, 0)
+    return { turn: { id: "turn-conflict-terminal" } }
+  }
+  await assert.rejects(
+    conflictClient.runTurn({
+      threadId: "thread-conflict-terminal",
+      prompt: "Reject conflicting terminal evidence.",
+      cwd: "/tmp",
+      timeoutMs: 1_000,
+    }),
+    (error) => error.code === "APP_SERVER_COMMAND_TERMINAL_CONFLICT",
+  )
+})
+
+test("command admission guard interrupts a late start while an earlier short command remains normal", async () => {
+  const late = new AppServerClient({
+    cwd: "/tmp",
+    turnTerminationTimeoutMs: 100,
+    commandStartGuardMs: 200,
+  })
+  const timeoutObservations = []
+  let lateInterrupts = 0
+  let lateCommandStarts = 0
+  let lateCommandTimer = null
+  late.request = async (method) => {
+    if (method === "turn/start") {
+      lateCommandTimer = setTimeout(
+        () => {
+          lateCommandStarts += 1
+          late.emit("item/started", {
+            threadId: "thread-late-command",
+            turnId: "turn-late-command",
+            item: {
+              id: "exec-late-command",
+              type: "commandExecution",
+              status: "inProgress",
+            },
+          })
+        },
+        850,
+      )
+      return { turn: { id: "turn-late-command" } }
+    }
+    if (method === "turn/interrupt") {
+      lateInterrupts += 1
+      clearTimeout(lateCommandTimer)
+      setTimeout(() => {
+        late.emit("turn/completed", {
+          threadId: "thread-late-command",
+          turn: { id: "turn-late-command", status: "interrupted", items: [] },
+        })
+      }, 5)
+      return {}
+    }
+    throw new Error(`Unexpected request: ${method}`)
+  }
+  const lateResult = await late.runTurn({
+    threadId: "thread-late-command",
+    prompt: "Do not start too late.",
+    cwd: "/tmp",
+    timeoutMs: 1_000,
+    onTurnTimedOut: async (observation) =>
+      timeoutObservations.push(observation),
+    onCommandTerminal: async () => {},
+  })
+  assert.equal(lateInterrupts, 1)
+  assert.equal(lateCommandStarts, 0)
+  assert.equal(
+    timeoutObservations[0].cancellationReason,
+    "command_start_budget_exhausted",
+  )
+  assert.equal(lateResult.status, "needs_review")
+
+  const ordinary = new AppServerClient({
+    cwd: "/tmp",
+    commandStartGuardMs: 40,
+  })
+  let ordinaryInterrupts = 0
+  ordinary.request = async (method) => {
+    if (method === "turn/interrupt") {
+      ordinaryInterrupts += 1
+      return {}
+    }
+    setTimeout(() => {
+      ordinary.emit("item/started", {
+        threadId: "thread-short-command",
+        turnId: "turn-short-command",
+        item: {
+          id: "exec-short-command",
+          type: "commandExecution",
+          status: "inProgress",
+        },
+      })
+      ordinary.emit("item/completed", {
+        threadId: "thread-short-command",
+        turnId: "turn-short-command",
+        item: {
+          id: "exec-short-command",
+          type: "commandExecution",
+          status: "completed",
+          exitCode: 0,
+        },
+      })
+      ordinary.emit("turn/completed", {
+        threadId: "thread-short-command",
+        turn: { id: "turn-short-command", status: "completed", items: [] },
+      })
+    }, 120)
+    return { turn: { id: "turn-short-command" } }
+  }
+  const ordinaryResult = await ordinary.runTurn({
+    threadId: "thread-short-command",
+    prompt: "Complete before admission closes.",
+    cwd: "/tmp",
+    timeoutMs: 200,
+  })
+  assert.equal(ordinaryResult.status, "completed")
+  assert.equal(ordinaryInterrupts, 0)
+})
+
+test("default admission reserve includes one terminal drain plus finalization margin", () => {
+  const client = new AppServerClient({
+    cwd: "/tmp",
+    turnTerminationTimeoutMs: 25,
+  })
+  assert.equal(client.commandStartGuardMs, 50)
+  assert.ok(client.commandStartGuardMs > client.turnTerminationTimeoutMs)
+})
+
+test("a command starting after the timeout snapshot is durably observed before terminal evidence", async () => {
+  const client = new AppServerClient({
+    cwd: "/tmp",
+    turnTerminationTimeoutMs: 100,
+    commandStartGuardMs: 20,
+  })
+  const lifecycle = []
+  client.request = async (method) => {
+    if (method === "turn/start") {
+      return { turn: { id: "turn-073-late-command" } }
+    }
+    if (method === "turn/interrupt") {
+      setTimeout(() => {
+        client.emit("item/started", {
+          threadId: "thread-073-late-command",
+          turnId: "turn-073-late-command",
+          item: {
+            id: "exec-073-late-command",
+            type: "commandExecution",
+            status: "inProgress",
+          },
+        })
+      }, 2)
+      setTimeout(() => {
+        client.emit("item/completed", {
+          threadId: "thread-073-late-command",
+          turnId: "turn-073-late-command",
+          item: {
+            id: "exec-073-late-command",
+            type: "commandExecution",
+            status: "completed",
+            exitCode: 0,
+          },
+        })
+      }, 5)
+      setTimeout(() => {
+        client.emit("turn/completed", {
+          threadId: "thread-073-late-command",
+          turn: {
+            id: "turn-073-late-command",
+            status: "interrupted",
+            items: [],
+          },
+        })
+      }, 8)
+      return {}
+    }
+    throw new Error(`Unexpected request: ${method}`)
+  }
+
+  const result = await client.runTurn({
+    threadId: "thread-073-late-command",
+    prompt: "Reproduce the live 073 late command lineage.",
+    cwd: "/tmp",
+    timeoutMs: 50,
+    onTurnTimedOut: async ({ activeCommandExecutions }) => {
+      lifecycle.push(`timeout:${activeCommandExecutions.length}`)
+    },
+    onCommandObservedDuringCancellation: async ({ item }) => {
+      lifecycle.push(`observed:${item.id}`)
+    },
+    onCommandTerminal: async ({ item }) => {
+      lifecycle.push(`terminal:${item.id}`)
+    },
+  })
+
+  assert.equal(result.status, "needs_review")
+  assert.deepEqual(lifecycle, [
+    "timeout:0",
+    "observed:exec-073-late-command",
+    "terminal:exec-073-late-command",
+  ])
+  assert.equal(result.commandExecutions.length, 1)
+  assert.equal(result.commandExecutions[0].status, "completed")
+})
+
+test("an approval resolved after command admission closes cannot start work", async () => {
+  const client = new AppServerClient({
+    cwd: "/tmp",
+    turnTerminationTimeoutMs: 10,
+    commandStartGuardMs: 30,
+  })
+  const responses = []
+  client.respond = (requestId, result) => responses.push({ requestId, result })
+  client.request = async (method) => {
+    if (method === "turn/start") {
+      setTimeout(() => {
+        client.emit("server_request", {
+          id: 73,
+          method: "item/commandExecution/requestApproval",
+          params: {
+            threadId: "thread-073-stale-approval",
+            turnId: "turn-073-stale-approval",
+            itemId: "exec-073-stale-approval",
+            reason: "Owner-approved bounded command",
+          },
+        })
+      }, 5)
+      return { turn: { id: "turn-073-stale-approval" } }
+    }
+    if (method === "turn/interrupt") {
+      setTimeout(() => {
+        client.emit("turn/completed", {
+          threadId: "thread-073-stale-approval",
+          turn: {
+            id: "turn-073-stale-approval",
+            status: "interrupted",
+            items: [],
+          },
+        })
+      }, 2)
+      return {}
+    }
+    throw new Error(`Unexpected request: ${method}`)
+  }
+
+  const result = await client.runTurn({
+    threadId: "thread-073-stale-approval",
+    prompt: "Do not publish stale command approval.",
+    cwd: "/tmp",
+    timeoutMs: 60,
+    onTurnTimedOut: async () => {},
+    resolveApprovalRequest: async () => {
+      await new Promise((resolve) => setTimeout(resolve, 45))
+      return { decision: "accept" }
+    },
+  })
+  await new Promise((resolve) => setTimeout(resolve, 30))
+
+  assert.equal(result.status, "needs_review")
+  assert.deepEqual(responses, [{ requestId: 73, result: { decision: "cancel" } }])
+})
