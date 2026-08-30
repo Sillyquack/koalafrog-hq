@@ -124,6 +124,16 @@ task without scanning or loading unrelated issue state by adding `--issue N` to
 `orchestrator:repository:once`. Omitting `--issue` preserves repository-wide
 discovery.
 
+An append-only instruction supersession must use this repository path because
+target claim history is verified while the per-issue queue lease is held. The
+later control declares a canonical `supersedes` list plus the exact
+`expected_state_revision`. All targets retire in one state CAS transaction,
+task status is unchanged, and selection waits until the idempotent
+`instruction_superseded` audit events are durable. Supersession never requires
+`watch` or `--auto-commit`; direct `orchestrator:once` rejects an unapplied
+declaration. See `docs/agent-orchestration/CONTROL_PLANE.md` for the complete
+contract and fail-closed target rules.
+
 Use `node tools/orchestrator/bin/orchestrator.mjs help` for every bounded-turn,
 timeout, retry, polling, model, state, and worktree option.
 

@@ -81,7 +81,7 @@ function options(stateDirectory) {
   return { stateDirectory, repository, issueNumber: 63 }
 }
 
-test("schema-nine state gains an empty terminality reconciliation ledger", async (t) => {
+test("schema-nine state gains empty terminality and instruction supersession ledgers", async (t) => {
   const directory = await mkdtemp(
     path.join(os.tmpdir(), "koalafrog-state-terminality-migration-"),
   )
@@ -95,6 +95,7 @@ test("schema-nine state gains an empty terminality reconciliation ledger", async
   const migrated = await store.load()
   assert.equal(migrated.schemaVersion, currentStateSchemaVersion)
   assert.deepEqual(migrated.terminalityReconciliations, [])
+  assert.deepEqual(migrated.instructionSupersessions, [])
   assert.equal(migrated.stateRevision, legacy.stateRevision + 1)
 })
 

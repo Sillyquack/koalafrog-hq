@@ -372,6 +372,43 @@ export class QueueClaimStore {
     }
   }
 
+  async inspectInstructionClaims(
+    { instructionIds, originIssueNumber },
+    { issueClaim = null } = {},
+  ) {
+    if (
+      !Array.isArray(instructionIds) ||
+      instructionIds.length === 0 ||
+      new Set(instructionIds).size !== instructionIds.length
+    ) {
+      throw new Error("Instruction claim inspection requires unique IDs")
+    }
+    const safeIds = instructionIds.map(safeInstructionId)
+    if (!Number.isSafeInteger(originIssueNumber) || originIssueNumber < 1) {
+      throw new Error("Cannot inspect claims for an invalid origin issue")
+    }
+    if (
+      !issueClaim ||
+      issueClaim[issueClaimBrand] !== this ||
+      issueClaim.originIssueNumber !== originIssueNumber
+    ) {
+      throw new Error(
+        "Instruction claim inspection requires the active issue claim",
+      )
+    }
+    if (!(await fileLeaseIsActive(issueClaim.lease))) {
+      throw new Error("Instruction claim inspection issue lease is no longer active")
+    }
+
+    const records = {}
+    for (const instructionId of safeIds) {
+      records[instructionId] = await this.#readRecord(
+        path.join(this.recordDirectory, `${instructionId}.json`),
+      )
+    }
+    return records
+  }
+
   async completeClaimFromDurableTerminalFailure(
     binding,
     options = {},

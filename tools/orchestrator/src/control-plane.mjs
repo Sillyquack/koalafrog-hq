@@ -9,6 +9,7 @@ const taskStates = new Set([
   "done",
   "failed",
 ])
+const instructionIdPattern = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/
 
 function scalar(value) {
   const trimmed = value.trim()
@@ -40,6 +41,38 @@ export function parseAgentControlBlock(block) {
     if (!field) continue
     const [, key, rawValue] = field
 
+    if (key === "supersedes") {
+      if (Object.hasOwn(value, key) || rawValue.trim() !== "") {
+        throw new Error("agent_control.supersedes must be one canonical list")
+      }
+      const supersedes = []
+      while (index + 1 < lines.length) {
+        const item = lines[index + 1].match(/^\s{4}-\s+(.*)$/)
+        if (!item) break
+        const instructionId = scalar(item[1])
+        if (
+          typeof instructionId !== "string" ||
+          !instructionIdPattern.test(instructionId)
+        ) {
+          throw new Error(
+            "agent_control.supersedes must contain safe instruction IDs",
+          )
+        }
+        supersedes.push(instructionId)
+        index += 1
+      }
+      if (
+        supersedes.length === 0 ||
+        new Set(supersedes).size !== supersedes.length
+      ) {
+        throw new Error(
+          "agent_control.supersedes must contain unique instruction IDs",
+        )
+      }
+      value.supersedes = supersedes
+      continue
+    }
+
     if (key === "prompt" && rawValue.trim() === "|") {
       const prompt = []
       index += 1
@@ -56,6 +89,13 @@ export function parseAgentControlBlock(block) {
       continue
     }
 
+    if (
+      key === "expected_state_revision" &&
+      Object.hasOwn(value, key)
+    ) {
+      throw new Error("Duplicate agent_control.expected_state_revision")
+    }
+
     value[key] = scalar(rawValue)
   }
 
@@ -69,7 +109,7 @@ export function parseAgentControlBlock(block) {
   }
   if (
     typeof value.instruction_id !== "string" ||
-    !/^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/.test(value.instruction_id)
+    !instructionIdPattern.test(value.instruction_id)
   ) {
     throw new Error("agent_control.instruction_id must be a safe unique string")
   }
@@ -82,15 +122,42 @@ export function parseAgentControlBlock(block) {
   if (typeof value.prompt !== "string" || value.prompt.trim() === "") {
     throw new Error("agent_control.prompt must be a non-empty block scalar")
   }
+  const hasSupersedes = Object.hasOwn(value, "supersedes")
+  const hasExpectedRevision = Object.hasOwn(
+    value,
+    "expected_state_revision",
+  )
+  if (hasSupersedes !== hasExpectedRevision) {
+    throw new Error(
+      "agent_control supersession requires supersedes and expected_state_revision",
+    )
+  }
+  if (
+    hasExpectedRevision &&
+    (!Number.isSafeInteger(value.expected_state_revision) ||
+      value.expected_state_revision < 0)
+  ) {
+    throw new Error(
+      "agent_control.expected_state_revision must be a non-negative integer",
+    )
+  }
+  if (hasSupersedes && value.supersedes.includes(value.instruction_id)) {
+    throw new Error("agent_control cannot supersede itself")
+  }
 
-  return Object.freeze({
+  const control = {
     action: value.action,
     taskState: value.task_state,
     instructionId: value.instruction_id,
     maxTurns: value.max_turns,
     ownerApprovalRequired: value.owner_approval_required,
     prompt: value.prompt,
-  })
+  }
+  if (hasSupersedes) {
+    control.supersedes = Object.freeze([...value.supersedes])
+    control.expectedStateRevision = value.expected_state_revision
+  }
+  return Object.freeze(control)
 }
 
 export function extractAgentControls(markdown) {
@@ -114,7 +181,10 @@ export function extractValidAgentControls(markdown) {
     try {
       const control = parseAgentControlBlock(match[1])
       if (control) controls.push(control)
-    } catch {
+    } catch (error) {
+      if (/^\s{2}(?:supersedes|expected_state_revision):/m.test(match[1])) {
+        throw error
+      }
       // A malformed explicit block is ineligible, not an inferred task.
     }
   }
@@ -310,11 +380,25 @@ export function listAgentControls(issue, comments = []) {
   return controls
 }
 
-export function selectLatestInstruction(issue, comments = []) {
-  return listAgentControls(issue, comments).at(-1) ?? null
+function agentControlBinding(control) {
+  return [
+    1,
+    control.action,
+    control.taskState,
+    control.instructionId,
+    control.maxTurns,
+    control.ownerApprovalRequired,
+    control.prompt,
+    control.supersedes ?? null,
+    control.expectedStateRevision ?? null,
+  ]
 }
 
-export function selectNextInstruction(issue, comments = [], state = {}) {
+export function agentControlBindingDigest(control) {
+  return controlPlaneBindingDigest(JSON.stringify(agentControlBinding(control)))
+}
+
+function consumedInstructionIds(state, comments, controls) {
   const retryable = new Set(state.retryInstructionIds ?? [])
   const consumed = new Set(
     (state.runs ?? []).map((run) => run.instructionId).filter(Boolean),
@@ -322,8 +406,6 @@ export function selectNextInstruction(issue, comments = [], state = {}) {
   if (state.lastConsumedInstructionId) {
     consumed.add(state.lastConsumedInstructionId)
   }
-
-  const controls = listAgentControls(issue, comments)
   for (const control of controls) {
     if (
       !retryable.has(control.instructionId) &&
@@ -333,6 +415,483 @@ export function selectNextInstruction(issue, comments = [], state = {}) {
     }
   }
   for (const instructionId of retryable) consumed.delete(instructionId)
+  return consumed
+}
+
+function instructionSupersessionIdentity(binding) {
+  return `instruction-supersession:${controlPlaneBindingDigest(
+    JSON.stringify([
+      1,
+      binding.issueNumber,
+      binding.originIssueUrl,
+      binding.supersedingInstructionId,
+      binding.supersededInstructionIds,
+      binding.expectedStateRevision,
+      binding.committedStateRevision,
+      binding.taskStatus,
+      binding.supersedingControlIndex,
+      binding.supersedingControlDigest,
+      binding.targetControls,
+      binding.reason,
+    ]),
+  )}`
+}
+
+function validateInstructionSupersessionRecord(record, state, controls) {
+  if (
+    record?.schemaVersion !== 1 ||
+    typeof record.supersessionId !== "string" ||
+    record.issueNumber !== state.task?.originIssueNumber ||
+    record.originIssueUrl !== (state.task?.originIssueUrl ?? null) ||
+    (record.originIssueUrl !== null &&
+      typeof record.originIssueUrl !== "string") ||
+    typeof record.supersedingInstructionId !== "string" ||
+    !instructionIdPattern.test(record.supersedingInstructionId) ||
+    !Array.isArray(record.supersededInstructionIds) ||
+    record.supersededInstructionIds.length === 0 ||
+    new Set(record.supersededInstructionIds).size !==
+      record.supersededInstructionIds.length ||
+    record.supersededInstructionIds.some(
+      (instructionId) => !instructionIdPattern.test(instructionId),
+    ) ||
+    !Number.isSafeInteger(record.expectedStateRevision) ||
+    record.expectedStateRevision < 0 ||
+    record.committedStateRevision !== record.expectedStateRevision + 1 ||
+    !taskStates.has(record.taskStatus) ||
+    !Number.isSafeInteger(record.supersedingControlIndex) ||
+    record.supersedingControlIndex < 0 ||
+    typeof record.supersedingControlDigest !== "string" ||
+    !/^[0-9a-f]{64}$/.test(record.supersedingControlDigest) ||
+    !Array.isArray(record.targetControls) ||
+    record.targetControls.length !== record.supersededInstructionIds.length ||
+    record.reason !== "declared_by_agent_control" ||
+    typeof record.recordedAt !== "string" ||
+    !Number.isFinite(Date.parse(record.recordedAt)) ||
+    state.stateRevision < record.committedStateRevision
+  ) {
+    throw new Error("Durable instruction supersession record is malformed")
+  }
+  const supersedingMatches = controls
+    .map((control, controlIndex) => ({ control, controlIndex }))
+    .filter(
+      ({ control }) =>
+        control.instructionId === record.supersedingInstructionId,
+    )
+  if (
+    supersedingMatches.length !== 1 ||
+    supersedingMatches[0].controlIndex !== record.supersedingControlIndex ||
+    agentControlBindingDigest(supersedingMatches[0].control) !==
+      record.supersedingControlDigest ||
+    JSON.stringify(supersedingMatches[0].control.supersedes) !==
+      JSON.stringify(record.supersededInstructionIds) ||
+    supersedingMatches[0].control.expectedStateRevision !==
+      record.expectedStateRevision
+  ) {
+    throw new Error("Durable instruction supersession control binding drifted")
+  }
+  for (let index = 0; index < record.targetControls.length; index += 1) {
+    const target = record.targetControls[index]
+    const targetId = record.supersededInstructionIds[index]
+    const matches = controls
+      .map((control, controlIndex) => ({ control, controlIndex }))
+      .filter(({ control }) => control.instructionId === targetId)
+    if (
+      matches.length !== 1 ||
+      target?.instructionId !== targetId ||
+      matches[0].controlIndex !== target.controlIndex ||
+      target.controlIndex >= record.supersedingControlIndex ||
+      target.action !== matches[0].control.action ||
+      target.taskState !== matches[0].control.taskState ||
+      target.controlDigest !== agentControlBindingDigest(matches[0].control) ||
+      target.priorEligible !==
+        isInstructionEligible(matches[0].control, record.taskStatus)
+    ) {
+      throw new Error("Durable instruction supersession target binding drifted")
+    }
+  }
+  if (instructionSupersessionIdentity(record) !== record.supersessionId) {
+    throw new Error("Durable instruction supersession identity is invalid")
+  }
+  return record
+}
+
+function durableSupersededInstructionIds(state, controls) {
+  const records = state.instructionSupersessions ?? []
+  if (!Array.isArray(records)) {
+    throw new Error("Durable instruction supersession ledger is malformed")
+  }
+  const superseded = new Set()
+  const superseding = new Set()
+  for (const record of records) {
+    validateInstructionSupersessionRecord(record, state, controls)
+    if (superseding.has(record.supersedingInstructionId)) {
+      throw new Error("Durable instruction supersession is duplicated")
+    }
+    superseding.add(record.supersedingInstructionId)
+    for (const instructionId of record.supersededInstructionIds) {
+      if (superseded.has(instructionId)) {
+        throw new Error("Durable instruction was superseded more than once")
+      }
+      superseded.add(instructionId)
+    }
+  }
+  return superseded
+}
+
+function assertSupersessionControlHistory(state, controls, consumed) {
+  const durableControllers = new Set(
+    (state.instructionSupersessions ?? []).map(
+      (record) => record.supersedingInstructionId,
+    ),
+  )
+  for (const control of controls) {
+    if (
+      control.supersedes &&
+      consumed.has(control.instructionId) &&
+      !durableControllers.has(control.instructionId)
+    ) {
+      throw new Error(
+        "Superseding instruction history is missing its durable retirement",
+      )
+    }
+  }
+}
+
+export function selectInstructionSupersessionCandidate(
+  issue,
+  comments = [],
+  state = {},
+) {
+  const controls = listAgentControls(issue, comments)
+  const superseded = durableSupersededInstructionIds(state, controls)
+  const consumed = consumedInstructionIds(state, comments, controls)
+  assertSupersessionControlHistory(state, controls, consumed)
+  return (
+    controls.find(
+      (control) =>
+        Array.isArray(control.supersedes) &&
+        !consumed.has(control.instructionId) &&
+        !superseded.has(control.instructionId) &&
+        isInstructionEligible(control, state.status),
+    ) ?? null
+  )
+}
+
+export function requireInstructionSupersessionReconciliation({
+  issue,
+  comments = [],
+  state,
+  reconciledInstructionId = null,
+}) {
+  if (state?.activeInstruction) return null
+  const supersession = selectInstructionSupersessionCandidate(
+    issue,
+    comments,
+    state,
+  )
+  if (!supersession) return null
+  const isDurable = (state.instructionSupersessions ?? []).some(
+    (record) =>
+      record.supersedingInstructionId === supersession.instructionId,
+  )
+  if (
+    !isDurable ||
+    reconciledInstructionId !== supersession.instructionId
+  ) {
+    const error = new Error(
+      "Instruction supersession requires repository issue-claim reconciliation",
+    )
+    error.code = "INSTRUCTION_SUPERSESSION_RECONCILIATION_REQUIRED"
+    throw error
+  }
+  return supersession
+}
+
+function rejectedSupersession(code, details = {}) {
+  return { accepted: false, rejection: { code, ...details } }
+}
+
+export function instructionSupersessionDecision({
+  issue,
+  comments = [],
+  state,
+  supersedingInstruction,
+  claimRecords = {},
+}) {
+  if (!supersedingInstruction?.supersedes) {
+    return rejectedSupersession("supersession_missing")
+  }
+  const controls = listAgentControls(issue, comments)
+  const superseded = durableSupersededInstructionIds(state, controls)
+  const candidate = selectInstructionSupersessionCandidate(
+    issue,
+    comments,
+    state,
+  )
+  if (
+    !candidate ||
+    candidate.instructionId !== supersedingInstruction.instructionId ||
+    agentControlBindingDigest(candidate) !==
+      agentControlBindingDigest(supersedingInstruction)
+  ) {
+    return rejectedSupersession("superseding_control_changed")
+  }
+  if (state.activeInstruction) {
+    return rejectedSupersession("active_instruction")
+  }
+  for (const instructionId of [
+    supersedingInstruction.instructionId,
+    ...supersedingInstruction.supersedes,
+  ]) {
+    if (!Object.hasOwn(claimRecords, instructionId)) {
+      return rejectedSupersession("claim_inspection_missing", {
+        instructionId,
+      })
+    }
+  }
+
+  const existing = (state.instructionSupersessions ?? []).filter(
+    (record) =>
+      record.supersedingInstructionId === supersedingInstruction.instructionId,
+  )
+  if (existing.length > 1) {
+    return rejectedSupersession("supersession_record_ambiguous")
+  }
+
+  const supersedingMatches = controls
+    .map((control, controlIndex) => ({ control, controlIndex }))
+    .filter(
+      ({ control }) =>
+        control.instructionId === supersedingInstruction.instructionId,
+    )
+  if (supersedingMatches.length !== 1) {
+    return rejectedSupersession("superseding_control_count")
+  }
+  const supersedingControlIndex = supersedingMatches[0].controlIndex
+  const consumed = consumedInstructionIds(state, comments, controls)
+  if (existing.length === 0) {
+    if (
+      (state.runs ?? []).some(
+        (run) =>
+          run.instructionId === supersedingInstruction.instructionId,
+      ) ||
+      state.lastConsumedInstructionId === supersedingInstruction.instructionId ||
+      (state.retryInstructionIds ?? []).includes(
+        supersedingInstruction.instructionId,
+      ) ||
+      findExistingPickup(comments, supersedingInstruction.instructionId) ||
+      findExistingResult(comments, supersedingInstruction.instructionId)
+    ) {
+      return rejectedSupersession("superseding_control_history")
+    }
+    const controllingClaim =
+      claimRecords[supersedingInstruction.instructionId] ?? null
+    if (controllingClaim) {
+      return rejectedSupersession("superseding_control_claimed", {
+        claimStatus: controllingClaim.status,
+      })
+    }
+  }
+  const targetControls = []
+  for (const instructionId of supersedingInstruction.supersedes) {
+    const matches = controls
+      .map((control, controlIndex) => ({ control, controlIndex }))
+      .filter(({ control }) => control.instructionId === instructionId)
+    if (matches.length === 0) {
+      return rejectedSupersession("target_missing", { instructionId })
+    }
+    if (matches.length !== 1) {
+      return rejectedSupersession("target_ambiguous", { instructionId })
+    }
+    const target = matches[0]
+    if (target.controlIndex >= supersedingControlIndex) {
+      return rejectedSupersession("target_not_older", { instructionId })
+    }
+    if (superseded.has(instructionId)) {
+      if (!existing[0]?.supersededInstructionIds.includes(instructionId)) {
+        return rejectedSupersession("target_already_superseded", {
+          instructionId,
+        })
+      }
+    }
+    if ((state.runs ?? []).some((run) => run.instructionId === instructionId)) {
+      return rejectedSupersession("target_run_history", { instructionId })
+    }
+    if (state.lastConsumedInstructionId === instructionId) {
+      return rejectedSupersession("target_consumed", { instructionId })
+    }
+    if ((state.retryInstructionIds ?? []).includes(instructionId)) {
+      return rejectedSupersession("target_retry_history", { instructionId })
+    }
+    if ((state.resultCorrectionInstructionIds ?? []).includes(instructionId)) {
+      return rejectedSupersession("target_result_correction", {
+        instructionId,
+      })
+    }
+    if (findExistingPickup(comments, instructionId)) {
+      return rejectedSupersession("target_pickup", { instructionId })
+    }
+    if (findExistingResult(comments, instructionId)) {
+      return rejectedSupersession("target_result", { instructionId })
+    }
+    const claim = claimRecords[instructionId] ?? null
+    if (claim) {
+      if (claim.originIssueNumber !== state.task.originIssueNumber) {
+        return rejectedSupersession("target_claim_origin", { instructionId })
+      }
+      return rejectedSupersession("target_claimed", {
+        instructionId,
+        claimStatus: claim.status,
+      })
+    }
+    targetControls.push({
+      instructionId,
+      controlIndex: target.controlIndex,
+      action: target.control.action,
+      taskState: target.control.taskState,
+      controlDigest: agentControlBindingDigest(target.control),
+      priorEligible: isInstructionEligible(target.control, state.status),
+    })
+  }
+
+  if (existing.length === 1) {
+    const record = existing[0]
+    if (
+      record.supersessionId !== instructionSupersessionIdentity(record) ||
+      record.supersedingControlDigest !==
+        agentControlBindingDigest(supersedingInstruction) ||
+      JSON.stringify(record.supersededInstructionIds) !==
+        JSON.stringify(supersedingInstruction.supersedes)
+    ) {
+      return rejectedSupersession("supersession_record_conflict")
+    }
+    return { accepted: true, value: { alreadyApplied: true, record } }
+  }
+
+  if (supersedingInstruction.expectedStateRevision !== state.stateRevision) {
+    return rejectedSupersession("state_revision_mismatch", {
+      expectedStateRevision: supersedingInstruction.expectedStateRevision,
+      actualStateRevision: state.stateRevision,
+    })
+  }
+
+  const targets = new Set(supersedingInstruction.supersedes)
+  for (let index = 0; index < supersedingControlIndex; index += 1) {
+    const control = controls[index]
+    if (
+      !targets.has(control.instructionId) &&
+      !superseded.has(control.instructionId) &&
+      !consumed.has(control.instructionId) &&
+      isInstructionEligible(control, state.status)
+    ) {
+      return rejectedSupersession("superseding_control_not_next", {
+        instructionId: control.instructionId,
+      })
+    }
+  }
+
+  const issueNumber =
+    issue?.number ?? issue?.issue_number ?? state.task?.originIssueNumber
+  if (
+    issueNumber !== state.task?.originIssueNumber ||
+    state.task?.issueNumber !== state.task?.originIssueNumber
+  ) {
+    return rejectedSupersession("issue_origin_mismatch")
+  }
+  return {
+    accepted: true,
+    value: {
+      alreadyApplied: false,
+      issueNumber,
+      originIssueUrl:
+        issue?.html_url ?? issue?.display_url ?? issue?.url ??
+        state.task.originIssueUrl ?? null,
+      supersedingInstructionId: supersedingInstruction.instructionId,
+      supersededInstructionIds: [...supersedingInstruction.supersedes],
+      expectedStateRevision: state.stateRevision,
+      committedStateRevision: state.stateRevision + 1,
+      taskStatus: state.status,
+      supersedingControlIndex,
+      supersedingControlDigest: agentControlBindingDigest(
+        supersedingInstruction,
+      ),
+      targetControls,
+      reason: "declared_by_agent_control",
+    },
+  }
+}
+
+export function recordInstructionSupersession(
+  state,
+  decision,
+  { now = new Date() } = {},
+) {
+  if (
+    decision?.alreadyApplied ||
+    state.activeInstruction ||
+    state.status !== decision?.taskStatus ||
+    state.stateRevision !== decision?.expectedStateRevision ||
+    !Array.isArray(state.instructionSupersessions)
+  ) {
+    throw new Error("Instruction supersession state binding changed")
+  }
+  const recordedAt = now.toISOString()
+  const record = {
+    schemaVersion: 1,
+    ...decision,
+    recordedAt,
+  }
+  record.supersessionId = instructionSupersessionIdentity(record)
+  if (
+    state.instructionSupersessions.some(
+      (candidate) =>
+        candidate.supersedingInstructionId ===
+          record.supersedingInstructionId ||
+        candidate.supersededInstructionIds.some((instructionId) =>
+          record.supersededInstructionIds.includes(instructionId),
+        ),
+    )
+  ) {
+    throw new Error("Instruction supersession conflicts with durable history")
+  }
+  state.instructionSupersessions.push(record)
+  return record
+}
+
+export function instructionSupersessionAuditEvents(record) {
+  return record.targetControls.map((target, targetIndex) => ({
+    eventId: `instruction_superseded:${record.supersessionId.slice(
+      "instruction-supersession:".length,
+    )}:${targetIndex + 1}`,
+    type: "instruction_superseded",
+    issueNumber: record.issueNumber,
+    originIssueUrl: record.originIssueUrl,
+    supersessionId: record.supersessionId,
+    supersededInstructionId: target.instructionId,
+    supersedingInstructionId: record.supersedingInstructionId,
+    priorTaskState: target.taskState,
+    priorEligibility: target.priorEligible,
+    reason: record.reason,
+    expectedStateRevision: record.expectedStateRevision,
+    committedStateRevision: record.committedStateRevision,
+    targetControlIndex: target.controlIndex,
+    supersedingControlIndex: record.supersedingControlIndex,
+    targetControlDigest: target.controlDigest,
+    supersedingControlDigest: record.supersedingControlDigest,
+    recordedAt: record.recordedAt,
+    executionOccurred: false,
+  }))
+}
+
+export function selectLatestInstruction(issue, comments = []) {
+  return listAgentControls(issue, comments).at(-1) ?? null
+}
+
+export function selectNextInstruction(issue, comments = [], state = {}) {
+  const controls = listAgentControls(issue, comments)
+  const consumed = consumedInstructionIds(state, comments, controls)
+  const superseded = durableSupersededInstructionIds(state, controls)
+  assertSupersessionControlHistory(state, controls, consumed)
 
   return (
     controls
@@ -340,6 +899,7 @@ export function selectNextInstruction(issue, comments = [], state = {}) {
       .find(
         (control) =>
           !consumed.has(control.instructionId) &&
+          !superseded.has(control.instructionId) &&
           isInstructionEligible(control, state.status),
       ) ?? null
   )

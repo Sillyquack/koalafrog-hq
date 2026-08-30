@@ -17,7 +17,7 @@ import {
 } from "./durable-filesystem.mjs"
 import { normalizeTurnAccounting } from "./turn-accounting.mjs"
 
-export const currentStateSchemaVersion = 10
+export const currentStateSchemaVersion = 11
 
 const stateLockAttempts = 400
 const stateLockDelayMs = 5
@@ -98,7 +98,7 @@ function stateTransactionIdentity(contents) {
 function validStateTransaction(predecessor, successor) {
   if (
     successor?.kind !== "state" ||
-    !new Set([9, currentStateSchemaVersion]).has(successor.schemaVersion)
+    !new Set([9, 10, currentStateSchemaVersion]).has(successor.schemaVersion)
   ) {
     return false
   }
@@ -317,6 +317,7 @@ export function initialState({ repository, issueNumber, issueUrl = null }) {
     gitReconciliationCheckpoints: [],
     checkpointActivationRecoveries: [],
     terminalityReconciliations: [],
+    instructionSupersessions: [],
     runs: [],
     updatedAt: new Date().toISOString(),
   }
@@ -361,8 +362,12 @@ export function migrateState(state, { repository, issueNumber }) {
     state.stateRevision = 0
   }
   if (state.schemaVersion === 9) {
-    state.schemaVersion = currentStateSchemaVersion
+    state.schemaVersion = 10
     state.terminalityReconciliations ??= []
+  }
+  if (state.schemaVersion === 10) {
+    state.schemaVersion = currentStateSchemaVersion
+    state.instructionSupersessions ??= []
   }
   if (state.schemaVersion !== currentStateSchemaVersion) {
     throw new Error(`Unsupported state schema: ${state.schemaVersion}`)
@@ -386,6 +391,10 @@ export function migrateState(state, { repository, issueNumber }) {
   state.gitReconciliationCheckpoints ??= []
   state.checkpointActivationRecoveries ??= []
   state.terminalityReconciliations ??= []
+  state.instructionSupersessions ??= []
+  if (!Array.isArray(state.instructionSupersessions)) {
+    throw new Error("Persisted instruction supersession ledger is malformed")
+  }
   durableRevision(state.stateRevision)
   return normalizeTurnAccounting(state)
 }
