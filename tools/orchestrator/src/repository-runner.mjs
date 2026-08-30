@@ -4,7 +4,12 @@ import path from "node:path"
 import { AppServerClient } from "./app-server.mjs"
 import { reconcileLaunchAgentApproval } from "./approval-decisions.mjs"
 import {
+  instructionSupersessionAuditEvents,
+  instructionSupersessionDecision,
   isInstructionEligible,
+  recordInstructionSupersession,
+  requireInstructionSupersessionReconciliation,
+  selectInstructionSupersessionCandidate,
 } from "./control-plane.mjs"
 import { GithubControlPlane } from "./github-control-plane.mjs"
 import {
@@ -170,6 +175,76 @@ async function reconcileTerminalFailureQueueCompletion({
     )
   }
   return result
+}
+
+export async function reconcilePendingInstructionSupersession({
+  state,
+  task,
+  store,
+  claimStore,
+  issueClaim,
+}) {
+  if (!issueClaim) return { status: "issue_claim_required" }
+
+  const candidate = selectInstructionSupersessionCandidate(
+    task.issue,
+    task.comments,
+    state,
+  )
+  if (!candidate) {
+    for (const record of state.instructionSupersessions ?? []) {
+      for (const event of instructionSupersessionAuditEvents(record)) {
+        await store.appendEventOnce(event.eventId, event)
+      }
+    }
+    return { status: "none" }
+  }
+
+  const claimRecords = await claimStore.inspectInstructionClaims(
+    {
+      instructionIds: [candidate.instructionId, ...candidate.supersedes],
+      originIssueNumber: state.task.originIssueNumber,
+    },
+    { issueClaim },
+  )
+  const decision = instructionSupersessionDecision({
+    issue: task.issue,
+    comments: task.comments,
+    state,
+    supersedingInstruction: candidate,
+    claimRecords,
+  })
+  if (!decision.accepted) {
+    return {
+      status: "rejected",
+      supersedingInstructionId: candidate.instructionId,
+      rejection: decision.rejection,
+    }
+  }
+
+  const priorStatus = state.status
+  const record = decision.value.alreadyApplied
+    ? decision.value.record
+    : recordInstructionSupersession(state, decision.value)
+  if (!decision.value.alreadyApplied) {
+    await store.save(state)
+    if (
+      state.stateRevision !== record.committedStateRevision ||
+      state.status !== priorStatus
+    ) {
+      throw new Error("Instruction supersession state commit drifted")
+    }
+  }
+  for (const event of instructionSupersessionAuditEvents(record)) {
+    await store.appendEventOnce(event.eventId, event)
+  }
+  return {
+    status: decision.value.alreadyApplied ? "reconciled" : "applied",
+    supersessionId: record.supersessionId,
+    supersedingInstructionId: record.supersedingInstructionId,
+    supersededInstructionIds: record.supersededInstructionIds,
+    stateRevision: state.stateRevision,
+  }
 }
 
 function unwrap(result, operation) {
@@ -468,6 +543,33 @@ export async function runRepositoryIssue(
         }
       }
 
+      const supersession = await reconcilePendingInstructionSupersession({
+        state: currentState,
+        task,
+        store,
+        claimStore,
+        issueClaim: claimedIssue,
+      })
+      if (supersession.status === "rejected") {
+        return {
+          issueNumber,
+          instructionId: supersession.supersedingInstructionId,
+          status: "instruction_supersession_rejected",
+          rejectionCode: supersession.rejection.code,
+          claimed: false,
+        }
+      }
+
+      const reconciledInstructionId =
+        new Set(["applied", "reconciled"]).has(supersession.status)
+          ? supersession.supersedingInstructionId
+          : null
+      requireInstructionSupersessionReconciliation({
+        issue: task.issue,
+        comments: task.comments,
+        state: currentState,
+        reconciledInstructionId,
+      })
       const selection = durableTaskInstructionDecision({
         state: currentState,
         task,
@@ -532,7 +634,13 @@ export async function runRepositoryIssue(
         },
         async () => {
           const orchestrator = new OrchestratorClass(
-            { ...baseConfig, command: "once", issueNumber },
+            {
+              ...baseConfig,
+              command: "once",
+              issueNumber,
+              instructionSupersessionReconciledInstructionId:
+                reconciledInstructionId,
+            },
             { controlPlane, store },
           )
           try {

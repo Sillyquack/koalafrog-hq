@@ -14,9 +14,38 @@ agent_control:
   instruction_id: <unique string>
   max_turns: <positive integer>
   owner_approval_required: false
+  supersedes: # optional; requires expected_state_revision
+    - <older pending instruction id>
+  expected_state_revision: <non-negative integer>
   prompt: |
     <instruction sent to Codex>
 ```
+
+`supersedes` and `expected_state_revision` are an optional paired extension.
+They are valid only on a later control that is eligible in the current task
+state. A declaration retires all listed instructions or none of them. Each
+target must occur exactly once earlier on the same issue and must have no run,
+retry, active-instruction, pickup, result, result-correction, or repository
+queue-claim history. The declaration must cover every older eligible pending
+instruction so normal oldest-first ordering remains deterministic.
+
+Supersession runs only through repository orchestration while its per-issue
+claim is held. The runtime binds the declaration to the issue, exact task
+status, no active instruction, and `expected_state_revision`; inspects every
+target's repository-wide claim record; then persists one all-target state
+transaction using the state revision CAS. It does not claim or execute a
+target, create pickup/result packets, add runs/retries, or change task status.
+Direct task orchestration fails closed until this repository reconciliation is
+durable.
+
+The append-only `instructionSupersessions` state ledger records the controlling
+and target control digests, their ordering, prior eligibility, issue and state
+binding, and committed revision. One idempotent `instruction_superseded` event
+is then appended for each target. Selection cannot begin until every audit
+event is durable; a restart after a partial event append reconstructs the
+missing events from the atomic state record before continuing. Historical
+controls remain present, while the selector excludes their durably superseded
+IDs. Supersession records are retirement evidence, never execution results.
 
 For a new task, the block must be in the body of an open issue so the bounded
 repository search can discover it. Pull requests, prose-only mentions, and
@@ -25,7 +54,8 @@ origin issue has persisted local state.
 
 The orchestrator selects the oldest unconsumed explicit instruction using
 durable run history, repository-wide claim records, and existing
-`agent_result` comments. A pending control is eligible only when its declared
+`agent_result` comments, excluding IDs in validated durable supersession
+records. A pending control is eligible only when its declared
 `task_state` exactly matches the persisted current task state. A stale mismatch
 stays unconsumed while oldest-to-newest scanning continues to the next pending
 control. An `instruction_id` is unique across the repository and executes at

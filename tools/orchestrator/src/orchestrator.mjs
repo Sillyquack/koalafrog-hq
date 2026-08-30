@@ -19,6 +19,7 @@ import {
   formatPickupPacket,
   listAgentControls,
   ownerGateReason,
+  requireInstructionSupersessionReconciliation,
   shouldConsumeInstruction,
 } from "./control-plane.mjs"
 import { GithubControlPlane } from "./github-control-plane.mjs"
@@ -2536,6 +2537,13 @@ export class Orchestrator {
       })
       await this.#save(state)
     }
+    requireInstructionSupersessionReconciliation({
+      issue: task.issue,
+      comments: task.comments,
+      state,
+      reconciledInstructionId:
+        this.config.instructionSupersessionReconciledInstructionId ?? null,
+    })
     const instructionDecision = durableTaskInstructionDecision({
       state,
       task,
