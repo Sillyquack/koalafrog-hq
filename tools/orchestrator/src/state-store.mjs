@@ -17,7 +17,7 @@ import {
 } from "./durable-filesystem.mjs"
 import { normalizeTurnAccounting } from "./turn-accounting.mjs"
 
-export const currentStateSchemaVersion = 11
+export const currentStateSchemaVersion = 12
 
 const stateLockAttempts = 400
 const stateLockDelayMs = 5
@@ -98,7 +98,9 @@ function stateTransactionIdentity(contents) {
 function validStateTransaction(predecessor, successor) {
   if (
     successor?.kind !== "state" ||
-    !new Set([9, 10, currentStateSchemaVersion]).has(successor.schemaVersion)
+    !new Set([9, 10, 11, currentStateSchemaVersion]).has(
+      successor.schemaVersion,
+    )
   ) {
     return false
   }
@@ -318,6 +320,7 @@ export function initialState({ repository, issueNumber, issueUrl = null }) {
     checkpointActivationRecoveries: [],
     terminalityReconciliations: [],
     instructionSupersessions: [],
+    terminalCloseouts: [],
     runs: [],
     updatedAt: new Date().toISOString(),
   }
@@ -366,8 +369,12 @@ export function migrateState(state, { repository, issueNumber }) {
     state.terminalityReconciliations ??= []
   }
   if (state.schemaVersion === 10) {
-    state.schemaVersion = currentStateSchemaVersion
+    state.schemaVersion = 11
     state.instructionSupersessions ??= []
+  }
+  if (state.schemaVersion === 11) {
+    state.schemaVersion = currentStateSchemaVersion
+    state.terminalCloseouts ??= []
   }
   if (state.schemaVersion !== currentStateSchemaVersion) {
     throw new Error(`Unsupported state schema: ${state.schemaVersion}`)
@@ -392,8 +399,12 @@ export function migrateState(state, { repository, issueNumber }) {
   state.checkpointActivationRecoveries ??= []
   state.terminalityReconciliations ??= []
   state.instructionSupersessions ??= []
+  state.terminalCloseouts ??= []
   if (!Array.isArray(state.instructionSupersessions)) {
     throw new Error("Persisted instruction supersession ledger is malformed")
+  }
+  if (!Array.isArray(state.terminalCloseouts)) {
+    throw new Error("Persisted terminal closeout ledger is malformed")
   }
   durableRevision(state.stateRevision)
   return normalizeTurnAccounting(state)

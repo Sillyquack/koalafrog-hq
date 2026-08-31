@@ -84,6 +84,10 @@ Use a repository-wide unique `instruction_id`. Eligibility is explicit:
   `needs_owner` and reuses the issue's persisted worktree/thread.
 - `action: stop` consumes the explicit stop without starting a Codex turn.
 
+A normal stop preserves the existing non-terminal semantics. Durable `done`
+requires a terminal closeout control in `needs_review`; see the control-plane
+contract below.
+
 `owner_approval_required: true` always produces `needs_owner`. The effective
 turn limit is the lower of the issue's `max_turns` and the local service limit.
 See `docs/agent-orchestration/AGENT_TASK_TEMPLATE.md` for the exact shape.
@@ -133,6 +137,32 @@ task status is unchanged, and selection waits until the idempotent
 `watch` or `--auto-commit`; direct `orchestrator:once` rejects an unapplied
 declaration. See `docs/agent-orchestration/CONTROL_PLANE.md` for the complete
 contract and fail-closed target rules.
+
+A terminal closeout is the only supported `needs_review -> done` transition.
+It is deliberately narrower than normal repository execution: the control
+must bind the exact schema-12 revision and last-consumed instruction, the
+GitHub issue must already be closed, and the runtime must prove there are no
+active claims, retries, mutation grants, broker receipts, or incomplete result
+publications. It retires every remaining cross-state control and interrupted
+approval request as append-only non-execution evidence in the same state CAS.
+It never starts Codex or creates pickup/result/run/retry history.
+
+Run it only as one explicit bounded issue:
+
+```sh
+npm run orchestrator:repository:once -- \
+  --checkout "$PWD" \
+  --codex-bin /Applications/ChatGPT.app/Contents/Resources/codex \
+  --issue 70 \
+  --terminal-closeout
+```
+
+`--terminal-closeout` requires `once`, an explicit `--issue`, and no
+`--auto-commit`. It is never used by repository-wide watch. Closed issues stay
+ineligible for every normal control path; the flag permits only readback and
+validation of the terminal stop control. Schema 11 migrates once to schema 12
+by adding an empty `terminalCloseouts` ledger and advancing the state revision;
+older runtimes reject schema-12 state.
 
 Use `node tools/orchestrator/bin/orchestrator.mjs help` for every bounded-turn,
 timeout, retry, polling, model, state, and worktree option.
