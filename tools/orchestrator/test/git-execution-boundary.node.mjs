@@ -1,6 +1,7 @@
 import assert from "node:assert/strict"
 import { execFile } from "node:child_process"
 import { createHash } from "node:crypto"
+import { EventEmitter } from "node:events"
 import {
   mkdtemp,
   mkdir,
@@ -34,6 +35,7 @@ import {
   authorizedGitExecutionBoundary,
   durableTaskInstructionDecision,
   executeGitReconciliationCheckpointMutation,
+  executePinnedGit,
   gitExecutionBoundaryIsCurrent,
   gitExecutionBoundaryPrompt,
   gitExecutionPathIsCovered,
@@ -81,6 +83,10 @@ import {
 const execFileAsync = promisify(execFile)
 const issue63OwnerAck027NoMutationStatement =
   "No fallback path, sibling metadata access, source change, or production-side action occurred."
+const issue63OwnerAck027ProductionReadback =
+  "Fully qualified receipt/checkpoint binding: preflight **PASS**"
+const brokerLifecycleStressIterations =
+  process.env.KOALAFROG_BROKER_LIFECYCLE_STRESS_ITERATIONS === "20" ? 20 : 1
 
 function deferredBarrier() {
   let resolve
@@ -88,6 +94,163 @@ function deferredBarrier() {
     resolve = resolve_
   })
   return { promise, resolve }
+}
+
+class InjectedBrokerInput extends EventEmitter {
+  constructor() {
+    super()
+    this.destroyed = false
+    this.writable = true
+    this.writableEnded = false
+    this.writableFinished = false
+    this.writes = []
+    this.onWrite = null
+    this.onEnd = null
+  }
+
+  write(value, callback) {
+    this.writes.push(String(value))
+    this.onWrite?.(String(value))
+    if (typeof callback === "function") queueMicrotask(() => callback(null))
+    return true
+  }
+
+  end(value, callback) {
+    if (value != null) this.writes.push(String(value))
+    this.writableEnded = true
+    this.writable = false
+    this.onEnd?.(value == null ? "" : String(value))
+    if (typeof callback === "function") {
+      queueMicrotask(() => {
+        this.writableFinished = true
+        callback(null)
+      })
+    }
+    return this
+  }
+
+  closeUnexpectedly() {
+    this.destroyed = true
+    this.writable = false
+    this.emit("close")
+  }
+}
+
+function injectedBrokerFixture({ autoCloseOnKill = true } = {}) {
+  const child = new EventEmitter()
+  const stdin = new InjectedBrokerInput()
+  const stdout = new EventEmitter()
+  const stderr = new EventEmitter()
+  const response = new EventEmitter()
+  let closed = false
+  let killInvocations = 0
+  child.killed = false
+  child.exitCode = null
+  child.signalCode = null
+  child.stdin = stdin
+  child.stdout = stdout
+  child.stderr = stderr
+  child.stdio = Array(10).fill(null)
+  child.stdio[9] = response
+
+  const closeChild = (code = 0, signal = null) => {
+    if (closed) return false
+    closed = true
+    child.exitCode = code
+    child.signalCode = signal
+    child.emit("exit", code, signal)
+    child.emit("close", code, signal)
+    return true
+  }
+  child.kill = (signal) => {
+    killInvocations += 1
+    if (
+      child.killed ||
+      child.exitCode != null ||
+      child.signalCode != null
+    ) {
+      return false
+    }
+    child.killed = true
+    if (autoCloseOnKill) {
+      queueMicrotask(() => closeChild(null, signal))
+    }
+    return true
+  }
+
+  const listenerCount = () =>
+    child.listenerCount("error") +
+    child.listenerCount("exit") +
+    child.listenerCount("close") +
+    stdin.listenerCount("error") +
+    stdin.listenerCount("close") +
+    stdout.listenerCount("data") +
+    stderr.listenerCount("data") +
+    response.listenerCount("data") +
+    response.listenerCount("error") +
+    response.listenerCount("end") +
+    response.listenerCount("close")
+
+  return {
+    child,
+    stdin,
+    stdout,
+    stderr,
+    response,
+    closeChild,
+    listenerCount,
+    spawnBroker: () => child,
+    get killInvocations() {
+      return killInvocations
+    },
+  }
+}
+
+async function settleInjectedBroker(promise, timeoutMs = 1_000) {
+  let timer = null
+  try {
+    return await Promise.race([
+      promise,
+      new Promise((_, reject) => {
+        timer = setTimeout(() => {
+          reject(new Error("injected broker probe timed out"))
+        }, timeoutMs)
+      }),
+    ])
+  } finally {
+    if (timer) clearTimeout(timer)
+  }
+}
+
+function observedSettlement(promise) {
+  let count = 0
+  return {
+    promise: promise.then(
+      (value) => {
+        count += 1
+        return value
+      },
+      (error) => {
+        count += 1
+        throw error
+      },
+    ),
+    count: () => count,
+  }
+}
+
+function injectedExecution(fixture, options = {}) {
+  return executePinnedGit([], {
+    boundaryRequest: {},
+    spawnBroker: fixture.spawnBroker,
+    ...options,
+  })
+}
+
+function assertBrokerLost(error, causeCode = null) {
+  assert.equal(error.code, "BROKER_LOST")
+  if (causeCode != null) assert.equal(error.cause?.code, causeCode)
+  return true
 }
 
 async function git(cwd, ...args) {
@@ -1227,9 +1390,9 @@ async function completedGenerationActivationRecoverySetup(t) {
   sourceRun.completedAt = "2026-08-24T09:00:00.000Z"
   sourceRun.resultArtifact.turnId = "turn-owner-ack-027"
   const priorNoMutationStatement = sourceRun.productionReadback[0]
-  sourceRun.productionReadback = [issue63OwnerAck027NoMutationStatement]
+  sourceRun.productionReadback = [issue63OwnerAck027ProductionReadback]
   sourceRun.resultArtifact.findings.productionReadback = [
-    issue63OwnerAck027NoMutationStatement,
+    issue63OwnerAck027ProductionReadback,
   ]
   sourceRun.resultArtifact.finalMessage =
     sourceRun.resultArtifact.finalMessage.replace(
@@ -3115,6 +3278,30 @@ test("completed #63 owner acknowledgement 027 reconstructs its exact generation-
 
 test("exact live #63 acknowledgement 027 safe-stop evidence passes mutation classification without weakening result binding", async (t) => {
   const setup = await completedGenerationActivationRecoverySetup(t)
+  const sourceRun = setup.state.runs.at(-1)
+  assert.deepEqual(sourceRun.productionReadback, [
+    issue63OwnerAck027ProductionReadback,
+  ])
+  assert.deepEqual(
+    sourceRun.resultArtifact.findings.productionReadback,
+    sourceRun.productionReadback,
+  )
+  assert.ok(
+    sourceRun.resultArtifact.finalMessage.endsWith(
+      `- Push/PR: **NOT ATTEMPTED**\n\n${issue63OwnerAck027NoMutationStatement}`,
+    ),
+  )
+
+  const authorizedRecovery = recoverCompletedCheckpointActivation({
+    state: structuredClone(setup.state),
+    task: structuredClone(setup.task),
+  })
+  assert.equal(
+    authorizedRecovery.accepted,
+    true,
+    JSON.stringify(authorizedRecovery),
+  )
+
   const missingResultTask = structuredClone(setup.task)
   missingResultTask.comments = missingResultTask.comments.filter(
     (comment) => comment.id !== 2702,
@@ -3159,11 +3346,9 @@ test("exact live #63 acknowledgement 027 safe-stop evidence passes mutation clas
   ]
   for (const { value, predicate } of manipulatedStatements) {
     const state = structuredClone(setup.state)
-    const sourceRun = state.runs.at(-1)
-    sourceRun.productionReadback = [value]
-    sourceRun.resultArtifact.findings.productionReadback = [value]
-    sourceRun.resultArtifact.finalMessage =
-      sourceRun.resultArtifact.finalMessage.replace(
+    const manipulatedRun = state.runs.at(-1)
+    manipulatedRun.resultArtifact.finalMessage =
+      manipulatedRun.resultArtifact.finalMessage.replace(
         issue63OwnerAck027NoMutationStatement,
         value,
       )
@@ -3179,6 +3364,109 @@ test("exact live #63 acknowledgement 027 safe-stop evidence passes mutation clas
     )
     assert.equal(rejected.rejection.predicate, predicate, value)
   }
+
+  const manipulatedReadbacks = [
+    [],
+    ["Fully qualified receipt/checkpoint binding: preflight PASS"],
+    ["Fully qualified receipt/checkpoint binding: preflight **FAILED**"],
+    [issue63OwnerAck027ProductionReadback, "Additional readback"],
+    ["Additional readback", issue63OwnerAck027ProductionReadback],
+  ]
+  for (const productionReadback of manipulatedReadbacks) {
+    const state = structuredClone(setup.state)
+    const manipulatedRun = state.runs.at(-1)
+    manipulatedRun.productionReadback = productionReadback
+    manipulatedRun.resultArtifact.findings.productionReadback =
+      structuredClone(productionReadback)
+    const rejected = recoverCompletedCheckpointActivation({
+      state,
+      task: structuredClone(setup.task),
+    })
+    assert.equal(rejected.accepted, false, JSON.stringify(productionReadback))
+    assert.equal(
+      rejected.rejection.code,
+      "checkpoint_activation_recovery_mutation_evidence",
+      JSON.stringify(productionReadback),
+    )
+    assert.equal(
+      rejected.rejection.predicate,
+      "checkpoint_historical_mutation_ambiguous",
+      JSON.stringify(productionReadback),
+    )
+  }
+
+  const wrongInstructionState = structuredClone(setup.state)
+  wrongInstructionState.runs.at(-1).instructionId =
+    "production-day1-git-reconciliation-checkpoint-generation-activation-owner-ack-028"
+  const wrongInstruction = recoverCompletedCheckpointActivation({
+    state: wrongInstructionState,
+    task: structuredClone(setup.task),
+  })
+  assert.equal(wrongInstruction.accepted, false)
+  assert.equal(
+    wrongInstruction.rejection.code,
+    "checkpoint_activation_recovery_run_count",
+  )
+
+  const unrelatedMutationState = structuredClone(setup.state)
+  const unrelatedMutationRun = unrelatedMutationState.runs.at(-1)
+  unrelatedMutationRun.safetyFindings = ["Source change occurred."]
+  unrelatedMutationRun.resultArtifact.findings.safetyFindings = [
+    "Source change occurred.",
+  ]
+  const unrelatedMutation = recoverCompletedCheckpointActivation({
+    state: unrelatedMutationState,
+    task: structuredClone(setup.task),
+  })
+  assert.equal(unrelatedMutation.accepted, false)
+  assert.equal(
+    unrelatedMutation.rejection.code,
+    "checkpoint_activation_recovery_mutation_evidence",
+  )
+  assert.equal(
+    unrelatedMutation.rejection.predicate,
+    "checkpoint_historical_mutation_ambiguous",
+  )
+
+  const changedSourceState = structuredClone(setup.state)
+  const changedSourceRun = changedSourceState.runs.at(-1)
+  changedSourceRun.safetyFindings = ["Source changed."]
+  changedSourceRun.resultArtifact.findings.safetyFindings = ["Source changed."]
+  const changedSource = recoverCompletedCheckpointActivation({
+    state: changedSourceState,
+    task: structuredClone(setup.task),
+  })
+  assert.equal(changedSource.accepted, false)
+  assert.equal(
+    changedSource.rejection.code,
+    "checkpoint_activation_recovery_mutation_evidence",
+  )
+  assert.equal(
+    changedSource.rejection.predicate,
+    "checkpoint_historical_mutation_ambiguous",
+  )
+
+  const changedPushState = structuredClone(setup.state)
+  const changedPushRun = changedPushState.runs.at(-1)
+  changedPushRun.branchPushState = [
+    ...changedPushRun.branchPushState.slice(0, -1),
+    "Push/PR: **ATTEMPTED**",
+  ]
+  changedPushRun.resultArtifact.findings.branchPushState =
+    structuredClone(changedPushRun.branchPushState)
+  const changedPush = recoverCompletedCheckpointActivation({
+    state: changedPushState,
+    task: structuredClone(setup.task),
+  })
+  assert.equal(changedPush.accepted, false)
+  assert.equal(
+    changedPush.rejection.code,
+    "checkpoint_activation_recovery_mutation_evidence",
+  )
+  assert.equal(
+    changedPush.rejection.predicate,
+    "checkpoint_historical_mutation_ambiguous",
+  )
 
   const contradictedFinalState = structuredClone(setup.state)
   const contradictedFinalRun = contradictedFinalState.runs.at(-1)
@@ -5035,6 +5323,199 @@ test("managed checkpoint execution writes only the selected linked worktree and 
   assert.deepEqual(await fileSnapshot(siblingGitDirectory), siblingBefore)
 })
 
+test("injected broker channel loss fails closed at every pending protocol phase", async (t) => {
+  await t.test("stdin EPIPE during the pending request preserves its cause", async () => {
+    const fixture = injectedBrokerFixture()
+    const pending = injectedExecution(fixture)
+    const error = new Error("broken pipe")
+    error.code = "EPIPE"
+    fixture.stdin.emit("error", error)
+    await assert.rejects(
+      settleInjectedBroker(pending),
+      (rejection) => assertBrokerLost(rejection, "EPIPE"),
+    )
+    assert.equal(fixture.killInvocations, 1)
+    assert.equal(fixture.listenerCount(), 0)
+  })
+
+  await t.test("response end before BOUNDARY_READY", async () => {
+    const fixture = injectedBrokerFixture()
+    const pending = injectedExecution(fixture)
+    fixture.response.emit("end")
+    await assert.rejects(settleInjectedBroker(pending), assertBrokerLost)
+    assert.equal(fixture.killInvocations, 1)
+    assert.equal(fixture.listenerCount(), 0)
+  })
+
+  await t.test("response close before BOUNDARY_READY", async () => {
+    const fixture = injectedBrokerFixture()
+    const pending = injectedExecution(fixture)
+    fixture.response.emit("close")
+    await assert.rejects(settleInjectedBroker(pending), assertBrokerLost)
+    assert.equal(fixture.killInvocations, 1)
+    assert.equal(fixture.listenerCount(), 0)
+  })
+
+  await t.test(
+    "response EOF after BOUNDARY_READY but before MUTATION_COMMITTED",
+    async () => {
+      const fixture = injectedBrokerFixture()
+      const pending = injectedExecution(fixture, {
+        afterMutation: async () => {},
+      })
+      fixture.response.emit("data", Buffer.from("BOUNDARY_READY\n"))
+      fixture.response.emit("end")
+      await assert.rejects(settleInjectedBroker(pending), assertBrokerLost)
+      assert.equal(fixture.killInvocations, 1)
+      assert.equal(fixture.listenerCount(), 0)
+    },
+  )
+
+  await t.test("unexpected stdin close before intentional end", async () => {
+    const fixture = injectedBrokerFixture()
+    const pending = injectedExecution(fixture)
+    fixture.stdin.closeUnexpectedly()
+    await assert.rejects(settleInjectedBroker(pending), assertBrokerLost)
+    assert.equal(fixture.killInvocations, 1)
+    assert.equal(fixture.listenerCount(), 0)
+  })
+
+  await t.test("child success exit before required response", async () => {
+    const fixture = injectedBrokerFixture()
+    const pending = injectedExecution(fixture)
+    fixture.closeChild(0, null)
+    await assert.rejects(settleInjectedBroker(pending), assertBrokerLost)
+    assert.equal(fixture.killInvocations, 0)
+    assert.equal(fixture.listenerCount(), 0)
+  })
+
+  await t.test("terminal response loss permits no later control write", async () => {
+    const fixture = injectedBrokerFixture()
+    const pending = injectedExecution(fixture)
+    fixture.response.emit("end")
+    await assert.rejects(settleInjectedBroker(pending), assertBrokerLost)
+    fixture.response.emit("data", Buffer.from("BOUNDARY_READY\n"))
+    await Promise.resolve()
+    assert.equal(fixture.stdin.writes.length, 1)
+    assert.equal(fixture.killInvocations, 1)
+    assert.equal(fixture.listenerCount(), 0)
+  })
+
+  await t.test("an already exited child is never killed again", async () => {
+    const fixture = injectedBrokerFixture()
+    fixture.child.exitCode = 0
+    const pending = injectedExecution(fixture)
+    fixture.closeChild(0, null)
+    await assert.rejects(settleInjectedBroker(pending), assertBrokerLost)
+    assert.equal(fixture.killInvocations, 0)
+    assert.equal(fixture.listenerCount(), 0)
+  })
+})
+
+test("injected broker terminal races settle once without leaking lifecycle listeners", async (t) => {
+  await t.test("response EOF versus child exit", async () => {
+    const fixture = injectedBrokerFixture()
+    const observed = observedSettlement(injectedExecution(fixture))
+    fixture.response.emit("end")
+    fixture.closeChild(0, null)
+    await assert.rejects(
+      settleInjectedBroker(observed.promise),
+      assertBrokerLost,
+    )
+    await Promise.resolve()
+    assert.equal(observed.count(), 1)
+    assert.equal(fixture.killInvocations, 0)
+    assert.equal(fixture.listenerCount(), 0)
+  })
+
+  await t.test("response end and close duplicate callbacks", async () => {
+    const fixture = injectedBrokerFixture()
+    const observed = observedSettlement(injectedExecution(fixture))
+    fixture.response.emit("end")
+    fixture.response.emit("close")
+    await assert.rejects(
+      settleInjectedBroker(observed.promise),
+      assertBrokerLost,
+    )
+    await Promise.resolve()
+    assert.equal(observed.count(), 1)
+    assert.equal(fixture.killInvocations, 1)
+    assert.equal(fixture.listenerCount(), 0)
+  })
+
+  await t.test("stdin EPIPE versus child exit preserves the first cause", async () => {
+    const fixture = injectedBrokerFixture()
+    const observed = observedSettlement(injectedExecution(fixture))
+    const error = new Error("broken pipe")
+    error.code = "EPIPE"
+    fixture.stdin.emit("error", error)
+    fixture.closeChild(0, null)
+    await assert.rejects(
+      settleInjectedBroker(observed.promise),
+      (rejection) => assertBrokerLost(rejection, "EPIPE"),
+    )
+    await Promise.resolve()
+    assert.equal(observed.count(), 1)
+    assert.equal(fixture.killInvocations, 1)
+    assert.equal(fixture.listenerCount(), 0)
+  })
+
+  await t.test("repeated terminateBroker calls perform one kill", async () => {
+    const fixture = injectedBrokerFixture()
+    let terminationResults = null
+    const observed = observedSettlement(
+      injectedExecution(fixture, {
+        beforeMutation: ({ terminateBroker }) => {
+          terminationResults = [terminateBroker(), terminateBroker()]
+        },
+      }),
+    )
+    fixture.response.emit("data", Buffer.from("BOUNDARY_READY\n"))
+    await assert.rejects(
+      settleInjectedBroker(observed.promise),
+      assertBrokerLost,
+    )
+    await Promise.resolve()
+    assert.deepEqual(terminationResults, [true, false])
+    assert.equal(observed.count(), 1)
+    assert.equal(fixture.stdin.writes.length, 1)
+    assert.equal(fixture.killInvocations, 1)
+    assert.equal(fixture.listenerCount(), 0)
+  })
+
+  await t.test(
+    "successful final response and immediate child exit tolerate response close",
+    async () => {
+      const fixture = injectedBrokerFixture()
+      fixture.stdin.onWrite = (value) => {
+        if (value === "continue\n") {
+          fixture.response.emit(
+            "data",
+            Buffer.from("MUTATION_COMMITTED\n"),
+          )
+        }
+      }
+      fixture.stdin.onEnd = (value) => {
+        assert.equal(value, "verify\n")
+        fixture.stdout.emit("data", Buffer.from('{"receipt":true}\n'))
+        fixture.response.emit("end")
+        fixture.response.emit("close")
+        fixture.closeChild(0, null)
+      }
+      const observed = observedSettlement(
+        injectedExecution(fixture, { afterMutation: async () => {} }),
+      )
+      fixture.response.emit("data", Buffer.from("BOUNDARY_READY\n"))
+      const result = await settleInjectedBroker(observed.promise)
+      await Promise.resolve()
+      assert.equal(result.stdout, '{"receipt":true}\n')
+      assert.equal(observed.count(), 1)
+      assert.equal(fixture.killInvocations, 0)
+      assert.equal(fixture.listenerCount(), 0)
+    },
+  )
+})
+
 test("fixed mutation broker serializes duplicate cooperating executions", async (t) => {
   const setup = await managedExecutionSetup(t)
   const prepared = await prepareGitReconciliationCheckpointExecution(setup.input)
@@ -5069,42 +5550,101 @@ test("fixed mutation broker loss before mutation fails closed", async (t) => {
   const setup = await managedExecutionSetup(t)
   const prepared = await prepareGitReconciliationCheckpointExecution(setup.input)
   assert.equal(prepared.accepted, true)
+  let terminationResults = null
   const result = await executeGitReconciliationCheckpointMutation({
     plan: prepared.value,
     continueAfterBeforeExecute: true,
     beforeExecute: async ({ terminateBroker }) => {
-      terminateBroker()
+      terminationResults = [terminateBroker(), terminateBroker()]
     },
   })
   assert.equal(result.accepted, false)
   assert.equal(result.rejection.code, "managed_execution_broker_lost")
+  assert.deepEqual(terminationResults, [true, false])
   assert.equal(await git(setup.workspacePath, "rev-parse", "HEAD"), setup.head)
 })
 
 test("broker termination after mutation reconciles one receipt without replay", async (t) => {
+  for (
+    let iteration = 1;
+    iteration <= brokerLifecycleStressIterations;
+    iteration += 1
+  ) {
+    await t.test(`iteration ${iteration}`, async (t) => {
+      const setup = await managedExecutionSetup(t)
+      const prepared = await prepareGitReconciliationCheckpointExecution(
+        setup.input,
+      )
+      assert.equal(prepared.accepted, true)
+      setup.state.gitReconciliationCheckpoints.push(prepared.value.record)
+      let terminationResults = null
+      const interrupted = await executeGitReconciliationCheckpointMutation({
+        plan: prepared.value,
+        afterExecuteMutation: async ({ terminateBroker }) => {
+          terminationResults = [terminateBroker(), terminateBroker()]
+        },
+      })
+      assert.equal(interrupted.accepted, false)
+      assert.deepEqual(terminationResults, [true, false])
+      assert.equal(
+        await git(
+          setup.workspacePath,
+          "rev-list",
+          "--count",
+          `${setup.head}..HEAD`,
+        ),
+        "1",
+      )
+      const recovered = await prepareGitReconciliationCheckpointExecution(
+        setup.input,
+      )
+      assert.equal(recovered.accepted, true, JSON.stringify(recovered))
+      assert.equal(recovered.value.mode, "recover")
+      assert.equal(recovered.value.isNewReceipt, true)
+      setup.state.gitReconciliationCheckpoints.push(recovered.value.receipt)
+      const replay = await prepareGitReconciliationCheckpointExecution(
+        setup.input,
+      )
+      assert.equal(replay.accepted, true)
+      assert.equal(replay.value.mode, "complete")
+      assert.equal(
+        setup.state.gitReconciliationCheckpoints.filter(
+          (record) => record.kind === "execution_intent",
+        ).length,
+        1,
+      )
+      assert.equal(
+        setup.state.gitReconciliationCheckpoints.filter(
+          (record) => record.kind === "execution_receipt",
+        ).length,
+        1,
+      )
+      assert.equal(
+        await git(
+          setup.workspacePath,
+          "rev-list",
+          "--count",
+          `${setup.head}..HEAD`,
+        ),
+        "1",
+      )
+    })
+  }
+})
+
+test("broker post-mutation verification succeeds after a no-op lifecycle hook", async (t) => {
   const setup = await managedExecutionSetup(t)
   const prepared = await prepareGitReconciliationCheckpointExecution(setup.input)
   assert.equal(prepared.accepted, true)
-  setup.state.gitReconciliationCheckpoints.push(prepared.value.record)
-  const interrupted = await executeGitReconciliationCheckpointMutation({
+  const result = await executeGitReconciliationCheckpointMutation({
     plan: prepared.value,
-    afterExecuteMutation: async ({ terminateBroker }) => {
-      terminateBroker()
-    },
+    afterExecuteMutation: async () => {},
   })
-  assert.equal(interrupted.accepted, false)
+  assert.equal(result.accepted, true, JSON.stringify(result))
   assert.equal(
-    await git(setup.workspacePath, "rev-list", "--count", `${setup.head}..HEAD`),
-    "1",
+    result.value.brokerReceipt.executionId,
+    prepared.value.record.executionId,
   )
-  const recovered = await prepareGitReconciliationCheckpointExecution(setup.input)
-  assert.equal(recovered.accepted, true, JSON.stringify(recovered))
-  assert.equal(recovered.value.mode, "recover")
-  assert.equal(recovered.value.isNewReceipt, true)
-  setup.state.gitReconciliationCheckpoints.push(recovered.value.receipt)
-  const replay = await prepareGitReconciliationCheckpointExecution(setup.input)
-  assert.equal(replay.accepted, true)
-  assert.equal(replay.value.mode, "complete")
   assert.equal(
     await git(setup.workspacePath, "rev-list", "--count", `${setup.head}..HEAD`),
     "1",
