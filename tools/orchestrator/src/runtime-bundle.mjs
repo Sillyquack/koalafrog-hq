@@ -114,13 +114,9 @@ export async function planRuntimeReleaseFromCheckout({
     "status",
     "--porcelain=v1",
     "--untracked-files=all",
-    "--",
-    "tools/orchestrator",
   ])
   if (sourceStatus !== "") {
-    throw new Error(
-      "Runtime source checkout has uncommitted orchestrator changes",
-    )
+    throw new Error("Runtime source checkout has uncommitted changes")
   }
   const sourceCommit = await git(["rev-parse", "HEAD"])
   const canonicalCommit = await git(["rev-parse", "origin/main"])

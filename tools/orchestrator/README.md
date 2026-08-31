@@ -221,23 +221,46 @@ Rendering is read-only and defaults to the canary policy:
 npm run --silent orchestrator:service -- render | plutil -lint -
 ```
 
+Rendering does not materialize a runtime or write a plist. The supported
+fail-disabled installation stage is explicit:
+
+```sh
+npm run orchestrator:service -- install-disabled
+```
+
+`install-disabled` validates the clean canonical coordinator and immutable
+runtime, performs service/plist/process coexistence checks, materializes and
+verifies the release manifest, and atomically installs the linted plist with
+mode `0600`. It then reads back the plist/hash and proves that the launchd
+target and watcher/broker process tree remain absent. It never calls
+`bootstrap`, `kickstart`, or `load`, rejects `--approve-run-at-load`, and does
+not load task state or perform repository discovery. Repeating it with the same
+identity is idempotent and reports the runtime and plist as unchanged.
+
+The separate `install` command retains the explicit active-install path and may
+bootstrap only after the same preparation succeeds. There is no flag or
+fallthrough from `install-disabled` to that path.
+
 The generated plist has `RunAtLoad=false`, no `KeepAlive`,
 `ExitTimeOut=90`, `ThrottleInterval=60`, `ProcessType=Background`, and
-`Umask=0077`. Only a separately approved post-canary render/install may add
-`--approve-run-at-load`; `KeepAlive` remains absent.
+`Umask=0077`. Only a separately approved active `render`/`install` may add
+`--approve-run-at-load`; disabled installation rejects it and `KeepAlive`
+remains absent.
 
 The installer requires a clean coordinating checkout with the exact GitHub
-origin. It rejects dirty orchestrator source, an already loaded service, a
+origin. It rejects any dirty coordinator state, an already loaded service, a
 running watcher/broker tree, and multiple active plist candidates. Disabled and
 forensic plist copies are inactive evidence. It bundles the fixed allowlist to
 `runtime/releases/<sha256>`, verifies the manifest and canonical commit/tree,
 and writes the new plist atomically with mode `0600`.
 
-If validation or bootstrap fails, the attempted and previous inactive plists,
+An inactive plist at the canonical path is replaced only when its service label
+matches and is preserved first as disabled evidence. If validation, inactive
+readback, or bootstrap fails, the attempted and previous inactive plists,
 runtime release, and diagnostics are preserved, the active plist is removed,
 and the service remains disabled. The installer never bootstraps the previous
-runtime automatically. Rollback therefore means service-disabled unless an
-owner separately approves a future restore mechanism.
+runtime or the newly materialized runtime as recovery. Rollback therefore means
+service-disabled unless an owner separately approves a future restore mechanism.
 
 At startup the watcher recomputes and requires the runtime release, manifest,
 source commit/tree, repository, coordinator, and complete service-profile hash.

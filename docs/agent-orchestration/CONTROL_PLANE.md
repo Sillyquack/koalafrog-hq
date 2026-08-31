@@ -93,6 +93,23 @@ The outer control's action must equal `intended_action`. A wrong ID, digest,
 revision, action, or unrelated control fails closed. Reopen is a new append-only
 record; it does not erase the quarantine or its failure count.
 
+### Service installation boundary
+
+The service CLI keeps preview, disabled installation, and activation as three
+distinct operations. `render` is read-only and does not materialize a runtime
+or write a plist. `install-disabled` validates the clean canonical coordinator,
+materializes and verifies the immutable runtime, performs launchd/plist/process
+coexistence checks, and atomically installs a mode-`0600`, `RunAtLoad=false`
+plist without `KeepAlive`. It never invokes `bootstrap`, `kickstart`, or `load`,
+and rejects `--approve-run-at-load`. Only the separate `install` command may
+enter the explicit active-install path.
+
+Disabled installation proves the launchd target and watcher/broker process tree
+remain absent after plist readback. Any failure after a write preserves the
+attempted and prior inactive plist evidence, removes the active plist, and
+leaves the service disabled. It never restores or starts an older runtime as a
+fallback. Repeating the same disabled identity is idempotent.
+
 ### Control-declared commit permission
 
 Persistent watch never accepts service-wide `--auto-commit`. A control that
