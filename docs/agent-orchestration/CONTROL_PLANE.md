@@ -47,6 +47,77 @@ missing events from the atomic state record before continuing. Historical
 controls remain present, while the selector excludes their durably superseded
 IDs. Supersession records are retirement evidence, never execution results.
 
+### Terminal closeout
+
+A reviewed durable task may transition from `needs_review` to `done` only with
+the terminal extension of `action: stop`:
+
+```yaml
+agent_control:
+  action: stop
+  task_state: needs_review
+  terminal_state: done
+  instruction_id: <unique closeout instruction id>
+  expected_state_revision: <exact current schema-12 revision>
+  owner_approval_required: false
+  closeout:
+    expected_last_consumed_instruction_id: <exact prior instruction id>
+    retire_all_unconsumed_controls: true
+    supersede_pending_approvals: true
+    require_no_active_claims: true
+    require_origin_issue_closed: true
+  max_turns: 1
+  prompt: |
+    Append-only terminal closeout only.
+```
+
+Every terminal field is mandatory and `done` is the only terminal target.
+`terminal_state` is invalid on `start`, `continue`, or a normal stop. Legacy
+controls retain their original parsed shape and behavior.
+
+Terminal closeout is control-plane work, not a Codex instruction. It never
+creates an instruction claim, pickup, result, run, retry, turn, worktree, or
+Git mutation. It is available only through repository
+`once --issue N --terminal-closeout`; it is forbidden in `watch`, cannot be combined with
+`--auto-commit`, and does not make any normal control on a closed issue
+executable. Normal discovery continues to inspect open issues only.
+
+While the per-issue queue lease is held, the runtime reads the authoritative
+GitHub issue and requires it to be closed. It inspects every control regardless
+of declared task state and every repository claim identity. Controls already
+consumed by durable run/result history or retired by normal supersession remain
+historical. Every other control must be unique, unclaimed, inactive, and free
+of pickup/retry/result-correction history; all such controls are retired across
+every future task state with `reason: terminal_closeout` and
+`executionOccurred: false`. Historical controls are never deleted or rewritten.
+
+Uncleared interrupted approval requests are bound to their exact scope, reason
+digest, request identities, and source instruction, then changed to
+`terminally_retired`. The original request stays visible. No approval decision
+or owner acknowledgement is fabricated, and an expired request can never
+authorize an action.
+
+One schema-12 state CAS binds the expected revision, `needs_review`, no active
+instruction or claim, the exact prior last-consumed instruction, no retry or
+unresolved mutation/broker/result-publication residue, all cross-state
+retirements, all approval tombstones, and the closed GitHub observation. It
+then records one `terminalCloseouts` ledger entry, sets `status: done`, records
+`originIssueClosed: true`, and consumes only the closeout control identity.
+Validation drift leaves all state unchanged.
+
+The append-only `task_terminally_closed` event includes prior/terminal state,
+expected/committed revisions, GitHub closed-state binding, claim-inspection
+digest, retired control IDs, approval keys, and `executionOccurred: false`.
+`instruction_terminally_retired` and `approval_terminally_retired` events add
+per-record evidence. A restart after the state CAS reconstructs any missing
+events idempotently. A `done` task, or any state carrying terminal-closeout
+evidence, is never normally selectable even if its status is later corrupted.
+Reopening a terminal task is intentionally unsupported.
+
+Closing the GitHub issue and reaching durable `done` are separate facts. The
+former is an external precondition observed read-only; only the terminal state
+CAS establishes the latter.
+
 For a new task, the block must be in the body of an open issue so the bounded
 repository search can discover it. Pull requests, prose-only mentions, and
 malformed blocks are ineligible. Follow-up blocks may be comments once the
@@ -70,8 +141,10 @@ the owner resumes work by adding a fresh uniquely identified control block.
 
 `start` is eligible with `ready` or `failed`. `continue` is eligible with
 `ready`, `failed`, `needs_review`, or `needs_owner`. An explicit `stop` is
-consumed without a Codex turn. `owner_approval_required: true` fails closed to
-`needs_owner`, and the effective turn budget never exceeds the local limit.
+consumed without a Codex turn. A normal stop does not produce `done`; only the
+revision-bound terminal closeout above can do that.
+`owner_approval_required: true` fails closed to `needs_owner`, and the effective turn budget never
+exceeds the local limit.
 
 An owner decision for an App Server approval request is a fresh `continue`
 instruction with `task_state: needs_owner`, `owner_approval_required: false`,

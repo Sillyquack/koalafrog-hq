@@ -50,6 +50,7 @@ export function parseConfig(argv, cwd = process.cwd()) {
     model: null,
     allowedPaths: [],
     autoCommit: false,
+    terminalCloseout: false,
     fetchRemote: true,
   }
 
@@ -120,6 +121,9 @@ export function parseConfig(argv, cwd = process.cwd()) {
       case "--auto-commit":
         config.autoCommit = true
         break
+      case "--terminal-closeout":
+        config.terminalCloseout = true
+        break
       case "--skip-fetch":
         config.fetchRemote = false
         break
@@ -142,6 +146,16 @@ export function parseConfig(argv, cwd = process.cwd()) {
   ) {
     throw new Error(
       "Issue, limits, max turns, timeout, poll interval, and retry base must be positive",
+    )
+  }
+  if (
+    config.terminalCloseout &&
+    (config.command !== "once" ||
+      !config.issueNumberExplicit ||
+      config.autoCommit)
+  ) {
+    throw new Error(
+      "--terminal-closeout requires once with one explicit --issue and no --auto-commit",
     )
   }
   return config
@@ -170,5 +184,6 @@ Options:
   --model model                 Optional explicit Codex model
   --allowed-path repo/path      Restrict changed files; repeatable
   --auto-commit                 Commit owned workspace changes after a turn
+  --terminal-closeout           Inspect one explicit closed issue for closeout only
   --skip-fetch                  Do not fetch origin before creating a worktree
 `

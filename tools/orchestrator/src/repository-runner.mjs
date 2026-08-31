@@ -7,6 +7,7 @@ import {
   instructionSupersessionAuditEvents,
   instructionSupersessionDecision,
   isInstructionEligible,
+  listAgentControls,
   recordInstructionSupersession,
   requireInstructionSupersessionReconciliation,
   selectInstructionSupersessionCandidate,
@@ -30,6 +31,13 @@ import {
   StateStore,
 } from "./state-store.mjs"
 import { terminalityReconciliationRecordIsValid } from "./terminality-reconciliation.mjs"
+import {
+  recordTerminalCloseout,
+  selectTerminalCloseoutCandidate,
+  terminalCloseoutAuditEvents,
+  terminalCloseoutDecision,
+  validateTerminalCloseoutRecord,
+} from "./terminal-closeout.mjs"
 
 installTaskThreadPolicy(AppServerClient)
 
@@ -245,6 +253,126 @@ export async function reconcilePendingInstructionSupersession({
     supersededInstructionIds: record.supersededInstructionIds,
     stateRevision: state.stateRevision,
   }
+}
+
+export async function reconcileTerminalCloseout({
+  state,
+  task,
+  store,
+  claimStore,
+  issueClaim,
+}) {
+  if (!issueClaim) return { status: "issue_claim_required" }
+  const candidate = selectTerminalCloseoutCandidate(
+    task.issue,
+    task.comments,
+    state,
+  )
+  if (!candidate) return { status: "none" }
+
+  const controls = listAgentControls(task.issue, task.comments)
+  const instructionIds = [...new Set(controls.map((control) => control.instructionId))]
+  const claimRecords =
+    state.status === "done"
+      ? {}
+      : await claimStore.inspectInstructionClaims(
+          {
+            instructionIds,
+            originIssueNumber: state.task.originIssueNumber,
+          },
+          { issueClaim },
+        )
+  const decision = terminalCloseoutDecision({
+    issue: task.issue,
+    comments: task.comments,
+    state,
+    closeoutInstruction: candidate,
+    claimRecords,
+  })
+  if (!decision.accepted) {
+    return {
+      status: "rejected",
+      closeoutInstructionId: candidate.instructionId,
+      rejection: decision.rejection,
+    }
+  }
+  const record = decision.value.alreadyApplied
+    ? decision.value.record
+    : recordTerminalCloseout(state, decision.value)
+  if (!decision.value.alreadyApplied) {
+    await store.save(state)
+    if (
+      state.stateRevision !== record.committedStateRevision ||
+      state.status !== "done" ||
+      state.task.originIssueClosed !== true
+    ) {
+      throw new Error("Terminal closeout state commit drifted")
+    }
+  }
+  for (const event of terminalCloseoutAuditEvents(record)) {
+    await store.appendEventOnce(event.eventId, event)
+  }
+  return {
+    status: decision.value.alreadyApplied ? "reconciled" : "applied",
+    closeoutId: record.closeoutId,
+    closeoutInstructionId: record.closeoutInstructionId,
+    stateRevision: record.committedStateRevision,
+    retiredInstructionIds: record.retiredInstructionIds,
+    approvalKeys: record.approvalTombstones.map((approval) => approval.key),
+  }
+}
+
+export async function reconcilePersistedTerminalCloseoutAudits(
+  config,
+  { StateStoreClass = StateStore } = {},
+) {
+  const prefix = `${config.repository.replaceAll("/", "-")}-issue-`
+  let entries
+  try {
+    entries = await readdir(config.stateDirectory, { withFileTypes: true })
+  } catch (error) {
+    if (error.code === "ENOENT") return []
+    throw error
+  }
+  const reconciled = []
+  for (const entry of entries) {
+    if (!entry.isDirectory() || !entry.name.startsWith(prefix)) continue
+    const issueNumber = Number.parseInt(entry.name.slice(prefix.length), 10)
+    if (!Number.isSafeInteger(issueNumber) || issueNumber < 1) continue
+    let state
+    try {
+      state = JSON.parse(
+        await readFile(
+          path.join(config.stateDirectory, entry.name, "state.json"),
+          "utf8",
+        ),
+      )
+    } catch (error) {
+      if (error.code === "ENOENT" || error.name === "SyntaxError") continue
+      throw error
+    }
+    if (
+      state.status !== "done" ||
+      state.task?.originIssueNumber !== issueNumber ||
+      !Array.isArray(state.terminalCloseouts) ||
+      state.terminalCloseouts.length === 0
+    ) {
+      continue
+    }
+    const store = new StateStoreClass({
+      stateDirectory: config.stateDirectory,
+      repository: config.repository,
+      issueNumber,
+    })
+    for (const record of state.terminalCloseouts) {
+      validateTerminalCloseoutRecord(record, { state })
+      for (const event of terminalCloseoutAuditEvents(record)) {
+        await store.appendEventOnce(event.eventId, event)
+      }
+    }
+    reconciled.push(issueNumber)
+  }
+  return reconciled
 }
 
 function unwrap(result, operation) {
@@ -472,22 +600,29 @@ export async function runRepositoryIssue(
     repository: baseConfig.repository,
     issueNumber,
   })
-  const task = await controlPlane.fetchTask()
-  const observation = {
-    issueNumber,
-    issueUrl:
-      task.issue?.html_url ??
-      task.issue?.display_url ??
-      task.issue?.url ??
-      candidate.issueUrl ??
-      null,
-    updatedAt:
-      task.issue?.updated_at ?? task.issue?.updatedAt ?? candidate.updatedAt,
-    closed: task.issue?.state === "closed",
-  }
+  // Terminal closeout must bind its closed-issue/control read while holding the
+  // issue lease. Normal polls retain their existing pre-lease fetch ordering;
+  // after waiting for the lease they reload durable state and a terminal CAS
+  // always wins before selection.
+  const preClaimTask = baseConfig.terminalCloseout
+    ? null
+    : await controlPlane.fetchTask()
   const issueClaim = await claimStore.withIssueClaim(
     { originIssueNumber: issueNumber },
     async (claimedIssue) => {
+      const task = preClaimTask ?? (await controlPlane.fetchTask())
+      const observation = {
+        issueNumber,
+        issueUrl:
+          task.issue?.html_url ??
+          task.issue?.display_url ??
+          task.issue?.url ??
+          candidate.issueUrl ??
+          null,
+        updatedAt:
+          task.issue?.updated_at ?? task.issue?.updatedAt ?? candidate.updatedAt,
+        closed: task.issue?.state === "closed",
+      }
       const currentState = await store.load()
       const observedAt = Date.parse(observation.updatedAt ?? "")
       const durableObservedAt = Date.parse(
@@ -510,6 +645,46 @@ export async function runRepositoryIssue(
         }
       }
 
+      if (baseConfig.terminalCloseout) {
+        const closeout = await reconcileTerminalCloseout({
+          state: currentState,
+          task,
+          store,
+          claimStore,
+          issueClaim: claimedIssue,
+        })
+        if (closeout.status === "rejected") {
+          return {
+            issueNumber,
+            instructionId: closeout.closeoutInstructionId,
+            status: "terminal_closeout_rejected",
+            rejectionCode: closeout.rejection.code,
+            claimed: false,
+          }
+        }
+        if (closeout.status === "none") {
+          return {
+            issueNumber,
+            status: "no_terminal_closeout_control",
+            claimed: false,
+          }
+        }
+        return {
+          issueNumber,
+          originIssueUrl: currentState.task.originIssueUrl,
+          status: "done",
+          closeoutStatus: closeout.status,
+          closeoutId: closeout.closeoutId,
+          instructionId: closeout.closeoutInstructionId,
+          retiredInstructionIds: closeout.retiredInstructionIds,
+          approvalKeys: closeout.approvalKeys,
+          claimed: closeout.status === "applied",
+        }
+      }
+
+      if (currentState.status === "done") {
+        return { issueNumber, status: "done", claimed: false }
+      }
       recordIssueObservation(currentState, observation)
       if (task.issue?.state === "closed") {
         await store.save(currentState)
@@ -704,12 +879,16 @@ export async function runRepositoryCycle(
     search = searchOpenIssueCandidates,
     discoverPersisted = discoverPersistedIssueCandidates,
     runIssue = runRepositoryIssue,
+    reconcileTerminalAudits = reconcilePersistedTerminalCloseoutAudits,
     claimStore = new QueueClaimStore({
       stateDirectory: config.stateDirectory,
       retryBaseMs: config.retryBaseMs,
     }),
   } = {},
 ) {
+  if (config.repository && config.stateDirectory) {
+    await reconcileTerminalAudits(config)
+  }
   const candidates = config.issueNumberExplicit
     ? [
         {

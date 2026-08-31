@@ -73,6 +73,25 @@ export function parseAgentControlBlock(block) {
       continue
     }
 
+    if (key === "closeout") {
+      if (Object.hasOwn(value, key) || rawValue.trim() !== "") {
+        throw new Error("agent_control.closeout must be one canonical mapping")
+      }
+      const closeout = {}
+      while (index + 1 < lines.length) {
+        const item = lines[index + 1].match(/^\s{4}([a-z_]+):\s*(.*)$/)
+        if (!item) break
+        const [, closeoutKey, closeoutValue] = item
+        if (Object.hasOwn(closeout, closeoutKey)) {
+          throw new Error(`Duplicate agent_control.closeout.${closeoutKey}`)
+        }
+        closeout[closeoutKey] = scalar(closeoutValue)
+        index += 1
+      }
+      value.closeout = closeout
+      continue
+    }
+
     if (key === "prompt" && rawValue.trim() === "|") {
       const prompt = []
       index += 1
@@ -123,13 +142,21 @@ export function parseAgentControlBlock(block) {
     throw new Error("agent_control.prompt must be a non-empty block scalar")
   }
   const hasSupersedes = Object.hasOwn(value, "supersedes")
+  const hasTerminalState = Object.hasOwn(value, "terminal_state")
+  const hasCloseout = Object.hasOwn(value, "closeout")
   const hasExpectedRevision = Object.hasOwn(
     value,
     "expected_state_revision",
   )
-  if (hasSupersedes !== hasExpectedRevision) {
+  const isTerminalCloseout = hasTerminalState || hasCloseout
+  if (hasSupersedes && !hasExpectedRevision) {
     throw new Error(
       "agent_control supersession requires supersedes and expected_state_revision",
+    )
+  }
+  if (hasExpectedRevision && !hasSupersedes && !isTerminalCloseout) {
+    throw new Error(
+      "agent_control.expected_state_revision requires supersession or terminal closeout",
     )
   }
   if (
@@ -144,6 +171,47 @@ export function parseAgentControlBlock(block) {
   if (hasSupersedes && value.supersedes.includes(value.instruction_id)) {
     throw new Error("agent_control cannot supersede itself")
   }
+  if (isTerminalCloseout) {
+    const expectedCloseoutKeys = [
+      "expected_last_consumed_instruction_id",
+      "require_no_active_claims",
+      "require_origin_issue_closed",
+      "retire_all_unconsumed_controls",
+      "supersede_pending_approvals",
+    ]
+    if (
+      !hasTerminalState ||
+      !hasCloseout ||
+      !hasExpectedRevision ||
+      hasSupersedes ||
+      value.action !== "stop" ||
+      value.task_state !== "needs_review" ||
+      value.terminal_state !== "done" ||
+      value.max_turns !== 1 ||
+      value.owner_approval_required !== false ||
+      JSON.stringify(Object.keys(value.closeout).sort()) !==
+        JSON.stringify(expectedCloseoutKeys) ||
+      typeof value.closeout.expected_last_consumed_instruction_id !==
+        "string" ||
+      !instructionIdPattern.test(
+        value.closeout.expected_last_consumed_instruction_id,
+      ) ||
+      value.closeout.retire_all_unconsumed_controls !== true ||
+      value.closeout.supersede_pending_approvals !== true ||
+      value.closeout.require_no_active_claims !== true ||
+      value.closeout.require_origin_issue_closed !== true
+    ) {
+      throw new Error("agent_control terminal closeout is malformed")
+    }
+    if (
+      value.closeout.expected_last_consumed_instruction_id ===
+      value.instruction_id
+    ) {
+      throw new Error(
+        "agent_control terminal closeout cannot expect itself as last consumed",
+      )
+    }
+  }
 
   const control = {
     action: value.action,
@@ -156,6 +224,21 @@ export function parseAgentControlBlock(block) {
   if (hasSupersedes) {
     control.supersedes = Object.freeze([...value.supersedes])
     control.expectedStateRevision = value.expected_state_revision
+  }
+  if (isTerminalCloseout) {
+    control.terminalState = value.terminal_state
+    control.expectedStateRevision = value.expected_state_revision
+    control.closeout = Object.freeze({
+      expectedLastConsumedInstructionId:
+        value.closeout.expected_last_consumed_instruction_id,
+      retireAllUnconsumedControls:
+        value.closeout.retire_all_unconsumed_controls,
+      supersedePendingApprovals:
+        value.closeout.supersede_pending_approvals,
+      requireNoActiveClaims: value.closeout.require_no_active_claims,
+      requireOriginIssueClosed:
+        value.closeout.require_origin_issue_closed,
+    })
   }
   return Object.freeze(control)
 }
@@ -182,7 +265,11 @@ export function extractValidAgentControls(markdown) {
       const control = parseAgentControlBlock(match[1])
       if (control) controls.push(control)
     } catch (error) {
-      if (/^\s{2}(?:supersedes|expected_state_revision):/m.test(match[1])) {
+      if (
+        /^\s{2}(?:supersedes|expected_state_revision|terminal_state|closeout):/m.test(
+          match[1],
+        )
+      ) {
         throw error
       }
       // A malformed explicit block is ineligible, not an inferred task.
@@ -381,7 +468,7 @@ export function listAgentControls(issue, comments = []) {
 }
 
 function agentControlBinding(control) {
-  return [
+  const legacy = [
     1,
     control.action,
     control.taskState,
@@ -392,13 +479,20 @@ function agentControlBinding(control) {
     control.supersedes ?? null,
     control.expectedStateRevision ?? null,
   ]
+  if (!control.terminalState && !control.closeout) return legacy
+  return [
+    2,
+    ...legacy.slice(1),
+    control.terminalState,
+    control.closeout,
+  ]
 }
 
 export function agentControlBindingDigest(control) {
   return controlPlaneBindingDigest(JSON.stringify(agentControlBinding(control)))
 }
 
-function consumedInstructionIds(state, comments, controls) {
+export function consumedInstructionIds(state, comments, controls) {
   const retryable = new Set(state.retryInstructionIds ?? [])
   const consumed = new Set(
     (state.runs ?? []).map((run) => run.instructionId).filter(Boolean),
@@ -515,7 +609,7 @@ function validateInstructionSupersessionRecord(record, state, controls) {
   return record
 }
 
-function durableSupersededInstructionIds(state, controls) {
+export function durableSupersededInstructionIds(state, controls) {
   const records = state.instructionSupersessions ?? []
   if (!Array.isArray(records)) {
     throw new Error("Durable instruction supersession ledger is malformed")
@@ -562,6 +656,7 @@ export function selectInstructionSupersessionCandidate(
   comments = [],
   state = {},
 ) {
+  if ((state.terminalCloseouts ?? []).length > 0) return null
   const controls = listAgentControls(issue, comments)
   const superseded = durableSupersededInstructionIds(state, controls)
   const consumed = consumedInstructionIds(state, comments, controls)
@@ -893,6 +988,13 @@ export function selectNextInstruction(issue, comments = [], state = {}) {
   const superseded = durableSupersededInstructionIds(state, controls)
   assertSupersessionControlHistory(state, controls, consumed)
 
+  if (
+    state.status === "done" ||
+    (state.terminalCloseouts ?? []).length > 0
+  ) {
+    return null
+  }
+
   return (
     controls
       .slice()
@@ -912,6 +1014,7 @@ const eligibleStatesByAction = {
 }
 
 export function isInstructionEligible(instruction, currentTaskState) {
+  if (currentTaskState === "done") return false
   return Boolean(
     instruction &&
       eligibleStatesByAction[instruction.action]?.has(instruction.taskState) &&

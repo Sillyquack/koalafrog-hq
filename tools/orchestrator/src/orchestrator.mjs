@@ -53,6 +53,10 @@ import {
   terminalityReconciliationRecordIsValid,
 } from "./terminality-reconciliation.mjs"
 import {
+  isTerminalCloseoutControl,
+  selectTerminalCloseoutCandidate,
+} from "./terminal-closeout.mjs"
+import {
   canStartInstructionTurn,
   instructionTurnCount,
   normalizeTurnAccounting,
@@ -2503,6 +2507,18 @@ export class Orchestrator {
     await this.start()
     const state = await this.store.load()
     const task = providedTask ?? (await this.controlPlane.fetchTask())
+    const terminalCloseout = selectTerminalCloseoutCandidate(
+      task.issue,
+      task.comments,
+      state,
+    )
+    if (terminalCloseout) {
+      const error = new Error(
+        "Terminal closeout requires explicit repository issue-claim reconciliation",
+      )
+      error.code = "TERMINAL_CLOSEOUT_RECONCILIATION_REQUIRED"
+      throw error
+    }
     const decisionIds = new Set(
       (state.ownerApprovalDecisions ?? []).map(
         (decision) => decision.decisionId,
@@ -2557,6 +2573,16 @@ export class Orchestrator {
         ? checkpointActivationRecovery.value.instruction
         : null)
     const selectedInstruction = instructionDecision.selectedInstruction
+    if (
+      isTerminalCloseoutControl(selectedInstruction) ||
+      isTerminalCloseoutControl(state.activeInstruction)
+    ) {
+      const error = new Error(
+        "Terminal closeout requires explicit repository issue-claim reconciliation",
+      )
+      error.code = "TERMINAL_CLOSEOUT_RECONCILIATION_REQUIRED"
+      throw error
+    }
     if (
       expectedInstructionId &&
       selectedInstruction?.instructionId !== expectedInstructionId
