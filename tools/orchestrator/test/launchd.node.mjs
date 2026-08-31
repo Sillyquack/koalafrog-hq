@@ -1,5 +1,13 @@
 import assert from "node:assert/strict"
-import { mkdtemp, readFile, readdir, rm, stat, writeFile } from "node:fs/promises"
+import {
+  mkdir,
+  mkdtemp,
+  readFile,
+  readdir,
+  rm,
+  stat,
+  writeFile,
+} from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
 import test from "node:test"
@@ -8,8 +16,10 @@ import {
   buildLaunchAgentPlist,
   discoverActiveLaunchAgentPlists,
   discoverOrchestratorProcessMatches,
+  installDisabledLaunchAgent,
   installAndStartLaunchAgent,
   launchAgentLabel,
+  validateDisabledLaunchAgentPlist,
   validateLaunchAgentInputs,
   writeLaunchAgentPlist,
 } from "../src/launchd.mjs"
@@ -190,7 +200,24 @@ test("service runtime planning rejects a dirty orchestrator source", async () =>
         return "a".repeat(40)
       },
     }),
-    /uncommitted orchestrator changes/,
+    /uncommitted changes/,
+  )
+})
+
+test("service runtime planning rejects dirty files outside orchestrator source", async () => {
+  await assert.rejects(
+    planRuntimeReleaseFromCheckout({
+      checkoutPath: repositoryDirectory,
+      stateDirectory: "/tmp/synthetic-watcher-runtime",
+      runGit: async (args) => {
+        if (args.join(" ") === "remote get-url origin") {
+          return "https://github.com/Sillyquack/koalafrog-hq.git"
+        }
+        if (args[0] === "status") return " M docs/operator-notes.md"
+        return "a".repeat(40)
+      },
+    }),
+    /uncommitted changes/,
   )
 })
 
@@ -221,6 +248,284 @@ test("plist installation is atomic and idempotent", async (t) => {
   assert.equal(await writeLaunchAgentPlist(options), "unchanged")
   assert.equal(await readFile(options.plistPath, "utf8"), options.contents)
   assert.equal((await stat(options.plistPath)).mode & 0o777, 0o600)
+})
+
+test("disabled install validates, installs mode 0600, and never starts launchd", async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "koalafrog-launchd-disabled-"))
+  t.after(() => rm(root, { recursive: true, force: true }))
+  const options = fixture(root)
+  const calls = []
+  const run = async (command, args) => {
+    calls.push([command, ...args])
+    if (command === "launchctl" && args[0] === "print") {
+      return { code: 1, stdout: "", stderr: "not loaded" }
+    }
+    return { code: 0, stdout: "OK", stderr: "" }
+  }
+
+  const first = await installDisabledLaunchAgent({
+    ...options,
+    uid: 501,
+    run,
+    inspectProcesses: async () => [],
+  })
+  const second = await installDisabledLaunchAgent({
+    ...options,
+    uid: 501,
+    run,
+    inspectProcesses: async () => [],
+  })
+
+  assert.equal(first.writeStatus, "created")
+  assert.equal(second.writeStatus, "unchanged")
+  assert.equal(first.loaded, false)
+  assert.equal(await readFile(options.plistPath, "utf8"), options.contents)
+  assert.equal((await stat(options.plistPath)).mode & 0o777, 0o600)
+  assert.equal(first.plistSha256.length, 64)
+  assert.equal(
+    calls.some(
+      (call) =>
+        call[0] === "launchctl" &&
+        new Set(["bootstrap", "kickstart", "load"]).has(call[1]),
+    ),
+    false,
+  )
+})
+
+test("disabled install rejects boot-start policy before writing or invoking launchctl", async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "koalafrog-launchd-disabled-"))
+  t.after(() => rm(root, { recursive: true, force: true }))
+  const options = fixture(root)
+  const runAtLoad = options.contents.replace(
+    /<key>RunAtLoad<\/key>\s*<false\/>/,
+    "<key>RunAtLoad</key>\n  <true/>",
+  )
+  const keepAlive = options.contents.replace(
+    "</dict>",
+    "  <key>KeepAlive</key>\n  <true/>\n</dict>",
+  )
+  const duplicateRunAtLoad = options.contents.replace(
+    "</dict>",
+    "  <key>RunAtLoad</key>\n  <true/>\n</dict>",
+  )
+  const calls = []
+  const run = async (command, args) => {
+    calls.push([command, ...args])
+    return { code: 0, stdout: "", stderr: "" }
+  }
+
+  assert.throws(() => validateDisabledLaunchAgentPlist(runAtLoad), /RunAtLoad=false/)
+  assert.throws(() => validateDisabledLaunchAgentPlist(keepAlive), /forbids KeepAlive/)
+  assert.throws(
+    () => validateDisabledLaunchAgentPlist(duplicateRunAtLoad),
+    /RunAtLoad=false/,
+  )
+  await assert.rejects(
+    installDisabledLaunchAgent({ ...options, contents: runAtLoad, run }),
+    /RunAtLoad=false/,
+  )
+  await assert.rejects(readFile(options.plistPath, "utf8"), /ENOENT/)
+  assert.deepEqual(calls, [])
+})
+
+test("disabled install rejects active services, process trees, and conflicting plists", async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "koalafrog-launchd-disabled-"))
+  t.after(() => rm(root, { recursive: true, force: true }))
+  const options = fixture(root)
+  const activeRun = async (command, args) => ({
+    code: command === "launchctl" && args[0] === "print" ? 0 : 0,
+    stdout: "loaded",
+    stderr: "",
+  })
+  await assert.rejects(
+    installDisabledLaunchAgent({ ...options, run: activeRun }),
+    /service is active/,
+  )
+
+  const unloadedRun = async () => ({ code: 1, stdout: "", stderr: "not loaded" })
+  await assert.rejects(
+    installDisabledLaunchAgent({
+      ...options,
+      run: unloadedRun,
+      processMatches: [{ pid: 42 }],
+    }),
+    /process tree must stop/,
+  )
+  const conflictingPath = path.join(root, "LaunchAgents", "conflict.plist")
+  await mkdir(path.dirname(conflictingPath), { recursive: true })
+  await writeFile(conflictingPath, "conflict")
+  await assert.rejects(
+    installDisabledLaunchAgent({
+      ...options,
+      run: unloadedRun,
+      candidatePlistPaths: [conflictingPath],
+    }),
+    /Multiple active LaunchAgent plist candidates/,
+  )
+  await assert.rejects(readFile(options.plistPath, "utf8"), /ENOENT/)
+})
+
+test("disabled install preserves prior inactive evidence while replacing safely", async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "koalafrog-launchd-disabled-"))
+  t.after(() => rm(root, { recursive: true, force: true }))
+  const options = fixture(root)
+  const oldContents = options.contents.replace("60000", "30000")
+  await writeLaunchAgentPlist({ ...options, contents: oldContents })
+  const run = async (command, args) => {
+    if (command === "launchctl" && args[0] === "print") {
+      return { code: 1, stdout: "", stderr: "not loaded" }
+    }
+    return { code: 0, stdout: "OK", stderr: "" }
+  }
+  const result = await installDisabledLaunchAgent({
+    ...options,
+    run,
+    evidenceDirectory: path.join(root, "disabled"),
+    inspectProcesses: async () => [],
+  })
+
+  assert.equal(result.writeStatus, "updated")
+  assert.equal(await readFile(options.plistPath, "utf8"), options.contents)
+  assert.equal(await readFile(result.previousEvidencePath, "utf8"), oldContents)
+})
+
+test("disabled install rejects an inactive plist with a different service identity", async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "koalafrog-launchd-disabled-"))
+  t.after(() => rm(root, { recursive: true, force: true }))
+  const options = fixture(root)
+  const foreignContents = options.contents.replace(
+    `<string>${launchAgentLabel}</string>`,
+    "<string>com.example.foreign-service</string>",
+  )
+  await writeLaunchAgentPlist({ ...options, contents: foreignContents })
+  const run = async (command, args) => {
+    if (command === "launchctl" && args[0] === "print") {
+      return { code: 1, stdout: "", stderr: "not loaded" }
+    }
+    return { code: 0, stdout: "OK", stderr: "" }
+  }
+
+  await assert.rejects(
+    installDisabledLaunchAgent({ ...options, run }),
+    /does not match the expected service identity/,
+  )
+  assert.equal(await readFile(options.plistPath, "utf8"), foreignContents)
+})
+
+test("disabled install lint failure preserves the prior inactive plist atomically", async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "koalafrog-launchd-disabled-"))
+  t.after(() => rm(root, { recursive: true, force: true }))
+  const options = fixture(root)
+  const oldContents = options.contents.replace("60000", "30000")
+  await writeLaunchAgentPlist({ ...options, contents: oldContents })
+  const calls = []
+  const run = async (command, args) => {
+    calls.push([command, ...args])
+    if (command === "launchctl" && args[0] === "print") {
+      return { code: 1, stdout: "", stderr: "not loaded" }
+    }
+    if (command === "plutil") {
+      return { code: 1, stdout: "", stderr: "synthetic lint failure" }
+    }
+    return { code: 0, stdout: "", stderr: "" }
+  }
+
+  await assert.rejects(
+    installDisabledLaunchAgent({
+      ...options,
+      run,
+      evidenceDirectory: path.join(root, "disabled"),
+    }),
+    /synthetic lint failure/,
+  )
+  assert.equal(await readFile(options.plistPath, "utf8"), oldContents)
+  assert.equal(
+    calls.some(
+      (call) =>
+        call[0] === "launchctl" &&
+        new Set(["bootout", "bootstrap", "kickstart", "load"]).has(call[1]),
+    ),
+    false,
+  )
+  assert.ok(
+    (await readdir(path.join(root, "disabled"))).some((name) =>
+      name.includes("previous-inactive"),
+    ),
+  )
+})
+
+test("disabled install failure after write removes active plist and preserves evidence", async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "koalafrog-launchd-disabled-"))
+  t.after(() => rm(root, { recursive: true, force: true }))
+  const options = fixture(root)
+  const calls = []
+  const run = async (command, args) => {
+    calls.push([command, ...args])
+    if (command === "launchctl" && args[0] === "print") {
+      return { code: 1, stdout: "", stderr: "not loaded" }
+    }
+    return { code: 0, stdout: "OK", stderr: "" }
+  }
+
+  await assert.rejects(
+    installDisabledLaunchAgent({
+      ...options,
+      run,
+      evidenceDirectory: path.join(root, "disabled"),
+      inspectProcesses: async () => [],
+      postWriteVerification: async () => {
+        throw new Error("synthetic post-write failure")
+      },
+    }),
+    /service remains disabled: synthetic post-write failure/,
+  )
+  await assert.rejects(readFile(options.plistPath, "utf8"), /ENOENT/)
+  const evidence = await readdir(path.join(root, "disabled"))
+  assert.equal(evidence.filter((name) => name.includes("failed-attempt")).length, 1)
+  assert.equal(
+    calls.some(
+      (call) =>
+        call[0] === "launchctl" &&
+        new Set(["bootstrap", "kickstart", "load"]).has(call[1]),
+    ),
+    false,
+  )
+})
+
+test("disabled install removes the active plist even when evidence preservation fails", async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "koalafrog-launchd-disabled-"))
+  t.after(() => rm(root, { recursive: true, force: true }))
+  const options = fixture(root)
+  const unavailableEvidencePath = path.join(root, "evidence-is-a-file")
+  await writeFile(unavailableEvidencePath, "not a directory")
+  const calls = []
+  const run = async (command, args) => {
+    calls.push([command, ...args])
+    if (command === "launchctl" && args[0] === "print") {
+      return { code: 1, stdout: "", stderr: "not loaded" }
+    }
+    return { code: 0, stdout: "OK", stderr: "" }
+  }
+
+  await assert.rejects(
+    installDisabledLaunchAgent({
+      ...options,
+      run,
+      evidenceDirectory: unavailableEvidencePath,
+      inspectProcesses: async () => [],
+      postWriteVerification: async () => {
+        throw new Error("synthetic post-write failure")
+      },
+    }),
+    /fail-disabled cleanup also failed \(evidence preservation:/,
+  )
+  await assert.rejects(readFile(options.plistPath, "utf8"), /ENOENT/)
+  assert.equal(
+    calls.some(
+      (call) => call[0] === "launchctl" && call[1] === "bootout",
+    ),
+    true,
+  )
 })
 
 test("install refuses an already running service instead of replacing it", async (t) => {

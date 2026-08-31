@@ -8,6 +8,7 @@ import {
   buildLaunchAgentPlist,
   discoverActiveLaunchAgentPlists,
   discoverOrchestratorProcessMatches,
+  installDisabledLaunchAgent,
   installAndStartLaunchAgent,
   launchAgentLabel,
   launchAgentStatus,
@@ -47,7 +48,16 @@ function positiveInteger(value, name) {
 function parse(argv) {
   const args = [...argv]
   const command = args.shift() ?? "help"
-  if (!new Set(["install", "uninstall", "status", "render", "help"]).has(command)) {
+  if (
+    !new Set([
+      "install",
+      "install-disabled",
+      "uninstall",
+      "status",
+      "render",
+      "help",
+    ]).has(command)
+  ) {
     throw new Error(`Unknown service command: ${command}`)
   }
   const stateDirectory = defaultStateDirectory()
@@ -175,6 +185,9 @@ function parse(argv) {
     config.runtimeDirectory = path.join(config.stateDirectory, "runtime")
   }
   config.healthPath = path.join(config.stateDirectory, "watcher-v2-health.json")
+  if (config.command === "install-disabled" && config.runAtLoad) {
+    throw new Error("install-disabled rejects --approve-run-at-load")
+  }
   return config
 }
 
@@ -182,6 +195,7 @@ const help = `Koalafrog orchestrator macOS LaunchAgent
 
 Usage:
   node tools/orchestrator/bin/orchestrator-service.mjs install [options]
+  node tools/orchestrator/bin/orchestrator-service.mjs install-disabled [options]
   node tools/orchestrator/bin/orchestrator-service.mjs status
   node tools/orchestrator/bin/orchestrator-service.mjs uninstall
   node tools/orchestrator/bin/orchestrator-service.mjs render [options]
@@ -209,6 +223,8 @@ Options:
   --approve-run-at-load       Explicit post-canary owner-approved boot start
 
 Persistent watcher v2 never enables service-wide --auto-commit or KeepAlive.
+install-disabled materializes the runtime and atomically installs a validated
+RunAtLoad=false plist without bootstrap, load, kickstart, or watcher execution.
 Failed installation leaves the service disabled and preserves diagnostics.
 `
 
@@ -277,7 +293,11 @@ async function main() {
     discoverActiveLaunchAgentPlists(serviceConfig),
     discoverOrchestratorProcessMatches(),
   ])
-  const result = await installAndStartLaunchAgent({
+  const install =
+    config.command === "install-disabled"
+      ? installDisabledLaunchAgent
+      : installAndStartLaunchAgent
+  const result = await install({
     ...serviceConfig,
     contents,
     candidatePlistPaths,
@@ -285,8 +305,13 @@ async function main() {
   })
   process.stdout.write(`${JSON.stringify({
     ...result,
+    installationMode:
+      config.command === "install-disabled" ? "disabled" : "active",
     runtimeStatus: runtime.status,
     runtimeRelease: runtime.releaseDirectory,
+    runtimeManifestSha256: manifestSha256,
+    sourceCommit: runtimePlan.sourceIdentity.commit,
+    sourceTree: runtimePlan.sourceIdentity.tree,
     orchestratorScript: runtime.orchestratorScript,
     checkoutPath: config.checkoutPath,
     stdoutPath: config.stdoutPath,

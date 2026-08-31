@@ -9,6 +9,7 @@ import {
   readFile,
   readdir,
   rename,
+  stat,
   unlink,
   writeFile,
 } from "node:fs/promises"
@@ -373,6 +374,20 @@ export async function writeLaunchAgentPlist({
   return existing === null ? "created" : "updated"
 }
 
+export function validateDisabledLaunchAgentPlist(contents) {
+  const runAtLoadEntries =
+    typeof contents === "string"
+      ? [...contents.matchAll(/<key>RunAtLoad<\/key>\s*<(true|false)\/>/g)]
+      : []
+  if (runAtLoadEntries.length !== 1 || runAtLoadEntries[0][1] !== "false") {
+    throw new Error("Disabled LaunchAgent installation requires RunAtLoad=false")
+  }
+  if (/<key>KeepAlive<\/key>/.test(contents)) {
+    throw new Error("Disabled LaunchAgent installation forbids KeepAlive")
+  }
+  return contents
+}
+
 async function defaultRun(command, args, { allowFailure = false } = {}) {
   try {
     const result = await execFileAsync(command, args, {
@@ -432,7 +447,7 @@ export function launchAgentTarget(label = launchAgentLabel, uid = process.getuid
   return `gui/${uid}/${label}`
 }
 
-export async function installAndStartLaunchAgent({
+async function prepareLaunchAgentInstallation({
   label = launchAgentLabel,
   plistPath,
   contents,
@@ -440,9 +455,6 @@ export async function installAndStartLaunchAgent({
   stderrPath,
   uid = process.getuid(),
   run = defaultRun,
-  sleep = delay,
-  retryDelayMs = 250,
-  unloadAttempts = 120,
   evidenceDirectory = null,
   candidatePlistPaths = [],
   processMatches = [],
@@ -456,6 +468,16 @@ export async function installAndStartLaunchAgent({
     uid,
     run,
   })
+  if (previousContents !== null) {
+    const previousLabel = previousContents.match(
+      /<key>Label<\/key>\s*<string>([^<]+)<\/string>/,
+    )?.[1]
+    if (previousLabel !== label) {
+      throw new Error(
+        "Inactive LaunchAgent plist does not match the expected service identity",
+      )
+    }
+  }
   const previousEvidencePath = await preserveServiceEvidence(
     evidenceDirectory,
     {
@@ -475,8 +497,184 @@ export async function installAndStartLaunchAgent({
     validate,
   })
   if (writeStatus === "unchanged") await validate(plistPath)
-  const domain = `gui/${uid}`
+  return {
+    writeStatus,
+    label,
+    plistPath,
+    target: launchAgentTarget(label, uid),
+    previousEvidencePath,
+  }
+}
+
+async function failDisabledCleanup({
+  label,
+  plistPath,
+  contents,
+  target,
+  run,
+  evidenceDirectory,
+}) {
+  const failures = []
+  let attemptedEvidencePath = null
+  try {
+    attemptedEvidencePath = await preserveServiceEvidence(
+      evidenceDirectory,
+      { label, kind: "failed-attempt", contents },
+    )
+  } catch (error) {
+    failures.push(`evidence preservation: ${error.message}`)
+  }
+  try {
+    await run("launchctl", ["bootout", target], { allowFailure: true })
+  } catch (error) {
+    failures.push(`launchctl bootout: ${error.message}`)
+  }
+  try {
+    await unlink(plistPath)
+  } catch (error) {
+    if (error.code !== "ENOENT") {
+      failures.push(`active plist removal: ${error.message}`)
+    }
+  }
+  try {
+    const stillLoaded = await run("launchctl", ["print", target], {
+      allowFailure: true,
+    })
+    if (stillLoaded.code === 0) {
+      failures.push("LaunchAgent target remains loaded")
+    }
+  } catch (error) {
+    failures.push(`launchctl absence verification: ${error.message}`)
+  }
+  if (failures.length > 0) {
+    throw new Error(failures.join("; "))
+  }
+  return attemptedEvidencePath
+}
+
+export async function installDisabledLaunchAgent({
+  label = launchAgentLabel,
+  plistPath,
+  contents,
+  stdoutPath,
+  stderrPath,
+  uid = process.getuid(),
+  run = defaultRun,
+  evidenceDirectory = null,
+  candidatePlistPaths = [],
+  processMatches = [],
+  inspectProcesses = discoverOrchestratorProcessMatches,
+  postWriteVerification = null,
+}) {
+  validateDisabledLaunchAgentPlist(contents)
   const target = launchAgentTarget(label, uid)
+  let prepared = null
+  try {
+    prepared = await prepareLaunchAgentInstallation({
+      label,
+      plistPath,
+      contents,
+      stdoutPath,
+      stderrPath,
+      uid,
+      run,
+      evidenceDirectory,
+      candidatePlistPaths,
+      processMatches,
+    })
+    const installed = await readFile(plistPath, "utf8")
+    if (installed !== contents) {
+      throw new Error("Disabled LaunchAgent plist readback mismatch")
+    }
+    if (((await stat(plistPath)).mode & 0o777) !== 0o600) {
+      throw new Error("Disabled LaunchAgent plist mode is not 0600")
+    }
+    await runRequired(run, "plutil", ["-lint", plistPath])
+    const service = await run("launchctl", ["print", target], {
+      allowFailure: true,
+    })
+    if (service.code === 0) {
+      throw new Error("Disabled LaunchAgent unexpectedly became loaded")
+    }
+    const remainingProcesses = await inspectProcesses()
+    if (remainingProcesses.length > 0) {
+      throw new Error("Disabled LaunchAgent installation started a process tree")
+    }
+    if (postWriteVerification) {
+      await postWriteVerification({
+        ...prepared,
+        contents,
+        plistSha256: createHash("sha256").update(contents).digest("hex"),
+      })
+    }
+    return {
+      ...prepared,
+      loaded: false,
+      plistSha256: createHash("sha256").update(contents).digest("hex"),
+    }
+  } catch (error) {
+    const currentContents = await readExisting(plistPath)
+    if (prepared || currentContents === contents) {
+      let cleanupError = null
+      let attemptedEvidencePath = null
+      try {
+        attemptedEvidencePath = await failDisabledCleanup({
+          label,
+          plistPath,
+          contents,
+          target,
+          run,
+          evidenceDirectory,
+        })
+      } catch (failure) {
+        cleanupError = failure
+      }
+      if (cleanupError) {
+        throw new Error(
+          `Disabled LaunchAgent install failed (${error.message}); fail-disabled cleanup also failed (${cleanupError.message})`,
+        )
+      }
+      const failure = new Error(
+        `Disabled LaunchAgent install failed; service remains disabled: ${error.message}`,
+      )
+      failure.code = "LAUNCH_AGENT_DISABLED_INSTALL_FAILED"
+      failure.previousEvidencePath = prepared?.previousEvidencePath ?? null
+      failure.attemptedEvidencePath = attemptedEvidencePath
+      throw failure
+    }
+    throw error
+  }
+}
+
+export async function installAndStartLaunchAgent({
+  label = launchAgentLabel,
+  plistPath,
+  contents,
+  stdoutPath,
+  stderrPath,
+  uid = process.getuid(),
+  run = defaultRun,
+  sleep = delay,
+  retryDelayMs = 250,
+  unloadAttempts = 120,
+  evidenceDirectory = null,
+  candidatePlistPaths = [],
+  processMatches = [],
+}) {
+  const prepared = await prepareLaunchAgentInstallation({
+    label,
+    plistPath,
+    contents,
+    stdoutPath,
+    stderrPath,
+    uid,
+    run,
+    evidenceDirectory,
+    candidatePlistPaths,
+    processMatches,
+  })
+  const domain = `gui/${uid}`
+  const { target } = prepared
   const loaded = false
 
   let bootstrapError = null
@@ -523,17 +721,17 @@ export async function installAndStartLaunchAgent({
       `LaunchAgent bootstrap failed; service remains disabled: ${bootstrapError.message}`,
     )
     error.code = "LAUNCH_AGENT_INSTALL_FAILED_DISABLED"
-    error.previousEvidencePath = previousEvidencePath
+    error.previousEvidencePath = prepared.previousEvidencePath
     error.attemptedEvidencePath = attemptedEvidencePath
     throw error
   }
   return {
-    writeStatus,
+    writeStatus: prepared.writeStatus,
     reloaded: loaded,
     label,
     plistPath,
     target,
-    previousEvidencePath,
+    previousEvidencePath: prepared.previousEvidencePath,
   }
 }
 
