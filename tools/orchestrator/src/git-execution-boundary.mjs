@@ -315,6 +315,10 @@ const checkpointNegatedMutationStatements = [
 ]
 const checkpointOwnerAck027NoMutationStatement =
   "No fallback path, sibling metadata access, source change, or production-side action occurred."
+const checkpointOwnerAck027InstructionId =
+  "production-day1-git-reconciliation-checkpoint-generation-activation-owner-ack-027"
+const checkpointOwnerAck027ProductionReadback =
+  "Fully qualified receipt/checkpoint binding: preflight **PASS**"
 
 function accepted(value, context = {}) {
   return { accepted: true, value, context }
@@ -1175,8 +1179,17 @@ function checkpointHistoricalContradictionDecision(
     })
   }
   const ownerAck027NoMutationEvidence =
+    audit.instructionId === checkpointOwnerAck027InstructionId &&
+    audit.blockers.length === 0 &&
+    audit.ownerGates.length === 0 &&
     audit.productionReadback.length === 1 &&
-    audit.productionReadback[0] === checkpointOwnerAck027NoMutationStatement &&
+    audit.productionReadback[0] === checkpointOwnerAck027ProductionReadback &&
+    audit.safetyFindings.length === 0 &&
+    sameStringArray(audit.branchPushState, [
+      `Branch/current HEAD: \`${record.toBranch}\` at \`${record.head}\``,
+      "Live remote foundation: **PASS**",
+      "Push/PR: **NOT ATTEMPTED**",
+    ]) &&
     finalMessage.endsWith(
       `- Push/PR: **NOT ATTEMPTED**\n\n${checkpointOwnerAck027NoMutationStatement}`,
     )
@@ -1214,12 +1227,6 @@ function checkpointHistoricalContradictionDecision(
 
   const withoutKnownNegation = (value) => {
     let normalized = String(value)
-    if (
-      ownerAck027NoMutationEvidence &&
-      normalized === checkpointOwnerAck027NoMutationStatement
-    ) {
-      return ""
-    }
     if (
       ownerAck027NoMutationEvidence &&
       normalized === finalMessage
@@ -4714,18 +4721,19 @@ async function openPinnedManagedPath(target, expected, type) {
   }
 }
 
-function executePinnedGit(
+export function executePinnedGit(
   args,
   {
     boundaryRequest,
     beforeMutation = null,
     afterMutation = null,
     maxBuffer = 10 * 1024 * 1024,
+    spawnBroker = spawn,
     ...options
   },
 ) {
   return new Promise((resolve, reject) => {
-    const child = spawn(
+    const child = spawnBroker(
       "/usr/bin/python3",
       ["-I", "-c", managedGitExecutionHelper],
       options,
@@ -4733,105 +4741,278 @@ function executePinnedGit(
     let stdout = ""
     let stderr = ""
     let boundaryReady = ""
-    let boundaryHandshakeHandled = false
+    let brokerResponsePhase = "waiting_boundary_ready"
     let settled = false
-    let boundaryAbortError = null
+    let terminalCause = null
+    let brokerControlEnded = false
+    let brokerTerminationStarted = false
+    let childExitObserved = false
+    const pendingStreamChecks = new Set()
+    const brokerResponseRequired = () =>
+      brokerResponsePhase === "waiting_boundary_ready" ||
+      brokerResponsePhase === "waiting_mutation_committed"
+    const streamClosureIsConsequent = () =>
+      settled || brokerTerminationStarted || childExitObserved
+    const cleanup = () => {
+      for (const timeout of pendingStreamChecks) clearTimeout(timeout)
+      pendingStreamChecks.clear()
+      child.stdin.off("error", onBrokerInputError)
+      child.stdin.off("close", onBrokerInputClose)
+      child.stdio[9].off("data", onBrokerResponseData)
+      child.stdio[9].off("error", onBrokerResponseError)
+      child.stdio[9].off("end", onBrokerResponseEnd)
+      child.stdio[9].off("close", onBrokerResponseClose)
+      child.stdout.off("data", onStdoutData)
+      child.stderr.off("data", onStderrData)
+      child.off("error", onChildError)
+      child.off("exit", onChildExit)
+      child.off("close", onChildClose)
+    }
+    const deferStreamClosureCheck = (check) => {
+      const timeout = setTimeout(() => {
+        pendingStreamChecks.delete(timeout)
+        check()
+      }, 25)
+      pendingStreamChecks.add(timeout)
+    }
     const fail = (error) => {
       if (settled) return
       settled = true
+      brokerResponsePhase = "settled"
       error.stdout = stdout
       error.stderr = stderr
+      cleanup()
       reject(error)
     }
-    child.stdout.on("data", (chunk) => {
+    const succeed = (value) => {
+      if (settled) return
+      settled = true
+      brokerResponsePhase = "settled"
+      cleanup()
+      resolve(value)
+    }
+    const terminateBroker = () => {
+      if (
+        settled ||
+        brokerTerminationStarted ||
+        child.killed ||
+        child.exitCode != null ||
+        child.signalCode != null
+      ) {
+        return false
+      }
+      brokerTerminationStarted = true
+      return child.kill("SIGKILL")
+    }
+    const recordBrokerControlError = (error) => {
+      if (settled || terminalCause) return
+      terminalCause = { kind: "broker_control", error }
+      terminateBroker()
+    }
+    const recordBoundaryAbortError = (error) => {
+      if (settled || terminalCause) return
+      terminalCause = { kind: "boundary_abort", error }
+      terminateBroker()
+    }
+    const writeBrokerControl = (value, { end = false } = {}) => {
+      if (settled || terminalCause || brokerTerminationStarted) return false
+      if (brokerControlEnded) {
+        if (!end) {
+          const error = new Error("managed Git broker control input ended")
+          error.code = "BROKER_LOST"
+          recordBrokerControlError(error)
+        }
+        return false
+      }
+      if (end) brokerControlEnded = true
+      if (
+        child.killed ||
+        child.exitCode != null ||
+        child.signalCode != null ||
+        child.stdin.destroyed ||
+        child.stdin.writable === false ||
+        child.stdin.writableEnded ||
+        child.stdin.writableFinished
+      ) {
+        const error = new Error("managed Git broker control channel closed")
+        error.code = "BROKER_LOST"
+        recordBrokerControlError(error)
+        return false
+      }
+      const onWrite = (error) => {
+        if (error && !streamClosureIsConsequent()) {
+          recordBrokerControlError(error)
+        }
+      }
+      try {
+        if (end) child.stdin.end(value, onWrite)
+        else child.stdin.write(value, onWrite)
+      } catch (error) {
+        recordBrokerControlError(error)
+        return false
+      }
+      return true
+    }
+    const onBrokerInputError = (error) => {
+      if (!streamClosureIsConsequent()) recordBrokerControlError(error)
+    }
+    const onBrokerInputClose = () => {
+      if (brokerControlEnded || streamClosureIsConsequent()) return
+      deferStreamClosureCheck(() => {
+        if (brokerControlEnded || streamClosureIsConsequent()) return
+        const error = new Error("managed Git broker control channel closed")
+        error.code = "BROKER_LOST"
+        recordBrokerControlError(error)
+      })
+    }
+    const onBrokerResponseTerminal = (event) => {
+      if (!brokerResponseRequired() || streamClosureIsConsequent()) return
+      deferStreamClosureCheck(() => {
+        if (!brokerResponseRequired() || streamClosureIsConsequent()) return
+        const error = new Error(
+          `managed Git broker response channel ${event} before required protocol evidence`,
+        )
+        error.code = "BROKER_LOST"
+        recordBrokerControlError(error)
+      })
+    }
+    const onBrokerResponseError = (error) => {
+      if (!streamClosureIsConsequent()) recordBrokerControlError(error)
+    }
+    const onBrokerResponseEnd = () => onBrokerResponseTerminal("ended")
+    const onBrokerResponseClose = () => onBrokerResponseTerminal("closed")
+    const onStdoutData = (chunk) => {
       stdout += chunk.toString("utf8")
       if (stdout.length + stderr.length > maxBuffer) {
-        child.kill("SIGKILL")
+        terminateBroker()
         const error = new Error("managed Git output exceeded maxBuffer")
         error.code = "ERR_CHILD_PROCESS_STDIO_MAXBUFFER"
         fail(error)
       }
-    })
-    child.stdin.write(
+    }
+    const onBrokerResponseData = (chunk) => {
+      if (settled || terminalCause || brokerTerminationStarted) return
+      boundaryReady += chunk.toString("utf8")
+      if (!boundaryReady.includes("\n")) return
+      const lines = boundaryReady.split("\n")
+      const line = `${lines.shift()}\n`
+      boundaryReady = lines.join("\n")
+      if (brokerResponsePhase === "waiting_boundary_ready") {
+        if (line !== "BOUNDARY_READY\n") {
+          const error = new Error(
+            "managed Git boundary handshake was invalid",
+          )
+          error.code = 78
+          recordBoundaryAbortError(error)
+          return
+        }
+        brokerResponsePhase =
+          typeof afterMutation === "function"
+            ? "waiting_mutation_committed"
+            : "complete"
+        Promise.resolve(
+          typeof beforeMutation === "function"
+            ? beforeMutation({ terminateBroker })
+            : undefined,
+        ).then(
+          () => {
+            if (settled || terminalCause || brokerTerminationStarted) return
+            writeBrokerControl("continue\n", {
+              end: typeof afterMutation !== "function",
+            })
+          },
+          (error) => {
+            error.code = 78
+            recordBoundaryAbortError(error)
+          },
+        )
+        return
+      }
+      if (
+        brokerResponsePhase === "waiting_mutation_committed" &&
+        line === "MUTATION_COMMITTED\n"
+      ) {
+        brokerResponsePhase = "complete"
+        Promise.resolve(
+          afterMutation({ terminateBroker }),
+        ).then(
+          () => {
+            if (settled || terminalCause || brokerTerminationStarted) return
+            writeBrokerControl("verify\n", { end: true })
+          },
+          (error) => {
+            recordBoundaryAbortError(error)
+          },
+        )
+      }
+    }
+    const onStderrData = (chunk) => {
+      stderr += chunk.toString("utf8")
+      if (stdout.length + stderr.length > maxBuffer) {
+        terminateBroker()
+        const error = new Error("managed Git output exceeded maxBuffer")
+        error.code = "ERR_CHILD_PROCESS_STDIO_MAXBUFFER"
+        fail(error)
+      }
+    }
+    const onChildError = (error) => fail(error)
+    const onChildExit = () => {
+      childExitObserved = true
+    }
+    const onChildClose = (code, signal) => {
+      if (settled) return
+      childExitObserved = true
+      if (terminalCause?.kind === "boundary_abort") {
+        fail(terminalCause.error)
+        return
+      }
+      if (terminalCause?.kind === "broker_control") {
+        const error = new Error("managed Git broker control channel failed", {
+          cause: terminalCause.error,
+        })
+        error.code = "BROKER_LOST"
+        fail(error)
+        return
+      }
+      if (code === 0) {
+        if (
+          brokerResponseRequired() ||
+          !brokerControlEnded ||
+          stdout.trim().length === 0
+        ) {
+          const error = new Error(
+            "managed Git broker exited before required protocol evidence",
+          )
+          error.code = "BROKER_LOST"
+          fail(error)
+          return
+        }
+        succeed({ stdout, stderr })
+        return
+      }
+      const error = new Error("managed Git command failed")
+      error.code = signal ? "BROKER_LOST" : code
+      error.signal = signal
+      fail(error)
+    }
+    child.stdin.on("error", onBrokerInputError)
+    child.stdin.on("close", onBrokerInputClose)
+    child.stdio[9].on("data", onBrokerResponseData)
+    child.stdio[9].on("error", onBrokerResponseError)
+    child.stdio[9].on("end", onBrokerResponseEnd)
+    child.stdio[9].on("close", onBrokerResponseClose)
+    child.stdout.on("data", onStdoutData)
+    child.stderr.on("data", onStderrData)
+    child.once("error", onChildError)
+    child.once("exit", onChildExit)
+    child.once("close", onChildClose)
+    writeBrokerControl(
       `${JSON.stringify({
         ...boundaryRequest,
         args,
         pauseAfterMutation: typeof afterMutation === "function",
       })}\n`,
     )
-    child.stdio[9].on("data", (chunk) => {
-      if (settled) return
-      boundaryReady += chunk.toString("utf8")
-      if (!boundaryReady.includes("\n")) return
-      const lines = boundaryReady.split("\n")
-      const line = `${lines.shift()}\n`
-      boundaryReady = lines.join("\n")
-      if (!boundaryHandshakeHandled) {
-        boundaryHandshakeHandled = true
-      } else if (line === "MUTATION_COMMITTED\n") {
-        Promise.resolve(
-          afterMutation({ terminateBroker: () => child.kill("SIGKILL") }),
-        ).then(
-          () => child.stdin.end("verify\n"),
-          (error) => {
-            boundaryAbortError = error
-            child.kill("SIGKILL")
-          },
-        )
-        return
-      } else {
-        return
-      }
-      if (line !== "BOUNDARY_READY\n") {
-        boundaryAbortError = new Error("managed Git boundary handshake was invalid")
-        boundaryAbortError.code = 78
-        child.kill("SIGKILL")
-        return
-      }
-      Promise.resolve(
-        typeof beforeMutation === "function"
-          ? beforeMutation({ terminateBroker: () => child.kill("SIGKILL") })
-          : undefined,
-      ).then(
-        () => {
-          if (typeof afterMutation === "function") child.stdin.write("continue\n")
-          else child.stdin.end("continue\n")
-        },
-        (error) => {
-          boundaryAbortError = error
-          boundaryAbortError.code = 78
-          child.kill("SIGKILL")
-        },
-      )
-    })
-    child.stderr.on("data", (chunk) => {
-      stderr += chunk.toString("utf8")
-      if (stdout.length + stderr.length > maxBuffer) {
-        child.kill("SIGKILL")
-        const error = new Error("managed Git output exceeded maxBuffer")
-        error.code = "ERR_CHILD_PROCESS_STDIO_MAXBUFFER"
-        fail(error)
-      }
-    })
-    child.once("error", fail)
-    child.once("close", (code, signal) => {
-      if (settled) return
-      if (boundaryAbortError) {
-        fail(boundaryAbortError)
-        return
-      }
-      settled = true
-      if (code === 0) {
-        resolve({ stdout, stderr })
-        return
-      }
-      const error = new Error("managed Git command failed")
-      error.code = signal ? "BROKER_LOST" : code
-      error.signal = signal
-      error.stdout = stdout
-      error.stderr = stderr
-      reject(error)
-    })
   })
 }
 
