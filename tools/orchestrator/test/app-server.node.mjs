@@ -1295,6 +1295,48 @@ test("command completion and timeout ordering converges across 100 repetitions e
   }
 })
 
+test("watcher shutdown interrupts an active turn through authoritative settlement", async () => {
+  const controller = new AbortController()
+  const client = new AppServerClient({
+    cwd: "/tmp",
+    turnTerminationTimeoutMs: 50,
+    commandStartGuardMs: 5,
+  })
+  let interrupts = 0
+  const timeoutEvidence = []
+  client.request = async (method) => {
+    if (method === "turn/start") {
+      setImmediate(() => controller.abort("SIGTERM"))
+      return { turn: { id: "turn-shutdown-active" } }
+    }
+    if (method === "turn/interrupt") {
+      interrupts += 1
+      client.emit("turn/completed", {
+        threadId: "thread-shutdown-active",
+        turn: { id: "turn-shutdown-active", status: "interrupted", items: [] },
+      })
+      return {}
+    }
+    throw new Error(`Unexpected request: ${method}`)
+  }
+
+  const result = await client.runTurn({
+    threadId: "thread-shutdown-active",
+    prompt: "Settle shutdown without starting more work.",
+    cwd: "/tmp",
+    timeoutMs: 5_000,
+    signal: controller.signal,
+    onTurnTimedOut: async (evidence) => timeoutEvidence.push(evidence),
+  })
+
+  assert.equal(interrupts, 1)
+  assert.equal(result.status, "needs_review")
+  assert.equal(result.timeoutCancellation.reason, "shutdown_requested")
+  assert.deepEqual(result.timeoutCancellation.pendingItemIds, [])
+  assert.equal(timeoutEvidence.length, 1)
+  assert.equal(timeoutEvidence[0].cancellationReason, "shutdown_requested")
+})
+
 test("timeout drain persists terminality-pending without fabricating command completion", async () => {
   const client = new AppServerClient({
     cwd: "/tmp",

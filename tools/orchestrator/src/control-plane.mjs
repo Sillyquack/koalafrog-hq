@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto"
+import path from "node:path"
+import { quarantineAllowsControl } from "./watcher-v2.mjs"
 
 const actions = new Set(["start", "continue", "stop"])
 const taskStates = new Set([
@@ -92,6 +94,70 @@ export function parseAgentControlBlock(block) {
       continue
     }
 
+    if (key === "quarantine_reopen") {
+      if (Object.hasOwn(value, key) || rawValue.trim() !== "") {
+        throw new Error(
+          "agent_control.quarantine_reopen must be one canonical mapping",
+        )
+      }
+      const quarantineReopen = {}
+      while (index + 1 < lines.length) {
+        const item = lines[index + 1].match(/^\s{4}([a-z_]+):\s*(.*)$/)
+        if (!item) break
+        const [, reopenKey, reopenValue] = item
+        if (Object.hasOwn(quarantineReopen, reopenKey)) {
+          throw new Error(
+            `Duplicate agent_control.quarantine_reopen.${reopenKey}`,
+          )
+        }
+        quarantineReopen[reopenKey] = scalar(reopenValue)
+        index += 1
+      }
+      value.quarantine_reopen = quarantineReopen
+      continue
+    }
+
+    if (key === "commit_authorization") {
+      if (Object.hasOwn(value, key) || rawValue.trim() !== "") {
+        throw new Error(
+          "agent_control.commit_authorization must be one canonical mapping",
+        )
+      }
+      const commitAuthorization = {}
+      while (index + 1 < lines.length) {
+        const mappingItem = lines[index + 1].match(
+          /^\s{4}([a-z_]+):\s*(.*)$/,
+        )
+        if (!mappingItem) break
+        const [, authorizationKey, authorizationValue] = mappingItem
+        if (Object.hasOwn(commitAuthorization, authorizationKey)) {
+          throw new Error(
+            `Duplicate agent_control.commit_authorization.${authorizationKey}`,
+          )
+        }
+        if (authorizationKey === "allowed_paths") {
+          if (authorizationValue.trim() !== "") {
+            throw new Error(
+              "agent_control.commit_authorization.allowed_paths must be one canonical list",
+            )
+          }
+          const allowedPaths = []
+          while (index + 2 < lines.length) {
+            const pathItem = lines[index + 2].match(/^\s{6}-\s+(.*)$/)
+            if (!pathItem) break
+            allowedPaths.push(scalar(pathItem[1]))
+            index += 1
+          }
+          commitAuthorization.allowed_paths = allowedPaths
+        } else {
+          commitAuthorization[authorizationKey] = scalar(authorizationValue)
+        }
+        index += 1
+      }
+      value.commit_authorization = commitAuthorization
+      continue
+    }
+
     if (key === "prompt" && rawValue.trim() === "|") {
       const prompt = []
       index += 1
@@ -144,6 +210,8 @@ export function parseAgentControlBlock(block) {
   const hasSupersedes = Object.hasOwn(value, "supersedes")
   const hasTerminalState = Object.hasOwn(value, "terminal_state")
   const hasCloseout = Object.hasOwn(value, "closeout")
+  const hasQuarantineReopen = Object.hasOwn(value, "quarantine_reopen")
+  const hasCommitAuthorization = Object.hasOwn(value, "commit_authorization")
   const hasExpectedRevision = Object.hasOwn(
     value,
     "expected_state_revision",
@@ -212,6 +280,80 @@ export function parseAgentControlBlock(block) {
       )
     }
   }
+  if (hasQuarantineReopen) {
+    const expectedKeys = [
+      "clear_quarantine",
+      "expected_state_revision",
+      "intended_action",
+      "normalized_error_digest",
+      "quarantine_id",
+    ]
+    const reopen = value.quarantine_reopen
+    if (
+      hasSupersedes ||
+      isTerminalCloseout ||
+      JSON.stringify(Object.keys(reopen).sort()) !==
+        JSON.stringify(expectedKeys) ||
+      typeof reopen.quarantine_id !== "string" ||
+      !/^instruction-quarantine:[a-f0-9]{64}$/.test(reopen.quarantine_id) ||
+      !/^[a-f0-9]{64}$/.test(reopen.normalized_error_digest ?? "") ||
+      !Number.isSafeInteger(reopen.expected_state_revision) ||
+      reopen.expected_state_revision < 0 ||
+      reopen.intended_action !== value.action ||
+      reopen.clear_quarantine !== true
+    ) {
+      throw new Error("agent_control quarantine reopen is malformed")
+    }
+  }
+  if (hasCommitAuthorization) {
+    const expectedKeys = [
+      "allowed_paths",
+      "branch",
+      "commit_message_digest",
+      "expected_head",
+      "instruction_id",
+      "issue_number",
+      "maximum_commit_count",
+      "push_authorized",
+      "repository",
+      "worktree_path",
+    ]
+    const authorization = value.commit_authorization
+    const allowedPaths = authorization.allowed_paths
+    if (
+      isTerminalCloseout ||
+      JSON.stringify(Object.keys(authorization).sort()) !==
+        JSON.stringify(expectedKeys) ||
+      !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(
+        authorization.repository ?? "",
+      ) ||
+      !Number.isSafeInteger(authorization.issue_number) ||
+      authorization.issue_number < 1 ||
+      authorization.instruction_id !== value.instruction_id ||
+      typeof authorization.worktree_path !== "string" ||
+      !path.isAbsolute(authorization.worktree_path) ||
+      typeof authorization.branch !== "string" ||
+      !authorization.branch ||
+      !/^[a-f0-9]{40}$/.test(authorization.expected_head ?? "") ||
+      !Array.isArray(allowedPaths) ||
+      allowedPaths.length === 0 ||
+      new Set(allowedPaths).size !== allowedPaths.length ||
+      allowedPaths.some(
+        (allowed) =>
+          typeof allowed !== "string" ||
+          !allowed ||
+          path.isAbsolute(allowed) ||
+          allowed.split(/[\\/]/).includes("..") ||
+          allowed === ".git" ||
+          allowed.startsWith(".git/"),
+      ) ||
+      authorization.maximum_commit_count !== 1 ||
+      !/^[a-f0-9]{64}$/.test(authorization.commit_message_digest ?? "") ||
+      authorization.push_authorized !== false
+    ) {
+      throw new Error("agent_control commit authorization is malformed")
+    }
+  }
 
   const control = {
     action: value.action,
@@ -238,6 +380,35 @@ export function parseAgentControlBlock(block) {
       requireNoActiveClaims: value.closeout.require_no_active_claims,
       requireOriginIssueClosed:
         value.closeout.require_origin_issue_closed,
+    })
+  }
+  if (hasQuarantineReopen) {
+    control.quarantineReopen = Object.freeze({
+      quarantineId: value.quarantine_reopen.quarantine_id,
+      normalizedErrorDigest:
+        value.quarantine_reopen.normalized_error_digest,
+      expectedStateRevision:
+        value.quarantine_reopen.expected_state_revision,
+      intendedAction: value.quarantine_reopen.intended_action,
+      clearQuarantine: value.quarantine_reopen.clear_quarantine,
+    })
+  }
+  if (hasCommitAuthorization) {
+    control.commitAuthorization = Object.freeze({
+      repository: value.commit_authorization.repository,
+      issueNumber: value.commit_authorization.issue_number,
+      instructionId: value.commit_authorization.instruction_id,
+      worktreePath: value.commit_authorization.worktree_path,
+      branch: value.commit_authorization.branch,
+      expectedHead: value.commit_authorization.expected_head,
+      allowedPaths: Object.freeze([
+        ...value.commit_authorization.allowed_paths,
+      ]),
+      maximumCommitCount:
+        value.commit_authorization.maximum_commit_count,
+      commitMessageDigest:
+        value.commit_authorization.commit_message_digest,
+      pushAuthorized: value.commit_authorization.push_authorized,
     })
   }
   return Object.freeze(control)
@@ -1002,6 +1173,7 @@ export function selectNextInstruction(issue, comments = [], state = {}) {
         (control) =>
           !consumed.has(control.instructionId) &&
           !superseded.has(control.instructionId) &&
+          quarantineAllowsControl(state, control) &&
           isInstructionEligible(control, state.status),
       ) ?? null
   )

@@ -1,8 +1,9 @@
 # Koalafrog local Codex orchestrator
 
 This repo-local Node service implements the bootstrap bridge in
-`docs/agent-orchestration/`. Its normal runtime scans the repository's open
-GitHub issues for `agent_control` YAML blocks, creates isolated Git worktrees,
+`docs/agent-orchestration/`. Its bounded runtime handles explicit issues. Its
+Persistent Watcher v2 scans only opted-in open GitHub issues for
+`agent_control` YAML blocks, creates isolated Git worktrees,
 starts or resumes Codex App Server threads, persists runtime events, and posts
 structured `agent_result` comments. Completion always stops at `needs_review`.
 
@@ -35,13 +36,14 @@ instruction as `terminality_unprovable`; it never opens a replacement turn.
 `action: start` deliberately creates a fresh instruction-specific worktree and
 thread.
 
-Durable per-issue run history, a repository-wide instruction claim ledger, and
-existing `agent_result` comments suppress replay. File locks cover both the
+Durable per-issue run history, a repository-wide instruction claim ledger,
+append-only quarantine/reopen/notification ledgers, and existing
+`agent_result` comments suppress replay. File locks cover both the
 origin issue and globally unique `instruction_id`, so overlapping polls and
-process restarts cannot start the same instruction twice. Within the bounded
+process restarts cannot start the same instruction twice. Within the filtered
 candidate set, issues and their unconsumed instructions are processed
-oldest-first; a failure or owner stop on one issue does not stop the scanner
-from considering the next issue.
+oldest-first. Quarantined work stays visible in status but is not claimable and
+does not consume the one-task fairness slot.
 
 GitHub's issue `updated_at` value is persisted after a detail read. Unchanged
 search results are skipped on later polls except for persisted `needs_review`,
@@ -69,9 +71,12 @@ orchestrator invariant within the supported boundary.
 
 ## Making an issue eligible
 
-A new task must be an open GitHub issue, not a pull request, and its **issue
-body** must contain a valid fenced YAML `agent_control` block. The body
-requirement makes the issue discoverable by the bounded repository search.
+A new persistent-watch task must be an open GitHub issue, not a pull request,
+carry the configured `koalafrog-orchestrator` label (or be in the explicit
+service allowlist), and contain a valid fenced YAML `agent_control` block in its
+**issue body**. Filtering happens before fairness and claim selection. Bounded
+`once --issue N` remains label-independent. The body requirement makes the
+issue discoverable by the bounded repository search.
 Ordinary prose, a bare `agent_control` word, malformed blocks, and pull requests
 are ignored. After first pickup, fresh follow-up blocks may be added as comments
 because the issue then has durable local state.
@@ -111,17 +116,30 @@ npm run orchestrator:repository:once -- \
   --codex-bin /Applications/ChatGPT.app/Contents/Resources/codex
 ```
 
-Run the repository scanner continuously for foreground diagnosis:
+Persistent watch fails closed unless it has a required label, explicit
+allowlist, or one exact canary issue. A future approved foreground canary has
+this shape, using a separate state directory and a fully identity-bound
+immutable runtime:
 
 ```sh
 npm run orchestrator:repository:watch -- \
   --checkout "$PWD" \
-  --codex-bin /Applications/ChatGPT.app/Contents/Resources/codex
+  --codex-bin /Applications/ChatGPT.app/Contents/Resources/codex \
+  --state-dir /absolute/private/canary-state \
+  --issue <canary-issue> \
+  --max-tasks-per-poll 1 \
+  --expected-runtime-release <sha256> \
+  --expected-manifest-sha256 <sha256> \
+  --expected-source-commit <git-sha> \
+  --expected-source-tree <git-tree> \
+  --expected-service-config-sha256 <sha256>
 ```
 
-Press `Ctrl-C` for a graceful stop. The current state, worktrees, and Codex
-threads are preserved for the next start. The LaunchAgent below is the normal
-hands-off runtime; these commands remain useful for diagnosis.
+Press `Ctrl-C` for a graceful stop. Discovery and new claims stop immediately;
+the active turn enters the authoritative cancellation path, durable evidence
+and leases settle, and broker cleanup completes. The internal deadline is 75
+seconds beneath launchd's 90-second `ExitTimeOut`. State, worktrees, and Codex
+threads remain restart-safe.
 
 A stopped-service recovery can scope a repository one-shot to one exact durable
 task without scanning or loading unrelated issue state by adding `--issue N` to
@@ -140,7 +158,7 @@ contract and fail-closed target rules.
 
 A terminal closeout is the only supported `needs_review -> done` transition.
 It is deliberately narrower than normal repository execution: the control
-must bind the exact schema-12 revision and last-consumed instruction, the
+must bind the exact current supported-state revision and last-consumed instruction, the
 GitHub issue must already be closed, and the runtime must prove there are no
 active claims, retries, mutation grants, broker receipts, or incomplete result
 publications. It retires every remaining cross-state control and interrupted
@@ -164,132 +182,107 @@ validation of the terminal stop control. Schema 11 migrates once to schema 12
 by adding an empty `terminalCloseouts` ledger and advancing the state revision;
 older runtimes reject schema-12 state.
 
+Watcher v2 never grants commit authority from service configuration. A control
+may instead declare one exact `commit_authorization` binding: repository,
+issue/instruction, linked task worktree, branch, expected HEAD, allowed paths,
+one commit maximum, the generated commit-message SHA-256, and
+`push_authorized: false`. The runtime rejects coordinating/parent/sibling
+checkout mutation, `.git` ambiguity, gitlinks, path widening, repeated use, and
+any staged file outside the allowlist. It stages only the named paths and
+persists a post-commit receipt. Legacy `--auto-commit` remains parseable only
+for explicitly bounded manual compatibility and is forbidden in watch.
+
 Use `node tools/orchestrator/bin/orchestrator.mjs help` for every bounded-turn,
 timeout, retry, polling, model, state, and worktree option.
 
-## Proof-of-life mode
+## Canary proof of life
 
-The bootstrap acceptance run should add a fresh issue comment containing a
-machine-readable instruction that permits only
-`docs/agent-orchestration/PROOF_OF_LIFE.md`. Then run:
+Persistent activation is canary-first. The canary uses a new synthetic issue,
+`watch --issue N`, a separate state directory, one task per poll, no
+`--auto-commit`, `RunAtLoad=false`, and no `KeepAlive`. Acceptance requires one
+pickup, one Codex turn, one result, no unexpected Git mutation, restart without
+duplication, graceful stop, and proof that no other issue was read or written.
+The persistent service remains disabled until the canary and a second owner
+approval are complete.
 
-```sh
-npm run orchestrator:once -- \
-  --checkout "$PWD" \
-  --codex-bin /Applications/ChatGPT.app/Contents/Resources/codex \
-  --state-dir /absolute/private/state/path \
-  --allowed-path docs/agent-orchestration/PROOF_OF_LIFE.md \
-  --auto-commit
-```
+## Persistent Watcher v2 service
 
-After the first `needs_review` result, add a new `action: continue` block to the
-same issue and run the identical command again. The second result must show the
-same `codex_thread_id`. The allowed-path check fails closed before auto-commit if
-Codex touches any other file.
+The v2 service profile is a per-user LaunchAgent named
+`com.sillyquack.koalafrog-orchestrator`. It uses a dedicated coordinating clone
+at `~/Library/Application Support/Koalafrog Orchestrator/coordinator/koalafrog-hq`,
+an immutable release, a 60-second poll, `origin/main`, 12 turns, a 20-minute
+turn deadline, two in-turn retries, discovery limit 50, one task per poll, and
+the `koalafrog-orchestrator` opt-in label. Service-wide `--auto-commit` and
+`KeepAlive` are absent.
 
-## macOS service
-
-The supported persistent runtime is the per-user LaunchAgent
-`com.sillyquack.koalafrog-orchestrator`. It starts after login, runs the
-repository-wide watcher without VS Code or an open Terminal, and launchd
-restarts it after an unexpected non-zero exit. It does not require or copy a
-GitHub/OpenAI token: the service launches the existing authenticated Codex
-binary and uses its connected GitHub app.
-
-Installing or enabling the LaunchAgent mutates the owner's Mac and therefore
-always requires explicit bounded owner approval. The non-mutating preview is:
+Rendering is read-only and defaults to the canary policy:
 
 ```sh
-npm run --silent orchestrator:service -- render \
-  --checkout "/absolute/path/to/stable/koalafrog-hq" \
-  --codex-bin /Applications/ChatGPT.app/Contents/Resources/codex \
-  --node-bin "$(command -v node)" \
-  --poll-ms 15000 \
-  --max-turns 12 \
-  --turn-timeout-ms 1200000 \
-  --max-retries 2 \
-  --retry-base-ms 1000 \
-  --discovery-limit 50 \
-  --max-tasks-per-poll 4 \
-  --auto-commit | plutil -lint -
+npm run --silent orchestrator:service -- render | plutil -lint -
 ```
 
-After that separate owner approval, use the same audited values with
-`install`:
+The generated plist has `RunAtLoad=false`, no `KeepAlive`,
+`ExitTimeOut=90`, `ThrottleInterval=60`, `ProcessType=Background`, and
+`Umask=0077`. Only a separately approved post-canary render/install may add
+`--approve-run-at-load`; `KeepAlive` remains absent.
+
+The installer requires a clean coordinating checkout with the exact GitHub
+origin. It rejects dirty orchestrator source, an already loaded service, a
+running watcher/broker tree, and multiple active plist candidates. Disabled and
+forensic plist copies are inactive evidence. It bundles the fixed allowlist to
+`runtime/releases/<sha256>`, verifies the manifest and canonical commit/tree,
+and writes the new plist atomically with mode `0600`.
+
+If validation or bootstrap fails, the attempted and previous inactive plists,
+runtime release, and diagnostics are preserved, the active plist is removed,
+and the service remains disabled. The installer never bootstraps the previous
+runtime automatically. Rollback therefore means service-disabled unless an
+owner separately approves a future restore mechanism.
+
+At startup the watcher recomputes and requires the runtime release, manifest,
+source commit/tree, repository, coordinator, and complete service-profile hash.
+It emits one identity record and writes read-only health evidence containing
+PID/start time, last and next poll, active issue/instruction/claim, quarantine
+summary, circuit state, shutdown state, schema support, and configuration hash:
 
 ```sh
-npm run orchestrator:service -- install \
-  --checkout "/absolute/path/to/stable/koalafrog-hq" \
-  --codex-bin /Applications/ChatGPT.app/Contents/Resources/codex \
-  --node-bin "$(command -v node)" \
-  --poll-ms 15000 \
-  --max-turns 12 \
-  --turn-timeout-ms 1200000 \
-  --max-retries 2 \
-  --retry-base-ms 1000 \
-  --discovery-limit 50 \
-  --max-tasks-per-poll 4 \
-  --auto-commit
-```
-
-The installer fails before launchd mutation unless Node and Codex are
-executable and `--checkout` is a stable coordinating checkout. It validates the
-generated plist before replacing the prior file, writes it atomically with mode
-`0600`, waits for an old instance to unload, retries bounded launchd bootstrap
-races, and restores the previous plist/service if the new bootstrap fails. It
-first copies the audited orchestrator source from the validated
-`<checkout>/tools/orchestrator` directory to an immutable content-addressed
-release under the state root. The installer never treats the release that
-launched it as update source. The stable checkout must therefore be updated to
-the reviewed commit before an approved install. The LaunchAgent executes the
-new release, not a task worktree, while `WorkingDirectory` remains the stable
-coordinating checkout. No credentials are written to the release or plist.
-
-It writes and loads:
-
-```text
-~/Library/LaunchAgents/com.sillyquack.koalafrog-orchestrator.plist
-```
-
-Inspect the service and redacted logs with:
-
-```sh
+node tools/orchestrator/bin/repository-orchestrator.mjs status --state-dir <state-root>
 npm run orchestrator:service -- status
-launchctl print gui/$(id -u)/com.sillyquack.koalafrog-orchestrator
-tail -n 40 ~/Library/Application\ Support/Koalafrog\ Orchestrator/service/orchestrator.stdout.log
-tail -n 40 ~/Library/Application\ Support/Koalafrog\ Orchestrator/service/orchestrator.stderr.log
 ```
 
-The active executable appears in `launchctl print` under `arguments` and has
-this stable shape:
+Before a watch cycle can migrate any state, raw selected task files are scanned
+read-only. A newer schema aborts the entire cycle. Schema 12 migrates once to
+schema 13 by adding the quarantine, reopen, notification, checkpoint-rejection,
+and commit-receipt ledgers; schema-12 runtimes reject schema-13 state.
 
-```text
-~/Library/Application Support/Koalafrog Orchestrator/runtime/releases/<sha256>/bin/repository-orchestrator.mjs
-```
+Repository discovery/network errors use a global 1/2/4/8/15-minute breaker and
+then one 30-minute probe; they do not increment issue attempts. Transient claim
+failures use 1/2/4/8-minute backoff and quarantine on failure five within 24
+hours. Permanent checkout/provenance/task/configuration errors quarantine
+immediately. Repeated checkpoint rejection and exhausted idempotent result
+publication have their own fail-closed policies. Legacy counts at or above five
+(including the historical thousand-count shapes) migrate directly to
+quarantine without another turn or fabricated result.
 
-Repository-wide claim records are mode-`0600` JSON files under
-`repository-queue/instructions/`. Per-issue state and event logs remain in
-`Sillyquack-koalafrog-hq-issue-<number>/`; both `agent_pickup` and
-`agent_result` packets include the origin issue number/URL and are posted only
-to that issue by the orchestrator. Executed checks use `pass`, `fail`, or
-`unknown`; `not_run` is reserved for checks proven not to have started. The
-packet also carries the redacted completed-turn artifact and extracted blocker,
-owner-gate, production-readback, safety, and branch/push findings.
+The third transient failure produces one durable idempotent warning. Immediate
+or exhausted quarantine produces one durable quarantine notification. A stable
+comment marker and append-only delivery ledger prevent restart spam. Quarantine
+history and counts are never cleared; a new control must bind the exact
+quarantine ID, error digest, state revision, intended action, and explicit
+clear intent before selection can resume.
 
-An explicitly approved uninstall stops only this label and preserves all task
-state and worktrees:
+An explicitly approved uninstall stops only this label and preserves releases,
+task state, audit history, and worktrees:
 
 ```sh
 npm run orchestrator:service -- uninstall
 ```
 
-The checked-in plist is an explanatory example. The service command is the
-canonical generator and install path.
-
 ## Owner stops and follow-ups
 
-`needs_owner` and `needs_review` are report states, not reasons for the watcher
-to exit. The LaunchAgent keeps polling GitHub. To resume after `needs_owner`, the
+`needs_owner` and `needs_review` are report states, not reasons for an approved
+Watcher v2 instance to exit. While that service is running it keeps polling only
+opted-in issues. To resume after `needs_owner`, the
 owner adds a fresh, uniquely identified `agent_control` block with the bounded
 approval and `action: continue`; the next poll reuses the persisted Codex thread
 and worktree. No `repository:once` command is needed. A materially new task uses

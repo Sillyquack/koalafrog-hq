@@ -47,6 +47,81 @@ missing events from the atomic state record before continuing. Historical
 controls remain present, while the selector excludes their durably superseded
 IDs. Supersession records are retirement evidence, never execution results.
 
+### Persistent Watcher v2 eligibility and quarantine
+
+Persistent `watch` is explicit opt-in. It requires a configured GitHub label,
+an issue allowlist, or one exact `watch --issue N` canary. The filter applies to
+search and persisted-state candidates before fairness or claims. Ordinary
+`once --issue N` remains label-independent. Closed and `done` tasks are never
+normal candidates; quarantined work remains read-only visible but cannot be
+selected or acquire an instruction claim.
+
+Schema 12 migrates once to schema 13 with append-only
+`instructionQuarantines`, `quarantineReopens`, `watcherNotifications`,
+`watcherNotificationDeliveries`, `checkpointRecoveryRejections`, and
+`commitAuthorizationReceipts` ledgers. Persistent watch inspects every selected
+raw state schema before loading any task; one unsupported schema aborts the
+whole cycle without migration. Bounded once-mode retains its existing per-task
+migration behavior. Older runtimes reject schema 13.
+
+Transient instruction/claim failures back off for 1, 2, 4, then 8 minutes and
+quarantine on failure five within 24 hours. Permanent checkout, provenance,
+task-shape, and deterministic configuration errors quarantine immediately.
+Unchanged checkpoint-rejection evidence receives no execution retry; changed
+evidence receives at most one, then quarantines. Result publication retries the
+same durable packet after 1, 2, 4, 8, and 15 minutes and never starts another
+turn. Repository discovery/network failure uses a global 1/2/4/8/15-minute
+circuit and one 30-minute probe thereafter without incrementing issue counts.
+Legacy exhausted counts migrate directly to quarantine without execution.
+
+The third transient failure and each quarantine create one stable notification
+identity. Delivery uses a stable GitHub comment marker plus an append-only
+delivery record, so restart cannot intentionally spam duplicate warnings.
+Historical counts and quarantine records are never cleared. Reopening requires
+a new state-eligible control with the exact binding:
+
+```yaml
+  quarantine_reopen:
+    quarantine_id: <exact durable quarantine id>
+    normalized_error_digest: <exact sha256>
+    expected_state_revision: <exact current revision>
+    intended_action: start | continue
+    clear_quarantine: true
+```
+
+The outer control's action must equal `intended_action`. A wrong ID, digest,
+revision, action, or unrelated control fails closed. Reopen is a new append-only
+record; it does not erase the quarantine or its failure count.
+
+### Control-declared commit permission
+
+Persistent watch never accepts service-wide `--auto-commit`. A control that
+needs one local commit must declare all authority explicitly:
+
+```yaml
+  commit_authorization:
+    repository: Sillyquack/koalafrog-hq
+    issue_number: <origin issue>
+    instruction_id: <this instruction id>
+    worktree_path: <exact linked task worktree>
+    branch: <exact task branch>
+    expected_head: <40-character sha>
+    allowed_paths:
+      - <repo-relative path>
+    maximum_commit_count: 1
+    commit_message_digest: <sha256 of generated commit message>
+    push_authorized: false
+```
+
+The runtime requires a linked-worktree `.git` pointer, exact repository, issue,
+instruction, worktree, branch and HEAD, one commit, the exact message, and no
+changed or staged path outside the allowlist. Coordinating, parent, or sibling
+checkout mutation, gitlinks/submodules, ambiguous Git metadata, broad `git add`,
+repeated receipt use, and push authority are rejected. Only declared paths are
+staged, and one append-only receipt records the resulting commit and proves no
+push occurred. Legacy bounded `--auto-commit` parsing is retained for
+compatibility but is not a persistent-watch fallback.
+
 ### Terminal closeout
 
 A reviewed durable task may transition from `needs_review` to `done` only with
@@ -58,7 +133,7 @@ agent_control:
   task_state: needs_review
   terminal_state: done
   instruction_id: <unique closeout instruction id>
-  expected_state_revision: <exact current schema-12 revision>
+  expected_state_revision: <exact current supported-state revision>
   owner_approval_required: false
   closeout:
     expected_last_consumed_instruction_id: <exact prior instruction id>
@@ -97,7 +172,7 @@ digest, request identities, and source instruction, then changed to
 or owner acknowledgement is fabricated, and an expired request can never
 authorize an action.
 
-One schema-12 state CAS binds the expected revision, `needs_review`, no active
+One current-schema state CAS binds the expected revision, `needs_review`, no active
 instruction or claim, the exact prior last-consumed instruction, no retry or
 unresolved mutation/broker/result-publication residue, all cross-state
 retirements, all approval tombstones, and the closed GitHub observation. It

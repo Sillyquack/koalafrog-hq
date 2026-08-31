@@ -2,6 +2,10 @@ import { execFile } from "node:child_process"
 import { access, mkdir } from "node:fs/promises"
 import path from "node:path"
 import { promisify } from "node:util"
+import {
+  commitAuthorizationReceipt,
+  validateCommitAuthorization,
+} from "./commit-authorization.mjs"
 
 const execFileAsync = promisify(execFile)
 
@@ -150,8 +154,9 @@ export function parseStatusFiles(status) {
 }
 
 export async function inspectWorkspace(workspacePath, baseRef) {
-  const [branch, commits, committedFiles, workingStatus] = await Promise.all([
+  const [branch, head, commits, committedFiles, workingStatus] = await Promise.all([
     git(["branch", "--show-current"], workspacePath),
+    git(["rev-parse", "HEAD"], workspacePath),
     git(["log", "--format=%H", `${baseRef}..HEAD`], workspacePath),
     git(["diff", "--name-only", `${baseRef}...HEAD`], workspacePath),
     git(["status", "--porcelain=v1", "-z"], workspacePath, { trim: false }),
@@ -162,6 +167,7 @@ export async function inspectWorkspace(workspacePath, baseRef) {
   for (const file of parseStatusFiles(workingStatus.stdout)) changedFiles.add(file)
   return {
     branch: branch.stdout,
+    head: head.stdout,
     commits: commits.stdout.split("\n").filter(Boolean),
     changedFiles: [...changedFiles].sort(),
     dirty: workingStatus.stdout !== "",
@@ -191,6 +197,79 @@ export async function commitWorkspaceChanges(workspacePath, message) {
   await git(["add", "--all"], workspacePath)
   await git(["commit", "-m", message], workspacePath)
   return (await git(["rev-parse", "HEAD"], workspacePath)).stdout
+}
+
+function worktreePaths(value) {
+  return value
+    .split("\n")
+    .filter((line) => line.startsWith("worktree "))
+    .map((line) => line.slice("worktree ".length))
+}
+
+function gitlinkPaths(value) {
+  return value
+    .split("\n")
+    .filter((line) => line.startsWith("160000 "))
+    .map((line) => line.split("\t").at(-1))
+    .filter(Boolean)
+}
+
+export async function commitWorkspaceChangesAuthorized({
+  workspacePath,
+  coordinatorPath,
+  repository,
+  issueNumber,
+  instructionId,
+  baseRef,
+  authorization,
+  message,
+}) {
+  const workspace = await inspectWorkspace(workspacePath, baseRef)
+  if (!workspace.dirty) return { commitSha: null, receipt: null }
+  const [worktrees, gitlinks] = await Promise.all([
+    git(["worktree", "list", "--porcelain"], coordinatorPath),
+    git(["ls-files", "-s"], workspacePath),
+  ])
+  const allWorktrees = worktreePaths(worktrees.stdout)
+  const decision = await validateCommitAuthorization(authorization, {
+    repository,
+    issueNumber,
+    instructionId,
+    worktreePath: workspacePath,
+    coordinatorPath,
+    siblingWorktreePaths: allWorktrees.filter(
+      (candidate) => path.resolve(candidate) !== path.resolve(workspacePath),
+    ),
+    parentWorkspacePath: path.dirname(workspacePath),
+    branch: workspace.branch,
+    head: workspace.head,
+    changedFiles: workspace.changedFiles,
+    gitlinkPaths: gitlinkPaths(gitlinks.stdout),
+    commitMessage: message,
+  })
+  if (!decision.accepted) {
+    const error = new Error(`Commit authorization rejected: ${decision.code}`)
+    error.code = "COMMIT_AUTHORIZATION_REJECTED"
+    error.rejectionCode = decision.code
+    throw error
+  }
+  await git(["add", "--", ...decision.allowedPaths], workspacePath)
+  const staged = await git(
+    ["diff", "--cached", "--name-only"],
+    workspacePath,
+  )
+  const committedPaths = staged.stdout.split("\n").filter(Boolean).sort()
+  if (committedPaths.length === 0) return { commitSha: null, receipt: null }
+  await git(["commit", "-m", message], workspacePath)
+  const commitSha = (await git(["rev-parse", "HEAD"], workspacePath)).stdout
+  return {
+    commitSha,
+    receipt: commitAuthorizationReceipt({
+      authorization,
+      commitSha,
+      committedPaths,
+    }),
+  }
 }
 
 export async function validateWorkspace(workspacePath, baseRef) {
