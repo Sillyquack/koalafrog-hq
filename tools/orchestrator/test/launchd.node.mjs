@@ -1,11 +1,13 @@
 import assert from "node:assert/strict"
-import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises"
+import { mkdtemp, readFile, readdir, rm, stat, writeFile } from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
 import test from "node:test"
 import { fileURLToPath } from "node:url"
 import {
   buildLaunchAgentPlist,
+  discoverActiveLaunchAgentPlists,
+  discoverOrchestratorProcessMatches,
   installAndStartLaunchAgent,
   launchAgentLabel,
   validateLaunchAgentInputs,
@@ -36,7 +38,13 @@ function fixture(root) {
     stateDirectory,
     stdoutPath,
     stderrPath,
-    autoCommit: true,
+    autoCommit: false,
+    requiredLabel: "koalafrog-orchestrator",
+    expectedRuntimeRelease: "a".repeat(64),
+    expectedManifestSha256: "b".repeat(64),
+    expectedSourceCommit: "c".repeat(40),
+    expectedSourceTree: "d".repeat(40),
+    serviceConfigSha256: "e".repeat(64),
   }
   return {
     ...config,
@@ -45,20 +53,57 @@ function fixture(root) {
   }
 }
 
-test("LaunchAgent configuration is persistent, bounded, and secret-free", () => {
+test("LaunchAgent configuration is canary-safe, bounded, and secret-free", () => {
   const contents = fixture("/tmp/koalafrog-launchd").contents
-  assert.match(contents, /<key>RunAtLoad<\/key>\s*<true\/>/)
-  assert.match(contents, /<key>SuccessfulExit<\/key>\s*<false\/>/)
-  assert.match(contents, /<string>15000<\/string>/)
+  assert.match(contents, /<key>RunAtLoad<\/key>\s*<false\/>/)
+  assert.doesNotMatch(contents, /<key>KeepAlive<\/key>/)
+  assert.match(contents, /<key>ExitTimeOut<\/key>\s*<integer>90<\/integer>/)
+  assert.match(contents, /<key>ThrottleInterval<\/key>\s*<integer>60<\/integer>/)
+  assert.match(contents, /<key>Umask<\/key>\s*<integer>63<\/integer>/)
+  assert.match(contents, /<string>60000<\/string>/)
   assert.match(contents, /--max-turns/)
   assert.match(contents, /--turn-timeout-ms/)
-  assert.match(contents, /--auto-commit/)
+  assert.doesNotMatch(contents, /--auto-commit/)
+  assert.match(contents, /--required-label/)
+  assert.match(contents, /koalafrog-orchestrator/)
+  assert.match(contents, /--expected-runtime-release/)
+  assert.match(contents, /--health-path/)
   assert.match(contents, /repository-orchestrator\.mjs/)
   assert.match(contents, /--repository/)
   assert.match(contents, /--discovery-limit/)
   assert.match(contents, /--max-tasks-per-poll/)
   assert.match(contents, /koalafrog &amp; hq/)
   assert.doesNotMatch(contents, /(?:github_pat|ghp_|Bearer|OPENAI_API_KEY)/i)
+})
+
+test("installer discovery detects multiple active plist candidates", async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "koalafrog-launchd-candidates-"))
+  t.after(() => rm(root, { recursive: true, force: true }))
+  const options = fixture(root)
+  await writeLaunchAgentPlist(options)
+  const stalePath = path.join(
+    path.dirname(options.plistPath),
+    `${launchAgentLabel}.stale.plist`,
+  )
+  await writeFile(stalePath, "stale")
+  assert.deepEqual(await discoverActiveLaunchAgentPlists(options), [stalePath])
+})
+
+test("installer process discovery detects watcher and broker trees only", async () => {
+  const matches = await discoverOrchestratorProcessMatches({
+    currentPid: 999,
+    run: async () => ({
+      code: 0,
+      stderr: "",
+      stdout: [
+        "101 1 /runtime/bin/repository-orchestrator.mjs watch --required-label x",
+        "102 1 codex app-server",
+        "103 1 python git-mutation-broker.py /Users/me/Koalafrog/repo",
+        "999 1 node orchestrator-service.mjs install",
+      ].join("\n"),
+    }),
+  })
+  assert.deepEqual(matches.map((record) => record.pid), [101, 103])
 })
 
 test("service runtime release is deterministic, immutable, and outside a task worktree", async (t) => {
@@ -105,6 +150,16 @@ test("service runtime release is planned from the coordinating checkout", async 
   const plan = await planRuntimeReleaseFromCheckout({
     checkoutPath,
     stateDirectory: root,
+    runGit: async (args) => {
+      if (args.join(" ") === "remote get-url origin") {
+        return "https://github.com/Sillyquack/koalafrog-hq.git"
+      }
+      if (args[0] === "status") return ""
+      if (args.at(-1) === "HEAD^{tree}") return "b".repeat(40)
+      if (args.at(-1) === "origin/main") return "a".repeat(40)
+      if (args.at(-1) === "HEAD") return "a".repeat(40)
+      throw new Error(`Unexpected Git fixture call: ${args.join(" ")}`)
+    },
   })
 
   assert.equal(
@@ -122,6 +177,42 @@ test("service runtime release is planned from the coordinating checkout", async 
   )
 })
 
+test("service runtime planning rejects a dirty orchestrator source", async () => {
+  await assert.rejects(
+    planRuntimeReleaseFromCheckout({
+      checkoutPath: repositoryDirectory,
+      stateDirectory: "/tmp/synthetic-watcher-runtime",
+      runGit: async (args) => {
+        if (args.join(" ") === "remote get-url origin") {
+          return "https://github.com/Sillyquack/koalafrog-hq.git"
+        }
+        if (args[0] === "status") return " M tools/orchestrator/src/config.mjs"
+        return "a".repeat(40)
+      },
+    }),
+    /uncommitted orchestrator changes/,
+  )
+})
+
+test("service runtime planning rejects a non-canonical source commit", async () => {
+  await assert.rejects(
+    planRuntimeReleaseFromCheckout({
+      checkoutPath: repositoryDirectory,
+      stateDirectory: "/tmp/synthetic-watcher-runtime",
+      runGit: async (args) => {
+        if (args.join(" ") === "remote get-url origin") {
+          return "https://github.com/Sillyquack/koalafrog-hq.git"
+        }
+        if (args[0] === "status") return ""
+        if (args.at(-1) === "HEAD") return "a".repeat(40)
+        if (args.at(-1) === "origin/main") return "b".repeat(40)
+        return "c".repeat(40)
+      },
+    }),
+    /not at canonical origin\/main/,
+  )
+})
+
 test("plist installation is atomic and idempotent", async (t) => {
   const root = await mkdtemp(path.join(os.tmpdir(), "koalafrog-launchd-"))
   t.after(() => rm(root, { recursive: true, force: true }))
@@ -132,38 +223,27 @@ test("plist installation is atomic and idempotent", async (t) => {
   assert.equal((await stat(options.plistPath)).mode & 0o777, 0o600)
 })
 
-test("reinstall keeps one label by reloading the existing service", async (t) => {
+test("install refuses an already running service instead of replacing it", async (t) => {
   const root = await mkdtemp(path.join(os.tmpdir(), "koalafrog-launchd-"))
   t.after(() => rm(root, { recursive: true, force: true }))
   const calls = []
-  let printCount = 0
   const run = async (command, args) => {
     calls.push([command, ...args])
     if (args[0] === "print") {
-      printCount += 1
-      return printCount <= 2
-        ? { code: 0, stdout: "loaded", stderr: "" }
-        : { code: 1, stdout: "", stderr: "not loaded" }
+      return { code: 0, stdout: "loaded", stderr: "" }
     }
     return { code: 0, stdout: "", stderr: "" }
   }
-  const result = await installAndStartLaunchAgent({
-    ...fixture(root),
-    uid: 501,
-    run,
-    sleep: async () => {},
-  })
-  assert.equal(result.reloaded, true)
-  assert.deepEqual(calls.map((call) => call[1]), [
-    "-lint",
-    "print",
-    "bootout",
-    "print",
-    "print",
-    "bootstrap",
-  ])
-  assert.equal(calls[2][2], `gui/501/${launchAgentLabel}`)
-  assert.equal(calls[5][2], "gui/501")
+  await assert.rejects(
+    installAndStartLaunchAgent({
+      ...fixture(root),
+      uid: 501,
+      run,
+      sleep: async () => {},
+    }),
+    /service is active/,
+  )
+  assert.deepEqual(calls.map((call) => call[1]), ["print"])
 })
 
 test("bootstrap retries a transient launchd reload race", async (t) => {
@@ -196,11 +276,14 @@ test("invalid generated plist is rejected before an existing service unloads", a
   const root = await mkdtemp(path.join(os.tmpdir(), "koalafrog-launchd-"))
   t.after(() => rm(root, { recursive: true, force: true }))
   const options = fixture(root)
-  const oldContents = options.contents.replace("15000", "30000")
+  const oldContents = options.contents.replace("60000", "30000")
   await writeLaunchAgentPlist({ ...options, contents: oldContents })
   const calls = []
   const run = async (command, args) => {
     calls.push([command, ...args])
+    if (args[0] === "print") {
+      return { code: 1, stdout: "", stderr: "not loaded" }
+    }
     if (command === "plutil") {
       return { code: 1, stdout: "", stderr: "invalid plist" }
     }
@@ -212,32 +295,33 @@ test("invalid generated plist is rejected before an existing service unloads", a
     /invalid plist/,
   )
   assert.equal(await readFile(options.plistPath, "utf8"), oldContents)
-  assert.equal(calls.some((call) => call[0] === "launchctl"), false)
+  assert.equal(
+    calls.some(
+      (call) =>
+        call[0] === "launchctl" &&
+        new Set(["bootout", "bootstrap"]).has(call[1]),
+    ),
+    false,
+  )
 })
 
-test("failed reload restores the prior plist and service", async (t) => {
+test("failed install preserves evidence and leaves the service disabled", async (t) => {
   const root = await mkdtemp(path.join(os.tmpdir(), "koalafrog-launchd-"))
   t.after(() => rm(root, { recursive: true, force: true }))
   const options = fixture(root)
-  const oldContents = options.contents.replace("15000", "30000")
+  const oldContents = options.contents.replace("60000", "30000")
   await writeLaunchAgentPlist({ ...options, contents: oldContents })
-  let printCount = 0
   let bootstrapCount = 0
   const run = async (command, args) => {
     if (command === "plutil") {
       return { code: 0, stdout: "OK", stderr: "" }
     }
     if (args[0] === "print") {
-      printCount += 1
-      return printCount === 1
-        ? { code: 0, stdout: "loaded", stderr: "" }
-        : { code: 1, stdout: "", stderr: "not loaded" }
+      return { code: 1, stdout: "", stderr: "not loaded" }
     }
     if (args[0] === "bootstrap") {
       bootstrapCount += 1
-      return bootstrapCount <= 3
-        ? { code: 5, stdout: "", stderr: "Bootstrap failed: 5" }
-        : { code: 0, stdout: "", stderr: "" }
+      return { code: 5, stdout: "", stderr: "Bootstrap failed: 5" }
     }
     return { code: 0, stdout: "", stderr: "" }
   }
@@ -247,11 +331,16 @@ test("failed reload restores the prior plist and service", async (t) => {
       ...options,
       run,
       sleep: async () => {},
+      evidenceDirectory: path.join(root, "disabled"),
     }),
-    /previous configuration was restored/,
+    /service remains disabled/,
   )
-  assert.equal(await readFile(options.plistPath, "utf8"), oldContents)
-  assert.equal(bootstrapCount, 4)
+  await assert.rejects(readFile(options.plistPath, "utf8"), /ENOENT/)
+  assert.equal(bootstrapCount, 3)
+  const evidence = await readdir(path.join(root, "disabled"))
+  assert.equal(evidence.length, 2)
+  assert.ok(evidence.some((name) => name.includes("previous-inactive")))
+  assert.ok(evidence.some((name) => name.includes("failed-attempt")))
 })
 
 test("LaunchAgent preflight requires a stable coordinating checkout", async () => {

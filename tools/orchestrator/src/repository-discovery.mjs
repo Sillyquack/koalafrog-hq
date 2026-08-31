@@ -24,7 +24,17 @@ export function isPullRequest(issue) {
   )
 }
 
-export function discoverIssueCandidates(searchPayload) {
+function labelNames(issue) {
+  return (issue?.labels ?? [])
+    .map((label) => (typeof label === "string" ? label : label?.name))
+    .filter((label) => typeof label === "string")
+}
+
+export function discoverIssueCandidates(
+  searchPayload,
+  { requiredLabel = null, issueAllowlist = [] } = {},
+) {
+  issueAllowlist ??= []
   const root = searchPayload?.result ?? searchPayload ?? {}
   const candidates = root.results ?? root.issues ?? root.items ?? []
   const issues = []
@@ -40,6 +50,14 @@ export function discoverIssueCandidates(searchPayload) {
     }
     const number = extractIssueNumber(issue)
     if (!number || seen.has(number)) continue
+    const labels = labelNames(issue)
+    if (
+      !issueAllowlist.includes(number) &&
+      requiredLabel &&
+      !labels.includes(requiredLabel)
+    ) {
+      continue
+    }
     seen.add(number)
     issues.push({
       issueNumber: number,
@@ -48,6 +66,8 @@ export function discoverIssueCandidates(searchPayload) {
       createdAt: issue?.created_at ?? issue?.createdAt ?? null,
       updatedAt: issue?.updated_at ?? issue?.updatedAt ?? null,
       searchMatched: true,
+      labels,
+      claimable: true,
     })
   }
   return issues.sort((left, right) => {
@@ -64,8 +84,8 @@ export function discoverIssueCandidates(searchPayload) {
   })
 }
 
-export function discoverIssueNumbers(searchPayload) {
-  return discoverIssueCandidates(searchPayload).map(
+export function discoverIssueNumbers(searchPayload, options = {}) {
+  return discoverIssueCandidates(searchPayload, options).map(
     (candidate) => candidate.issueNumber,
   )
 }

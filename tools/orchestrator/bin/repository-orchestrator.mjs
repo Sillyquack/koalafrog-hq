@@ -4,6 +4,10 @@ import {
   runRepositoryOnce,
   watchRepository,
 } from "../src/repository-runner.mjs"
+import {
+  readWatcherHealth,
+  ShutdownCoordinator,
+} from "../src/watcher-v2.mjs"
 
 async function main() {
   const config = parseConfig(process.argv.slice(2))
@@ -13,17 +17,45 @@ async function main() {
     )
     return
   }
+  if (config.command === "status") {
+    const status = await readWatcherHealth(config.healthPath)
+    process.stdout.write(`${JSON.stringify(status)}\n`)
+    return
+  }
 
-  const controller = new AbortController()
-  const shutdown = () => controller.abort()
-  process.once("SIGINT", shutdown)
-  process.once("SIGTERM", shutdown)
+  const shutdown = new ShutdownCoordinator({
+    timeoutMs: config.shutdownTimeoutMs,
+  })
+  let deadlineTimer = null
+  const requestShutdown = (signalName) => {
+    const status = shutdown.request(signalName)
+    process.stderr.write(
+      `repository orchestrator shutdown requested (${signalName}, signal ${status.signalCount})\n`,
+    )
+    deadlineTimer ??= setTimeout(() => {
+      process.stderr.write(
+        "repository orchestrator graceful shutdown deadline exceeded\n",
+      )
+      process.exitCode = 1
+    }, config.shutdownTimeoutMs)
+    deadlineTimer.unref?.()
+  }
+  const onSigint = () => requestShutdown("SIGINT")
+  const onSigterm = () => requestShutdown("SIGTERM")
+  process.on("SIGINT", onSigint)
+  process.on("SIGTERM", onSigterm)
 
-  if (config.command === "watch") {
-    await watchRepository(config, { signal: controller.signal })
-  } else {
-    const results = await runRepositoryOnce(config)
-    process.stdout.write(`${JSON.stringify(results)}\n`)
+  try {
+    if (config.command === "watch") {
+      await watchRepository(config, { signal: shutdown.controller.signal })
+    } else {
+      const results = await runRepositoryOnce(config)
+      process.stdout.write(`${JSON.stringify(results)}\n`)
+    }
+  } finally {
+    clearTimeout(deadlineTimer)
+    process.off("SIGINT", onSigint)
+    process.off("SIGTERM", onSigterm)
   }
 }
 

@@ -12,6 +12,11 @@ import {
   recoverDurableFileReplace,
   releaseCrashSafeFileLease,
 } from "./durable-filesystem.mjs"
+import {
+  normalizeWatcherFailure,
+  watcherV2MaximumClaimFailures,
+  watcherV2QueueFailureDecision,
+} from "./watcher-v2.mjs"
 
 const issueClaimBrand = Symbol("koalafrog-issue-claim")
 
@@ -50,6 +55,7 @@ function queueTransactionIdentity(contents) {
       "active",
       "released",
       "retryable_error",
+      "quarantined",
       "completed",
     ]).has(parsed.status)
   ) {
@@ -82,6 +88,14 @@ function validQueueTransaction(predecessor, successor) {
     return successor.status === "active" && successor.attempt === 1
   }
   if (!sameQueueBinding(predecessor, successor)) return false
+  if (
+    successor.status === "quarantined" &&
+    new Set(["active", "retryable_error", "released"]).has(
+      predecessor.status,
+    )
+  ) {
+    return successor.attempt === predecessor.attempt
+  }
   if (successor.status === "active") {
     if (successor.attempt !== predecessor.attempt + 1) return false
     if (predecessor.status === "completed") {
@@ -128,6 +142,7 @@ export class QueueClaimStore {
     retryBaseMs = 1_000,
     fileSystemHooks = null,
     lockfSpec = undefined,
+    watcherV2 = false,
   }) {
     this.stateDirectory = path.resolve(stateDirectory)
     this.directory = path.join(this.stateDirectory, "repository-queue")
@@ -144,6 +159,7 @@ export class QueueClaimStore {
     this.retryBaseMs = retryBaseMs
     this.fileSystemHooks = fileSystemHooks
     this.lockfSpec = lockfSpec
+    this.watcherV2 = watcherV2
     this.directoryGuards = null
   }
 
@@ -302,6 +318,41 @@ export class QueueClaimStore {
       ) {
         return { claimed: false, reason: "retry_authorization_conflict" }
       }
+      if (existing?.status === "quarantined") {
+        return {
+          claimed: false,
+          reason: "instruction_quarantined",
+          quarantineRecord: existing,
+        }
+      }
+      if (
+        this.watcherV2 &&
+        existing?.status === "retryable_error" &&
+        !Array.isArray(existing.failureHistory) &&
+        Number.isSafeInteger(existing.failureCount) &&
+        existing.failureCount >= watcherV2MaximumClaimFailures
+      ) {
+        const failure = normalizeWatcherFailure(
+          existing.error ?? "legacy retry policy exhausted",
+        )
+        const quarantined = {
+          ...existing,
+          status: "quarantined",
+          failureClass: failure.failureClass,
+          normalizedErrorDigest: failure.errorDigest,
+          legacyFailureCount: existing.failureCount,
+          retryPolicyExhaustedReason: "legacy_retry_count_exhausted",
+          quarantinedAt: this.now().toISOString(),
+          nextEligibleAt: null,
+          updatedAt: this.now().toISOString(),
+        }
+        await this.#writeRecord(recordPath, quarantined)
+        return {
+          claimed: false,
+          reason: "legacy_retry_quarantined",
+          quarantineRecord: quarantined,
+        }
+      }
       if (
         existing?.status === "retryable_error" &&
         existing.nextEligibleAt &&
@@ -352,19 +403,61 @@ export class QueueClaimStore {
         return { claimed: true, value }
       } catch (error) {
         if (error instanceof DurableCommitPendingError) throw error
-        const failureCount = (existing?.failureCount ?? 0) + 1
-        const backoffMs = Math.min(
-          this.retryBaseMs * 2 ** (failureCount - 1),
-          60_000,
-        )
-        await this.#writeRecord(recordPath, {
-          ...active,
-          status: "retryable_error",
-          failureCount,
-          error: String(error.message).slice(0, 1_000),
-          nextEligibleAt: new Date(this.now().getTime() + backoffMs).toISOString(),
-          updatedAt: this.now().toISOString(),
-        })
+        if (error?.name === "AbortError" || error?.code === "WATCHER_SHUTDOWN") {
+          await this.#writeRecord(recordPath, {
+            ...active,
+            status: "released",
+            resultStatus: "shutdown_requested",
+            completedAt: null,
+            updatedAt: this.now().toISOString(),
+          })
+          throw error
+        }
+        let failedRecord
+        if (this.watcherV2) {
+          const decision = watcherV2QueueFailureDecision({
+            existing,
+            error,
+            now: this.now(),
+          })
+          failedRecord = {
+            ...active,
+            status: decision.quarantined
+              ? "quarantined"
+              : "retryable_error",
+            failureCount: decision.failureCount,
+            failureHistory: decision.history,
+            failureClass: decision.failure.failureClass,
+            normalizedErrorDigest: decision.failure.errorDigest,
+            error: decision.failure.normalized,
+            nextEligibleAt: decision.nextEligibleAt,
+            retryPolicyExhaustedReason: decision.exhaustedReason,
+            quarantinedAt: decision.quarantined
+              ? this.now().toISOString()
+              : null,
+            notificationKind: decision.notificationKind,
+            updatedAt: this.now().toISOString(),
+          }
+          error.queueFailureDecision = decision
+        } else {
+          const failureCount = (existing?.failureCount ?? 0) + 1
+          const backoffMs = Math.min(
+            this.retryBaseMs * 2 ** (failureCount - 1),
+            60_000,
+          )
+          failedRecord = {
+            ...active,
+            status: "retryable_error",
+            failureCount,
+            error: String(error.message).slice(0, 1_000),
+            nextEligibleAt: new Date(
+              this.now().getTime() + backoffMs,
+            ).toISOString(),
+            updatedAt: this.now().toISOString(),
+          }
+        }
+        await this.#writeRecord(recordPath, failedRecord)
+        error.queueRecord = failedRecord
         throw error
       }
     } finally {

@@ -1,10 +1,13 @@
 #!/usr/bin/env node
 import os from "node:os"
 import path from "node:path"
+import { createHash } from "node:crypto"
 import { fileURLToPath } from "node:url"
 import { defaultStateDirectory } from "../src/config.mjs"
 import {
   buildLaunchAgentPlist,
+  discoverActiveLaunchAgentPlists,
+  discoverOrchestratorProcessMatches,
   installAndStartLaunchAgent,
   launchAgentLabel,
   launchAgentStatus,
@@ -14,7 +17,13 @@ import {
 import {
   materializeRuntimeRelease,
   planRuntimeReleaseFromCheckout,
+  runtimeManifestContentsForPlan,
 } from "../src/runtime-bundle.mjs"
+import {
+  readWatcherHealth,
+  serviceConfigurationDigest,
+  watcherServiceProfile,
+} from "../src/watcher-v2.mjs"
 
 const orchestratorScript = fileURLToPath(
   new URL("./repository-orchestrator.mjs", import.meta.url),
@@ -48,22 +57,34 @@ function parse(argv) {
     plistPath: path.join(os.homedir(), "Library", "LaunchAgents", `${launchAgentLabel}.plist`),
     nodeBinary: process.execPath,
     orchestratorScript,
-    checkoutPath: repositoryRoot,
+    checkoutPath: path.join(
+      stateDirectory,
+      "coordinator",
+      "koalafrog-hq",
+    ),
     codexBinary: "/Applications/ChatGPT.app/Contents/Resources/codex",
     stateDirectory,
     stdoutPath: path.join(stateDirectory, "service", "orchestrator.stdout.log"),
     stderrPath: path.join(stateDirectory, "service", "orchestrator.stderr.log"),
-    pollMs: 15_000,
+    pollMs: 60_000,
     baseRef: "origin/main",
     maxTurns: 12,
     turnTimeoutMs: 20 * 60_000,
     maxRetries: 2,
     retryBaseMs: 1_000,
     discoveryLimit: 50,
-    maxTasksPerPoll: 4,
+    maxTasksPerPoll: 1,
     repository: "Sillyquack/koalafrog-hq",
     autoCommit: false,
     model: null,
+    requiredLabel: "koalafrog-orchestrator",
+    runAtLoad: false,
+    keepAlive: false,
+    exitTimeOut: 90,
+    throttleInterval: 60,
+    umask: 0o077,
+    shutdownTimeoutMs: 75_000,
+    healthPath: path.join(stateDirectory, "watcher-v2-health.json"),
   }
   let customStdoutPath = false
   let customStderrPath = false
@@ -134,8 +155,11 @@ function parse(argv) {
       case "--model":
         config.model = take()
         break
-      case "--auto-commit":
-        config.autoCommit = true
+      case "--required-label":
+        config.requiredLabel = take()
+        break
+      case "--approve-run-at-load":
+        config.runAtLoad = true
         break
       default:
         throw new Error(`Unknown service option: ${arg}`)
@@ -150,6 +174,7 @@ function parse(argv) {
   if (!customRuntimeDirectory) {
     config.runtimeDirectory = path.join(config.stateDirectory, "runtime")
   }
+  config.healthPath = path.join(config.stateDirectory, "watcher-v2-health.json")
   return config
 }
 
@@ -162,7 +187,7 @@ Usage:
   node tools/orchestrator/bin/orchestrator-service.mjs render [options]
 
 Options:
-  --checkout path             Coordinating Git checkout
+  --checkout path             Dedicated coordinating Git checkout
   --repository owner/name     GitHub repository to scan
   --state-dir path            Durable orchestrator state root
   --runtime-dir path          Immutable service runtime releases
@@ -180,7 +205,11 @@ Options:
   --discovery-limit number    Bounded open-issue search result count
   --max-tasks-per-poll number Bounded claimed tasks per poll
   --model model               Optional explicit Codex model
-  --auto-commit               Commit task-owned changes after a successful turn
+  --required-label label      Required persistent-watch opt-in label
+  --approve-run-at-load       Explicit post-canary owner-approved boot start
+
+Persistent watcher v2 never enables service-wide --auto-commit or KeepAlive.
+Failed installation leaves the service disabled and preserves diagnostics.
 `
 
 async function main() {
@@ -191,8 +220,8 @@ async function main() {
   }
   if (config.command === "status") {
     const status = await launchAgentStatus({ label: config.label })
-    process.stdout.write(status.stdout || status.stderr)
-    process.exitCode = status.loaded ? 0 : 1
+    const health = await readWatcherHealth(config.healthPath)
+    process.stdout.write(`${JSON.stringify({ service: status, health })}\n`)
     return
   }
   if (config.command === "uninstall") {
@@ -206,9 +235,35 @@ async function main() {
     stateDirectory: config.stateDirectory,
     runtimeDirectory: config.runtimeDirectory,
   })
-  const serviceConfig = {
+  const manifestSha256 = createHash("sha256")
+    .update(runtimeManifestContentsForPlan(runtimePlan))
+    .digest("hex")
+  const serviceConfigWithoutDigest = {
     ...config,
     orchestratorScript: runtimePlan.orchestratorScript,
+    expectedRuntimeRelease: runtimePlan.digest,
+    expectedManifestSha256: manifestSha256,
+    expectedSourceCommit: runtimePlan.sourceIdentity.commit,
+    expectedSourceTree: runtimePlan.sourceIdentity.tree,
+    serviceLabel: config.label,
+    serviceRunAtLoad: config.runAtLoad,
+    serviceKeepAlive: false,
+    serviceExitTimeOut: config.exitTimeOut,
+    serviceThrottleInterval: config.throttleInterval,
+    serviceUmask: config.umask,
+  }
+  const serviceConfigSha256 = serviceConfigurationDigest(
+    watcherServiceProfile(serviceConfigWithoutDigest),
+  )
+  const serviceConfig = {
+    ...serviceConfigWithoutDigest,
+    serviceConfigSha256,
+    evidenceDirectory: path.join(
+      config.stateDirectory,
+      "service",
+      "disabled",
+      "watcher-v2-install-attempts",
+    ),
   }
   const contents = buildLaunchAgentPlist(serviceConfig)
   if (config.command === "render") {
@@ -218,7 +273,16 @@ async function main() {
   await validateLaunchAgentInputs(config)
   const runtime = await materializeRuntimeRelease(runtimePlan)
   await validateLaunchAgentInputs(serviceConfig)
-  const result = await installAndStartLaunchAgent({ ...serviceConfig, contents })
+  const [candidatePlistPaths, processMatches] = await Promise.all([
+    discoverActiveLaunchAgentPlists(serviceConfig),
+    discoverOrchestratorProcessMatches(),
+  ])
+  const result = await installAndStartLaunchAgent({
+    ...serviceConfig,
+    contents,
+    candidatePlistPaths,
+    processMatches,
+  })
   process.stdout.write(`${JSON.stringify({
     ...result,
     runtimeStatus: runtime.status,
@@ -227,6 +291,7 @@ async function main() {
     checkoutPath: config.checkoutPath,
     stdoutPath: config.stdoutPath,
     stderrPath: config.stderrPath,
+    serviceConfigSha256,
   })}\n`)
 }
 

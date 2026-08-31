@@ -17,7 +17,7 @@ import {
 } from "./durable-filesystem.mjs"
 import { normalizeTurnAccounting } from "./turn-accounting.mjs"
 
-export const currentStateSchemaVersion = 12
+export const currentStateSchemaVersion = 13
 
 const stateLockAttempts = 400
 const stateLockDelayMs = 5
@@ -98,7 +98,7 @@ function stateTransactionIdentity(contents) {
 function validStateTransaction(predecessor, successor) {
   if (
     successor?.kind !== "state" ||
-    !new Set([9, 10, 11, currentStateSchemaVersion]).has(
+    !new Set([9, 10, 11, 12, currentStateSchemaVersion]).has(
       successor.schemaVersion,
     )
   ) {
@@ -300,6 +300,7 @@ export function initialState({ repository, issueNumber, issueUrl = null }) {
       originIssueUrl: issueUrl,
       lastObservedIssueUpdatedAt: null,
       originIssueClosed: false,
+      originIssueLabels: [],
     },
     status: "ready",
     lastConsumedInstructionId: null,
@@ -321,6 +322,12 @@ export function initialState({ repository, issueNumber, issueUrl = null }) {
     terminalityReconciliations: [],
     instructionSupersessions: [],
     terminalCloseouts: [],
+    instructionQuarantines: [],
+    quarantineReopens: [],
+    watcherNotifications: [],
+    watcherNotificationDeliveries: [],
+    checkpointRecoveryRejections: [],
+    commitAuthorizationReceipts: [],
     runs: [],
     updatedAt: new Date().toISOString(),
   }
@@ -373,8 +380,17 @@ export function migrateState(state, { repository, issueNumber }) {
     state.instructionSupersessions ??= []
   }
   if (state.schemaVersion === 11) {
-    state.schemaVersion = currentStateSchemaVersion
+    state.schemaVersion = 12
     state.terminalCloseouts ??= []
+  }
+  if (state.schemaVersion === 12) {
+    state.schemaVersion = currentStateSchemaVersion
+    state.instructionQuarantines ??= []
+    state.quarantineReopens ??= []
+    state.watcherNotifications ??= []
+    state.watcherNotificationDeliveries ??= []
+    state.checkpointRecoveryRejections ??= []
+    state.commitAuthorizationReceipts ??= []
   }
   if (state.schemaVersion !== currentStateSchemaVersion) {
     throw new Error(`Unsupported state schema: ${state.schemaVersion}`)
@@ -389,6 +405,13 @@ export function migrateState(state, { repository, issueNumber }) {
   state.task.originIssueUrl ??= null
   state.task.lastObservedIssueUpdatedAt ??= null
   state.task.originIssueClosed ??= false
+  state.task.originIssueLabels ??= []
+  if (
+    !Array.isArray(state.task.originIssueLabels) ||
+    state.task.originIssueLabels.some((label) => typeof label !== "string")
+  ) {
+    throw new Error("Persisted origin issue labels are malformed")
+  }
   state.retryInstructionIds ??= []
   state.resultCorrectionInstructionIds ??= []
   state.ownerApprovalDecisions ??= []
@@ -400,11 +423,29 @@ export function migrateState(state, { repository, issueNumber }) {
   state.terminalityReconciliations ??= []
   state.instructionSupersessions ??= []
   state.terminalCloseouts ??= []
+  state.instructionQuarantines ??= []
+  state.quarantineReopens ??= []
+  state.watcherNotifications ??= []
+  state.watcherNotificationDeliveries ??= []
+  state.checkpointRecoveryRejections ??= []
+  state.commitAuthorizationReceipts ??= []
   if (!Array.isArray(state.instructionSupersessions)) {
     throw new Error("Persisted instruction supersession ledger is malformed")
   }
   if (!Array.isArray(state.terminalCloseouts)) {
     throw new Error("Persisted terminal closeout ledger is malformed")
+  }
+  for (const [name, ledger] of Object.entries({
+    instructionQuarantines: state.instructionQuarantines,
+    quarantineReopens: state.quarantineReopens,
+    watcherNotifications: state.watcherNotifications,
+    watcherNotificationDeliveries: state.watcherNotificationDeliveries,
+    checkpointRecoveryRejections: state.checkpointRecoveryRejections,
+    commitAuthorizationReceipts: state.commitAuthorizationReceipts,
+  })) {
+    if (!Array.isArray(ledger)) {
+      throw new Error(`Persisted ${name} ledger is malformed`)
+    }
   }
   durableRevision(state.stateRevision)
   return normalizeTurnAccounting(state)
@@ -419,11 +460,14 @@ export function recordTaskOrigin(state, { issueNumber, issueUrl }) {
 
 export function recordIssueObservation(
   state,
-  { issueNumber, issueUrl, updatedAt, closed },
+  { issueNumber, issueUrl, updatedAt, closed, labels = null },
 ) {
   recordTaskOrigin(state, { issueNumber, issueUrl })
   if (updatedAt) state.task.lastObservedIssueUpdatedAt = updatedAt
   state.task.originIssueClosed = Boolean(closed)
+  if (Array.isArray(labels)) {
+    state.task.originIssueLabels = [...new Set(labels)].sort()
+  }
 }
 
 export class StateStore {

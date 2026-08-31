@@ -685,7 +685,7 @@ test("schema-11 state migrates to schema 12 exactly once with an empty closeout 
   assert.equal(second.stateRevision, migrated.stateRevision)
 })
 
-test("schema-12 closeout state is above the legacy schema-11 compatibility ceiling", async (t) => {
+test("current closeout state is above the legacy schema-11 compatibility ceiling", async (t) => {
   const directory = await mkdtemp(
     path.join(os.tmpdir(), "koalafrog-terminal-closeout-downgrade-"),
   )
@@ -693,7 +693,7 @@ test("schema-12 closeout state is above the legacy schema-11 compatibility ceili
   const store = new StateStore({ stateDirectory: directory, repository, issueNumber })
   await store.load()
   const raw = JSON.parse(await readFile(store.statePath, "utf8"))
-  assert.equal(raw.schemaVersion, 12)
+  assert.equal(raw.schemaVersion, currentStateSchemaVersion)
   assert.ok(raw.schemaVersion > 11)
 })
 

@@ -65,6 +65,7 @@ import {
 import {
   assertAllowedChanges,
   commitWorkspaceChanges,
+  commitWorkspaceChangesAuthorized,
   ensureWorkspace,
   inspectWorkspace,
   validateWorkspace,
@@ -1581,6 +1582,7 @@ export class Orchestrator {
     this.workspace = {
       assertAllowedChanges,
       commitWorkspaceChanges,
+      commitWorkspaceChangesAuthorized,
       ensureWorkspace,
       inspectWorkspace,
       validateWorkspace,
@@ -1919,12 +1921,53 @@ export class Orchestrator {
     if (
       turnResult.status === "completed" &&
       !turnResult.terminalityReconciliation &&
-      this.config.autoCommit
+      (this.config.autoCommit || instruction.commitAuthorization)
     ) {
-      await this.workspace.commitWorkspaceChanges(
-        state.workspacePath,
-        `chore(orchestrator): complete ${instruction.instructionId}`,
-      )
+      if (this.config.autoCommit && this.config.persistentWatch) {
+        throw new Error("Persistent watch cannot use service-wide auto-commit")
+      }
+      if (this.config.autoCommit && instruction.commitAuthorization) {
+        throw new Error("Commit authority is ambiguous")
+      }
+      const message = `chore(orchestrator): complete ${instruction.instructionId}`
+      if (instruction.commitAuthorization) {
+        const priorReceipts = (state.commitAuthorizationReceipts ?? []).filter(
+          (receipt) =>
+            receipt.instructionId === instruction.instructionId,
+        )
+        if (priorReceipts.length > 0) {
+          throw new Error("Commit authorization was already consumed")
+        }
+        const committed =
+          await this.workspace.commitWorkspaceChangesAuthorized({
+            workspacePath: state.workspacePath,
+            coordinatorPath: this.config.checkoutPath,
+            repository: this.config.repository,
+            issueNumber: state.task.originIssueNumber,
+            instructionId: instruction.instructionId,
+            baseRef: this.config.baseRef,
+            authorization: instruction.commitAuthorization,
+            message,
+          })
+        if (committed.receipt) {
+          state.commitAuthorizationReceipts ??= []
+          const receipt = {
+            ...committed.receipt,
+            instructionId: instruction.instructionId,
+          }
+          state.commitAuthorizationReceipts.push(receipt)
+          await this.#save(state)
+          await this.store.appendEvent({
+            type: "commit_authorization_consumed",
+            ...receipt,
+          })
+        }
+      } else {
+        await this.workspace.commitWorkspaceChanges(
+          state.workspacePath,
+          message,
+        )
+      }
       workspace = await this.workspace.inspectWorkspace(
         state.workspacePath,
         this.config.baseRef,
@@ -2010,7 +2053,12 @@ export class Orchestrator {
     }
   }
 
-  async #runWithRetries(state, instruction, gitExecutionBoundary = null) {
+  async #runWithRetries(
+    state,
+    instruction,
+    gitExecutionBoundary = null,
+    signal = null,
+  ) {
     const maxTurns = Math.min(instruction.maxTurns, this.config.maxTurns)
     let result = null
     if ((state.activeInstruction.attempts ?? 0) > this.config.maxRetries) {
@@ -2028,6 +2076,11 @@ export class Orchestrator {
       attempt <= this.config.maxRetries;
       attempt += 1
     ) {
+      if (signal?.aborted) {
+        const error = new Error("Watcher shutdown requested before turn")
+        error.name = "AbortError"
+        throw error
+      }
       if (!canStartInstructionTurn(state, maxTurns)) {
         return {
           status: "failed",
@@ -2047,6 +2100,7 @@ export class Orchestrator {
         cwd: state.workspacePath,
         timeoutMs: this.config.turnTimeoutMs,
         prompt: `${retryPrefix}${promptForInstruction(instruction, this.config.allowedPaths)}${gitExecutionBoundaryPrompt(gitExecutionBoundary)}`,
+        signal,
         ...(gitExecutionBoundary ? { approvalPolicy: "on-request" } : {}),
         onTurnStarted: async (turnId) => {
           const availableDecisionIds = (state.ownerApprovalDecisions ?? [])
@@ -2483,7 +2537,9 @@ export class Orchestrator {
             Math.floor(Math.random() * 250),
           30_000,
         )
-        await delay(backoff)
+        await (signal
+          ? delay(backoff, undefined, { signal })
+          : delay(backoff))
         continue
       }
       if (attempt < this.config.maxRetries) {
@@ -2497,13 +2553,19 @@ export class Orchestrator {
           attempt: attempt + 1,
           backoffMs: backoff,
         })
-        await delay(backoff)
+        await (signal
+          ? delay(backoff, undefined, { signal })
+          : delay(backoff))
       }
     }
     return result
   }
 
-  async runOnce({ task: providedTask = null, expectedInstructionId = null } = {}) {
+  async runOnce({
+    task: providedTask = null,
+    expectedInstructionId = null,
+    signal = null,
+  } = {}) {
     await this.start()
     const state = await this.store.load()
     const task = providedTask ?? (await this.controlPlane.fetchTask())
@@ -3723,6 +3785,7 @@ export class Orchestrator {
         state,
         instruction,
         gitExecutionBoundary,
+        signal,
       )
       turnResult = recordCompletedTurnResult(state, turnResult)
       await this.#save(state)

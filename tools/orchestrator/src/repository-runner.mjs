@@ -1,6 +1,9 @@
 import { setTimeout as delay } from "node:timers/promises"
 import { readdir, readFile } from "node:fs/promises"
+import { createHash } from "node:crypto"
+import { execFile } from "node:child_process"
 import path from "node:path"
+import { promisify } from "node:util"
 import { AppServerClient } from "./app-server.mjs"
 import { reconcileLaunchAgentApproval } from "./approval-decisions.mjs"
 import {
@@ -26,6 +29,7 @@ import {
 import { installTaskThreadPolicy } from "./runtime-policy.mjs"
 import { launchAgentLabel } from "./launchd.mjs"
 import {
+  currentStateSchemaVersion,
   recordIssueObservation,
   redactForLog,
   StateStore,
@@ -38,14 +42,179 @@ import {
   terminalCloseoutDecision,
   validateTerminalCloseoutRecord,
 } from "./terminal-closeout.mjs"
+import {
+  activeInstructionQuarantines,
+  checkpointRecoveryRejectionDecision,
+  createInstructionQuarantineRecord,
+  filterPersistentCandidates,
+  preflightRawTaskSchemas,
+  quarantineAuditEvent,
+  recordInstructionQuarantine,
+  recordQuarantineReopen,
+  recordWatcherNotification,
+  recordWatcherNotificationDelivery,
+  serviceConfigurationDigest,
+  validateWatcherIdentityShape,
+  watcherIdentityDecision,
+  watcherServiceProfile,
+  WatcherCircuitBreaker,
+  WatcherHealthStore,
+  watcherNotificationComment,
+} from "./watcher-v2.mjs"
 
 installTaskThreadPolicy(AppServerClient)
+
+const execFileAsync = promisify(execFile)
 
 const commentContinuationStates = new Set([
   "needs_review",
   "needs_owner",
   "failed",
 ])
+
+function taskLabelNames(issue) {
+  return (issue?.labels ?? [])
+    .map((label) => (typeof label === "string" ? label : label?.name))
+    .filter((label) => typeof label === "string")
+}
+
+function throwIfAborted(signal) {
+  if (!signal?.aborted) return
+  const error = new Error("Watcher shutdown requested")
+  error.name = "AbortError"
+  error.code = "WATCHER_SHUTDOWN"
+  throw error
+}
+
+async function persistQueueQuarantine({
+  store,
+  queueRecord,
+  instructionId,
+}) {
+  if (!queueRecord || queueRecord.status !== "quarantined") return null
+  const state = await store.load()
+  const existing = activeInstructionQuarantines(state).find(
+    (record) => record.instructionId === instructionId,
+  )
+  if (existing) return existing
+  const failureHistory = queueRecord.failureHistory ?? []
+  const record = createInstructionQuarantineRecord({
+    state,
+    instructionId,
+    failure: {
+      failureClass: queueRecord.failureClass ?? "transient_instruction",
+      errorDigest: queueRecord.normalizedErrorDigest,
+    },
+    attemptCount:
+      queueRecord.legacyFailureCount ??
+      queueRecord.failureCount ??
+      queueRecord.attempt ??
+      0,
+    firstFailureAt:
+      failureHistory[0]?.at ??
+      queueRecord.claimedAt ??
+      queueRecord.updatedAt,
+    lastFailureAt:
+      failureHistory.at(-1)?.at ??
+      queueRecord.updatedAt ??
+      queueRecord.quarantinedAt,
+    exhaustedReason:
+      queueRecord.retryPolicyExhaustedReason ?? "claim_retry_policy_exhausted",
+    executionOccurred: Boolean(
+      (state.runs ?? []).some(
+        (run) => run.instructionId === instructionId && run.turnCount > 0,
+      ) ||
+        (state.activeInstruction?.instructionId === instructionId &&
+          state.turnCount > 0),
+    ),
+    now: new Date(queueRecord.quarantinedAt ?? queueRecord.updatedAt),
+  })
+  const quarantine = recordInstructionQuarantine(state, record)
+  const notification = recordWatcherNotification(state, {
+    kind: "quarantine",
+    quarantineId: record.quarantineId,
+    instructionId,
+    errorDigest: record.normalizedErrorDigest,
+    now: new Date(record.quarantinedAt),
+  })
+  if (quarantine.appended || notification.appended) await store.save(state)
+  if (quarantine.appended) {
+    const event = quarantineAuditEvent(record)
+    await store.appendEventOnce(event.eventId, event)
+  }
+  if (notification.appended) {
+    await store.appendEventOnce(notification.record.notificationId, {
+      type: "watcher_owner_notification_pending",
+      ...notification.record,
+    })
+  }
+  return record
+}
+
+async function persistThirdFailureWarning({ store, queueRecord, instructionId }) {
+  if (queueRecord?.notificationKind !== "third_failure_warning") return null
+  const state = await store.load()
+  const notification = recordWatcherNotification(state, {
+    kind: "third_failure_warning",
+    instructionId,
+    errorDigest: queueRecord.normalizedErrorDigest,
+    now: new Date(queueRecord.updatedAt),
+  })
+  if (!notification.appended) return notification.record
+  await store.save(state)
+  await store.appendEventOnce(notification.record.notificationId, {
+    type: "watcher_owner_notification_pending",
+    ...notification.record,
+  })
+  return notification.record
+}
+
+function commentIdentity(comment) {
+  return comment?.id ?? comment?.databaseId ?? comment?.comment_id ?? null
+}
+
+async function reconcileWatcherNotifications({
+  state,
+  task,
+  store,
+  controlPlane,
+}) {
+  const delivered = new Set(
+    (state.watcherNotificationDeliveries ?? []).map(
+      (record) => record.notificationId,
+    ),
+  )
+  const pending = (state.watcherNotifications ?? []).filter(
+    (record) => !delivered.has(record.notificationId),
+  )
+  for (const notification of pending) {
+    const marker = `koalafrog-watcher-notification:${notification.notificationId}`
+    const existing = (task.comments ?? []).find((comment) =>
+      String(comment?.body ?? "").includes(marker),
+    )
+    let commentId = commentIdentity(existing)
+    let observedExisting = Boolean(existing)
+    if (!existing) {
+      const posted = await controlPlane.postComment(
+        watcherNotificationComment(notification),
+      )
+      commentId = commentIdentity(posted?.comment ?? posted)
+      observedExisting = false
+    }
+    const delivery = recordWatcherNotificationDelivery(state, {
+      notificationId: notification.notificationId,
+      commentId,
+      observedExisting,
+    })
+    if (delivery.appended) {
+      await store.save(state)
+      await store.appendEventOnce(delivery.record.deliveryId, {
+        type: "watcher_owner_notification_delivered",
+        ...delivery.record,
+      })
+    }
+  }
+}
 
 function retryAuthorizationId({ state, instruction, recovery }) {
   const ids = new Set()
@@ -387,6 +556,78 @@ function writeJson(write, value) {
   write(`${JSON.stringify(redactForLog(value))}\n`)
 }
 
+function sha256(value) {
+  return createHash("sha256").update(value).digest("hex")
+}
+
+async function defaultGitIdentity(checkoutPath, args) {
+  const result = await execFileAsync("git", args, {
+    cwd: checkoutPath,
+    encoding: "utf8",
+  })
+  return result.stdout.trim()
+}
+
+export async function inspectWatcherStartupIdentity(
+  config,
+  {
+    orchestratorScript = process.argv[1] ?? null,
+    read = readFile,
+    gitIdentity = defaultGitIdentity,
+  } = {},
+) {
+  const releaseDirectory = path.dirname(path.dirname(orchestratorScript ?? ""))
+  const manifestPath = path.join(releaseDirectory, "manifest.json")
+  const manifestContents = await read(manifestPath)
+  const manifest = JSON.parse(manifestContents.toString("utf8"))
+  const observed = validateWatcherIdentityShape({
+    runtimeRelease: path.basename(releaseDirectory),
+    manifestSha256: sha256(manifestContents),
+    sourceCommit: await gitIdentity(config.checkoutPath, ["rev-parse", "HEAD"]),
+    sourceTree: await gitIdentity(config.checkoutPath, ["rev-parse", "HEAD^{tree}"]),
+    repository: config.repository,
+    coordinatorCheckout: config.checkoutPath
+      ? path.resolve(config.checkoutPath)
+      : null,
+    serviceConfigSha256: config.expectedServiceConfigSha256,
+  })
+  if (
+    manifest.digest !== observed.runtimeRelease ||
+    manifest.source?.commit &&
+      manifest.source.commit !== observed.sourceCommit ||
+    manifest.source?.tree && manifest.source.tree !== observed.sourceTree
+  ) {
+    throw new Error("Runtime manifest source identity conflicts with startup")
+  }
+  return observed
+}
+
+export async function verifyWatcherStartupIdentity(config, dependencies = {}) {
+  if (config.unsafeDevelopmentWatch) return null
+  const observed = await inspectWatcherStartupIdentity(config, dependencies)
+  observed.serviceConfigSha256 = serviceConfigurationDigest(
+    watcherServiceProfile(config),
+  )
+  const decision = watcherIdentityDecision(
+    {
+      runtimeRelease: config.expectedRuntimeRelease,
+      manifestSha256: config.expectedManifestSha256,
+      sourceCommit: config.expectedSourceCommit,
+      sourceTree: config.expectedSourceTree,
+      repository: config.repository,
+      coordinatorCheckout: path.resolve(config.checkoutPath),
+      serviceConfigSha256: config.expectedServiceConfigSha256,
+    },
+    observed,
+  )
+  if (!decision.accepted) {
+    const error = new Error(`Watcher startup rejected: ${decision.code}`)
+    error.code = "WATCHER_IDENTITY_MISMATCH"
+    throw error
+  }
+  return decision.identity
+}
+
 async function stopScanner(scanner) {
   if (!scanner?.appServer) return
   await scanner.appServer.stop()
@@ -483,14 +724,25 @@ export async function searchOpenIssueCandidates(scanner, config) {
     server: "codex_apps",
     tool: "github.search_issues",
     arguments: {
-      query: `repo:${config.repository} is:issue is:open agent_control in:body`,
+      query: [
+        `repo:${config.repository}`,
+        "is:issue",
+        "is:open",
+        "agent_control in:body",
+        config.requiredLabel ? `label:\"${config.requiredLabel}\"` : null,
+      ]
+        .filter(Boolean)
+        .join(" "),
       repository_full_name: config.repository,
       sort: "created",
       order: "asc",
       topn: config.discoveryLimit,
     },
   })
-  return discoverIssueCandidates(unwrap(result, "Search repository issues"))
+  return discoverIssueCandidates(unwrap(result, "Search repository issues"), {
+    requiredLabel: config.requiredLabel,
+    issueAllowlist: config.issueAllowlist ?? [],
+  })
 }
 
 export async function discoverPersistedIssueCandidates(config) {
@@ -512,24 +764,42 @@ export async function discoverPersistedIssueCandidates(config) {
     .sort((left, right) => left.issueNumber - right.issueNumber)
   const candidates = await Promise.all(
     issueEntries.map(async ({ entry, issueNumber }) => {
-      let task = null
+      let rawState = null
       try {
-        task = JSON.parse(
+        rawState = JSON.parse(
           await readFile(
             path.join(config.stateDirectory, entry.name, "state.json"),
             "utf8",
           ),
-        ).task
+        )
       } catch (error) {
         if (error.code !== "ENOENT" && error.name !== "SyntaxError") throw error
       }
-      if (task?.originIssueClosed) return null
+      const task = rawState?.task
+      if (task?.originIssueClosed || rawState?.status === "done") return null
+      const allowlisted = (config.issueAllowlist ?? []).includes(issueNumber)
+      const labels = Array.isArray(task?.originIssueLabels)
+        ? task.originIssueLabels
+        : []
+      if (
+        config.command === "watch" &&
+        !allowlisted &&
+        (!config.requiredLabel || !labels.includes(config.requiredLabel))
+      ) {
+        return null
+      }
+      const activeQuarantineCount = activeInstructionQuarantines(
+        rawState ?? {},
+      ).length
       return {
         issueNumber,
         issueUrl: task?.originIssueUrl ?? null,
         createdAt: null,
         updatedAt: task?.lastObservedIssueUpdatedAt ?? null,
         searchMatched: false,
+        labels,
+        claimable: activeQuarantineCount === 0,
+        quarantineCount: activeQuarantineCount,
       }
     }),
   )
@@ -547,6 +817,13 @@ export function mergeIssueCandidates(...candidateLists) {
       updatedAt: candidate.updatedAt ?? existing?.updatedAt ?? null,
       searchMatched: Boolean(
         candidate.searchMatched || existing?.searchMatched,
+      ),
+      labels: candidate.labels ?? existing?.labels ?? [],
+      claimable:
+        candidate.claimable !== false && existing?.claimable !== false,
+      quarantineCount: Math.max(
+        candidate.quarantineCount ?? 0,
+        existing?.quarantineCount ?? 0,
       ),
     })
   }
@@ -574,10 +851,14 @@ export async function runRepositoryIssue(
     claimStore = new QueueClaimStore({
       stateDirectory: baseConfig.stateDirectory,
       retryBaseMs: baseConfig.retryBaseMs,
+      watcherV2: baseConfig.command === "watch",
     }),
     StateStoreClass = StateStore,
+    signal = null,
+    onActivity = async () => {},
   } = {},
 ) {
+  throwIfAborted(signal)
   const issueNumber = candidate.issueNumber ?? candidate
   const store = new StateStoreClass({
     stateDirectory: baseConfig.stateDirectory,
@@ -622,6 +903,7 @@ export async function runRepositoryIssue(
         updatedAt:
           task.issue?.updated_at ?? task.issue?.updatedAt ?? candidate.updatedAt,
         closed: task.issue?.state === "closed",
+        labels: taskLabelNames(task.issue),
       }
       const currentState = await store.load()
       const observedAt = Date.parse(observation.updatedAt ?? "")
@@ -694,6 +976,14 @@ export async function runRepositoryIssue(
         await store.save(currentState)
         return { issueNumber, status: "pull_request_ignored", claimed: false }
       }
+      if (baseConfig.command === "watch") {
+        await reconcileWatcherNotifications({
+          state: currentState,
+          task,
+          store,
+          controlPlane,
+        })
+      }
 
       const queueCompletion =
         await reconcileTerminalFailureQueueCompletion({
@@ -753,7 +1043,88 @@ export async function runRepositoryIssue(
       const recovery = selection.recoveryDiscovery?.decision ?? null
       const instruction = selection.selectedInstruction
       if (!instruction) {
+        const alreadyQuarantined = activeInstructionQuarantines(currentState)
+        if (alreadyQuarantined.length > 0) {
+          return {
+            issueNumber,
+            status: "quarantined",
+            quarantineIds: alreadyQuarantined.map(
+              (record) => record.quarantineId,
+            ),
+            claimed: false,
+          }
+        }
+        let checkpointRejection = null
+        let checkpointQuarantine = null
+        if (
+          baseConfig.command === "watch" &&
+          selection.recoveryDiscovery?.applicable &&
+          !selection.recoveryDiscovery.terminal &&
+          recovery &&
+          !recovery.accepted &&
+          currentState.lastConsumedInstructionId
+        ) {
+          checkpointRejection = checkpointRecoveryRejectionDecision(
+            currentState,
+            {
+              instructionId: currentState.lastConsumedInstructionId,
+              rejectionCode:
+                recovery.rejection?.code ??
+                "checkpoint_activation_recovery_discovery_rejected",
+              evidence: recovery.rejection ?? null,
+            },
+          )
+          if (checkpointRejection.quarantine) {
+            const record = createInstructionQuarantineRecord({
+              state: currentState,
+              instructionId: currentState.lastConsumedInstructionId,
+              failure: {
+                failureClass: "checkpoint_recovery_rejection",
+                errorDigest: checkpointRejection.record.evidenceDigest,
+              },
+              attemptCount: checkpointRejection.record.sequence,
+              firstFailureAt:
+                currentState.checkpointRecoveryRejections[0]?.recordedAt,
+              lastFailureAt: checkpointRejection.record.recordedAt,
+              exhaustedReason: checkpointRejection.reason,
+              executionOccurred: false,
+              now: new Date(checkpointRejection.record.recordedAt),
+            })
+            checkpointQuarantine = recordInstructionQuarantine(
+              currentState,
+              record,
+            )
+            recordWatcherNotification(currentState, {
+              kind: "quarantine",
+              quarantineId: record.quarantineId,
+              instructionId: record.instructionId,
+              errorDigest: record.normalizedErrorDigest,
+            })
+          }
+        }
         await store.save(currentState)
+        if (checkpointRejection?.appended) {
+          await store.appendEventOnce(
+            checkpointRejection.record.rejectionId,
+            {
+              type: "checkpoint_recovery_rejection_recorded",
+              ...checkpointRejection.record,
+            },
+          )
+        }
+        if (checkpointQuarantine?.appended) {
+          const event = quarantineAuditEvent(checkpointQuarantine.record)
+          await store.appendEventOnce(event.eventId, event)
+        }
+        const quarantines = activeInstructionQuarantines(currentState)
+        if (quarantines.length > 0) {
+          return {
+            issueNumber,
+            status: "quarantined",
+            quarantineIds: quarantines.map((record) => record.quarantineId),
+            claimed: false,
+          }
+        }
         if (
           selection.recoveryDiscovery?.applicable &&
           !selection.recoveryDiscovery.terminal &&
@@ -791,7 +1162,36 @@ export async function runRepositoryIssue(
         }
       }
 
-      const claim = await claimStore.withClaim(
+      await onActivity({
+        activeIssue: issueNumber,
+        activeInstruction: instruction.instructionId,
+        activeClaim: "instruction_pending",
+      })
+
+      if (instruction.quarantineReopen) {
+        const reopened = recordQuarantineReopen(currentState, instruction)
+        if (!reopened.accepted) {
+          return {
+            issueNumber,
+            instructionId: instruction.instructionId,
+            status: "quarantine_reopen_rejected",
+            rejectionCode: reopened.code,
+            claimed: false,
+          }
+        }
+        if (reopened.appended) {
+          await store.save(currentState)
+          await store.appendEventOnce(reopened.record.reopenId, {
+            type: "instruction_quarantine_reopened",
+            ...reopened.record,
+          })
+        }
+      }
+
+      throwIfAborted(signal)
+      let claim
+      try {
+        claim = await claimStore.withClaim(
         {
           instructionId: instruction.instructionId,
           originIssueNumber: issueNumber,
@@ -808,10 +1208,12 @@ export async function runRepositoryIssue(
           }),
         },
         async () => {
+          throwIfAborted(signal)
           const orchestrator = new OrchestratorClass(
             {
               ...baseConfig,
               command: "once",
+              persistentWatch: baseConfig.command === "watch",
               issueNumber,
               instructionSupersessionReconciledInstructionId:
                 reconciledInstructionId,
@@ -822,6 +1224,7 @@ export async function runRepositoryIssue(
             const value = await orchestrator.runOnce({
               task,
               expectedInstructionId: instruction.instructionId,
+              signal,
             })
             const completedState = await store.load()
             recordIssueObservation(completedState, observation)
@@ -833,7 +1236,45 @@ export async function runRepositoryIssue(
         },
         { issueClaim: claimedIssue },
       )
+      } catch (error) {
+        if (baseConfig.command === "watch" && error.queueRecord) {
+          await persistThirdFailureWarning({
+            store,
+            queueRecord: error.queueRecord,
+            instructionId: instruction.instructionId,
+          })
+          const quarantine = await persistQueueQuarantine({
+            store,
+            queueRecord: error.queueRecord,
+            instructionId: instruction.instructionId,
+          })
+          if (quarantine) {
+            return {
+              issueNumber,
+              instructionId: instruction.instructionId,
+              status: "quarantined",
+              quarantineId: quarantine.quarantineId,
+              claimed: false,
+            }
+          }
+        }
+        throw error
+      }
       if (!claim.claimed) {
+        if (claim.quarantineRecord) {
+          const quarantine = await persistQueueQuarantine({
+            store,
+            queueRecord: claim.quarantineRecord,
+            instructionId: instruction.instructionId,
+          })
+          return {
+            issueNumber,
+            instructionId: instruction.instructionId,
+            status: "quarantined",
+            quarantineId: quarantine?.quarantineId ?? null,
+            claimed: false,
+          }
+        }
         if (recovery?.accepted) {
           await store.appendEvent({
             type: "checkpoint_activation_recovery_discovery_deferred",
@@ -883,13 +1324,22 @@ export async function runRepositoryCycle(
     claimStore = new QueueClaimStore({
       stateDirectory: config.stateDirectory,
       retryBaseMs: config.retryBaseMs,
+      watcherV2: config.command === "watch",
     }),
+    signal = null,
+    rawSchemaPreflight = preflightRawTaskSchemas,
+    onActivity = async () => {},
   } = {},
 ) {
-  if (config.repository && config.stateDirectory) {
+  throwIfAborted(signal)
+  if (
+    config.command !== "watch" &&
+    config.repository &&
+    config.stateDirectory
+  ) {
     await reconcileTerminalAudits(config)
   }
-  const candidates = config.issueNumberExplicit
+  const discovered = config.issueNumberExplicit
     ? [
         {
           issueNumber: config.issueNumber,
@@ -903,19 +1353,45 @@ export async function runRepositoryCycle(
         await search(scanner, config),
         await discoverPersisted(config),
       )
+  const candidates = filterPersistentCandidates(discovered, config)
+  if (config.command === "watch") {
+    await rawSchemaPreflight(
+      { ...config, supportedStateSchema: currentStateSchemaVersion },
+      candidates,
+    )
+  }
   const results = []
   let claimedCount = 0
   for (const candidate of candidates) {
+    throwIfAborted(signal)
     if (claimedCount >= config.maxTasksPerPoll) break
     try {
-      const result = await runIssue(scanner, config, candidate, { claimStore })
+      await onActivity({
+        activeIssue: candidate.issueNumber,
+        activeInstruction: null,
+        activeClaim: "issue_pending",
+      })
+      const result = await runIssue(scanner, config, candidate, {
+        claimStore,
+        signal,
+        onActivity,
+      })
       results.push(result)
       if (result.claimed) claimedCount += 1
     } catch (error) {
+      if (error.name === "AbortError" || error.code === "WATCHER_SHUTDOWN") {
+        throw error
+      }
       results.push({
         issueNumber: candidate.issueNumber,
         status: "failed",
         error: error.message,
+      })
+    } finally {
+      await onActivity({
+        activeIssue: null,
+        activeInstruction: null,
+        activeClaim: null,
       })
     }
   }
@@ -948,49 +1424,184 @@ export async function watchRepository(
     reconcile = reconcileServiceTransition,
     sleep = delay,
     write = (line) => process.stdout.write(line),
+    verifyIdentity = verifyWatcherStartupIdentity,
+    HealthStoreClass = WatcherHealthStore,
+    circuitBreaker = new WatcherCircuitBreaker(),
   } = {},
 ) {
   let scanner = null
-  await reconcile(config)
+  let scannerStop = null
+  const stopActiveScanner = async () => {
+    const active = scanner
+    scanner = null
+    if (!active) return scannerStop
+    scannerStop = Promise.resolve(stopScanner(active)).finally(() => {
+      scannerStop = null
+    })
+    return scannerStop
+  }
+  const stopDiscoveryOnShutdown = () => {
+    void stopActiveScanner()
+  }
+  signal?.addEventListener("abort", stopDiscoveryOnShutdown, { once: true })
+  const identity =
+    config.unsafeDevelopmentWatch === false
+      ? await verifyIdentity(config)
+      : null
+  const health = config.healthPath
+    ? new HealthStoreClass(config.healthPath)
+    : { write: async (value) => value }
+  const startupTimestamp = new Date().toISOString()
+  const baseHealth = {
+    runtimeRelease: identity?.runtimeRelease ?? null,
+    manifestSha256: identity?.manifestSha256 ?? null,
+    sourceCommit: identity?.sourceCommit ?? null,
+    sourceTree: identity?.sourceTree ?? null,
+    repository: config.repository,
+    coordinatorCheckout: config.checkoutPath
+      ? path.resolve(config.checkoutPath)
+      : null,
+    serviceConfigSha256: identity?.serviceConfigSha256 ?? null,
+    servicePid: process.pid,
+    startupTimestamp,
+    schemaSupportLevel: currentStateSchemaVersion,
+    requiredLabel: config.requiredLabel,
+    issueAllowlist: config.issueAllowlist,
+    canaryIssue: config.canaryMode ? config.issueNumber : null,
+    autoCommit: false,
+  }
+  await health.write({
+    ...baseHealth,
+    state: "starting",
+    lastPollStart: null,
+    lastPollEnd: null,
+    nextPoll: null,
+    activeIssue: null,
+    activeInstruction: null,
+    activeClaim: null,
+    quarantines: [],
+    circuitBreaker: circuitBreaker.snapshot(),
+    shutdown: { requested: false, inProgress: false },
+  })
   writeJson(write, {
     event: "repository_watch_started",
-    pid: process.pid,
-    repository: config.repository,
+    ...baseHealth,
     pollMs: config.pollMs,
   })
 
   try {
     while (!signal?.aborted) {
+      const pollStartedAt = new Date().toISOString()
       try {
         scanner ??= await createScanner(config)
-        const results = await runCycle(scanner, config)
+        const results = await runCycle(scanner, config, {
+          signal,
+          onActivity: async (activity) => {
+            await health.write({
+              ...baseHealth,
+              state: activity.activeIssue ? "active" : "polling",
+              lastPollStart: pollStartedAt,
+              lastPollEnd: null,
+              nextPoll: null,
+              ...activity,
+              quarantines: [],
+              circuitBreaker: circuitBreaker.snapshot(),
+              shutdown: { requested: false, inProgress: false },
+            })
+          },
+        })
+        circuitBreaker.success()
+        const pollEndedAt = new Date().toISOString()
+        const quarantines = results
+          .filter((result) => result.status === "quarantined")
+          .map((result) => ({
+            issueNumber: result.issueNumber,
+            instructionId: result.instructionId ?? null,
+            quarantineId:
+              result.quarantineId ?? result.quarantineIds?.[0] ?? null,
+          }))
+        await health.write({
+          ...baseHealth,
+          state: "idle",
+          lastPollStart: pollStartedAt,
+          lastPollEnd: pollEndedAt,
+          nextPoll: new Date(Date.now() + config.pollMs).toISOString(),
+          activeIssue: null,
+          activeInstruction: null,
+          activeClaim: null,
+          quarantines,
+          circuitBreaker: circuitBreaker.snapshot(),
+          shutdown: { requested: false, inProgress: false },
+        })
         writeJson(write, {
           event: "repository_poll_completed",
           results,
         })
         await waitForNextCycle(config.pollMs, signal, sleep)
       } catch (error) {
+        if (error.name === "AbortError" || error.code === "WATCHER_SHUTDOWN") {
+          break
+        }
+        if (error.code === "WATCHER_UNSUPPORTED_SCHEMA") {
+          throw error
+        }
+        const breaker = circuitBreaker.fail(error)
         writeJson(write, {
           event: "repository_poll_failed",
           error: error.message,
+          circuitBreaker: breaker,
         })
         try {
-          await stopScanner(scanner)
+          await stopActiveScanner()
         } catch (stopError) {
           writeJson(write, {
             event: "repository_scanner_stop_failed",
             error: stopError.message,
           })
         }
-        scanner = null
+        await health.write({
+          ...baseHealth,
+          state: "circuit_open",
+          lastPollStart: pollStartedAt,
+          lastPollEnd: new Date().toISOString(),
+          nextPoll: breaker.nextProbeAt,
+          activeIssue: null,
+          activeInstruction: null,
+          activeClaim: null,
+          quarantines: [],
+          circuitBreaker: breaker,
+          shutdown: { requested: false, inProgress: false },
+        })
+        const breakerDelay = Math.max(
+          0,
+          Date.parse(breaker.nextProbeAt) - Date.now(),
+        )
         await waitForNextCycle(
-          Math.min(config.retryBaseMs, config.pollMs),
+          breakerDelay,
           signal,
           sleep,
         )
       }
     }
   } finally {
-    await stopScanner(scanner)
+    signal?.removeEventListener("abort", stopDiscoveryOnShutdown)
+    await stopActiveScanner()
+    await health.write({
+      ...baseHealth,
+      state: "stopped",
+      lastPollStart: null,
+      lastPollEnd: new Date().toISOString(),
+      nextPoll: null,
+      activeIssue: null,
+      activeInstruction: null,
+      activeClaim: null,
+      quarantines: [],
+      circuitBreaker: circuitBreaker.snapshot(),
+      shutdown: {
+        requested: Boolean(signal?.aborted),
+        inProgress: false,
+        reason: signal?.reason ?? null,
+      },
+    })
   }
 }

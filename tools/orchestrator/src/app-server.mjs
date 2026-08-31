@@ -844,7 +844,13 @@ export class AppServerClient extends EventEmitter {
     onOwnerStop = () => {},
     resolveApprovalRequest = () => null,
     onApprovedActionCompleted = () => {},
+    signal = null,
   }) {
+    if (signal?.aborted) {
+      const error = new Error("Turn cancelled before start")
+      error.name = "AbortError"
+      throw error
+    }
     let turnId = null
     let pendingOwnerRequest = null
     let ownerStopPersistence = Promise.resolve()
@@ -1033,6 +1039,7 @@ export class AppServerClient extends EventEmitter {
         interruptTimedOutTurn(reason)
       }, fail)
     }
+    const onAbort = () => scheduleTimedOutTurn("shutdown_requested")
     const scheduleOwnerStopFallback = () => {
       clearTimeout(ownerStopTimer)
       ownerStopTimer = setTimeout(
@@ -1408,6 +1415,7 @@ export class AppServerClient extends EventEmitter {
       this.off("server_request", onServerRequest)
       this.off("turn_failure", onTurnFailure)
       this.off("adapter_failure", onAdapterFailure)
+      signal?.removeEventListener("abort", onAbort)
     }
 
     this.on("item/started", onItemStarted)
@@ -1416,6 +1424,7 @@ export class AppServerClient extends EventEmitter {
     this.on("server_request", onServerRequest)
     this.on("turn_failure", onTurnFailure)
     this.on("adapter_failure", onAdapterFailure)
+    signal?.addEventListener("abort", onAbort, { once: true })
 
     const persistStartedTurn = async (response) => {
       const responseTurnId = stableProtocolIdentifier(response?.turn?.id)
