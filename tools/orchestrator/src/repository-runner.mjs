@@ -1,6 +1,6 @@
 import { setTimeout as delay } from "node:timers/promises"
 import { readdir, readFile } from "node:fs/promises"
-import { createHash } from "node:crypto"
+import { createHash, randomUUID } from "node:crypto"
 import { execFile } from "node:child_process"
 import path from "node:path"
 import { promisify } from "node:util"
@@ -1629,7 +1629,9 @@ export async function watchRepository(
     ? new HealthStoreClass(config.healthPath)
     : { write: async (value) => value }
   const startupTimestamp = new Date().toISOString()
+  const startupSessionId = randomUUID()
   const baseHealth = {
+    serviceLabel: config.serviceLabel ?? launchAgentLabel,
     runtimeRelease: identity?.runtimeRelease ?? null,
     manifestSha256: identity?.manifestSha256 ?? null,
     sourceCommit: identity?.sourceCommit ?? null,
@@ -1641,11 +1643,18 @@ export async function watchRepository(
     serviceConfigSha256: identity?.serviceConfigSha256 ?? null,
     servicePid: process.pid,
     startupTimestamp,
+    startupSessionId,
+    watcherMode: "watch",
     schemaSupportLevel: currentStateSchemaVersion,
     requiredLabel: config.requiredLabel,
     issueAllowlist: config.issueAllowlist,
     canaryIssue: config.canaryMode ? config.issueNumber : null,
     autoCommit: false,
+    runAtLoad: config.serviceRunAtLoad,
+    keepAlive: config.serviceKeepAlive,
+    exitTimeOut: config.serviceExitTimeOut,
+    pollMs: config.pollMs,
+    maxTasksPerPoll: config.maxTasksPerPoll,
   }
   await health.write({
     ...baseHealth,

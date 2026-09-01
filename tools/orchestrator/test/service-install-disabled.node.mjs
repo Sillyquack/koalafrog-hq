@@ -332,3 +332,46 @@ test("install-disabled CLI rejects coexistence and boot-start approval without a
   await assert.rejects(readFile(approvalPaths.plistPath, "utf8"), /ENOENT/)
   assert.equal(await readFile(approvalPaths.tracePath, "utf8"), "")
 })
+
+test("start-once CLI is separate, rejects boot approval, and fails disabled", async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "koalafrog-start-once-cli-"))
+  t.after(() => rm(root, { recursive: true, force: true }))
+  const checkoutPath = await createSyntheticCoordinator(root)
+  const system = await createFakeSystem(root)
+  const paths = installPaths(root, "start-once")
+
+  const installed = JSON.parse(
+    (await invokeService({ checkoutPath, system, paths })).stdout,
+  )
+  await assert.rejects(
+    invokeService({
+      checkoutPath,
+      system,
+      paths,
+      command: "start-once",
+      extraArgs: ["--approve-run-at-load"],
+    }),
+    /start-once rejects --approve-run-at-load/,
+  )
+  assert.equal(await readFile(paths.tracePath, "utf8"), "")
+
+  await assert.rejects(
+    invokeService({
+      checkoutPath,
+      system,
+      paths,
+      command: "start-once",
+      launchctlMode: "post-loaded",
+      extraArgs: ["--startup-timeout-ms", "20", "--startup-stability-ms", "5"],
+    }),
+    /service remains disabled/,
+  )
+  assert.equal((await stat(paths.plistPath)).mode & 0o777, 0o600)
+  assert.equal((await stat(installed.runtimeRelease)).isDirectory(), true)
+  const trace = await readFile(paths.tracePath, "utf8")
+  assert.match(trace, /launchctl bootstrap /)
+  assert.match(trace, /launchctl kickstart -p /)
+  assert.match(trace, /launchctl bootout /)
+  assert.doesNotMatch(trace, /^codex /m)
+  assert.doesNotMatch(trace, /^gh /m)
+})

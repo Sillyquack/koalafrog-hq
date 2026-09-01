@@ -251,8 +251,35 @@ not load task state or perform repository discovery. Repeating it with the same
 identity is idempotent and reports the runtime and plist as unchanged.
 
 The separate `install` command retains the explicit active-install path and may
-bootstrap only after the same preparation succeeds. There is no flag or
-fallthrough from `install-disabled` to that path.
+start only after the same preparation succeeds. It uses the same verified
+bootstrap, kickstart, PID, health-identity, and stability contract as
+`start-once`; bootstrap success alone is never sufficient. There is no flag or
+fallthrough from `install-disabled` to either active path.
+
+An already installed `RunAtLoad=false` profile has one explicit manual start:
+
+```sh
+npm run orchestrator:service -- start-once
+```
+
+`start-once` does not render, replace, or materialize artifacts. It recomputes
+canonical source and profile identities, verifies the existing immutable
+release and exact mode-`0600` plist, requires the launchd target and all watcher,
+App Server, broker, and Git-mutation processes to be absent, then bootstraps the
+installed plist and calls non-force `launchctl kickstart -p`. It waits up to 30
+seconds for one launchd PID and a newly generated, PID-bound health session with
+the exact release, manifest, source commit/tree, repository, coordinator,
+service label, watcher profile, required label, and service-configuration hash.
+The identity must remain alive with an unchanged PID and launch count for a
+further two seconds. The command returns that evidence; it does not wait for a
+task result.
+
+Any bootstrap, kickstart, PID, process, health, immediate-exit, restart, or
+stability failure triggers one controlled bootout and a bounded 75-second
+absence/process-tree check. Logs, health, immutable runtime, installed disabled
+plist, and hashed start evidence remain for diagnosis. The command never
+retries a start, enables `RunAtLoad`, adds `KeepAlive`, or restores an older
+runtime. Incomplete cleanup is a hard manual-recovery error.
 
 The generated plist has `RunAtLoad=false`, no `KeepAlive`,
 `ExitTimeOut=90`, `ThrottleInterval=60`, `ProcessType=Background`, and
@@ -275,11 +302,24 @@ and the service remains disabled. The installer never bootstraps the previous
 runtime or the newly materialized runtime as recovery. Rollback therefore means
 service-disabled unless an owner separately approves a future restore mechanism.
 
-At startup the watcher recomputes and requires the runtime release, manifest,
+Service promotion therefore has four independent owner gates:
+
+1. `install-disabled` authorizes artifact installation only.
+2. `start-once` authorizes one manual launchd activation of the installed
+   `RunAtLoad=false` profile.
+3. Applying the required watcher label authorizes execution of that issue.
+4. `RunAtLoad=true` is a separate later authorization for boot/login
+   persistence.
+
+No earlier gate implies a later one.
+
+At startup the watcher creates a new random startup-session identity and
+recomputes and requires the runtime release, manifest,
 source commit/tree, repository, coordinator, and complete service-profile hash.
 It emits one identity record and writes read-only health evidence containing
-PID/start time, last and next poll, active issue/instruction/claim, quarantine
-summary, circuit state, shutdown state, schema support, and configuration hash:
+service label, PID/session/start time, watcher mode and profile, last and next
+poll, active issue/instruction/claim, quarantine summary, circuit state,
+shutdown state, schema support, and configuration hash:
 
 ```sh
 node tools/orchestrator/bin/repository-orchestrator.mjs status --state-dir <state-root>

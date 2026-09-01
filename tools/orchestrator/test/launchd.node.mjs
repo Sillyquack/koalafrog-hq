@@ -46,6 +46,7 @@ function fixture(root) {
     checkoutPath: "/repo/koalafrog & hq",
     codexBinary: "/Applications/ChatGPT.app/Contents/Resources/codex",
     stateDirectory,
+    healthPath: path.join(stateDirectory, "watcher-v2-health.json"),
     stdoutPath,
     stderrPath,
     autoCommit: false,
@@ -150,6 +151,20 @@ test("service runtime release is deterministic, immutable, and outside a task wo
   await assert.rejects(
     materializeRuntimeRelease(firstPlan),
     /immutable runtime was modified/,
+  )
+
+  await writeFile(
+    firstPlan.orchestratorScript,
+    firstPlan.files.find(
+      (file) => file.relativePath === "bin/repository-orchestrator.mjs",
+    ).contents,
+  )
+  const manifestPath = path.join(firstPlan.releaseDirectory, "manifest.json")
+  const manifest = await readFile(manifestPath, "utf8")
+  await writeFile(manifestPath, `${manifest}\n`)
+  await assert.rejects(
+    materializeRuntimeRelease(firstPlan),
+    /runtime manifest was modified/,
   )
 })
 
@@ -551,11 +566,10 @@ test("install refuses an already running service instead of replacing it", async
   assert.deepEqual(calls.map((call) => call[1]), ["print"])
 })
 
-test("bootstrap retries a transient launchd reload race", async (t) => {
+test("active install treats bootstrap failure as terminal and fails disabled", async (t) => {
   const root = await mkdtemp(path.join(os.tmpdir(), "koalafrog-launchd-"))
   t.after(() => rm(root, { recursive: true, force: true }))
   let bootstrapAttempts = 0
-  const sleeps = []
   const run = async (command, args) => {
     if (command === "plutil") {
       return { code: 0, stdout: "OK", stderr: "" }
@@ -563,18 +577,23 @@ test("bootstrap retries a transient launchd reload race", async (t) => {
     if (args[0] === "print") {
       return { code: 1, stdout: "", stderr: "not loaded" }
     }
-    bootstrapAttempts += 1
-    if (bootstrapAttempts === 1) throw new Error("Bootstrap failed: 5")
+    if (args[0] === "bootstrap") {
+      bootstrapAttempts += 1
+      throw new Error("Bootstrap failed: 5")
+    }
     return { code: 0, stdout: "", stderr: "" }
   }
-  await installAndStartLaunchAgent({
-    ...fixture(root),
-    run,
-    retryDelayMs: 25,
-    sleep: async (milliseconds) => sleeps.push(milliseconds),
-  })
-  assert.equal(bootstrapAttempts, 2)
-  assert.deepEqual(sleeps, [25])
+  await assert.rejects(
+    installAndStartLaunchAgent({
+      ...fixture(root),
+      run,
+      sleep: async () => {},
+      inspectProcesses: async () => [],
+    }),
+    /service remains disabled/,
+  )
+  assert.equal(bootstrapAttempts, 1)
+  await assert.rejects(readFile(fixture(root).plistPath, "utf8"), /ENOENT/)
 })
 
 test("invalid generated plist is rejected before an existing service unloads", async (t) => {
@@ -636,16 +655,18 @@ test("failed install preserves evidence and leaves the service disabled", async 
       ...options,
       run,
       sleep: async () => {},
+      inspectProcesses: async () => [],
       evidenceDirectory: path.join(root, "disabled"),
     }),
     /service remains disabled/,
   )
   await assert.rejects(readFile(options.plistPath, "utf8"), /ENOENT/)
-  assert.equal(bootstrapCount, 3)
+  assert.equal(bootstrapCount, 1)
   const evidence = await readdir(path.join(root, "disabled"))
-  assert.equal(evidence.length, 2)
+  assert.equal(evidence.length, 3)
   assert.ok(evidence.some((name) => name.includes("previous-inactive")))
   assert.ok(evidence.some((name) => name.includes("failed-attempt")))
+  assert.ok(evidence.some((name) => name.includes("failed-start")))
 })
 
 test("LaunchAgent preflight requires a stable coordinating checkout", async () => {
