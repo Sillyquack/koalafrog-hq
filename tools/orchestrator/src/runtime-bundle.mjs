@@ -24,6 +24,7 @@ const runtimeFiles = [
   "src/commit-authorization.mjs",
   "src/config.mjs",
   "src/control-plane.mjs",
+  "src/darwin-process-identity.mjs",
   "src/durable-filesystem.mjs",
   "src/git-execution-boundary.mjs",
   "src/trusted-mutation-broker.mjs",

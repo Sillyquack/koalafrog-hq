@@ -201,7 +201,7 @@ test("install-disabled CLI materializes an immutable runtime and remains unloade
   const manifestContents = await readFile(
     path.join(first.runtimeRelease, "manifest.json"),
   )
-  assert.equal(manifest.files.length, 27)
+  assert.equal(manifest.files.length, 28)
   assert.equal(manifest.source.repository, "Sillyquack/koalafrog-hq")
   assert.equal(manifest.source.commit.length, 40)
   assert.equal(manifest.source.tree.length, 40)

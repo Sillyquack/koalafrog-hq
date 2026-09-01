@@ -1,5 +1,13 @@
 import assert from "node:assert/strict"
-import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises"
+import {
+  mkdir,
+  mkdtemp,
+  readFile,
+  rm,
+  stat,
+  symlink,
+  writeFile,
+} from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
 import test from "node:test"
@@ -8,8 +16,10 @@ import {
   installDisabledLaunchAgent,
   installAndStartLaunchAgent,
   launchAgentLabel,
+  parseLaunchAgentProgramArguments,
   startOnceLaunchAgent,
 } from "../src/launchd.mjs"
+import { darwinXpcproxyExecutable } from "../src/darwin-process-identity.mjs"
 
 const baseTime = Date.parse("2026-09-01T10:00:00.000Z")
 
@@ -107,8 +117,19 @@ async function createHarness(options, behavior = {}) {
   let pid = 4242
   let launchCount = 0
   let postKickstartPrints = 0
+  let processInspections = 0
   let sleeps = 0
   const calls = []
+  const expectedArgv = [...parseLaunchAgentProgramArguments(options.contents)]
+  const nodeMetadata = await stat(options.nodeBinary)
+  const expectedProcessIdentity = {
+    pid,
+    executablePath: options.nodeBinary,
+    executableDevice: String(nodeMetadata.dev),
+    executableInode: String(nodeMetadata.ino),
+    kernelExecutablePath: options.nodeBinary,
+    argv: expectedArgv,
+  }
   const writeHealth = async (overrides = {}) => {
     await mkdir(path.dirname(options.healthPath), { recursive: true })
     const value = behavior.malformedHealth
@@ -127,17 +148,6 @@ async function createHarness(options, behavior = {}) {
   const run = async (command, args) => {
     calls.push([command, ...args])
     if (command === "plutil") return { code: 0, stdout: "OK", stderr: "" }
-    if (command === "ps") {
-      if (!running) return { code: 1, stdout: "", stderr: "gone" }
-      return {
-        code: 0,
-        stdout: `${pid} 1 ${
-          behavior.processCommand ??
-          `${options.nodeBinary} ${options.orchestratorScript} watch --required-label ${options.requiredLabel}`
-        }\n`,
-        stderr: "",
-      }
-    }
     assert.equal(command, "launchctl")
     if (args[0] === "bootstrap") {
       if (behavior.bootstrapFailure) {
@@ -181,6 +191,20 @@ async function createHarness(options, behavior = {}) {
         pid = 4343
         launchCount = 2
       }
+      if (
+        behavior.launchCountChangeAfterPrint &&
+        postKickstartPrints >= behavior.launchCountChangeAfterPrint
+      ) {
+        launchCount = 2
+      }
+      if (
+        behavior.disappearAfterPrint &&
+        postKickstartPrints >= behavior.disappearAfterPrint
+      ) {
+        loaded = false
+        running = false
+        return { code: 113, stdout: "", stderr: "not loaded" }
+      }
       return {
         code: 0,
         stdout: [
@@ -220,6 +244,34 @@ async function createHarness(options, behavior = {}) {
       running
         ? [{ pid, parentPid: 1, command: `${options.nodeBinary} ${options.orchestratorScript} watch` }]
         : [],
+    inspectProcessIdentity: async (requestedPid) => {
+      if (!running) throw new Error("synthetic process disappeared")
+      processInspections += 1
+      if (behavior.processIdentityError) {
+        throw new Error(behavior.processIdentityError)
+      }
+      const sequence = behavior.processIdentitySequence ?? []
+      const selected =
+        sequence[Math.min(processInspections - 1, sequence.length - 1)] ??
+        behavior.processIdentity ??
+        expectedProcessIdentity
+      const value = typeof selected === "function"
+        ? await selected({
+            requestedPid,
+            processInspections,
+            expected: expectedProcessIdentity,
+            expectedArgv,
+          })
+        : selected
+      return {
+        ...expectedProcessIdentity,
+        ...value,
+        pid: value?.pid ?? requestedPid,
+        argv: [...(value?.argv ?? expectedArgv)],
+      }
+    },
+    expectedArgv,
+    expectedProcessIdentity,
     state: () => ({ loaded, running, pid, launchCount }),
   }
 }
@@ -231,6 +283,7 @@ async function invokeStart(options, harness) {
     sleep: harness.sleep,
     now: harness.now,
     inspectProcesses: harness.inspectProcesses,
+    inspectProcessIdentity: harness.inspectProcessIdentity,
   })
 }
 
@@ -240,6 +293,25 @@ async function withFixture(t, behavior = {}) {
   const options = serviceFixture(root)
   await installInactive(options)
   return { root, options, harness: await createHarness(options, behavior) }
+}
+
+function xpcproxyIdentity(pid = 4242) {
+  return {
+    pid,
+    executablePath: darwinXpcproxyExecutable,
+    executableDevice: "16777232",
+    executableInode: "1",
+    kernelExecutablePath: darwinXpcproxyExecutable,
+    argv: [darwinXpcproxyExecutable, "com.sillyquack.koalafrog-orchestrator"],
+  }
+}
+
+function changedArgv(change) {
+  return ({ expectedArgv }) => {
+    const argv = [...expectedArgv]
+    change(argv)
+    return { argv }
+  }
 }
 
 test("start-once verifies bootstrap, kickstart, PID, health, and stability", async (t) => {
@@ -266,6 +338,261 @@ test("start-once verifies bootstrap, kickstart, PID, health, and stability", asy
     harness.calls.some((call) => call[1] === "kickstart" && call[2] === "-k"),
     false,
   )
+})
+
+test("start-once accepts one same-PID xpcproxy pre-exec observation before exact Node", async (t) => {
+  const { options, harness } = await withFixture(t, {
+    processIdentitySequence: [xpcproxyIdentity(), ({ expected }) => expected],
+  })
+  const result = await invokeStart(options, harness)
+  assert.equal(result.pid, 4242)
+  assert.equal(result.loaded, true)
+})
+
+test("start-once accepts multiple bounded xpcproxy observations before exact Node", async (t) => {
+  const { options, harness } = await withFixture(t, {
+    processIdentitySequence: [
+      xpcproxyIdentity(),
+      xpcproxyIdentity(),
+      xpcproxyIdentity(),
+      ({ expected }) => expected,
+    ],
+  })
+  const result = await invokeStart(options, harness)
+  assert.equal(result.loaded, true)
+})
+
+test("persistent xpcproxy times out, cleans up, and journals the first observation", async (t) => {
+  const { options, harness } = await withFixture(t, {
+    processIdentity: xpcproxyIdentity(),
+  })
+  let failure
+  try {
+    await invokeStart(options, harness)
+  } catch (error) {
+    failure = error
+  }
+  assert.match(failure?.message ?? "", /xpcproxy pre-exec/)
+  assert.equal(harness.state().loaded, false)
+  const evidence = JSON.parse(await readFile(failure.startEvidencePath, "utf8"))
+  assert.ok(evidence.observations.length > 1)
+  assert.equal(evidence.observations[0].classification, "xpcproxy_pre_exec")
+  assert.equal(evidence.observations[0].executablePath, darwinXpcproxyExecutable)
+  assert.equal(evidence.observations[0].argvRetrievalStatus, "available")
+  assert.equal(evidence.observations[0].decision, "not_ready")
+})
+
+test("xpcproxy followed by an unexpected executable rejects and preserves evidence", async (t) => {
+  const { options, harness } = await withFixture(t, {
+    processIdentitySequence: [
+      xpcproxyIdentity(),
+      {
+        executablePath: "/bin/zsh",
+        kernelExecutablePath: "/bin/zsh",
+        argv: ["/bin/zsh", "-c", "exit 0"],
+      },
+    ],
+  })
+  let failure
+  try {
+    await invokeStart(options, harness)
+  } catch (error) {
+    failure = error
+  }
+  assert.match(failure?.message ?? "", /unexpected service executable/)
+  const evidence = JSON.parse(await readFile(failure.startEvidencePath, "utf8"))
+  assert.deepEqual(
+    evidence.observations.map(({ classification }) => classification),
+    ["xpcproxy_pre_exec", "unexpected_process"],
+  )
+  assert.deepEqual(evidence.observations[1].argv, ["/bin/zsh", "-c", "exit 0"])
+  assert.equal(evidence.observations[1].decision, "reject")
+})
+
+test("same-PID xpcproxy transition rejects PID, launch-count, or target drift", async (t) => {
+  await t.test("PID changes", async (t) => {
+    const { options, harness } = await withFixture(t, {
+      processIdentity: xpcproxyIdentity(),
+      restartAfterPrint: 2,
+    })
+    await assert.rejects(invokeStart(options, harness), /PID changed/)
+  })
+  await t.test("launch count changes", async (t) => {
+    const { options, harness } = await withFixture(t, {
+      processIdentity: xpcproxyIdentity(),
+      launchCountChangeAfterPrint: 2,
+    })
+    await assert.rejects(invokeStart(options, harness), /launch count changed/)
+  })
+  await t.test("target disappears", async (t) => {
+    const { options, harness } = await withFixture(t, {
+      processIdentity: xpcproxyIdentity(),
+      disappearAfterPrint: 2,
+    })
+    await assert.rejects(invokeStart(options, harness), /target disappeared/)
+  })
+})
+
+const argvMutations = [
+  [
+    "wrong script path",
+    changedArgv((argv) => {
+      argv[1] = "/tmp/foreign/repository-orchestrator.mjs"
+    }),
+    /argv differs at index 1/,
+  ],
+  [
+    "alternate runtime path",
+    changedArgv((argv) => {
+      argv[1] = argv[1].replace("/runtime/releases/", "/runtime/foreign/")
+    }),
+    /argv differs at index 1/,
+  ],
+  ["missing argument", changedArgv((argv) => argv.pop()), /argv is missing index/],
+  ["extra argument", changedArgv((argv) => argv.push("--foreign")), /unexpected index/],
+  [
+    "reordered arguments",
+    changedArgv((argv) => {
+      ;[argv[3], argv[5]] = [argv[5], argv[3]]
+    }),
+    /argv differs at index 3/,
+  ],
+  [
+    "auto-commit injection",
+    changedArgv((argv) => argv.push("--auto-commit")),
+    /unexpected index/,
+  ],
+  [
+    "wrong required label",
+    changedArgv((argv) => {
+      argv[argv.indexOf("--required-label") + 1] = "foreign-label"
+    }),
+    /argv differs/,
+  ],
+  [
+    "wrong state directory",
+    changedArgv((argv) => {
+      argv[argv.indexOf("--state-dir") + 1] = "/tmp/foreign-state"
+    }),
+    /argv differs/,
+  ],
+  [
+    "wrong health path",
+    changedArgv((argv) => {
+      argv[argv.indexOf("--health-path") + 1] = "/tmp/foreign-health.json"
+    }),
+    /argv differs/,
+  ],
+  [
+    "wrong runtime identity",
+    changedArgv((argv) => {
+      argv[argv.indexOf("--expected-runtime-release") + 1] = "f".repeat(64)
+    }),
+    /argv differs/,
+  ],
+  [
+    "wrong manifest identity",
+    changedArgv((argv) => {
+      argv[argv.indexOf("--expected-manifest-sha256") + 1] = "f".repeat(64)
+    }),
+    /argv differs/,
+  ],
+  [
+    "wrong source commit",
+    changedArgv((argv) => {
+      argv[argv.indexOf("--expected-source-commit") + 1] = "f".repeat(40)
+    }),
+    /argv differs/,
+  ],
+  [
+    "wrong source tree",
+    changedArgv((argv) => {
+      argv[argv.indexOf("--expected-source-tree") + 1] = "f".repeat(40)
+    }),
+    /argv differs/,
+  ],
+  [
+    "wrong service configuration",
+    changedArgv((argv) => {
+      argv[argv.indexOf("--expected-service-config-sha256") + 1] = "f".repeat(64)
+    }),
+    /argv differs/,
+  ],
+]
+
+for (const [name, processIdentity, pattern] of argvMutations) {
+  test(`exact process identity rejects ${name}`, async (t) => {
+    const { options, harness } = await withFixture(t, { processIdentity })
+    await assert.rejects(invokeStart(options, harness), pattern)
+    assert.equal(harness.state().loaded, false)
+  })
+}
+
+for (const [name, processIdentity, pattern] of [
+  [
+    "alternate Node executable",
+    {
+      executablePath: "/opt/homebrew/bin/node",
+      kernelExecutablePath: "/opt/homebrew/bin/node",
+    },
+    /unexpected service executable/,
+  ],
+  [
+    "shell wrapper",
+    { executablePath: "/bin/zsh", kernelExecutablePath: "/bin/zsh" },
+    /unexpected service executable/,
+  ],
+  [
+    "Node device/inode substitution",
+    { executableDevice: "999", executableInode: "999" },
+    /device\/inode identity changed/,
+  ],
+  [
+    "internally inconsistent xpcproxy evidence",
+    {
+      executablePath: darwinXpcproxyExecutable,
+      kernelExecutablePath: "/usr/local/bin/node",
+    },
+    /internally inconsistent/,
+  ],
+]) {
+  test(`exact process identity rejects ${name}`, async (t) => {
+    const { options, harness } = await withFixture(t, { processIdentity })
+    await assert.rejects(invokeStart(options, harness), pattern)
+    assert.equal(harness.state().loaded, false)
+  })
+}
+
+test("executable or argv retrieval failure rejects and journals unavailable evidence", async (t) => {
+  const { options, harness } = await withFixture(t, {
+    processIdentityError: "Darwin process identity unavailable: synthetic argv failure",
+  })
+  let failure
+  try {
+    await invokeStart(options, harness)
+  } catch (error) {
+    failure = error
+  }
+  assert.match(failure?.message ?? "", /synthetic argv failure/)
+  const evidence = JSON.parse(await readFile(failure.startEvidencePath, "utf8"))
+  assert.equal(evidence.observations[0].classification, "unavailable")
+  assert.equal(evidence.observations[0].argvRetrievalStatus, "error")
+  assert.equal(evidence.observations[0].decision, "reject")
+})
+
+test("configured Node symlinks are rejected before launchd mutation", async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "koalafrog-node-symlink-"))
+  t.after(() => rm(root, { recursive: true, force: true }))
+  const options = serviceFixture(root)
+  const linkedNode = path.join(root, "bin", "node")
+  await mkdir(path.dirname(linkedNode), { recursive: true })
+  await symlink(process.execPath, linkedNode)
+  options.nodeBinary = linkedNode
+  options.contents = buildLaunchAgentPlist(options)
+  await installInactive(options)
+  const harness = await createHarness(options)
+  await assert.rejects(invokeStart(options, harness), /must not be a symbolic link/)
+  assert.equal(harness.calls.some((call) => call[1] === "bootstrap"), false)
 })
 
 for (const [name, behavior, message] of [
@@ -343,9 +670,15 @@ test("stale same-runtime health with an old PID never satisfies startup", async 
 
 test("launchd PID must execute the exact installed runtime command", async (t) => {
   const { options, harness } = await withFixture(t, {
-    processCommand: `${process.execPath} /tmp/foreign-runtime/repository-orchestrator.mjs watch`,
+    processIdentity: ({ expectedArgv }) => ({
+      argv: [
+        expectedArgv[0],
+        "/tmp/foreign-runtime/repository-orchestrator.mjs",
+        ...expectedArgv.slice(2),
+      ],
+    }),
   })
-  await assert.rejects(invokeStart(options, harness), /expected argument/)
+  await assert.rejects(invokeStart(options, harness), /argv differs at index 1/)
   assert.equal(harness.state().loaded, false)
 })
 
@@ -457,6 +790,7 @@ test("active install uses the same verified kickstart and health contract", asyn
     sleep: harness.sleep,
     now: harness.now,
     inspectProcesses: harness.inspectProcesses,
+    inspectProcessIdentity: harness.inspectProcessIdentity,
   })
   assert.equal(result.loaded, true)
   assert.equal(result.pid, 4242)
@@ -468,7 +802,9 @@ test("isolated install-disabled to start-once lifecycle is explicit and recovera
   const root = await mkdtemp(path.join(os.tmpdir(), "koalafrog-service-lifecycle-"))
   t.after(() => rm(root, { recursive: true, force: true }))
   const options = serviceFixture(root)
-  const harness = await createHarness(options)
+  const harness = await createHarness(options, {
+    processIdentitySequence: [xpcproxyIdentity(), ({ expected }) => expected],
+  })
   const installed = await installDisabledLaunchAgent({
     ...options,
     run: harness.run,

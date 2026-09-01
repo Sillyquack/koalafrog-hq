@@ -274,6 +274,17 @@ The identity must remain alive with an unchanged PID and launch count for a
 further two seconds. The command returns that evidence; it does not wait for a
 task result.
 
+Darwin may initially expose `/usr/libexec/xpcproxy` at the PID returned by
+`kickstart -p` before the same process execs the configured program. The verifier
+accepts only that exact executable as a bounded same-PID pre-exec transition;
+it is never startup success. Final process readiness independently requires the
+approved non-symlink Node executable identity, exact structured argv equality
+with the installed plist `ProgramArguments`, and fresh PID/session-bound health.
+Other launchers, missing or ambiguous process evidence, argument drift, PID or
+launch-count change, and persistent `xpcproxy` all fail disabled. Each process
+observation is journaled before a decision so first-poll failures retain the
+decisive executable and argv evidence.
+
 Any bootstrap, kickstart, PID, process, health, immediate-exit, restart, or
 stability failure triggers one controlled bootout and a bounded 75-second
 absence/process-tree check. Logs, health, immutable runtime, installed disabled
