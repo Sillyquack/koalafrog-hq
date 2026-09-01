@@ -83,16 +83,29 @@ are ignored. After first pickup, fresh follow-up blocks may be added as comments
 because the issue then has durable local state.
 
 In required-label watch mode, live GitHub eligibility is resolved before any
-persisted `state.json` is opened. Cached `originIssueLabels` never authorize
-execution. The runtime revalidates the current label before the first task load
-and again immediately before instruction claim. Removal before claim revokes
+persisted `state.json` is opened. Label-constrained search summaries are only
+bounded issue references: missing or `null` summary labels never establish or
+deny authority. Each reference is hydrated through current issue detail, whose
+repository, issue number, open/non-PR state, and complete label list must match
+before admission. Cached `originIssueLabels` never authorize execution.
+
+The runtime revalidates the current label under the issue lease and immediately
+before instruction claim. For a brand-new issue, it first requires exactly one
+valid `start`/`ready` control and performs one further live-label check before
+creating initial task state. Malformed, ambiguous, stale, or revoked new issues
+therefore leave no task-state footprint. Removal before claim revokes
 eligibility with no migration, retry/quarantine handling, notification, or
-execution; lookup failure opens the repository discovery circuit instead of an
-issue retry. Removal after an authoritative claim is not a mid-turn kill switch:
-the active turn remains governed by existing control and graceful-shutdown
-semantics. Allowlist entries intentionally bypass the label for only their
-explicit IDs, while exact canary mode inspects only its exact issue and isolated
-state root.
+execution; lookup or incomplete-detail failure opens the repository discovery
+circuit instead of an issue retry. Removal after an authoritative claim is not
+a mid-turn kill switch: the active turn remains governed by existing control
+and graceful-shutdown semantics. Allowlist entries intentionally bypass the
+label for only their explicit IDs, while exact canary mode inspects only its
+exact issue and isolated state root.
+
+Each persistent poll logs redacted stage evidence: search-reference IDs,
+summary-label completeness, hydration and exclusion IDs, persisted and merged
+candidates, schema-preflight and selected IDs, and claim-attempt IDs. Issue
+bodies, controls, comments, credentials, and connector payloads are excluded.
 
 Use a repository-wide unique `instruction_id`. Eligibility is explicit:
 
