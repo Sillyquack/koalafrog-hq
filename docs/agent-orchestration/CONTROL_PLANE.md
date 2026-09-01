@@ -127,10 +127,18 @@ disabled profile. It verifies the canonical checkout, immutable release, exact
 generated plist hash and mode, absence of the launchd target and conflicting
 process trees, then performs one `bootstrap` followed by non-force
 `kickstart -p`. Success requires one stable launchd PID, exact process
-arguments, and a fresh PID/session-bound health record carrying the canonical
+identity, and a fresh PID/session-bound health record carrying the canonical
 release, manifest, source, repository, service label, watcher profile, required
 label, and configuration hash. The startup deadline is 30 seconds and the
 post-readiness stability window is two seconds. Bootstrap alone is not success.
+On Darwin, launchd can expose exact `/usr/libexec/xpcproxy` briefly at the
+authoritative PID before it execs the configured program. Only that exact
+same-PID, unchanged-launch-count state is treated as transitional. It is never
+readiness: the executable must become the approved non-symlink Node binary,
+the structured argv vector must equal the installed plist `ProgramArguments`,
+and fresh health must then pass before the stability window begins. Any other
+launcher, unavailable identity, executable/argv drift, PID change, or persistent
+`xpcproxy` fails disabled.
 
 Any active-start failure performs controlled bootout, waits up to 75 seconds
 for launchd and process-tree absence, preserves plist/runtime/log/health/start

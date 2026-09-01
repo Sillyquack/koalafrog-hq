@@ -8,6 +8,7 @@ import {
   mkdir,
   readFile,
   readdir,
+  realpath,
   rename,
   stat,
   unlink,
@@ -16,6 +17,10 @@ import {
 import path from "node:path"
 import { setTimeout as delay } from "node:timers/promises"
 import { promisify } from "node:util"
+import {
+  darwinXpcproxyExecutable,
+  inspectDarwinProcessIdentity,
+} from "./darwin-process-identity.mjs"
 
 const execFileAsync = promisify(execFile)
 
@@ -488,28 +493,144 @@ function validateExpectedHealth(health, expected, { pid, startedAtMs, before }) 
   return { accepted: true }
 }
 
-async function inspectServiceProcess(run, pid) {
-  const result = await run(
-    "ps",
-    ["-p", String(pid), "-o", "pid=,ppid=,command="],
-    { allowFailure: true },
-  )
-  if (result.code !== 0) return null
-  const line = result.stdout.split("\n").map((value) => value.trim()).find(Boolean)
-  if (!line) return null
-  const match = line.match(/^(\d+)\s+(\d+)\s+(.+)$/)
-  if (!match || Number(match[1]) !== pid) return null
-  return { pid, parentPid: Number(match[2]), command: match[3] }
+function decodeXmlString(value) {
+  const decoded = value
+    .replaceAll("&lt;", "<")
+    .replaceAll("&gt;", ">")
+    .replaceAll("&quot;", '"')
+    .replaceAll("&apos;", "'")
+    .replaceAll("&amp;", "&")
+  if (/&(?:#\d+|#x[a-f0-9]+|[a-z][a-z0-9]+);/i.test(decoded)) {
+    throw new Error("LaunchAgent ProgramArguments contains unsupported XML entities")
+  }
+  return decoded
 }
 
-function validateServiceProcess(processRecord, expected) {
-  if (!processRecord) return "launchd PID has no running process"
-  for (const fragment of [expected.nodeBinary, expected.orchestratorScript, "watch"]) {
-    if (!processRecord.command.includes(fragment)) {
-      return `service process does not contain expected argument: ${fragment}`
+export function parseLaunchAgentProgramArguments(contents) {
+  if (typeof contents !== "string") {
+    throw new Error("LaunchAgent plist contents must be text")
+  }
+  if (/<key>Program<\/key>/.test(contents)) {
+    throw new Error("Watcher LaunchAgent profile must derive Program from ProgramArguments")
+  }
+  const matches = [
+    ...contents.matchAll(
+      /<key>ProgramArguments<\/key>\s*<array>([\s\S]*?)<\/array>/g,
+    ),
+  ]
+  if (matches.length !== 1) {
+    throw new Error("LaunchAgent plist must contain exactly one ProgramArguments array")
+  }
+  const body = matches[0][1]
+  const arguments_ = [...body.matchAll(/<string>([\s\S]*?)<\/string>/g)].map(
+    (match) => decodeXmlString(match[1]),
+  )
+  const residue = body.replace(/<string>[\s\S]*?<\/string>/g, "").trim()
+  if (arguments_.length < 3 || residue !== "") {
+    throw new Error("LaunchAgent ProgramArguments is missing or malformed")
+  }
+  return Object.freeze(arguments_)
+}
+
+async function expectedServiceProcessIdentity({
+  contents,
+  nodeBinary,
+  orchestratorScript,
+}) {
+  const argv = parseLaunchAgentProgramArguments(contents)
+  if (
+    argv[0] !== nodeBinary ||
+    argv[1] !== orchestratorScript ||
+    argv[2] !== "watch"
+  ) {
+    throw new Error("Installed LaunchAgent execution identity is inconsistent")
+  }
+  const configuredNode = await lstat(nodeBinary)
+  if (configuredNode.isSymbolicLink()) {
+    throw new Error("Approved Node executable must not be a symbolic link")
+  }
+  if (!configuredNode.isFile()) {
+    throw new Error("Approved Node executable must be a regular file")
+  }
+  const resolvedNode = await realpath(nodeBinary)
+  if (resolvedNode !== path.resolve(nodeBinary)) {
+    throw new Error("Approved Node executable path does not resolve canonically")
+  }
+  const metadata = await stat(resolvedNode)
+  return Object.freeze({
+    executablePath: resolvedNode,
+    executableDevice: String(metadata.dev),
+    executableInode: String(metadata.ino),
+    argv,
+  })
+}
+
+function firstArgvDifference(actual, expected) {
+  const length = Math.max(actual.length, expected.length)
+  for (let index = 0; index < length; index += 1) {
+    if (actual[index] !== expected[index]) {
+      if (index >= actual.length) return `argv is missing index ${index}`
+      if (index >= expected.length) return `argv contains unexpected index ${index}`
+      return `argv differs at index ${index}`
     }
   }
   return null
+}
+
+function classifyServiceProcess(processIdentity, expected) {
+  if (processIdentity.executablePath === darwinXpcproxyExecutable) {
+    if (processIdentity.kernelExecutablePath !== darwinXpcproxyExecutable) {
+      return {
+        classification: "unavailable",
+        accepted: false,
+        transitional: false,
+        reason: "xpcproxy executable evidence is internally inconsistent",
+      }
+    }
+    return {
+      classification: "xpcproxy_pre_exec",
+      accepted: false,
+      transitional: true,
+      reason: "launchd PID remains in xpcproxy pre-exec",
+    }
+  }
+  if (
+    processIdentity.executablePath !== expected.executablePath ||
+    processIdentity.kernelExecutablePath !== expected.executablePath
+  ) {
+    return {
+      classification: "unexpected_process",
+      accepted: false,
+      transitional: false,
+      reason: `unexpected service executable: ${processIdentity.executablePath}`,
+    }
+  }
+  if (
+    processIdentity.executableDevice !== expected.executableDevice ||
+    processIdentity.executableInode !== expected.executableInode
+  ) {
+    return {
+      classification: "unexpected_process",
+      accepted: false,
+      transitional: false,
+      reason: "approved Node executable device/inode identity changed",
+    }
+  }
+  const argvDifference = firstArgvDifference(processIdentity.argv, expected.argv)
+  if (argvDifference) {
+    return {
+      classification: "unexpected_process",
+      accepted: false,
+      transitional: false,
+      reason: `service process ${argvDifference}`,
+    }
+  }
+  return {
+    classification: "expected_node",
+    accepted: true,
+    transitional: false,
+    reason: null,
+  }
 }
 
 async function defaultRun(command, args, { allowFailure = false } = {}) {
@@ -911,9 +1032,15 @@ async function verifiedLaunchAgentStart({
   cleanupTimeoutMs,
   removePlistOnFailure,
   expectedHealth,
+  inspectProcessIdentity,
 }) {
   const domain = `gui/${uid}`
   const target = launchAgentTarget(label, uid)
+  const expectedProcess = await expectedServiceProcessIdentity({
+    contents,
+    nodeBinary,
+    orchestratorScript,
+  })
   const operationStartedAtMs = now()
   const healthBefore = await healthSnapshot(healthPath)
   const evidence = {
@@ -968,51 +1095,113 @@ async function verifiedLaunchAgentStart({
     let observedLaunchCount = null
     let readyAtMs = null
     let lastHealthReason = "new health has not been published"
+    let lastProcessReason = "launchd PID has not appeared"
     let finalHealthSnapshot = null
     while (now() <= deadline) {
+      const observation = {
+        at: new Date(now()).toISOString(),
+        pid: null,
+        launchCount: null,
+        state: null,
+        executablePath: null,
+        executableDevice: null,
+        executableInode: null,
+        kernelExecutablePath: null,
+        argvRetrievalStatus: "not_attempted",
+        argv: null,
+        classification: "unavailable",
+        healthExists: null,
+        healthSha256: null,
+        healthState: null,
+        healthStartupSessionId: null,
+        healthServicePid: null,
+        decision: "pending",
+        reason: null,
+      }
+      const record = () => {
+        evidence.observations.push(observation)
+      }
+      const reject = (reason) => {
+        observation.decision = "reject"
+        observation.reason = reason
+        record()
+        throw new Error(reason)
+      }
       const printed = await run("launchctl", ["print", target], {
         allowFailure: true,
       })
       if (printed.code !== 0) {
-        throw new Error("LaunchAgent target disappeared during startup")
+        reject("LaunchAgent target disappeared during startup")
       }
       const launchd = parseLaunchAgentPrint(printed.stdout)
+      observation.pid = launchd.pid
+      observation.launchCount = launchd.launchCount
+      observation.state = launchd.state
       if (
         launchd.pid === null &&
         new Set(["exited", "stopped"]).has(launchd.state?.toLowerCase())
       ) {
-        throw new Error("LaunchAgent exited before startup identity was ready")
+        reject("LaunchAgent exited before startup identity was ready")
       }
       if (launchd.pid !== null) {
         if (observedPid !== null && launchd.pid !== observedPid) {
-          throw new Error("LaunchAgent PID changed during startup")
+          reject("LaunchAgent PID changed during startup")
         }
         observedPid ??= launchd.pid
         if (Number.isSafeInteger(kickstartPid) && observedPid !== kickstartPid) {
-          throw new Error("launchd PID differs from kickstart PID")
+          reject("launchd PID differs from kickstart PID")
         }
       } else if (observedPid !== null) {
-        throw new Error("LaunchAgent exited during startup")
+        reject("LaunchAgent exited during startup")
       }
       if (launchd.launchCount !== null) {
         if (
           observedLaunchCount !== null &&
           launchd.launchCount !== observedLaunchCount
         ) {
-          throw new Error("LaunchAgent launch count changed during startup")
+          reject("LaunchAgent launch count changed during startup")
         }
         observedLaunchCount ??= launchd.launchCount
       }
 
       if (observedPid !== null) {
-        const processRecord = await inspectServiceProcess(run, observedPid)
-        const processError = validateServiceProcess(processRecord, {
-          nodeBinary,
-          orchestratorScript,
-        })
-        if (processError) throw new Error(processError)
+        let processIdentity
+        try {
+          processIdentity = await inspectProcessIdentity(observedPid)
+          observation.executablePath = processIdentity.executablePath
+          observation.executableDevice = processIdentity.executableDevice
+          observation.executableInode = processIdentity.executableInode
+          observation.kernelExecutablePath = processIdentity.kernelExecutablePath
+          observation.argvRetrievalStatus = "available"
+          observation.argv = [...processIdentity.argv]
+        } catch (error) {
+          observation.argvRetrievalStatus = "error"
+          reject(error.message)
+        }
+        const processDecision = classifyServiceProcess(
+          processIdentity,
+          expectedProcess,
+        )
+        observation.classification = processDecision.classification
+        lastProcessReason = processDecision.reason
+        if (!processDecision.accepted && !processDecision.transitional) {
+          reject(processDecision.reason)
+        }
 
         finalHealthSnapshot = await healthSnapshot(healthPath)
+        observation.healthExists = finalHealthSnapshot.exists
+        observation.healthSha256 = finalHealthSnapshot.sha256
+        observation.healthState = finalHealthSnapshot.health?.state ?? null
+        observation.healthStartupSessionId =
+          finalHealthSnapshot.health?.startupSessionId ?? null
+        observation.healthServicePid = finalHealthSnapshot.health?.servicePid ?? null
+        if (processDecision.transitional) {
+          observation.decision = "not_ready"
+          observation.reason = processDecision.reason
+          record()
+          await sleep(Math.min(100, Math.max(1, deadline - now())))
+          continue
+        }
         const newHealth =
           finalHealthSnapshot.exists &&
           (finalHealthSnapshot.sha256 !== healthBefore.sha256 ||
@@ -1026,28 +1215,23 @@ async function verifiedLaunchAgentStart({
           lastHealthReason = decision.reason ?? null
           if (decision.accepted) readyAtMs ??= now()
           else if (readyAtMs !== null) {
-            throw new Error(`Watcher health changed after readiness: ${decision.reason}`)
+            reject(`Watcher health changed after readiness: ${decision.reason}`)
           }
           else if (
             finalHealthSnapshot.health?.startupSessionId &&
             finalHealthSnapshot.health.startupSessionId !==
               healthBefore.health?.startupSessionId
           ) {
-            throw new Error(decision.reason)
+            reject(decision.reason)
           }
         } else if (readyAtMs !== null) {
-          throw new Error("Watcher health disappeared after readiness")
+          reject("Watcher health disappeared after readiness")
         }
       }
 
-      evidence.observations.push({
-        at: new Date(now()).toISOString(),
-        pid: launchd.pid,
-        launchCount: launchd.launchCount,
-        state: launchd.state,
-        healthSha256: finalHealthSnapshot?.sha256 ?? null,
-        healthState: finalHealthSnapshot?.health?.state ?? null,
-      })
+      observation.decision = readyAtMs === null ? "not_ready" : "stabilizing"
+      observation.reason = readyAtMs === null ? lastHealthReason : null
+      record()
       if (readyAtMs !== null && now() - readyAtMs >= stabilityWindowMs) {
         const health = finalHealthSnapshot.health
         return {
@@ -1076,7 +1260,9 @@ async function verifiedLaunchAgentStart({
       }
       await sleep(Math.min(100, Math.max(1, deadline - now())))
     }
-    throw new Error(`Watcher health startup timed out: ${lastHealthReason}`)
+    throw new Error(
+      `Watcher health startup timed out: ${lastProcessReason ?? lastHealthReason}`,
+    )
   } catch (error) {
     evidence.failure = {
       message: error.message,
@@ -1140,6 +1326,7 @@ export async function startOnceLaunchAgent({
   candidatePlistPaths = [],
   processMatches = [],
   inspectProcesses = discoverOrchestratorProcessMatches,
+  inspectProcessIdentity = inspectDarwinProcessIdentity,
   startupTimeoutMs = defaultServiceStartupTimeoutMs,
   stabilityWindowMs = defaultServiceStabilityWindowMs,
   cleanupTimeoutMs = defaultServiceCleanupTimeoutMs,
@@ -1182,6 +1369,7 @@ export async function startOnceLaunchAgent({
     sleep,
     now,
     inspectProcesses,
+    inspectProcessIdentity,
     evidenceDirectory,
     startupTimeoutMs,
     stabilityWindowMs,
@@ -1219,6 +1407,7 @@ export async function installAndStartLaunchAgent({
   candidatePlistPaths = [],
   processMatches = [],
   inspectProcesses = discoverOrchestratorProcessMatches,
+  inspectProcessIdentity = inspectDarwinProcessIdentity,
   startupTimeoutMs = defaultServiceStartupTimeoutMs,
   stabilityWindowMs = defaultServiceStabilityWindowMs,
   cleanupTimeoutMs = defaultServiceCleanupTimeoutMs,
@@ -1263,6 +1452,7 @@ export async function installAndStartLaunchAgent({
     sleep,
     now,
     inspectProcesses,
+    inspectProcessIdentity,
     evidenceDirectory,
     startupTimeoutMs,
     stabilityWindowMs,
