@@ -166,7 +166,11 @@ export async function planRuntimeRelease({
 
 async function verifyRelease(plan) {
   const manifestPath = path.join(plan.releaseDirectory, "manifest.json")
-  const manifest = JSON.parse(await readFile(manifestPath, "utf8"))
+  const manifestContents = await readFile(manifestPath, "utf8")
+  if (manifestContents !== runtimeManifestContentsForPlan(plan)) {
+    throw new Error("Installed immutable runtime manifest was modified")
+  }
+  const manifest = JSON.parse(manifestContents)
   if (manifest.digest !== plan.digest) {
     throw new Error("Installed runtime manifest does not match its release path")
   }
@@ -185,6 +189,18 @@ async function verifyRelease(plan) {
         `Installed immutable runtime was modified: ${file.relativePath}`,
       )
     }
+  }
+}
+
+export async function verifyRuntimeRelease(plan) {
+  const release = await stat(plan.releaseDirectory)
+  if (!release.isDirectory()) {
+    throw new Error("Installed runtime release destination is not a directory")
+  }
+  await verifyRelease(plan)
+  return {
+    status: "verified",
+    ...plan,
   }
 }
 

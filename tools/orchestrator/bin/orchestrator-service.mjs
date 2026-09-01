@@ -12,6 +12,7 @@ import {
   installAndStartLaunchAgent,
   launchAgentLabel,
   launchAgentStatus,
+  startOnceLaunchAgent,
   uninstallLaunchAgent,
   validateLaunchAgentInputs,
 } from "../src/launchd.mjs"
@@ -19,6 +20,7 @@ import {
   materializeRuntimeRelease,
   planRuntimeReleaseFromCheckout,
   runtimeManifestContentsForPlan,
+  verifyRuntimeRelease,
 } from "../src/runtime-bundle.mjs"
 import {
   readWatcherHealth,
@@ -52,6 +54,7 @@ function parse(argv) {
     !new Set([
       "install",
       "install-disabled",
+      "start-once",
       "uninstall",
       "status",
       "render",
@@ -95,6 +98,9 @@ function parse(argv) {
     umask: 0o077,
     shutdownTimeoutMs: 75_000,
     healthPath: path.join(stateDirectory, "watcher-v2-health.json"),
+    startupTimeoutMs: 30_000,
+    stabilityWindowMs: 2_000,
+    cleanupTimeoutMs: 75_000,
   }
   let customStdoutPath = false
   let customStderrPath = false
@@ -171,6 +177,15 @@ function parse(argv) {
       case "--approve-run-at-load":
         config.runAtLoad = true
         break
+      case "--startup-timeout-ms":
+        config.startupTimeoutMs = positiveInteger(take(), arg)
+        break
+      case "--startup-stability-ms":
+        config.stabilityWindowMs = positiveInteger(take(), arg)
+        break
+      case "--startup-cleanup-timeout-ms":
+        config.cleanupTimeoutMs = positiveInteger(take(), arg)
+        break
       default:
         throw new Error(`Unknown service option: ${arg}`)
     }
@@ -185,8 +200,11 @@ function parse(argv) {
     config.runtimeDirectory = path.join(config.stateDirectory, "runtime")
   }
   config.healthPath = path.join(config.stateDirectory, "watcher-v2-health.json")
-  if (config.command === "install-disabled" && config.runAtLoad) {
-    throw new Error("install-disabled rejects --approve-run-at-load")
+  if (
+    new Set(["install-disabled", "start-once"]).has(config.command) &&
+    config.runAtLoad
+  ) {
+    throw new Error(`${config.command} rejects --approve-run-at-load`)
   }
   return config
 }
@@ -196,6 +214,7 @@ const help = `Koalafrog orchestrator macOS LaunchAgent
 Usage:
   node tools/orchestrator/bin/orchestrator-service.mjs install [options]
   node tools/orchestrator/bin/orchestrator-service.mjs install-disabled [options]
+  node tools/orchestrator/bin/orchestrator-service.mjs start-once [options]
   node tools/orchestrator/bin/orchestrator-service.mjs status
   node tools/orchestrator/bin/orchestrator-service.mjs uninstall
   node tools/orchestrator/bin/orchestrator-service.mjs render [options]
@@ -221,10 +240,16 @@ Options:
   --model model               Optional explicit Codex model
   --required-label label      Required persistent-watch opt-in label
   --approve-run-at-load       Explicit post-canary owner-approved boot start
+  --startup-timeout-ms number Bounded start-once PID/health deadline
+  --startup-stability-ms num  Post-health process stability window
+  --startup-cleanup-timeout-ms num  Fail-disabled bootout deadline
 
 Persistent watcher v2 never enables service-wide --auto-commit or KeepAlive.
 install-disabled materializes the runtime and atomically installs a validated
 RunAtLoad=false plist without bootstrap, load, kickstart, or watcher execution.
+start-once verifies that installed profile, bootstraps and kickstarts it once,
+and succeeds only after exact PID/health identity remains stable. Any startup
+failure is booted out and leaves the installed profile disabled.
 Failed installation leaves the service disabled and preserves diagnostics.
 `
 
@@ -287,7 +312,10 @@ async function main() {
     return
   }
   await validateLaunchAgentInputs(config)
-  const runtime = await materializeRuntimeRelease(runtimePlan)
+  const runtime =
+    config.command === "start-once"
+      ? await verifyRuntimeRelease(runtimePlan)
+      : await materializeRuntimeRelease(runtimePlan)
   await validateLaunchAgentInputs(serviceConfig)
   const [candidatePlistPaths, processMatches] = await Promise.all([
     discoverActiveLaunchAgentPlists(serviceConfig),
@@ -296,7 +324,9 @@ async function main() {
   const install =
     config.command === "install-disabled"
       ? installDisabledLaunchAgent
-      : installAndStartLaunchAgent
+      : config.command === "start-once"
+        ? startOnceLaunchAgent
+        : installAndStartLaunchAgent
   const result = await install({
     ...serviceConfig,
     contents,
@@ -306,7 +336,11 @@ async function main() {
   process.stdout.write(`${JSON.stringify({
     ...result,
     installationMode:
-      config.command === "install-disabled" ? "disabled" : "active",
+      config.command === "install-disabled"
+        ? "disabled"
+        : config.command === "start-once"
+          ? "start-once"
+          : "active",
     runtimeStatus: runtime.status,
     runtimeRelease: runtime.releaseDirectory,
     runtimeManifestSha256: manifestSha256,

@@ -20,6 +20,9 @@ import { promisify } from "node:util"
 const execFileAsync = promisify(execFile)
 
 export const launchAgentLabel = "com.sillyquack.koalafrog-orchestrator"
+export const defaultServiceStartupTimeoutMs = 30_000
+export const defaultServiceStabilityWindowMs = 2_000
+export const defaultServiceCleanupTimeoutMs = 75_000
 
 export async function discoverActiveLaunchAgentPlists({
   plistPath,
@@ -310,6 +313,22 @@ async function preserveServiceEvidence(
   return evidencePath
 }
 
+async function preserveStartEvidence(directory, { label, evidence }) {
+  if (!directory) return null
+  await mkdir(directory, { recursive: true, mode: 0o700 })
+  const contents = `${JSON.stringify(evidence, null, 2)}\n`
+  const hash = createHash("sha256").update(contents).digest("hex")
+  const evidencePath = path.join(
+    directory,
+    `${label}.failed-start.${hash}.json.disabled`,
+  )
+  if ((await readExisting(evidencePath)) === null) {
+    await writeFile(evidencePath, contents, { mode: 0o600 })
+  }
+  await chmod(evidencePath, 0o600)
+  return evidencePath
+}
+
 export async function preflightLaunchAgentCoexistence({
   label = launchAgentLabel,
   plistPath,
@@ -386,6 +405,111 @@ export function validateDisabledLaunchAgentPlist(contents) {
     throw new Error("Disabled LaunchAgent installation forbids KeepAlive")
   }
   return contents
+}
+
+export function parseLaunchAgentPrint(contents) {
+  const value = typeof contents === "string" ? contents : ""
+  const number = (pattern) => {
+    const parsed = Number.parseInt(value.match(pattern)?.[1] ?? "", 10)
+    return Number.isSafeInteger(parsed) ? parsed : null
+  }
+  return Object.freeze({
+    pid: number(/(?:^|\n)\s*pid\s*=\s*(\d+)\b/i),
+    launchCount: number(/(?:^|\n)\s*(?:runs|launch count)\s*=\s*(\d+)\b/i),
+    state: value.match(/(?:^|\n)\s*state\s*=\s*([^\n]+)/i)?.[1]?.trim() ?? null,
+  })
+}
+
+async function healthSnapshot(healthPath) {
+  try {
+    const contents = await readFile(healthPath)
+    const metadata = await stat(healthPath)
+    let health = null
+    try {
+      health = JSON.parse(contents.toString("utf8"))
+    } catch {
+      // A partial or malformed record can never satisfy startup readiness.
+    }
+    return {
+      exists: true,
+      sha256: createHash("sha256").update(contents).digest("hex"),
+      mtimeMs: metadata.mtimeMs,
+      health,
+    }
+  } catch (error) {
+    if (error.code === "ENOENT") {
+      return { exists: false, sha256: null, mtimeMs: null, health: null }
+    }
+    throw error
+  }
+}
+
+function validateExpectedHealth(health, expected, { pid, startedAtMs, before }) {
+  if (!health || typeof health !== "object") {
+    return { accepted: false, reason: "health record is absent or malformed" }
+  }
+  if (!health.startupSessionId || health.startupSessionId === before.health?.startupSessionId) {
+    return { accepted: false, reason: "health startup session is stale" }
+  }
+  if (health.servicePid !== pid) {
+    return { accepted: false, reason: "health PID does not match launchd PID" }
+  }
+  const startupTimestamp = Date.parse(health.startupTimestamp)
+  if (!Number.isFinite(startupTimestamp) || startupTimestamp < startedAtMs - 1_000) {
+    return { accepted: false, reason: "health startup timestamp is stale" }
+  }
+  if (health.state === "stopped") {
+    return { accepted: false, reason: "health reports a stopped service" }
+  }
+  const fields = [
+    "serviceLabel",
+    "runtimeRelease",
+    "manifestSha256",
+    "sourceCommit",
+    "sourceTree",
+    "repository",
+    "coordinatorCheckout",
+    "serviceConfigSha256",
+    "watcherMode",
+    "requiredLabel",
+    "runAtLoad",
+    "keepAlive",
+    "pollMs",
+    "maxTasksPerPoll",
+  ]
+  for (const field of fields) {
+    if (health[field] !== expected[field]) {
+      return { accepted: false, reason: `health ${field} identity mismatch` }
+    }
+  }
+  if (health.autoCommit !== false) {
+    return { accepted: false, reason: "health unexpectedly enables auto-commit" }
+  }
+  return { accepted: true }
+}
+
+async function inspectServiceProcess(run, pid) {
+  const result = await run(
+    "ps",
+    ["-p", String(pid), "-o", "pid=,ppid=,command="],
+    { allowFailure: true },
+  )
+  if (result.code !== 0) return null
+  const line = result.stdout.split("\n").map((value) => value.trim()).find(Boolean)
+  if (!line) return null
+  const match = line.match(/^(\d+)\s+(\d+)\s+(.+)$/)
+  if (!match || Number(match[1]) !== pid) return null
+  return { pid, parentPid: Number(match[2]), command: match[3] }
+}
+
+function validateServiceProcess(processRecord, expected) {
+  if (!processRecord) return "launchd PID has no running process"
+  for (const fragment of [expected.nodeBinary, expected.orchestratorScript, "watch"]) {
+    if (!processRecord.command.includes(fragment)) {
+      return `service process does not contain expected argument: ${fragment}`
+    }
+  }
+  return null
 }
 
 async function defaultRun(command, args, { allowFailure = false } = {}) {
@@ -646,6 +770,441 @@ export async function installDisabledLaunchAgent({
   }
 }
 
+function expectedStartupHealth({
+  label,
+  expectedRuntimeRelease,
+  expectedManifestSha256,
+  expectedSourceCommit,
+  expectedSourceTree,
+  repository,
+  checkoutPath,
+  serviceConfigSha256,
+  requiredLabel,
+  runAtLoad,
+  keepAlive,
+  pollMs,
+  maxTasksPerPoll,
+}) {
+  return Object.freeze({
+    serviceLabel: label,
+    runtimeRelease: expectedRuntimeRelease,
+    manifestSha256: expectedManifestSha256,
+    sourceCommit: expectedSourceCommit,
+    sourceTree: expectedSourceTree,
+    repository,
+    coordinatorCheckout: path.resolve(checkoutPath),
+    serviceConfigSha256,
+    watcherMode: "watch",
+    requiredLabel,
+    runAtLoad,
+    keepAlive,
+    pollMs,
+    maxTasksPerPoll,
+  })
+}
+
+async function cleanupFailedStart({
+  label,
+  plistPath,
+  contents,
+  target,
+  run,
+  sleep,
+  now,
+  inspectProcesses,
+  evidenceDirectory,
+  cleanupTimeoutMs,
+  removePlistOnFailure,
+  startEvidence,
+}) {
+  const failures = []
+  let startEvidencePath = null
+  try {
+    await run("launchctl", ["bootout", target], { allowFailure: true })
+  } catch (error) {
+    failures.push(`launchctl bootout: ${error.message}`)
+  }
+
+  const deadline = now() + cleanupTimeoutMs
+  let targetLoaded = true
+  let remainingProcesses = []
+  do {
+    try {
+      targetLoaded =
+        (await run("launchctl", ["print", target], { allowFailure: true })).code === 0
+    } catch (error) {
+      failures.push(`launchctl absence verification: ${error.message}`)
+      targetLoaded = true
+      break
+    }
+    try {
+      remainingProcesses = await inspectProcesses()
+    } catch (error) {
+      failures.push(`process-tree verification: ${error.message}`)
+      remainingProcesses = [{ error: error.message }]
+      break
+    }
+    if (!targetLoaded && remainingProcesses.length === 0) break
+    if (now() >= deadline) break
+    await sleep(Math.min(100, Math.max(1, deadline - now())))
+  } while (true)
+
+  if (targetLoaded) failures.push("LaunchAgent target remains loaded")
+  if (remainingProcesses.length > 0) {
+    failures.push("orchestrator process tree remains after bootout")
+  }
+  try {
+    startEvidencePath = await preserveStartEvidence(evidenceDirectory, {
+      label,
+      evidence: startEvidence,
+    })
+  } catch (error) {
+    failures.push(`start evidence preservation: ${error.message}`)
+  }
+  try {
+    await preserveServiceEvidence(evidenceDirectory, {
+      label,
+      kind: "failed-attempt",
+      contents,
+    })
+  } catch (error) {
+    failures.push(`plist evidence preservation: ${error.message}`)
+  }
+  if (removePlistOnFailure) {
+    try {
+      await unlink(plistPath)
+    } catch (error) {
+      if (error.code !== "ENOENT") failures.push(`active plist removal: ${error.message}`)
+    }
+  } else {
+    try {
+      const installed = await readFile(plistPath, "utf8")
+      if (installed !== contents) failures.push("installed disabled plist drifted")
+      validateDisabledLaunchAgentPlist(installed)
+    } catch (error) {
+      failures.push(`disabled plist preservation: ${error.message}`)
+    }
+  }
+  if (failures.length > 0) {
+    const error = new Error(failures.join("; "))
+    error.startEvidencePath = startEvidencePath
+    throw error
+  }
+  return { startEvidencePath }
+}
+
+async function verifiedLaunchAgentStart({
+  label,
+  plistPath,
+  contents,
+  healthPath,
+  nodeBinary,
+  orchestratorScript,
+  uid,
+  run,
+  sleep,
+  now,
+  inspectProcesses,
+  evidenceDirectory,
+  startupTimeoutMs,
+  stabilityWindowMs,
+  cleanupTimeoutMs,
+  removePlistOnFailure,
+  expectedHealth,
+}) {
+  const domain = `gui/${uid}`
+  const target = launchAgentTarget(label, uid)
+  const operationStartedAtMs = now()
+  const healthBefore = await healthSnapshot(healthPath)
+  const evidence = {
+    schemaVersion: 1,
+    label,
+    target,
+    plistPath,
+    healthPath,
+    startedAt: new Date(operationStartedAtMs).toISOString(),
+    healthBefore: {
+      exists: healthBefore.exists,
+      sha256: healthBefore.sha256,
+      mtimeMs: healthBefore.mtimeMs,
+      startupSessionId: healthBefore.health?.startupSessionId ?? null,
+      servicePid: healthBefore.health?.servicePid ?? null,
+    },
+    bootstrap: null,
+    kickstart: null,
+    observations: [],
+    failure: null,
+  }
+  try {
+    const bootstrap = await run("launchctl", ["bootstrap", domain, plistPath])
+    if (bootstrap.code !== 0) {
+      throw commandError("launchctl", ["bootstrap", domain, plistPath], bootstrap)
+    }
+    evidence.bootstrap = { succeeded: true, at: new Date(now()).toISOString() }
+
+    const definition = await run("launchctl", ["print", target], {
+      allowFailure: true,
+    })
+    if (definition.code !== 0) {
+      throw new Error("LaunchAgent definition is absent after bootstrap")
+    }
+    const beforeKickstart = parseLaunchAgentPrint(definition.stdout)
+
+    const startupBeganAtMs = now()
+    const kickstart = await run("launchctl", ["kickstart", "-p", target])
+    if (kickstart.code !== 0) {
+      throw commandError("launchctl", ["kickstart", "-p", target], kickstart)
+    }
+    const kickstartPid = Number.parseInt(kickstart.stdout.match(/\d+/)?.[0] ?? "", 10)
+    evidence.kickstart = {
+      succeeded: true,
+      at: new Date(now()).toISOString(),
+      reportedPid: Number.isSafeInteger(kickstartPid) ? kickstartPid : null,
+      launchCountBefore: beforeKickstart.launchCount,
+    }
+
+    const deadline = startupBeganAtMs + startupTimeoutMs
+    let observedPid = null
+    let observedLaunchCount = null
+    let readyAtMs = null
+    let lastHealthReason = "new health has not been published"
+    let finalHealthSnapshot = null
+    while (now() <= deadline) {
+      const printed = await run("launchctl", ["print", target], {
+        allowFailure: true,
+      })
+      if (printed.code !== 0) {
+        throw new Error("LaunchAgent target disappeared during startup")
+      }
+      const launchd = parseLaunchAgentPrint(printed.stdout)
+      if (
+        launchd.pid === null &&
+        new Set(["exited", "stopped"]).has(launchd.state?.toLowerCase())
+      ) {
+        throw new Error("LaunchAgent exited before startup identity was ready")
+      }
+      if (launchd.pid !== null) {
+        if (observedPid !== null && launchd.pid !== observedPid) {
+          throw new Error("LaunchAgent PID changed during startup")
+        }
+        observedPid ??= launchd.pid
+        if (Number.isSafeInteger(kickstartPid) && observedPid !== kickstartPid) {
+          throw new Error("launchd PID differs from kickstart PID")
+        }
+      } else if (observedPid !== null) {
+        throw new Error("LaunchAgent exited during startup")
+      }
+      if (launchd.launchCount !== null) {
+        if (
+          observedLaunchCount !== null &&
+          launchd.launchCount !== observedLaunchCount
+        ) {
+          throw new Error("LaunchAgent launch count changed during startup")
+        }
+        observedLaunchCount ??= launchd.launchCount
+      }
+
+      if (observedPid !== null) {
+        const processRecord = await inspectServiceProcess(run, observedPid)
+        const processError = validateServiceProcess(processRecord, {
+          nodeBinary,
+          orchestratorScript,
+        })
+        if (processError) throw new Error(processError)
+
+        finalHealthSnapshot = await healthSnapshot(healthPath)
+        const newHealth =
+          finalHealthSnapshot.exists &&
+          (finalHealthSnapshot.sha256 !== healthBefore.sha256 ||
+            finalHealthSnapshot.mtimeMs > (healthBefore.mtimeMs ?? -1))
+        if (newHealth) {
+          const decision = validateExpectedHealth(
+            finalHealthSnapshot.health,
+            expectedHealth,
+            { pid: observedPid, startedAtMs: startupBeganAtMs, before: healthBefore },
+          )
+          lastHealthReason = decision.reason ?? null
+          if (decision.accepted) readyAtMs ??= now()
+          else if (readyAtMs !== null) {
+            throw new Error(`Watcher health changed after readiness: ${decision.reason}`)
+          }
+          else if (
+            finalHealthSnapshot.health?.startupSessionId &&
+            finalHealthSnapshot.health.startupSessionId !==
+              healthBefore.health?.startupSessionId
+          ) {
+            throw new Error(decision.reason)
+          }
+        } else if (readyAtMs !== null) {
+          throw new Error("Watcher health disappeared after readiness")
+        }
+      }
+
+      evidence.observations.push({
+        at: new Date(now()).toISOString(),
+        pid: launchd.pid,
+        launchCount: launchd.launchCount,
+        state: launchd.state,
+        healthSha256: finalHealthSnapshot?.sha256 ?? null,
+        healthState: finalHealthSnapshot?.health?.state ?? null,
+      })
+      if (readyAtMs !== null && now() - readyAtMs >= stabilityWindowMs) {
+        const health = finalHealthSnapshot.health
+        return {
+          label,
+          target,
+          loaded: true,
+          pid: observedPid,
+          launchCount: observedLaunchCount,
+          startupTimestamp: health.startupTimestamp,
+          startupSessionId: health.startupSessionId,
+          runtimeRelease: health.runtimeRelease,
+          manifestSha256: health.manifestSha256,
+          sourceCommit: health.sourceCommit,
+          sourceTree: health.sourceTree,
+          repository: health.repository,
+          serviceConfigSha256: health.serviceConfigSha256,
+          healthPath,
+          healthSha256: finalHealthSnapshot.sha256,
+          plistPath,
+          plistSha256: createHash("sha256").update(contents).digest("hex"),
+          runAtLoad: health.runAtLoad,
+          keepAlive: health.keepAlive,
+          startupTimeoutMs,
+          stabilityWindowMs,
+        }
+      }
+      await sleep(Math.min(100, Math.max(1, deadline - now())))
+    }
+    throw new Error(`Watcher health startup timed out: ${lastHealthReason}`)
+  } catch (error) {
+    evidence.failure = {
+      message: error.message,
+      at: new Date(now()).toISOString(),
+    }
+    let cleanup = null
+    try {
+      cleanup = await cleanupFailedStart({
+        label,
+        plistPath,
+        contents,
+        target,
+        run,
+        sleep,
+        now,
+        inspectProcesses,
+        evidenceDirectory,
+        cleanupTimeoutMs,
+        removePlistOnFailure,
+        startEvidence: evidence,
+      })
+    } catch (cleanupError) {
+      const failure = new Error(
+        `Verified LaunchAgent start failed (${error.message}); fail-disabled cleanup also failed (${cleanupError.message})`,
+      )
+      failure.code = "LAUNCH_AGENT_START_CLEANUP_INCOMPLETE"
+      failure.startEvidencePath = cleanupError.startEvidencePath ?? null
+      throw failure
+    }
+    const failure = new Error(
+      `Verified LaunchAgent start failed; service remains disabled: ${error.message}`,
+    )
+    failure.code = "LAUNCH_AGENT_START_FAILED_DISABLED"
+    failure.startEvidencePath = cleanup?.startEvidencePath ?? null
+    throw failure
+  }
+}
+
+export async function startOnceLaunchAgent({
+  label = launchAgentLabel,
+  plistPath,
+  contents,
+  healthPath,
+  nodeBinary,
+  orchestratorScript,
+  checkoutPath,
+  repository,
+  requiredLabel,
+  expectedRuntimeRelease,
+  expectedManifestSha256,
+  expectedSourceCommit,
+  expectedSourceTree,
+  serviceConfigSha256,
+  pollMs = 60_000,
+  maxTasksPerPoll = 1,
+  uid = process.getuid(),
+  run = defaultRun,
+  sleep = delay,
+  now = Date.now,
+  evidenceDirectory = null,
+  candidatePlistPaths = [],
+  processMatches = [],
+  inspectProcesses = discoverOrchestratorProcessMatches,
+  startupTimeoutMs = defaultServiceStartupTimeoutMs,
+  stabilityWindowMs = defaultServiceStabilityWindowMs,
+  cleanupTimeoutMs = defaultServiceCleanupTimeoutMs,
+}) {
+  validateDisabledLaunchAgentPlist(contents)
+  for (const [name, value] of Object.entries({
+    startupTimeoutMs,
+    stabilityWindowMs,
+    cleanupTimeoutMs,
+  })) {
+    if (!Number.isSafeInteger(value) || value < 1) {
+      throw new Error(`${name} must be a positive integer`)
+    }
+  }
+  const installed = await readFile(plistPath, "utf8")
+  if (installed !== contents) {
+    throw new Error("Installed LaunchAgent plist does not match canonical profile")
+  }
+  if (((await stat(plistPath)).mode & 0o777) !== 0o600) {
+    throw new Error("Installed LaunchAgent plist mode is not 0600")
+  }
+  await runRequired(run, "plutil", ["-lint", plistPath])
+  await preflightLaunchAgentCoexistence({
+    label,
+    plistPath,
+    candidatePlistPaths,
+    processMatches,
+    uid,
+    run,
+  })
+  return verifiedLaunchAgentStart({
+    label,
+    plistPath,
+    contents,
+    healthPath,
+    nodeBinary,
+    orchestratorScript,
+    uid,
+    run,
+    sleep,
+    now,
+    inspectProcesses,
+    evidenceDirectory,
+    startupTimeoutMs,
+    stabilityWindowMs,
+    cleanupTimeoutMs,
+    removePlistOnFailure: false,
+    expectedHealth: expectedStartupHealth({
+      label,
+      expectedRuntimeRelease,
+      expectedManifestSha256,
+      expectedSourceCommit,
+      expectedSourceTree,
+      repository,
+      checkoutPath,
+      serviceConfigSha256,
+      requiredLabel,
+      runAtLoad: false,
+      keepAlive: false,
+      pollMs,
+      maxTasksPerPoll,
+    }),
+  })
+}
+
 export async function installAndStartLaunchAgent({
   label = launchAgentLabel,
   plistPath,
@@ -655,11 +1214,29 @@ export async function installAndStartLaunchAgent({
   uid = process.getuid(),
   run = defaultRun,
   sleep = delay,
-  retryDelayMs = 250,
-  unloadAttempts = 120,
+  now = Date.now,
   evidenceDirectory = null,
   candidatePlistPaths = [],
   processMatches = [],
+  inspectProcesses = discoverOrchestratorProcessMatches,
+  startupTimeoutMs = defaultServiceStartupTimeoutMs,
+  stabilityWindowMs = defaultServiceStabilityWindowMs,
+  cleanupTimeoutMs = defaultServiceCleanupTimeoutMs,
+  healthPath,
+  nodeBinary,
+  orchestratorScript,
+  checkoutPath,
+  repository,
+  requiredLabel,
+  expectedRuntimeRelease,
+  expectedManifestSha256,
+  expectedSourceCommit,
+  expectedSourceTree,
+  serviceConfigSha256,
+  runAtLoad = false,
+  keepAlive = false,
+  pollMs = 60_000,
+  maxTasksPerPoll = 1,
 }) {
   const prepared = await prepareLaunchAgentInstallation({
     label,
@@ -673,63 +1250,43 @@ export async function installAndStartLaunchAgent({
     candidatePlistPaths,
     processMatches,
   })
-  const domain = `gui/${uid}`
   const { target } = prepared
-  const loaded = false
-
-  let bootstrapError = null
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    try {
-      const result = await run("launchctl", ["bootstrap", domain, plistPath])
-      if (result.code !== 0) {
-        throw new Error(result.stderr || `launchctl bootstrap exited ${result.code}`)
-      }
-      bootstrapError = null
-      break
-    } catch (error) {
-      bootstrapError = error
-      if (attempt < 2) await sleep(retryDelayMs * 2 ** attempt)
-    }
-  }
-  if (bootstrapError) {
-    let disableError = null
-    let attemptedEvidencePath = null
-    try {
-      await run("launchctl", ["bootout", target], { allowFailure: true })
-      const stillLoaded = await run("launchctl", ["print", target], {
-        allowFailure: true,
-      })
-      if (stillLoaded.code === 0) {
-        throw new Error("failed watcher service remains loaded")
-      }
-      attemptedEvidencePath = await preserveServiceEvidence(
-        evidenceDirectory,
-        { label, kind: "failed-attempt", contents },
-      )
-      await unlink(plistPath).catch((error) => {
-        if (error.code !== "ENOENT") throw error
-      })
-    } catch (error) {
-      disableError = error
-    }
-    if (disableError) {
-      throw new Error(
-        `LaunchAgent bootstrap failed (${bootstrapError.message}); fail-disabled cleanup also failed (${disableError.message})`,
-      )
-    }
-    const error = new Error(
-      `LaunchAgent bootstrap failed; service remains disabled: ${bootstrapError.message}`,
-    )
-    error.code = "LAUNCH_AGENT_INSTALL_FAILED_DISABLED"
-    error.previousEvidencePath = prepared.previousEvidencePath
-    error.attemptedEvidencePath = attemptedEvidencePath
-    throw error
-  }
-  return {
-    writeStatus: prepared.writeStatus,
-    reloaded: loaded,
+  const started = await verifiedLaunchAgentStart({
     label,
     plistPath,
+    contents,
+    healthPath,
+    nodeBinary,
+    orchestratorScript,
+    uid,
+    run,
+    sleep,
+    now,
+    inspectProcesses,
+    evidenceDirectory,
+    startupTimeoutMs,
+    stabilityWindowMs,
+    cleanupTimeoutMs,
+    removePlistOnFailure: true,
+    expectedHealth: expectedStartupHealth({
+      label,
+      expectedRuntimeRelease,
+      expectedManifestSha256,
+      expectedSourceCommit,
+      expectedSourceTree,
+      repository,
+      checkoutPath,
+      serviceConfigSha256,
+      requiredLabel,
+      runAtLoad,
+      keepAlive,
+      pollMs,
+      maxTasksPerPoll,
+    }),
+  })
+  return {
+    ...started,
+    writeStatus: prepared.writeStatus,
     target,
     previousEvidencePath: prepared.previousEvidencePath,
   }

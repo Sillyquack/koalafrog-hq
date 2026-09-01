@@ -114,20 +114,47 @@ record; it does not erase the quarantine or its failure count.
 
 ### Service installation boundary
 
-The service CLI keeps preview, disabled installation, and activation as three
-distinct operations. `render` is read-only and does not materialize a runtime
-or write a plist. `install-disabled` validates the clean canonical coordinator,
+The service CLI keeps preview, disabled installation, one-shot activation, and
+boot persistence as distinct owner gates. `render` is read-only and does not
+materialize a runtime or write a plist. `install-disabled` validates the clean canonical coordinator,
 materializes and verifies the immutable runtime, performs launchd/plist/process
 coexistence checks, and atomically installs a mode-`0600`, `RunAtLoad=false`
 plist without `KeepAlive`. It never invokes `bootstrap`, `kickstart`, or `load`,
-and rejects `--approve-run-at-load`. Only the separate `install` command may
-enter the explicit active-install path.
+and rejects `--approve-run-at-load`.
+
+`start-once` is the only supported manual activation of that already installed
+disabled profile. It verifies the canonical checkout, immutable release, exact
+generated plist hash and mode, absence of the launchd target and conflicting
+process trees, then performs one `bootstrap` followed by non-force
+`kickstart -p`. Success requires one stable launchd PID, exact process
+arguments, and a fresh PID/session-bound health record carrying the canonical
+release, manifest, source, repository, service label, watcher profile, required
+label, and configuration hash. The startup deadline is 30 seconds and the
+post-readiness stability window is two seconds. Bootstrap alone is not success.
+
+Any active-start failure performs controlled bootout, waits up to 75 seconds
+for launchd and process-tree absence, preserves plist/runtime/log/health/start
+evidence, and leaves the `RunAtLoad=false` profile disabled. It never retries,
+restores an older runtime, adds `KeepAlive`, or silently approves boot start.
+Incomplete cleanup is a hard manual-recovery state. The legacy-named `install`
+active path routes through the same verified primitive and has no weaker
+bootstrap-only success condition.
 
 Disabled installation proves the launchd target and watcher/broker process tree
 remain absent after plist readback. Any failure after a write preserves the
 attempted and prior inactive plist evidence, removes the active plist, and
 leaves the service disabled. It never restores or starts an older runtime as a
 fallback. Repeating the same disabled identity is idempotent.
+
+Installing artifacts, starting once, enrolling an issue, and authorizing boot
+persistence are four separate gates:
+
+- `install-disabled` installs artifacts only;
+- `start-once` manually starts a `RunAtLoad=false` profile once;
+- applying the required watcher label authorizes issue execution;
+- explicit `RunAtLoad=true` approval authorizes later boot/login persistence.
+
+No gate implies another.
 
 ### Control-declared commit permission
 
