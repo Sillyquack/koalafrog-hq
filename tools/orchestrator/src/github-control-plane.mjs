@@ -13,17 +13,22 @@ export class GithubControlPlane {
     this.issueNumber = issueNumber
   }
 
+  async fetchIssue() {
+    const result = await this.appServer.callMcpTool({
+      threadId: this.threadId,
+      server: "codex_apps",
+      tool: "github.fetch_issue",
+      arguments: {
+        issue_number: this.issueNumber,
+        repository_full_name: this.repository,
+      },
+    })
+    return unwrap(result, "Fetch issue").issue
+  }
+
   async fetchTask() {
-    const [issueResult, commentsResult] = await Promise.all([
-      this.appServer.callMcpTool({
-        threadId: this.threadId,
-        server: "codex_apps",
-        tool: "github.fetch_issue",
-        arguments: {
-          issue_number: this.issueNumber,
-          repository_full_name: this.repository,
-        },
-      }),
+    const [issue, commentsResult] = await Promise.all([
+      this.fetchIssue(),
       this.appServer.callMcpTool({
         threadId: this.threadId,
         server: "codex_apps",
@@ -35,7 +40,6 @@ export class GithubControlPlane {
       }),
     ])
 
-    const issue = unwrap(issueResult, "Fetch issue").issue
     const comments = unwrap(commentsResult, "Fetch issue comments").comments ?? []
     return { issue, comments }
   }

@@ -32,7 +32,11 @@ function labelNames(issue) {
 
 export function discoverIssueCandidates(
   searchPayload,
-  { requiredLabel = null, issueAllowlist = [] } = {},
+  {
+    requiredLabel = null,
+    issueAllowlist = [],
+    requireAgentControl = true,
+  } = {},
 ) {
   issueAllowlist ??= []
   const root = searchPayload?.result ?? searchPayload ?? {}
@@ -43,6 +47,7 @@ export function discoverIssueCandidates(
   for (const issue of candidates) {
     if (isPullRequest(issue)) continue
     if (
+      requireAgentControl &&
       typeof issue?.body === "string" &&
       !issueContainsAgentControl(issue)
     ) {

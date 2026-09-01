@@ -78,6 +78,63 @@ function taskLabelNames(issue) {
     .filter((label) => typeof label === "string")
 }
 
+function persistentLiveLabelRequired(config, issueNumber) {
+  return Boolean(
+    config.command === "watch" &&
+    !config.issueNumberExplicit &&
+    !(config.issueAllowlist ?? []).includes(issueNumber) &&
+    config.requiredLabel,
+  )
+}
+
+export function persistentLiveEligibilityDecision(issue, config, issueNumber) {
+  if (config.command !== "watch") {
+    return { eligible: true, mechanism: "bounded" }
+  }
+  if (config.issueNumberExplicit && issueNumber === config.issueNumber) {
+    return { eligible: true, mechanism: "exact_issue" }
+  }
+  if ((config.issueAllowlist ?? []).includes(issueNumber)) {
+    return { eligible: true, mechanism: "allowlist" }
+  }
+  if (!config.requiredLabel) {
+    return { eligible: false, mechanism: null, reason: "missing_opt_in" }
+  }
+  if (!issue || issue.state === "closed" || isPullRequest(issue)) {
+    return { eligible: false, mechanism: null, reason: "issue_not_open" }
+  }
+  if (!taskLabelNames(issue).includes(config.requiredLabel)) {
+    return { eligible: false, mechanism: null, reason: "live_label_absent" }
+  }
+  return { eligible: true, mechanism: "required_live_label" }
+}
+
+function watcherEligibilityLookupError(error, issueNumber) {
+  const failure = new Error(
+    `Unable to revalidate persistent eligibility for issue ${issueNumber}: ${error.message}`,
+    { cause: error },
+  )
+  failure.code = "WATCHER_ELIGIBILITY_LOOKUP_FAILED"
+  failure.issueNumber = issueNumber
+  return failure
+}
+
+async function fetchWatcherIssue(controlPlane, issueNumber) {
+  try {
+    return await controlPlane.fetchIssue()
+  } catch (error) {
+    throw watcherEligibilityLookupError(error, issueNumber)
+  }
+}
+
+async function fetchWatcherTask(controlPlane, issueNumber) {
+  try {
+    return await controlPlane.fetchTask()
+  } catch (error) {
+    throw watcherEligibilityLookupError(error, issueNumber)
+  }
+}
+
 function throwIfAborted(signal) {
   if (!signal?.aborted) return
   const error = new Error("Watcher shutdown requested")
@@ -719,33 +776,62 @@ export async function createRepositoryScanner(config) {
 }
 
 export async function searchOpenIssueCandidates(scanner, config) {
-  const result = await scanner.appServer.callMcpTool({
-    threadId: scanner.threadId,
-    server: "codex_apps",
-    tool: "github.search_issues",
-    arguments: {
-      query: [
-        `repo:${config.repository}`,
-        "is:issue",
-        "is:open",
-        "agent_control in:body",
-        config.requiredLabel ? `label:\"${config.requiredLabel}\"` : null,
-      ]
-        .filter(Boolean)
-        .join(" "),
-      repository_full_name: config.repository,
-      sort: "created",
-      order: "asc",
-      topn: config.discoveryLimit,
-    },
-  })
-  return discoverIssueCandidates(unwrap(result, "Search repository issues"), {
-    requiredLabel: config.requiredLabel,
-    issueAllowlist: config.issueAllowlist ?? [],
-  })
+  const labeled = []
+  if (config.requiredLabel) {
+    const result = await scanner.appServer.callMcpTool({
+      threadId: scanner.threadId,
+      server: "codex_apps",
+      tool: "github.search_issues",
+      arguments: {
+        query: [
+          `repo:${config.repository}`,
+          "is:issue",
+          "is:open",
+          config.command === "watch" ? null : "agent_control in:body",
+          `label:\"${config.requiredLabel}\"`,
+        ]
+          .filter(Boolean)
+          .join(" "),
+        repository_full_name: config.repository,
+        sort: "created",
+        order: "asc",
+        topn: config.discoveryLimit,
+      },
+    })
+    labeled.push(
+      ...discoverIssueCandidates(unwrap(result, "Search repository issues"), {
+        requiredLabel: config.requiredLabel,
+        issueAllowlist: config.issueAllowlist ?? [],
+        requireAgentControl: config.command !== "watch",
+      }),
+    )
+  }
+
+  const allowlisted = await Promise.all(
+    [...new Set(config.issueAllowlist ?? [])].map(async (issueNumber) => {
+      const controlPlane = new GithubControlPlane({
+        appServer: scanner.appServer,
+        threadId: scanner.threadId,
+        repository: config.repository,
+        issueNumber,
+      })
+      const issue = await controlPlane.fetchIssue()
+      return discoverIssueCandidates(
+        { items: [issue] },
+        {
+          issueAllowlist: [issueNumber],
+          requireAgentControl: false,
+        },
+      )[0] ?? null
+    }),
+  )
+  return mergeIssueCandidates(labeled, allowlisted.filter(Boolean))
 }
 
-export async function discoverPersistedIssueCandidates(config) {
+export async function discoverPersistedIssueCandidates(
+  config,
+  { liveCandidates = [], readState = readFile } = {},
+) {
   const prefix = `${config.repository.replaceAll("/", "-")}-issue-`
   let entries
   try {
@@ -754,6 +840,9 @@ export async function discoverPersistedIssueCandidates(config) {
     if (error.code === "ENOENT") return []
     throw error
   }
+  const liveByIssue = new Map(
+    liveCandidates.map((candidate) => [candidate.issueNumber, candidate]),
+  )
   const issueEntries = entries
     .filter((entry) => entry.isDirectory() && entry.name.startsWith(prefix))
     .map((entry) => ({
@@ -761,13 +850,28 @@ export async function discoverPersistedIssueCandidates(config) {
       issueNumber: Number.parseInt(entry.name.slice(prefix.length), 10),
     }))
     .filter(({ issueNumber }) => Number.isSafeInteger(issueNumber) && issueNumber > 0)
+    .filter(({ issueNumber }) => {
+      if (config.command !== "watch") return true
+      if (
+        config.issueNumberExplicit &&
+        issueNumber === config.issueNumber
+      ) {
+        return true
+      }
+      if ((config.issueAllowlist ?? []).includes(issueNumber)) return true
+      const live = liveByIssue.get(issueNumber)
+      return Boolean(
+        config.requiredLabel &&
+        live?.labels?.includes(config.requiredLabel),
+      )
+    })
     .sort((left, right) => left.issueNumber - right.issueNumber)
   const candidates = await Promise.all(
     issueEntries.map(async ({ entry, issueNumber }) => {
       let rawState = null
       try {
         rawState = JSON.parse(
-          await readFile(
+          await readState(
             path.join(config.stateDirectory, entry.name, "state.json"),
             "utf8",
           ),
@@ -778,12 +882,20 @@ export async function discoverPersistedIssueCandidates(config) {
       const task = rawState?.task
       if (task?.originIssueClosed || rawState?.status === "done") return null
       const allowlisted = (config.issueAllowlist ?? []).includes(issueNumber)
-      const labels = Array.isArray(task?.originIssueLabels)
-        ? task.originIssueLabels
-        : []
+      const exactIssue = Boolean(
+        config.issueNumberExplicit && issueNumber === config.issueNumber,
+      )
+      const live = liveByIssue.get(issueNumber)
+      const labels =
+        config.command === "watch"
+          ? live?.labels ?? []
+          : Array.isArray(task?.originIssueLabels)
+            ? task.originIssueLabels
+            : []
       if (
         config.command === "watch" &&
         !allowlisted &&
+        !exactIssue &&
         (!config.requiredLabel || !labels.includes(config.requiredLabel))
       ) {
         return null
@@ -847,6 +959,7 @@ export async function runRepositoryIssue(
   candidate,
   {
     OrchestratorClass = Orchestrator,
+    ControlPlaneClass = GithubControlPlane,
     recoverCheckpointActivation = recoverCompletedCheckpointActivation,
     claimStore = new QueueClaimStore({
       stateDirectory: baseConfig.stateDirectory,
@@ -860,6 +973,29 @@ export async function runRepositoryIssue(
 ) {
   throwIfAborted(signal)
   const issueNumber = candidate.issueNumber ?? candidate
+  const controlPlane = new ControlPlaneClass({
+    appServer: scanner.appServer,
+    threadId: scanner.threadId,
+    repository: baseConfig.repository,
+    issueNumber,
+  })
+  const liveLabelRequired = persistentLiveLabelRequired(baseConfig, issueNumber)
+  if (liveLabelRequired) {
+    const liveIssue = await fetchWatcherIssue(controlPlane, issueNumber)
+    const eligibility = persistentLiveEligibilityDecision(
+      liveIssue,
+      baseConfig,
+      issueNumber,
+    )
+    if (!eligibility.eligible) {
+      return {
+        issueNumber,
+        status: "persistent_opt_in_revoked",
+        reason: eligibility.reason,
+        claimed: false,
+      }
+    }
+  }
   const store = new StateStoreClass({
     stateDirectory: baseConfig.stateDirectory,
     repository: baseConfig.repository,
@@ -875,23 +1011,38 @@ export async function runRepositoryIssue(
   ) {
     return { issueNumber, status: "unchanged", claimed: false }
   }
-  const controlPlane = new GithubControlPlane({
-    appServer: scanner.appServer,
-    threadId: scanner.threadId,
-    repository: baseConfig.repository,
-    issueNumber,
-  })
   // Terminal closeout must bind its closed-issue/control read while holding the
   // issue lease. Normal polls retain their existing pre-lease fetch ordering;
   // after waiting for the lease they reload durable state and a terminal CAS
   // always wins before selection.
-  const preClaimTask = baseConfig.terminalCloseout
+  const preClaimTask = baseConfig.terminalCloseout || liveLabelRequired
     ? null
-    : await controlPlane.fetchTask()
+    : baseConfig.command === "watch"
+      ? await fetchWatcherTask(controlPlane, issueNumber)
+      : await controlPlane.fetchTask()
   const issueClaim = await claimStore.withIssueClaim(
     { originIssueNumber: issueNumber },
     async (claimedIssue) => {
-      const task = preClaimTask ?? (await controlPlane.fetchTask())
+      const task =
+        preClaimTask ??
+        (baseConfig.command === "watch"
+          ? await fetchWatcherTask(controlPlane, issueNumber)
+          : await controlPlane.fetchTask())
+      if (liveLabelRequired) {
+        const eligibility = persistentLiveEligibilityDecision(
+          task.issue,
+          baseConfig,
+          issueNumber,
+        )
+        if (!eligibility.eligible) {
+          return {
+            issueNumber,
+            status: "persistent_opt_in_revoked",
+            reason: eligibility.reason,
+            claimed: false,
+          }
+        }
+      }
       const observation = {
         issueNumber,
         issueUrl:
@@ -1162,6 +1313,24 @@ export async function runRepositoryIssue(
         }
       }
 
+      if (liveLabelRequired) {
+        const finalIssue = await fetchWatcherIssue(controlPlane, issueNumber)
+        const eligibility = persistentLiveEligibilityDecision(
+          finalIssue,
+          baseConfig,
+          issueNumber,
+        )
+        if (!eligibility.eligible) {
+          return {
+            issueNumber,
+            instructionId: instruction.instructionId,
+            status: "persistent_opt_in_revoked",
+            reason: eligibility.reason,
+            claimed: false,
+          }
+        }
+      }
+
       await onActivity({
         activeIssue: issueNumber,
         activeInstruction: instruction.instructionId,
@@ -1339,20 +1508,24 @@ export async function runRepositoryCycle(
   ) {
     await reconcileTerminalAudits(config)
   }
-  const discovered = config.issueNumberExplicit
-    ? [
-        {
-          issueNumber: config.issueNumber,
-          issueUrl: null,
-          createdAt: null,
-          updatedAt: null,
-          searchMatched: false,
-        },
-      ]
-    : mergeIssueCandidates(
-        await search(scanner, config),
-        await discoverPersisted(config),
-      )
+  let discovered
+  if (config.issueNumberExplicit) {
+    discovered = [
+      {
+        issueNumber: config.issueNumber,
+        issueUrl: null,
+        createdAt: null,
+        updatedAt: null,
+        searchMatched: false,
+      },
+    ]
+  } else {
+    const liveCandidates = await search(scanner, config)
+    discovered = mergeIssueCandidates(
+      liveCandidates,
+      await discoverPersisted(config, { liveCandidates }),
+    )
+  }
   const candidates = filterPersistentCandidates(discovered, config)
   if (config.command === "watch") {
     await rawSchemaPreflight(
@@ -1379,7 +1552,11 @@ export async function runRepositoryCycle(
       results.push(result)
       if (result.claimed) claimedCount += 1
     } catch (error) {
-      if (error.name === "AbortError" || error.code === "WATCHER_SHUTDOWN") {
+      if (
+        error.name === "AbortError" ||
+        error.code === "WATCHER_SHUTDOWN" ||
+        error.code === "WATCHER_ELIGIBILITY_LOOKUP_FAILED"
+      ) {
         throw error
       }
       results.push({
