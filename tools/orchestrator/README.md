@@ -223,13 +223,19 @@ timeout, retry, polling, model, state, and worktree option.
 
 ## Canary proof of life
 
-Persistent activation is canary-first. The canary uses a new synthetic issue,
-`watch --issue N`, a separate state directory, one task per poll, no
-`--auto-commit`, `RunAtLoad=false`, and no `KeepAlive`. Acceptance requires one
-pickup, one Codex turn, one result, no unexpected Git mutation, restart without
-duplication, graceful stop, and proof that no other issue was read or written.
-The persistent service remains disabled until the canary and a second owner
-approval are complete.
+Persistent activation was canary-first. The validated canary used a new
+synthetic issue, `watch --issue N`, a separate state directory, one task per
+poll, no `--auto-commit`, `RunAtLoad=false`, and no `KeepAlive`. Promotion then
+proved one installed-service lifecycle on synthetic Issue #82, label
+revocation, controlled bootout, an explicitly approved `RunAtLoad=true`
+installation, and genuine GUI-login automatic startup. Unlabeled legacy state
+was not read, zero-eligibility polls remained idle, controlled shutdown after
+automatic startup completed cleanly, and the service did not restart in the
+same GUI session.
+
+Watcher v2 is now promoted, but no production task is enrolled. Issue #82 is
+synthetic evidence, not production work. The production enrollment gate remains
+the deliberate assignment of the required label to one reviewed issue.
 
 ## Persistent Watcher v2 service
 
@@ -240,6 +246,14 @@ an immutable release, a 60-second poll, `origin/main`, 12 turns, a 20-minute
 turn deadline, two in-turn retries, discovery limit 50, one task per poll, and
 the `koalafrog-orchestrator` opt-in label. Service-wide `--auto-commit` and
 `KeepAlive` are absent.
+
+The promoted profile has `RunAtLoad=true` and intentionally has no `KeepAlive`.
+A GUI login therefore loads the watcher once. It polls idly when no open issue
+has the required label; it does not restart automatically after a crash or a
+controlled bootout in the same GUI session. A later GUI login loads it again.
+Applying `koalafrog-orchestrator` is execution authorization, not ordinary
+issue taxonomy. The pre-enrollment contract is defined in
+`docs/agent-orchestration/CONTROL_PLANE.md`.
 
 Rendering is read-only and defaults to the canary policy:
 
@@ -305,7 +319,8 @@ plist, and hashed start evidence remain for diagnosis. The command never
 retries a start, enables `RunAtLoad`, adds `KeepAlive`, or restores an older
 runtime. Incomplete cleanup is a hard manual-recovery error.
 
-The generated plist has `RunAtLoad=false`, no `KeepAlive`,
+Without an explicit boot-persistence approval, the generated plist has
+`RunAtLoad=false`, no `KeepAlive`,
 `ExitTimeOut=90`, `ThrottleInterval=60`, `ProcessType=Background`, and
 `Umask=0077`. Only a separately approved active `render`/`install` may add
 `--approve-run-at-load`; disabled installation rejects it and `KeepAlive`
@@ -336,6 +351,26 @@ Service promotion therefore has four independent owner gates:
    persistence.
 
 No earlier gate implies a later one.
+
+### Emergency stop and persistent safe mode
+
+If an issue was authorized in error or watcher behavior is suspect:
+
+1. remove `koalafrog-orchestrator` from every newly authorized issue where
+   possible;
+2. stop the current GUI-session service with
+   `launchctl bootout gui/501/com.sillyquack.koalafrog-orchestrator`;
+3. verify that the launchd target, watcher/App Server/broker process tree, and
+   orchestrator locks are absent;
+4. if boot persistence itself must be disabled, run the validated
+   `install-disabled` path from the canonical coordinator.
+
+Label removal revokes eligibility only before the final authoritative claim.
+For an already active turn, use controlled bootout so graceful cancellation,
+durable settlement, broker cleanup, and lease release can finish. A normal
+bootout stops only the current GUI session; the promoted `RunAtLoad=true`
+profile remains installed for the next login. `install-disabled` is the
+persistent safe mode and does not restore or start an older runtime.
 
 At startup the watcher creates a new random startup-session identity and
 recomputes and requires the runtime release, manifest,

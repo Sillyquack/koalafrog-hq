@@ -56,6 +56,50 @@ search and persisted-state candidates before fairness or claims. Ordinary
 normal candidates; quarantined work remains read-only visible but cannot be
 selected or acquire an instruction claim.
 
+#### Production enrollment authorization policy
+
+For the promoted Koalafrog service, `koalafrog-orchestrator` **is an
+execution-authorization label**. It is not ordinary taxonomy. Applying it to an
+open issue authorizes Watcher v2 to consider that issue for unattended
+execution on the next poll. Only an owner-reviewed issue may receive it, and
+the label is applied last, after every other enrollment gate passes.
+
+Before enrollment, require all of the following:
+
+- the origin is an open issue, not a pull request;
+- the issue contains exactly the intended current production-extractable
+  control, with a repository-wide unique `instruction_id`;
+- the requested task state is supported, or no durable state exists for a
+  valid first-admission `start` / `ready` control;
+- there is no stale active instruction or claim;
+- queue, retry, approval, and checkpoint-recovery history contains no
+  unresolved residue;
+- canonical repository, source, runtime, and service-profile bindings are
+  current wherever the control depends on them;
+- mutation authority is absent unless it is explicitly intended and bounded by
+  the control;
+- every owner gate is resolved; and
+- the operator knows the controlled-stop and rollback procedure.
+
+Never enroll a stale or high-failure legacy control merely to inspect or
+reconcile it. Such review must remain bounded and label-independent. Issues #68
+and #71 are explicit historical examples that must not be enrolled without a
+fresh reconciliation of their controls, queue history, worktree/provenance,
+and intended outcome.
+
+Removing the label before the final authoritative claim revokes eligibility.
+Removing it after claim does not cancel active work or fabricate a result;
+controlled bootout is required to interrupt an active turn through the normal
+graceful-shutdown path.
+
+The primary residual risk after technical promotion is accidental label
+assignment. The runtime fails closed on unsupported schemas, eligibility
+uncertainty, stale identity, and ungranted mutation, but owners still govern
+which issue/control is trustworthy enough to enroll. Stale-control enrollment,
+unattended mutation authority, runtime/source drift, GitHub availability,
+confusion between `RunAtLoad` and `KeepAlive`, and future macOS behavior changes
+remain operational risks that require review and monitoring.
+
 Required-label mode builds an authoritative live GitHub eligibility set before
 opening persisted task state. A label-constrained search result is only a
 bounded issue reference; summary labels may be omitted or `null` and are never
