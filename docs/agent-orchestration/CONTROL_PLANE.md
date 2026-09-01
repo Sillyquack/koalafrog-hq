@@ -57,12 +57,20 @@ normal candidates; quarantined work remains read-only visible but cannot be
 selected or acquire an instruction claim.
 
 Required-label mode builds an authoritative live GitHub eligibility set before
-opening persisted task state. Durable task directory names supply only issue
-identifiers; they are intersected with that live set before any `state.json`
-read. Cached `originIssueLabels` are observation history, never execution
-authority. Explicit allowlists intentionally bypass the label only for their
-named issue IDs, and exact canary mode inspects only its explicit issue and
-separate state root.
+opening persisted task state. A label-constrained search result is only a
+bounded issue reference; summary labels may be omitted or `null` and are never
+authorization evidence. Current issue detail must then bind the exact
+repository and issue number, prove open issue (not pull request) state, and
+provide a complete current label list. A definitively absent label is an
+ordinary exclusion. Missing, malformed, ambiguous, or conflicting detail is
+`WATCHER_ELIGIBILITY_LOOKUP_FAILED` and opens the repository circuit.
+
+Durable task directory names supply only issue identifiers; they are
+intersected with the hydrated live set before any `state.json` read. Cached
+`originIssueLabels` are observation history, never execution authority.
+Explicit allowlists intentionally bypass the label only for their named issue
+IDs, and exact canary mode inspects only its explicit issue and separate state
+root.
 
 The current live label is checked again before the first task-state load and
 immediately before an instruction claim. A missing label makes the candidate
@@ -74,6 +82,22 @@ transactional with the local claim: after the final successful live check and
 authoritative claim, an already-active turn continues under the existing
 control and shutdown contracts rather than receiving a fabricated cancellation
 or result.
+
+A live-authorized issue needs no pre-existing task directory. First admission
+holds the issue lease, fetches current issue/control evidence, requires exactly
+one valid `action: start` / `task_state: ready` control, and revalidates the
+label before `StateStore.load()` may initialize task state. This preserves the
+same issue-lease/CAS and instruction-claim serialization used after restart.
+Malformed, ambiguous, state-ineligible, closed, or revoked new issues create no
+task state. Raw-schema preflight inspects eligible persisted files but treats an
+eligible issue with no state file as a valid new-admission candidate; unlabeled
+persisted tasks remain unread.
+
+Persistent poll records contain only stage-level issue IDs/counts and stable
+exclusion reasons for search references, summary-label completeness, hydration,
+eligible live and persisted candidates, merged candidates, raw-schema
+inspection, selection, and claim attempts. Bodies, prompts, comments, tokens,
+credentials, and raw connector responses are never included.
 
 Schema 12 migrates once to schema 13 with append-only
 `instructionQuarantines`, `quarantineReopens`, `watcherNotifications`,

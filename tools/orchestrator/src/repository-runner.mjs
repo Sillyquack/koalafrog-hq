@@ -24,6 +24,7 @@ import { Orchestrator } from "./orchestrator.mjs"
 import { QueueClaimStore } from "./queue-claim-store.mjs"
 import {
   discoverIssueCandidates,
+  discoverIssueReferences,
   isPullRequest,
 } from "./repository-discovery.mjs"
 import { installTaskThreadPolicy } from "./runtime-policy.mjs"
@@ -78,6 +79,49 @@ function taskLabelNames(issue) {
     .filter((label) => typeof label === "string")
 }
 
+function authoritativeIssueIdentity(issue) {
+  const directNumbers = [issue?.number, issue?.issue_number].filter(
+    (value) => Number.isSafeInteger(value) && value > 0,
+  )
+  const repositories = [
+    issue?.repository_full_name,
+    issue?.repository?.full_name,
+  ].filter((value) => typeof value === "string" && value.length > 0)
+  const urls = [issue?.html_url, issue?.display_url, issue?.url].filter(
+    (value) => typeof value === "string" && value.length > 0,
+  )
+  const urlNumbers = []
+  for (const value of urls) {
+    let parsed
+    try {
+      parsed = new URL(value)
+    } catch {
+      continue
+    }
+    const match = parsed.pathname.match(
+      /^\/(?:repos\/)?([^/]+)\/([^/]+)\/(?:issues|pulls?)\/(\d+)(?:\/|$)/,
+    )
+    if (!match) continue
+    repositories.push(`${match[1]}/${match[2]}`)
+    urlNumbers.push(Number.parseInt(match[3], 10))
+  }
+  return {
+    issueNumbers: [...new Set([...directNumbers, ...urlNumbers])],
+    repositories: [...new Set(repositories)],
+  }
+}
+
+function authoritativeLabelNames(issue) {
+  if (!Array.isArray(issue?.labels)) return null
+  const labels = []
+  for (const label of issue.labels) {
+    const name = typeof label === "string" ? label : label?.name
+    if (typeof name !== "string" || name.length === 0) return null
+    labels.push(name)
+  }
+  return [...new Set(labels)]
+}
+
 function persistentLiveLabelRequired(config, issueNumber) {
   return Boolean(
     config.command === "watch" &&
@@ -100,23 +144,82 @@ export function persistentLiveEligibilityDecision(issue, config, issueNumber) {
   if (!config.requiredLabel) {
     return { eligible: false, mechanism: null, reason: "missing_opt_in" }
   }
-  if (!issue || issue.state === "closed" || isPullRequest(issue)) {
+  if (!issue || typeof issue !== "object") {
+    return {
+      eligible: false,
+      mechanism: null,
+      reason: "authoritative_issue_missing",
+      lookupFailed: true,
+    }
+  }
+  const identity = authoritativeIssueIdentity(issue)
+  if (
+    identity.issueNumbers.length !== 1 ||
+    identity.issueNumbers[0] !== issueNumber ||
+    identity.repositories.length !== 1 ||
+    identity.repositories[0] !== config.repository
+  ) {
+    return {
+      eligible: false,
+      mechanism: null,
+      reason: "authoritative_issue_identity_mismatch",
+      lookupFailed: true,
+    }
+  }
+  if (isPullRequest(issue)) {
+    return { eligible: false, mechanism: null, reason: "pull_request" }
+  }
+  if (issue.state === "closed") {
     return { eligible: false, mechanism: null, reason: "issue_not_open" }
   }
-  if (!taskLabelNames(issue).includes(config.requiredLabel)) {
+  if (issue.state !== "open") {
+    return {
+      eligible: false,
+      mechanism: null,
+      reason: "authoritative_issue_state_incomplete",
+      lookupFailed: true,
+    }
+  }
+  const labels = authoritativeLabelNames(issue)
+  if (!labels) {
+    return {
+      eligible: false,
+      mechanism: null,
+      reason: "authoritative_issue_labels_incomplete",
+      lookupFailed: true,
+    }
+  }
+  if (!labels.includes(config.requiredLabel)) {
     return { eligible: false, mechanism: null, reason: "live_label_absent" }
   }
   return { eligible: true, mechanism: "required_live_label" }
 }
 
-function watcherEligibilityLookupError(error, issueNumber) {
+function watcherEligibilityLookupError(error, issueNumber, reason = null) {
   const failure = new Error(
     `Unable to revalidate persistent eligibility for issue ${issueNumber}: ${error.message}`,
     { cause: error },
   )
   failure.code = "WATCHER_ELIGIBILITY_LOOKUP_FAILED"
   failure.issueNumber = issueNumber
+  failure.reason = reason ?? "authoritative_issue_lookup_failed"
   return failure
+}
+
+function requirePersistentLiveEligibility(issue, config, issueNumber) {
+  const decision = persistentLiveEligibilityDecision(
+    issue,
+    config,
+    issueNumber,
+  )
+  if (decision.lookupFailed) {
+    throw watcherEligibilityLookupError(
+      new Error(decision.reason),
+      issueNumber,
+      decision.reason,
+    )
+  }
+  return decision
 }
 
 async function fetchWatcherIssue(controlPlane, issueNumber) {
@@ -775,7 +878,38 @@ export async function createRepositoryScanner(config) {
   return { appServer, threadId }
 }
 
-export async function searchOpenIssueCandidates(scanner, config) {
+function attachDiscoveryTelemetry(values, telemetry) {
+  Object.defineProperty(values, "discoveryTelemetry", {
+    configurable: true,
+    enumerable: false,
+    value: telemetry,
+  })
+  return values
+}
+
+function emptyDiscoveryTelemetry() {
+  return {
+    searchReferenceIssueIds: [],
+    searchSummaryLabelsCompleteIssueIds: [],
+    searchSummaryLabelsIncompleteIssueIds: [],
+    hydrationAttemptIssueIds: [],
+    hydrationSuccessIssueIds: [],
+    liveEligibleIssueIds: [],
+    liveExclusions: [],
+    persistedEligibleIssueIds: [],
+    mergedCandidateIssueIds: [],
+    rawSchemaPreflightIssueIds: [],
+    selectedIssueIds: [],
+    claimAttemptIssueIds: [],
+  }
+}
+
+export async function searchOpenIssueCandidates(
+  scanner,
+  config,
+  { ControlPlaneClass = GithubControlPlane } = {},
+) {
+  const telemetry = emptyDiscoveryTelemetry()
   const labeled = []
   if (config.requiredLabel) {
     const result = await scanner.appServer.callMcpTool({
@@ -798,34 +932,93 @@ export async function searchOpenIssueCandidates(scanner, config) {
         topn: config.discoveryLimit,
       },
     })
-    labeled.push(
-      ...discoverIssueCandidates(unwrap(result, "Search repository issues"), {
-        requiredLabel: config.requiredLabel,
-        issueAllowlist: config.issueAllowlist ?? [],
-        requireAgentControl: config.command !== "watch",
-      }),
+    const references = discoverIssueReferences(
+      unwrap(result, "Search repository issues"),
     )
+    telemetry.searchReferenceIssueIds = references.map(
+      ({ issueNumber }) => issueNumber,
+    )
+    telemetry.searchSummaryLabelsCompleteIssueIds = references
+      .filter(({ summaryLabelsComplete }) => summaryLabelsComplete)
+      .map(({ issueNumber }) => issueNumber)
+    telemetry.searchSummaryLabelsIncompleteIssueIds = references
+      .filter(({ summaryLabelsComplete }) => !summaryLabelsComplete)
+      .map(({ issueNumber }) => issueNumber)
+    for (const reference of references) {
+      telemetry.hydrationAttemptIssueIds.push(reference.issueNumber)
+      const controlPlane = new ControlPlaneClass({
+        appServer: scanner.appServer,
+        threadId: scanner.threadId,
+        repository: config.repository,
+        issueNumber: reference.issueNumber,
+      })
+      let issue
+      try {
+        issue = await fetchWatcherIssue(controlPlane, reference.issueNumber)
+        const decision = requirePersistentLiveEligibility(
+          issue,
+          {
+            ...config,
+            command: "watch",
+            issueNumberExplicit: false,
+            issueAllowlist: [],
+          },
+          reference.issueNumber,
+        )
+        telemetry.hydrationSuccessIssueIds.push(reference.issueNumber)
+        if (!decision.eligible) {
+          telemetry.liveExclusions.push({
+            issueNumber: reference.issueNumber,
+            reason: decision.reason,
+          })
+          continue
+        }
+      } catch (error) {
+        error.discoveryTelemetry = telemetry
+        throw error
+      }
+      telemetry.liveEligibleIssueIds.push(reference.issueNumber)
+      labeled.push({
+        issueNumber: reference.issueNumber,
+        issueUrl:
+          issue?.html_url ?? issue?.display_url ?? issue?.url ??
+          reference.issueUrl,
+        createdAt:
+          issue?.created_at ?? issue?.createdAt ?? reference.createdAt,
+        updatedAt:
+          issue?.updated_at ?? issue?.updatedAt ?? reference.updatedAt,
+        searchMatched: true,
+        labels: authoritativeLabelNames(issue),
+        claimable: true,
+        persistedState: false,
+        summaryLabelsComplete: reference.summaryLabelsComplete,
+      })
+    }
   }
 
   const allowlisted = await Promise.all(
     [...new Set(config.issueAllowlist ?? [])].map(async (issueNumber) => {
-      const controlPlane = new GithubControlPlane({
+      const controlPlane = new ControlPlaneClass({
         appServer: scanner.appServer,
         threadId: scanner.threadId,
         repository: config.repository,
         issueNumber,
       })
       const issue = await controlPlane.fetchIssue()
-      return discoverIssueCandidates(
+      const candidate = discoverIssueCandidates(
         { items: [issue] },
         {
           issueAllowlist: [issueNumber],
           requireAgentControl: false,
         },
       )[0] ?? null
+      return candidate ? { ...candidate, persistedState: false } : null
     }),
   )
-  return mergeIssueCandidates(labeled, allowlisted.filter(Boolean))
+  return attachDiscoveryTelemetry(
+    mergeIssueCandidates(labeled, allowlisted.filter(Boolean)),
+    telemetry,
+  )
 }
 
 export async function discoverPersistedIssueCandidates(
@@ -912,6 +1105,7 @@ export async function discoverPersistedIssueCandidates(
         labels,
         claimable: activeQuarantineCount === 0,
         quarantineCount: activeQuarantineCount,
+        persistedState: rawState !== null,
       }
     }),
   )
@@ -922,6 +1116,10 @@ export function mergeIssueCandidates(...candidateLists) {
   const merged = new Map()
   for (const candidate of candidateLists.flat()) {
     const existing = merged.get(candidate.issueNumber)
+    const persistedStates = [
+      existing?.persistedState,
+      candidate.persistedState,
+    ].filter((value) => typeof value === "boolean")
     merged.set(candidate.issueNumber, {
       issueNumber: candidate.issueNumber,
       issueUrl: candidate.issueUrl ?? existing?.issueUrl ?? null,
@@ -937,6 +1135,15 @@ export function mergeIssueCandidates(...candidateLists) {
         candidate.quarantineCount ?? 0,
         existing?.quarantineCount ?? 0,
       ),
+      persistedState: persistedStates.includes(true)
+        ? true
+        : persistedStates.includes(false)
+          ? false
+          : null,
+      summaryLabelsComplete:
+        candidate.summaryLabelsComplete ??
+        existing?.summaryLabelsComplete ??
+        null,
     })
   }
   return [...merged.values()].sort((left, right) => {
@@ -951,6 +1158,33 @@ export function mergeIssueCandidates(...candidateLists) {
     }
     return left.issueNumber - right.issueNumber
   })
+}
+
+function newPersistentIssueAdmissionDecision(task) {
+  let controls
+  try {
+    controls = listAgentControls(task.issue, task.comments)
+  } catch {
+    return { accepted: false, reason: "malformed_agent_control" }
+  }
+  if (controls.length !== 1) {
+    return {
+      accepted: false,
+      reason:
+        controls.length === 0
+          ? "missing_valid_start_control"
+          : "ambiguous_initial_controls",
+    }
+  }
+  const instruction = controls[0]
+  if (
+    instruction.action !== "start" ||
+    instruction.taskState !== "ready" ||
+    !isInstructionEligible(instruction, "ready")
+  ) {
+    return { accepted: false, reason: "initial_control_not_start_ready" }
+  }
+  return { accepted: true, instructionId: instruction.instructionId }
 }
 
 export async function runRepositoryIssue(
@@ -982,7 +1216,7 @@ export async function runRepositoryIssue(
   const liveLabelRequired = persistentLiveLabelRequired(baseConfig, issueNumber)
   if (liveLabelRequired) {
     const liveIssue = await fetchWatcherIssue(controlPlane, issueNumber)
-    const eligibility = persistentLiveEligibilityDecision(
+    const eligibility = requirePersistentLiveEligibility(
       liveIssue,
       baseConfig,
       issueNumber,
@@ -1001,8 +1235,14 @@ export async function runRepositoryIssue(
     repository: baseConfig.repository,
     issueNumber,
   })
-  const state = await store.load()
+  const newPersistentIssue = Boolean(
+    baseConfig.command === "watch" &&
+    candidate.searchMatched &&
+    candidate.persistedState === false,
+  )
+  const state = newPersistentIssue ? null : await store.load()
   if (
+    state &&
     !state.activeInstruction &&
     !commentContinuationStates.has(state.status) &&
     candidate.searchMatched &&
@@ -1011,11 +1251,14 @@ export async function runRepositoryIssue(
   ) {
     return { issueNumber, status: "unchanged", claimed: false }
   }
-  // Terminal closeout must bind its closed-issue/control read while holding the
-  // issue lease. Normal polls retain their existing pre-lease fetch ordering;
-  // after waiting for the lease they reload durable state and a terminal CAS
-  // always wins before selection.
-  const preClaimTask = baseConfig.terminalCloseout || liveLabelRequired
+  // Terminal closeout and first persistent admission bind issue/control reads
+  // while holding the issue lease. Existing tasks retain the prior pre-lease
+  // watermark optimization; after waiting for the lease they reload durable
+  // state and its CAS remains authoritative before selection.
+  const issueReadMustBeLeased = Boolean(
+    baseConfig.terminalCloseout || liveLabelRequired || newPersistentIssue,
+  )
+  const preClaimTask = issueReadMustBeLeased
     ? null
     : baseConfig.command === "watch"
       ? await fetchWatcherTask(controlPlane, issueNumber)
@@ -1029,7 +1272,7 @@ export async function runRepositoryIssue(
           ? await fetchWatcherTask(controlPlane, issueNumber)
           : await controlPlane.fetchTask())
       if (liveLabelRequired) {
-        const eligibility = persistentLiveEligibilityDecision(
+        const eligibility = requirePersistentLiveEligibility(
           task.issue,
           baseConfig,
           issueNumber,
@@ -1055,6 +1298,37 @@ export async function runRepositoryIssue(
           task.issue?.updated_at ?? task.issue?.updatedAt ?? candidate.updatedAt,
         closed: task.issue?.state === "closed",
         labels: taskLabelNames(task.issue),
+      }
+      if (newPersistentIssue) {
+        const admission = newPersistentIssueAdmissionDecision(task)
+        if (!admission.accepted) {
+          return {
+            issueNumber,
+            status: "new_issue_not_admitted",
+            reason: admission.reason,
+            claimed: false,
+          }
+        }
+        if (liveLabelRequired) {
+          const finalAdmissionIssue = await fetchWatcherIssue(
+            controlPlane,
+            issueNumber,
+          )
+          const eligibility = requirePersistentLiveEligibility(
+            finalAdmissionIssue,
+            baseConfig,
+            issueNumber,
+          )
+          if (!eligibility.eligible) {
+            return {
+              issueNumber,
+              instructionId: admission.instructionId,
+              status: "persistent_opt_in_revoked",
+              reason: eligibility.reason,
+              claimed: false,
+            }
+          }
+        }
       }
       const currentState = await store.load()
       const observedAt = Date.parse(observation.updatedAt ?? "")
@@ -1313,9 +1587,9 @@ export async function runRepositoryIssue(
         }
       }
 
-      if (liveLabelRequired) {
+      if (liveLabelRequired && !newPersistentIssue) {
         const finalIssue = await fetchWatcherIssue(controlPlane, issueNumber)
-        const eligibility = persistentLiveEligibilityDecision(
+        const eligibility = requirePersistentLiveEligibility(
           finalIssue,
           baseConfig,
           issueNumber,
@@ -1508,6 +1782,7 @@ export async function runRepositoryCycle(
   ) {
     await reconcileTerminalAudits(config)
   }
+  const telemetry = emptyDiscoveryTelemetry()
   let discovered
   if (config.issueNumberExplicit) {
     discovered = [
@@ -1521,16 +1796,33 @@ export async function runRepositoryCycle(
     ]
   } else {
     const liveCandidates = await search(scanner, config)
+    Object.assign(
+      telemetry,
+      liveCandidates.discoveryTelemetry ?? emptyDiscoveryTelemetry(),
+    )
+    const persistedCandidates = await discoverPersisted(config, {
+      liveCandidates,
+    })
+    telemetry.persistedEligibleIssueIds = persistedCandidates.map(
+      ({ issueNumber }) => issueNumber,
+    )
     discovered = mergeIssueCandidates(
       liveCandidates,
-      await discoverPersisted(config, { liveCandidates }),
+      persistedCandidates,
     )
   }
+  telemetry.mergedCandidateIssueIds = discovered.map(
+    ({ issueNumber }) => issueNumber,
+  )
   const candidates = filterPersistentCandidates(discovered, config)
+  telemetry.selectedIssueIds = candidates.map(({ issueNumber }) => issueNumber)
   if (config.command === "watch") {
-    await rawSchemaPreflight(
+    const preflight = await rawSchemaPreflight(
       { ...config, supportedStateSchema: currentStateSchemaVersion },
       candidates,
+    )
+    telemetry.rawSchemaPreflightIssueIds = (preflight ?? []).map(
+      ({ issueNumber }) => issueNumber,
     )
   }
   const results = []
@@ -1547,7 +1839,15 @@ export async function runRepositoryCycle(
       const result = await runIssue(scanner, config, candidate, {
         claimStore,
         signal,
-        onActivity,
+        onActivity: async (activity) => {
+          if (
+            activity.activeClaim === "instruction_pending" &&
+            !telemetry.claimAttemptIssueIds.includes(candidate.issueNumber)
+          ) {
+            telemetry.claimAttemptIssueIds.push(candidate.issueNumber)
+          }
+          await onActivity(activity)
+        },
       })
       results.push(result)
       if (result.claimed) claimedCount += 1
@@ -1557,6 +1857,9 @@ export async function runRepositoryCycle(
         error.code === "WATCHER_SHUTDOWN" ||
         error.code === "WATCHER_ELIGIBILITY_LOOKUP_FAILED"
       ) {
+        if (error.code === "WATCHER_ELIGIBILITY_LOOKUP_FAILED") {
+          error.discoveryTelemetry ??= telemetry
+        }
         throw error
       }
       results.push({
@@ -1572,7 +1875,7 @@ export async function runRepositoryCycle(
       })
     }
   }
-  return results
+  return attachDiscoveryTelemetry(results, telemetry)
 }
 
 export async function runRepositoryOnce(
@@ -1721,6 +2024,7 @@ export async function watchRepository(
         })
         writeJson(write, {
           event: "repository_poll_completed",
+          discovery: results.discoveryTelemetry ?? null,
           results,
         })
         await waitForNextCycle(config.pollMs, signal, sleep)
@@ -1735,6 +2039,7 @@ export async function watchRepository(
         writeJson(write, {
           event: "repository_poll_failed",
           error: error.message,
+          discovery: error.discoveryTelemetry ?? null,
           circuitBreaker: breaker,
         })
         try {

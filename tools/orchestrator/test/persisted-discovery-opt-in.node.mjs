@@ -108,6 +108,9 @@ test("persistent GitHub search builds an authoritative live-label index", async 
     appServer: {
       async callMcpTool(request) {
         calls.push(request)
+        if (request.tool === "github.fetch_issue") {
+          return { structuredContent: { issue: issue(79) } }
+        }
         return {
           structuredContent: {
             items: [
@@ -128,6 +131,10 @@ test("persistent GitHub search builds an authoritative live-label index", async 
   assert.deepEqual(candidates.map(({ issueNumber }) => issueNumber), [79])
   assert.match(calls[0].arguments.query, /label:"koalafrog-orchestrator"/)
   assert.doesNotMatch(calls[0].arguments.query, /agent_control/)
+  assert.deepEqual(calls.map(({ tool }) => tool), [
+    "github.search_issues",
+    "github.fetch_issue",
+  ])
 })
 
 test("explicit allowlist fetches only allowlisted live issue detail without label", async () => {

@@ -30,6 +30,41 @@ function labelNames(issue) {
     .filter((label) => typeof label === "string")
 }
 
+export function discoverIssueReferences(searchPayload) {
+  const root = searchPayload?.result ?? searchPayload ?? {}
+  const candidates = root.results ?? root.issues ?? root.items ?? []
+  const references = []
+  const seen = new Set()
+
+  for (const issue of candidates) {
+    const number = extractIssueNumber(issue)
+    if (!number || seen.has(number)) continue
+    seen.add(number)
+    references.push({
+      issueNumber: number,
+      issueUrl:
+        issue?.html_url ?? issue?.display_url ?? issue?.url ?? null,
+      createdAt: issue?.created_at ?? issue?.createdAt ?? null,
+      updatedAt: issue?.updated_at ?? issue?.updatedAt ?? null,
+      searchMatched: true,
+      summaryLabelsComplete: Array.isArray(issue?.labels),
+    })
+  }
+
+  return references.sort((left, right) => {
+    const leftTime = Date.parse(left.createdAt ?? "")
+    const rightTime = Date.parse(right.createdAt ?? "")
+    if (Number.isFinite(leftTime) && Number.isFinite(rightTime)) {
+      if (leftTime !== rightTime) return leftTime - rightTime
+    } else if (Number.isFinite(leftTime)) {
+      return -1
+    } else if (Number.isFinite(rightTime)) {
+      return 1
+    }
+    return left.issueNumber - right.issueNumber
+  })
+}
+
 export function discoverIssueCandidates(
   searchPayload,
   {
