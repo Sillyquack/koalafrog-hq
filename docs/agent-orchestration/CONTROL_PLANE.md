@@ -56,6 +56,25 @@ search and persisted-state candidates before fairness or claims. Ordinary
 normal candidates; quarantined work remains read-only visible but cannot be
 selected or acquire an instruction claim.
 
+Required-label mode builds an authoritative live GitHub eligibility set before
+opening persisted task state. Durable task directory names supply only issue
+identifiers; they are intersected with that live set before any `state.json`
+read. Cached `originIssueLabels` are observation history, never execution
+authority. Explicit allowlists intentionally bypass the label only for their
+named issue IDs, and exact canary mode inspects only its explicit issue and
+separate state root.
+
+The current live label is checked again before the first task-state load and
+immediately before an instruction claim. A missing label makes the candidate
+ineligible without migration, retry/quarantine evaluation, notification, or
+claim. Lookup uncertainty fails the repository poll through the global
+discovery circuit instead of incrementing an issue attempt. Removing the label
+therefore revokes subsequent persistent selection. GitHub label changes are not
+transactional with the local claim: after the final successful live check and
+authoritative claim, an already-active turn continues under the existing
+control and shutdown contracts rather than receiving a fabricated cancellation
+or result.
+
 Schema 12 migrates once to schema 13 with append-only
 `instructionQuarantines`, `quarantineReopens`, `watcherNotifications`,
 `watcherNotificationDeliveries`, `checkpointRecoveryRejections`, and

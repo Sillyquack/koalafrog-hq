@@ -246,7 +246,18 @@ test("persisted done tasks are omitted and quarantine remains read-only visible"
   recordInstructionQuarantine(quarantined, quarantineFixture(quarantined))
   await writeState(71, quarantined)
 
-  const candidates = await discoverPersistedIssueCandidates(config)
+  const candidates = await discoverPersistedIssueCandidates(config, {
+    liveCandidates: [
+      {
+        issueNumber: 70,
+        labels: ["koalafrog-orchestrator"],
+      },
+      {
+        issueNumber: 71,
+        labels: ["koalafrog-orchestrator"],
+      },
+    ],
+  })
   assert.deepEqual(candidates.map((candidate) => candidate.issueNumber), [71])
   assert.equal(candidates[0].claimable, false)
   assert.equal(candidates[0].quarantineCount, 1)

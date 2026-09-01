@@ -76,10 +76,23 @@ carry the configured `koalafrog-orchestrator` label (or be in the explicit
 service allowlist), and contain a valid fenced YAML `agent_control` block in its
 **issue body**. Filtering happens before fairness and claim selection. Bounded
 `once --issue N` remains label-independent. The body requirement makes the
-issue discoverable by the bounded repository search.
+control selectable; label-mode discovery also inventories currently labeled
+issues so persisted continuation never depends on cached label metadata.
 Ordinary prose, a bare `agent_control` word, malformed blocks, and pull requests
 are ignored. After first pickup, fresh follow-up blocks may be added as comments
 because the issue then has durable local state.
+
+In required-label watch mode, live GitHub eligibility is resolved before any
+persisted `state.json` is opened. Cached `originIssueLabels` never authorize
+execution. The runtime revalidates the current label before the first task load
+and again immediately before instruction claim. Removal before claim revokes
+eligibility with no migration, retry/quarantine handling, notification, or
+execution; lookup failure opens the repository discovery circuit instead of an
+issue retry. Removal after an authoritative claim is not a mid-turn kill switch:
+the active turn remains governed by existing control and graceful-shutdown
+semantics. Allowlist entries intentionally bypass the label for only their
+explicit IDs, while exact canary mode inspects only its exact issue and isolated
+state root.
 
 Use a repository-wide unique `instruction_id`. Eligibility is explicit:
 
