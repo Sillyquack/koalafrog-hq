@@ -1,5 +1,7 @@
 import assert from "node:assert/strict"
+import { createHash } from "node:crypto"
 import {
+  chmod,
   mkdir,
   mkdtemp,
   readFile,
@@ -17,13 +19,15 @@ import {
   installAndStartLaunchAgent,
   launchAgentLabel,
   parseLaunchAgentProgramArguments,
+  startInstalledLaunchAgent,
   startOnceLaunchAgent,
+  validateInstalledLaunchAgentPlist,
 } from "../src/launchd.mjs"
 import { darwinXpcproxyExecutable } from "../src/darwin-process-identity.mjs"
 
 const baseTime = Date.parse("2026-09-01T10:00:00.000Z")
 
-function serviceFixture(root) {
+function serviceFixture(root, { runAtLoad = false } = {}) {
   const stateDirectory = path.join(root, "state")
   const runtimeRelease = "a".repeat(64)
   const manifestSha256 = "b".repeat(64)
@@ -58,7 +62,7 @@ function serviceFixture(root) {
     expectedSourceCommit: sourceCommit,
     expectedSourceTree: sourceTree,
     serviceConfigSha256,
-    runAtLoad: false,
+    runAtLoad,
     keepAlive: false,
     pollMs: 60_000,
     maxTasksPerPoll: 1,
@@ -102,7 +106,7 @@ function expectedHealth(options, clock, overrides = {}) {
     watcherMode: "watch",
     requiredLabel: options.requiredLabel,
     autoCommit: false,
-    runAtLoad: false,
+    runAtLoad: options.runAtLoad,
     keepAlive: false,
     pollMs: options.pollMs,
     maxTasksPerPoll: options.maxTasksPerPoll,
@@ -287,12 +291,66 @@ async function invokeStart(options, harness) {
   })
 }
 
+async function invokeInstalledStart(
+  options,
+  harness,
+  { approveRunAtLoad = false } = {},
+) {
+  return startInstalledLaunchAgent({
+    ...options,
+    approveRunAtLoad,
+    run: harness.run,
+    sleep: harness.sleep,
+    now: harness.now,
+    inspectProcesses: harness.inspectProcesses,
+    inspectProcessIdentity: harness.inspectProcessIdentity,
+  })
+}
+
 async function withFixture(t, behavior = {}) {
   const root = await mkdtemp(path.join(os.tmpdir(), "koalafrog-start-once-"))
   t.after(() => rm(root, { recursive: true, force: true }))
   const options = serviceFixture(root)
   await installInactive(options)
   return { root, options, harness: await createHarness(options, behavior) }
+}
+
+async function fileIdentity(filePath) {
+  const contents = await readFile(filePath)
+  const metadata = await stat(filePath)
+  return {
+    sha256: createHash("sha256").update(contents).digest("hex"),
+    size: metadata.size,
+    mode: metadata.mode & 0o777,
+    mtimeMs: metadata.mtimeMs,
+  }
+}
+
+async function withInstalledFixture(
+  t,
+  behavior = {},
+  { runAtLoad = true } = {},
+) {
+  const root = await mkdtemp(path.join(os.tmpdir(), "koalafrog-start-installed-"))
+  t.after(() => rm(root, { recursive: true, force: true }))
+  const options = serviceFixture(root, { runAtLoad })
+  await installInactive(options)
+  await mkdir(path.dirname(options.orchestratorScript), { recursive: true })
+  await writeFile(options.orchestratorScript, "synthetic immutable runtime\n", {
+    mode: 0o600,
+  })
+  const manifestPath = path.join(
+    path.dirname(path.dirname(options.orchestratorScript)),
+    "manifest.json",
+  )
+  await writeFile(manifestPath, "synthetic immutable manifest\n", { mode: 0o600 })
+  const artifacts = [options.plistPath, options.orchestratorScript, manifestPath]
+  return {
+    root,
+    options,
+    artifacts,
+    harness: await createHarness(options, behavior),
+  }
 }
 
 function xpcproxyIdentity(pid = 4242) {
@@ -313,6 +371,280 @@ function changedArgv(change) {
     return { argv }
   }
 }
+
+test("start-installed verifies and starts an exact promoted profile without rewriting artifacts", async (t) => {
+  const { options, harness, artifacts } = await withInstalledFixture(t)
+  const before = await Promise.all(artifacts.map(fileIdentity))
+  const result = await invokeInstalledStart(options, harness, {
+    approveRunAtLoad: true,
+  })
+  assert.equal(result.loaded, true)
+  assert.equal(result.pid, 4242)
+  assert.equal(result.launchCount, 1)
+  assert.equal(result.runAtLoad, true)
+  assert.equal(result.keepAlive, false)
+  assert.equal(result.runtimeRelease, options.expectedRuntimeRelease)
+  assert.equal(result.manifestSha256, options.expectedManifestSha256)
+  assert.equal(result.serviceConfigSha256, options.serviceConfigSha256)
+  assert.deepEqual(await Promise.all(artifacts.map(fileIdentity)), before)
+  assert.deepEqual(
+    harness.calls
+      .filter((call) => call[0] === "launchctl")
+      .slice(1, 4)
+      .map((call) => call[1]),
+    ["bootstrap", "print", "kickstart"],
+  )
+})
+
+test("start-installed requires explicit startup approval for RunAtLoad=true", async (t) => {
+  const { options, harness, artifacts } = await withInstalledFixture(t)
+  const before = await Promise.all(artifacts.map(fileIdentity))
+  await assert.rejects(
+    invokeInstalledStart(options, harness),
+    /requires --approve-run-at-load/,
+  )
+  assert.equal(harness.calls.some((call) => call[1] === "bootstrap"), false)
+  assert.deepEqual(await Promise.all(artifacts.map(fileIdentity)), before)
+})
+
+test("start-installed starts an exact RunAtLoad=false profile without boot approval", async (t) => {
+  const { options, harness } = await withInstalledFixture(t, {}, { runAtLoad: false })
+  const result = await invokeInstalledStart(options, harness)
+  assert.equal(result.loaded, true)
+  assert.equal(result.runAtLoad, false)
+  assert.equal(result.keepAlive, false)
+})
+
+test("start-installed rejects installed artifact and policy drift before bootstrap", async (t) => {
+  await t.test("canonical plist mismatch", async (t) => {
+    const { options, harness } = await withInstalledFixture(t)
+    await writeFile(
+      options.plistPath,
+      options.contents.replace(options.serviceConfigSha256, "f".repeat(64)),
+      { mode: 0o600 },
+    )
+    await assert.rejects(
+      invokeInstalledStart(options, harness, { approveRunAtLoad: true }),
+      /does not match canonical profile/,
+    )
+    assert.equal(harness.calls.some((call) => call[1] === "bootstrap"), false)
+  })
+
+  await t.test("mode mismatch", async (t) => {
+    const { options, harness } = await withInstalledFixture(t)
+    await chmod(options.plistPath, 0o644)
+    await assert.rejects(
+      invokeInstalledStart(options, harness, { approveRunAtLoad: true }),
+      /mode is not 0600/,
+    )
+    assert.equal(harness.calls.some((call) => call[1] === "bootstrap"), false)
+  })
+
+  await t.test("KeepAlive drift", async (t) => {
+    const { options, harness } = await withInstalledFixture(t)
+    const drifted = options.contents.replace(
+      "</dict>\n</plist>",
+      "  <key>KeepAlive</key>\n  <true/>\n</dict>\n</plist>",
+    )
+    await writeFile(options.plistPath, drifted, { mode: 0o600 })
+    await assert.rejects(
+      invokeInstalledStart(options, harness, { approveRunAtLoad: true }),
+      /forbids KeepAlive/,
+    )
+    assert.equal(harness.calls.some((call) => call[1] === "bootstrap"), false)
+  })
+
+  await t.test("auto-commit drift", async (t) => {
+    const { options, harness } = await withInstalledFixture(t)
+    const drifted = options.contents.replace(
+      "  </array>",
+      "    <string>--auto-commit</string>\n  </array>",
+    )
+    await writeFile(options.plistPath, drifted, { mode: 0o600 })
+    await assert.rejects(
+      invokeInstalledStart(options, harness, { approveRunAtLoad: true }),
+      /forbids service-wide auto-commit/,
+    )
+    assert.equal(harness.calls.some((call) => call[1] === "bootstrap"), false)
+  })
+})
+
+test("start-installed rejects coexistence before bootstrap", async (t) => {
+  await t.test("loaded target", async (t) => {
+    const { options, harness } = await withInstalledFixture(t, {
+      initiallyLoaded: true,
+    })
+    await assert.rejects(
+      invokeInstalledStart(options, harness, { approveRunAtLoad: true }),
+      /service is active/,
+    )
+    assert.equal(harness.calls.some((call) => call[1] === "bootstrap"), false)
+  })
+
+  await t.test("conflicting process tree", async (t) => {
+    const { options, harness } = await withInstalledFixture(t)
+    await assert.rejects(
+      startInstalledLaunchAgent({
+        ...options,
+        approveRunAtLoad: true,
+        processMatches: [{ pid: 9898 }],
+        run: harness.run,
+      }),
+      /process tree must stop/,
+    )
+    assert.equal(harness.calls.some((call) => call[1] === "bootstrap"), false)
+  })
+})
+
+test("start-installed uses strict xpcproxy, Node, argv, and health identity", async (t) => {
+  await t.test("same-PID xpcproxy transitions to exact Node", async (t) => {
+    const { options, harness } = await withInstalledFixture(t, {
+      processIdentitySequence: [xpcproxyIdentity(), ({ expected }) => expected],
+    })
+    const result = await invokeInstalledStart(options, harness, {
+      approveRunAtLoad: true,
+    })
+    assert.equal(result.loaded, true)
+    assert.equal(result.pid, 4242)
+  })
+
+  await t.test("persistent xpcproxy times out and cleans up", async (t) => {
+    const { options, harness } = await withInstalledFixture(t, {
+      processIdentity: xpcproxyIdentity(),
+    })
+    await assert.rejects(
+      invokeInstalledStart(options, harness, { approveRunAtLoad: true }),
+      /xpcproxy pre-exec/,
+    )
+    assert.equal(harness.state().loaded, false)
+  })
+
+  await t.test("wrong executable rejects", async (t) => {
+    const { options, harness } = await withInstalledFixture(t, {
+      processIdentity: {
+        executablePath: "/bin/zsh",
+        kernelExecutablePath: "/bin/zsh",
+      },
+    })
+    await assert.rejects(
+      invokeInstalledStart(options, harness, { approveRunAtLoad: true }),
+      /unexpected service executable/,
+    )
+    assert.equal(harness.state().loaded, false)
+  })
+
+  await t.test("wrong argv rejects", async (t) => {
+    const { options, harness } = await withInstalledFixture(t, {
+      processIdentity: changedArgv((argv) => {
+        argv[1] = "/tmp/foreign/repository-orchestrator.mjs"
+      }),
+    })
+    await assert.rejects(
+      invokeInstalledStart(options, harness, { approveRunAtLoad: true }),
+      /argv differs at index 1/,
+    )
+    assert.equal(harness.state().loaded, false)
+  })
+
+  await t.test("stale health never satisfies startup", async (t) => {
+    const { options, harness } = await withInstalledFixture(t, {
+      staleHealth: true,
+      healthOnKickstart: false,
+    })
+    await assert.rejects(
+      invokeInstalledStart(options, harness, { approveRunAtLoad: true }),
+      /health startup timed out/,
+    )
+    assert.equal(harness.state().loaded, false)
+  })
+
+  await t.test("health RunAtLoad mismatch rejects", async (t) => {
+    const { options, harness } = await withInstalledFixture(t, {
+      healthOverrides: { runAtLoad: false },
+    })
+    await assert.rejects(
+      invokeInstalledStart(options, harness, { approveRunAtLoad: true }),
+      /health runAtLoad identity mismatch/,
+    )
+    assert.equal(harness.state().loaded, false)
+  })
+})
+
+test("start-installed rejects immediate exit, PID drift, launch-count drift, and restart", async (t) => {
+  for (const [name, behavior, pattern] of [
+    ["immediate exit", { exitAfterPrint: 3 }, /exited/],
+    ["PID drift", { restartAfterPrint: 3 }, /PID changed/],
+    [
+      "launch-count drift",
+      { launchCountChangeAfterPrint: 3 },
+      /launch count changed/,
+    ],
+  ]) {
+    await t.test(name, async (t) => {
+      const { options, harness } = await withInstalledFixture(t, behavior)
+      await assert.rejects(
+        invokeInstalledStart(options, harness, { approveRunAtLoad: true }),
+        pattern,
+      )
+      assert.equal(harness.state().loaded, false)
+    })
+  }
+})
+
+test("start-installed failure cleanup preserves the exact promoted installation", async (t) => {
+  const { options, harness, artifacts } = await withInstalledFixture(t, {
+    kickstartFailure: true,
+  })
+  const before = await Promise.all(artifacts.map(fileIdentity))
+  await assert.rejects(
+    invokeInstalledStart(options, harness, { approveRunAtLoad: true }),
+    /service remains disabled.*kickstart failure/,
+  )
+  assert.equal(harness.state().loaded, false)
+  assert.deepEqual(await Promise.all(artifacts.map(fileIdentity)), before)
+  const installed = await readFile(options.plistPath, "utf8")
+  assert.deepEqual(
+    validateInstalledLaunchAgentPlist(installed, { approveRunAtLoad: true }),
+    { runAtLoad: true, keepAlive: false, autoCommit: false },
+  )
+})
+
+test("start-installed itself invokes no GitHub discovery, Codex turn, or Git operation", async (t) => {
+  const { root, options, harness } = await withInstalledFixture(t)
+  const issueStatePath = path.join(root, "state", "synthetic-issue", "state.json")
+  await mkdir(path.dirname(issueStatePath), { recursive: true })
+  await writeFile(issueStatePath, "immutable synthetic state\n")
+  const before = await fileIdentity(issueStatePath)
+  await invokeInstalledStart(options, harness, { approveRunAtLoad: true })
+  assert.deepEqual(await fileIdentity(issueStatePath), before)
+  assert.equal(
+    harness.calls.some((call) => new Set(["gh", "codex", "git"]).has(call[0])),
+    false,
+  )
+})
+
+test("isolated promoted-profile start-installed lifecycle leaves installation exact", async (t) => {
+  const { options, harness, artifacts } = await withInstalledFixture(t, {
+    processIdentitySequence: [xpcproxyIdentity(), ({ expected }) => expected],
+  })
+  const before = await Promise.all(artifacts.map(fileIdentity))
+  assert.deepEqual(harness.state(), {
+    loaded: false,
+    running: false,
+    pid: 4242,
+    launchCount: 0,
+  })
+  const started = await invokeInstalledStart(options, harness, {
+    approveRunAtLoad: true,
+  })
+  assert.equal(started.loaded, true)
+  await harness.run("launchctl", ["bootout", started.target], {
+    allowFailure: true,
+  })
+  assert.equal(harness.state().loaded, false)
+  assert.equal(harness.state().running, false)
+  assert.deepEqual(await Promise.all(artifacts.map(fileIdentity)), before)
+})
 
 test("start-once verifies bootstrap, kickstart, PID, health, and stability", async (t) => {
   const { options, harness } = await withFixture(t)

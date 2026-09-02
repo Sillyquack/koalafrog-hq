@@ -280,8 +280,8 @@ identity is idempotent and reports the runtime and plist as unchanged.
 The separate `install` command retains the explicit active-install path and may
 start only after the same preparation succeeds. It uses the same verified
 bootstrap, kickstart, PID, health-identity, and stability contract as
-`start-once`; bootstrap success alone is never sufficient. There is no flag or
-fallthrough from `install-disabled` to either active path.
+`start-once` and `start-installed`; bootstrap success alone is never sufficient.
+There is no flag or fallthrough from `install-disabled` to an active path.
 
 An already installed `RunAtLoad=false` profile has one explicit manual start:
 
@@ -319,6 +319,33 @@ plist, and hashed start evidence remain for diagnosis. The command never
 retries a start, enables `RunAtLoad`, adds `KeepAlive`, or restores an older
 runtime. Incomplete cleanup is a hard manual-recovery error.
 
+An exact already installed canonical profile, including a promoted
+`RunAtLoad=true` profile, has a separate no-install start path:
+
+```sh
+npm run orchestrator:service -- start-installed --approve-run-at-load
+```
+
+`start-installed` recomputes the canonical runtime, manifest, source, service
+configuration, and plist identities, verifies every installed payload hash and
+the mode-`0600` plist, and requires the target and conflicting process trees to
+be absent before launchd mutation. It then uses the same verified bootstrap,
+non-force kickstart, Darwin process, exact argv, fresh health, and stability
+primitive as the other active paths. It never materializes or replaces a
+runtime, rewrites or chmods the plist, changes policy, or falls back to
+`install`. Runtime and plist contents, hashes, modes, and mtimes therefore stay
+unchanged across both successful startup and fail-disabled cleanup.
+
+If the verified installed profile has `RunAtLoad=true`, `start-installed`
+requires `--approve-run-at-load`. In this command the flag authorizes only the
+explicit start of that already installed profile; it does not authorize an
+installation, rewrite, policy change, or retry. A `RunAtLoad=false` installed
+profile may be started without the flag. Expected health derives the
+`RunAtLoad` value from the exact installed/canonical profile rather than
+assuming the disabled policy. Startup failure preserves that valid installed
+profile while controlled bootout and bounded absence checks retain the existing
+fail-disabled guarantees.
+
 Without an explicit boot-persistence approval, the generated plist has
 `RunAtLoad=false`, no `KeepAlive`,
 `ExitTimeOut=90`, `ThrottleInterval=60`, `ProcessType=Background`, and
@@ -344,8 +371,9 @@ service-disabled unless an owner separately approves a future restore mechanism.
 Service promotion therefore has four independent owner gates:
 
 1. `install-disabled` authorizes artifact installation only.
-2. `start-once` authorizes one manual launchd activation of the installed
-   `RunAtLoad=false` profile.
+2. `start-once` or `start-installed` authorizes one verified manual launchd
+   activation of the exact installed profile; a promoted `RunAtLoad=true`
+   profile additionally requires startup-only `--approve-run-at-load`.
 3. Applying the required watcher label authorizes execution of that issue.
 4. `RunAtLoad=true` is a separate later authorization for boot/login
    persistence.

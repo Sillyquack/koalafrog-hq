@@ -12,6 +12,7 @@ import {
   installAndStartLaunchAgent,
   launchAgentLabel,
   launchAgentStatus,
+  startInstalledLaunchAgent,
   startOnceLaunchAgent,
   uninstallLaunchAgent,
   validateLaunchAgentInputs,
@@ -54,6 +55,7 @@ function parse(argv) {
     !new Set([
       "install",
       "install-disabled",
+      "start-installed",
       "start-once",
       "uninstall",
       "status",
@@ -92,6 +94,7 @@ function parse(argv) {
     model: null,
     requiredLabel: "koalafrog-orchestrator",
     runAtLoad: false,
+    approveRunAtLoad: false,
     keepAlive: false,
     exitTimeOut: 90,
     throttleInterval: 60,
@@ -176,6 +179,7 @@ function parse(argv) {
         break
       case "--approve-run-at-load":
         config.runAtLoad = true
+        config.approveRunAtLoad = true
         break
       case "--startup-timeout-ms":
         config.startupTimeoutMs = positiveInteger(take(), arg)
@@ -202,7 +206,7 @@ function parse(argv) {
   config.healthPath = path.join(config.stateDirectory, "watcher-v2-health.json")
   if (
     new Set(["install-disabled", "start-once"]).has(config.command) &&
-    config.runAtLoad
+    config.approveRunAtLoad
   ) {
     throw new Error(`${config.command} rejects --approve-run-at-load`)
   }
@@ -214,6 +218,7 @@ const help = `Koalafrog orchestrator macOS LaunchAgent
 Usage:
   node tools/orchestrator/bin/orchestrator-service.mjs install [options]
   node tools/orchestrator/bin/orchestrator-service.mjs install-disabled [options]
+  node tools/orchestrator/bin/orchestrator-service.mjs start-installed [options]
   node tools/orchestrator/bin/orchestrator-service.mjs start-once [options]
   node tools/orchestrator/bin/orchestrator-service.mjs status
   node tools/orchestrator/bin/orchestrator-service.mjs uninstall
@@ -239,8 +244,8 @@ Options:
   --max-tasks-per-poll number Bounded claimed tasks per poll
   --model model               Optional explicit Codex model
   --required-label label      Required persistent-watch opt-in label
-  --approve-run-at-load       Explicit post-canary owner-approved boot start
-  --startup-timeout-ms number Bounded start-once PID/health deadline
+  --approve-run-at-load       Explicit RunAtLoad install/start authorization
+  --startup-timeout-ms number Bounded verified-start PID/health deadline
   --startup-stability-ms num  Post-health process stability window
   --startup-cleanup-timeout-ms num  Fail-disabled bootout deadline
 
@@ -250,6 +255,9 @@ RunAtLoad=false plist without bootstrap, load, kickstart, or watcher execution.
 start-once verifies that installed profile, bootstraps and kickstarts it once,
 and succeeds only after exact PID/health identity remains stable. Any startup
 failure is booted out and leaves the installed profile disabled.
+start-installed verifies and starts an exact already installed canonical profile
+without rewriting it. RunAtLoad=true requires --approve-run-at-load as startup
+authorization; the flag does not authorize artifact installation or rewriting.
 Failed installation leaves the service disabled and preserves diagnostics.
 `
 
@@ -313,7 +321,7 @@ async function main() {
   }
   await validateLaunchAgentInputs(config)
   const runtime =
-    config.command === "start-once"
+    new Set(["start-once", "start-installed"]).has(config.command)
       ? await verifyRuntimeRelease(runtimePlan)
       : await materializeRuntimeRelease(runtimePlan)
   await validateLaunchAgentInputs(serviceConfig)
@@ -326,7 +334,9 @@ async function main() {
       ? installDisabledLaunchAgent
       : config.command === "start-once"
         ? startOnceLaunchAgent
-        : installAndStartLaunchAgent
+        : config.command === "start-installed"
+          ? startInstalledLaunchAgent
+          : installAndStartLaunchAgent
   const result = await install({
     ...serviceConfig,
     contents,
@@ -340,7 +350,9 @@ async function main() {
         ? "disabled"
         : config.command === "start-once"
           ? "start-once"
-          : "active",
+          : config.command === "start-installed"
+            ? "start-installed"
+            : "active",
     runtimeStatus: runtime.status,
     runtimeRelease: runtime.releaseDirectory,
     runtimeManifestSha256: manifestSha256,

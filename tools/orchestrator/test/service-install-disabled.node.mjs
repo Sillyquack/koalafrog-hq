@@ -177,6 +177,17 @@ function assertNeverActivated(trace) {
   assert.doesNotMatch(trace, /^gh /m)
 }
 
+async function fileIdentity(filePath) {
+  const contents = await readFile(filePath)
+  const metadata = await stat(filePath)
+  return {
+    sha256: createHash("sha256").update(contents).digest("hex"),
+    size: metadata.size,
+    mode: metadata.mode & 0o777,
+    mtimeMs: metadata.mtimeMs,
+  }
+}
+
 test("install-disabled CLI materializes an immutable runtime and remains unloaded", async (t) => {
   const root = await mkdtemp(path.join(os.tmpdir(), "koalafrog-install-disabled-"))
   t.after(() => rm(root, { recursive: true, force: true }))
@@ -374,4 +385,94 @@ test("start-once CLI is separate, rejects boot approval, and fails disabled", as
   assert.match(trace, /launchctl bootout /)
   assert.doesNotMatch(trace, /^codex /m)
   assert.doesNotMatch(trace, /^gh /m)
+})
+
+test("start-installed CLI requires approval for an exact promoted profile and never reinstalls it", async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "koalafrog-start-installed-cli-"))
+  t.after(() => rm(root, { recursive: true, force: true }))
+  const checkoutPath = await createSyntheticCoordinator(root)
+  const system = await createFakeSystem(root)
+  const paths = installPaths(root, "start-installed")
+
+  const installed = JSON.parse(
+    (await invokeService({ checkoutPath, system, paths })).stdout,
+  )
+  const promoted = await invokeService({
+    checkoutPath,
+    system,
+    paths,
+    command: "render",
+    extraArgs: ["--approve-run-at-load"],
+  })
+  await writeFile(paths.plistPath, promoted.stdout, { mode: 0o600 })
+  const manifestPath = path.join(installed.runtimeRelease, "manifest.json")
+  const before = {
+    plist: await fileIdentity(paths.plistPath),
+    manifest: await fileIdentity(manifestPath),
+  }
+
+  await assert.rejects(
+    invokeService({
+      checkoutPath,
+      system,
+      paths,
+      command: "start-installed",
+    }),
+    /requires --approve-run-at-load/,
+  )
+  assertNeverActivated(await readFile(paths.tracePath, "utf8"))
+  assert.deepEqual(await fileIdentity(paths.plistPath), before.plist)
+  assert.deepEqual(await fileIdentity(manifestPath), before.manifest)
+
+  await assert.rejects(
+    invokeService({
+      checkoutPath,
+      system,
+      paths,
+      command: "start-installed",
+      launchctlMode: "post-loaded",
+      extraArgs: [
+        "--approve-run-at-load",
+        "--startup-timeout-ms",
+        "20",
+        "--startup-stability-ms",
+        "5",
+      ],
+    }),
+    /service remains disabled/,
+  )
+  const trace = await readFile(paths.tracePath, "utf8")
+  assert.match(trace, /launchctl bootstrap /)
+  assert.match(trace, /launchctl kickstart -p /)
+  assert.match(trace, /launchctl bootout /)
+  assert.doesNotMatch(trace, /^gh /m)
+  assert.doesNotMatch(trace, /^codex /m)
+  assert.deepEqual(await fileIdentity(paths.plistPath), before.plist)
+  assert.deepEqual(await fileIdentity(manifestPath), before.manifest)
+})
+
+test("start-installed CLI rejects an altered runtime manifest before launchctl mutation", async (t) => {
+  const root = await mkdtemp(path.join(os.tmpdir(), "koalafrog-start-installed-cli-"))
+  t.after(() => rm(root, { recursive: true, force: true }))
+  const checkoutPath = await createSyntheticCoordinator(root)
+  const system = await createFakeSystem(root)
+  const paths = installPaths(root, "manifest-drift")
+
+  const installed = JSON.parse(
+    (await invokeService({ checkoutPath, system, paths })).stdout,
+  )
+  const manifestPath = path.join(installed.runtimeRelease, "manifest.json")
+  await writeFile(manifestPath, "{}\n", { mode: 0o600 })
+  const before = await fileIdentity(manifestPath)
+  await assert.rejects(
+    invokeService({
+      checkoutPath,
+      system,
+      paths,
+      command: "start-installed",
+    }),
+    /immutable runtime manifest was modified/,
+  )
+  assert.deepEqual(await fileIdentity(manifestPath), before)
+  assertNeverActivated(await readFile(paths.tracePath, "utf8"))
 })
