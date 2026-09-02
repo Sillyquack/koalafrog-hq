@@ -1027,6 +1027,7 @@ export function recordCompletedTurnResult(
 const commandCancellationReasons = new Set([
   "turn_timeout",
   "command_start_budget_exhausted",
+  "shutdown_requested",
 ])
 const commandTerminalStatuses = new Set([
   "completed",
@@ -1049,6 +1050,43 @@ function commandCancellationBindingMatches(state, record) {
       state.activeInstruction.turnId === record?.turnId &&
       state.threadId === record?.threadId,
   )
+}
+
+function shutdownCommandTerminalityPending(error, state, signal) {
+  const record = state.activeInstruction?.commandTerminality ?? null
+  const itemIds = Array.isArray(error?.itemIds)
+    ? [...error.itemIds].sort()
+    : null
+  return Boolean(
+    signal?.aborted &&
+      error?.code === "COMMAND_TERMINALITY_PENDING" &&
+      record?.reason === "shutdown_requested" &&
+      record.status === "terminality_pending" &&
+      commandCancellationBindingMatches(state, record) &&
+      error.threadId === record.threadId &&
+      error.turnId === record.turnId &&
+      error.requestedAt === record.requestedAt &&
+      error.drainDeadlineAt === record.drainDeadlineAt &&
+      itemIds &&
+      JSON.stringify(itemIds) === JSON.stringify(record.itemIds),
+  )
+}
+
+function watcherShutdownPendingTerminalityError(error) {
+  const shutdown = new Error(
+    "Watcher shutdown requested while command terminality remains pending",
+    { cause: error },
+  )
+  shutdown.name = "AbortError"
+  shutdown.code = "WATCHER_SHUTDOWN"
+  shutdown.commandTerminalityPending = {
+    threadId: error.threadId,
+    turnId: error.turnId,
+    itemIds: [...error.itemIds].sort(),
+    requestedAt: error.requestedAt,
+    drainDeadlineAt: error.drainDeadlineAt,
+  }
+  return shutdown
 }
 
 function sameCommandCancellationBinding(left, right) {
@@ -2451,6 +2489,11 @@ export class Orchestrator {
             instructionId: instruction.instructionId,
           })
         },
+      }).catch((error) => {
+        if (shutdownCommandTerminalityPending(error, state, signal)) {
+          throw watcherShutdownPendingTerminalityError(error)
+        }
+        throw error
       })
       if (!result.appServerFailure && state.activeInstruction?.turnId) {
         const eventId = appServerFailureEventId(

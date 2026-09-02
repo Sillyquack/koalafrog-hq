@@ -154,6 +154,12 @@ migration behavior. Older runtimes reject schema 13.
 Transient instruction/claim failures back off for 1, 2, 4, then 8 minutes and
 quarantine on failure five within 24 hours. Permanent checkout, provenance,
 task-shape, and deterministic configuration errors quarantine immediately.
+`shutdown_requested` is an explicit durable command-cancellation reason for an
+active turn interrupted by orchestration shutdown. It follows the bounded
+shutdown settlement/restart-reconciliation path and does not increment an
+instruction queue failure count solely because terminal command evidence is
+still pending. The original thread, turn, and active-instruction provenance are
+preserved; arbitrary cancellation strings remain invalid.
 Unchanged checkpoint-rejection evidence receives no execution retry; changed
 evidence receives at most one, then quarantines. Result publication retries the
 same durable packet after 1, 2, 4, 8, and 15 minutes and never starts another
