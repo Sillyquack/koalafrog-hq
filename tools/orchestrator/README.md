@@ -509,5 +509,11 @@ npm run schema:ts
   terminal proof. If terminality remains unprovable or evidence conflicts, the
   existing instruction is durably finalized for review without retry,
   auto-commit, reset, or worktree cleanup.
+- Controlled shutdown records `shutdown_requested` as an explicit, allowlisted
+  command-cancellation reason. It is shutdown-settlement evidence, not a
+  transient instruction failure: if authoritative terminal evidence is still
+  pending, the queue claim is released without incrementing its failure count
+  and restart reconciliation remains bound to the original thread and turn.
+  Unknown cancellation reasons remain invalid.
 - Durable history plus GitHub result comments consume each `instruction_id` at
   most once unless an audited local retry marker explicitly reopens it.
