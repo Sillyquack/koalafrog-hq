@@ -412,6 +412,33 @@ export function validateDisabledLaunchAgentPlist(contents) {
   return contents
 }
 
+export function validateInstalledLaunchAgentPlist(
+  contents,
+  { approveRunAtLoad = false } = {},
+) {
+  const runAtLoadEntries =
+    typeof contents === "string"
+      ? [...contents.matchAll(/<key>RunAtLoad<\/key>\s*<(true|false)\/>/g)]
+      : []
+  if (runAtLoadEntries.length !== 1) {
+    throw new Error("Installed LaunchAgent profile requires exactly one RunAtLoad value")
+  }
+  const runAtLoad = runAtLoadEntries[0][1] === "true"
+  if (runAtLoad && !approveRunAtLoad) {
+    throw new Error(
+      "Starting an installed RunAtLoad=true profile requires --approve-run-at-load",
+    )
+  }
+  if (/<key>KeepAlive<\/key>/.test(contents)) {
+    throw new Error("Installed LaunchAgent profile forbids KeepAlive")
+  }
+  const arguments_ = parseLaunchAgentProgramArguments(contents)
+  if (arguments_.includes("--auto-commit")) {
+    throw new Error("Installed LaunchAgent profile forbids service-wide auto-commit")
+  }
+  return Object.freeze({ runAtLoad, keepAlive: false, autoCommit: false })
+}
+
 export function parseLaunchAgentPrint(contents) {
   const value = typeof contents === "string" ? contents : ""
   const number = (pattern) => {
@@ -936,6 +963,8 @@ async function cleanupFailedStart({
   evidenceDirectory,
   cleanupTimeoutMs,
   removePlistOnFailure,
+  validatePreservedPlist = validateDisabledLaunchAgentPlist,
+  preservedPlistKind = "disabled",
   startEvidence,
 }) {
   const failures = []
@@ -1000,10 +1029,12 @@ async function cleanupFailedStart({
   } else {
     try {
       const installed = await readFile(plistPath, "utf8")
-      if (installed !== contents) failures.push("installed disabled plist drifted")
-      validateDisabledLaunchAgentPlist(installed)
+      if (installed !== contents) {
+        failures.push(`installed ${preservedPlistKind} plist drifted`)
+      }
+      validatePreservedPlist(installed)
     } catch (error) {
-      failures.push(`disabled plist preservation: ${error.message}`)
+      failures.push(`${preservedPlistKind} plist preservation: ${error.message}`)
     }
   }
   if (failures.length > 0) {
@@ -1031,6 +1062,8 @@ async function verifiedLaunchAgentStart({
   stabilityWindowMs,
   cleanupTimeoutMs,
   removePlistOnFailure,
+  validatePreservedPlist,
+  preservedPlistKind,
   expectedHealth,
   inspectProcessIdentity,
 }) {
@@ -1282,6 +1315,8 @@ async function verifiedLaunchAgentStart({
         evidenceDirectory,
         cleanupTimeoutMs,
         removePlistOnFailure,
+        validatePreservedPlist,
+        preservedPlistKind,
         startEvidence: evidence,
       })
     } catch (cleanupError) {
@@ -1301,7 +1336,7 @@ async function verifiedLaunchAgentStart({
   }
 }
 
-export async function startOnceLaunchAgent({
+async function startExistingLaunchAgent({
   label = launchAgentLabel,
   plistPath,
   contents,
@@ -1330,8 +1365,10 @@ export async function startOnceLaunchAgent({
   startupTimeoutMs = defaultServiceStartupTimeoutMs,
   stabilityWindowMs = defaultServiceStabilityWindowMs,
   cleanupTimeoutMs = defaultServiceCleanupTimeoutMs,
+  validateProfile,
+  preservedPlistKind,
 }) {
-  validateDisabledLaunchAgentPlist(contents)
+  const canonicalProfile = validateProfile(contents)
   for (const [name, value] of Object.entries({
     startupTimeoutMs,
     stabilityWindowMs,
@@ -1342,8 +1379,15 @@ export async function startOnceLaunchAgent({
     }
   }
   const installed = await readFile(plistPath, "utf8")
+  const installedProfile = validateProfile(installed)
   if (installed !== contents) {
     throw new Error("Installed LaunchAgent plist does not match canonical profile")
+  }
+  if (
+    installedProfile.runAtLoad !== canonicalProfile.runAtLoad ||
+    installedProfile.keepAlive !== canonicalProfile.keepAlive
+  ) {
+    throw new Error("Installed LaunchAgent policy does not match canonical profile")
   }
   if (((await stat(plistPath)).mode & 0o777) !== 0o600) {
     throw new Error("Installed LaunchAgent plist mode is not 0600")
@@ -1375,6 +1419,8 @@ export async function startOnceLaunchAgent({
     stabilityWindowMs,
     cleanupTimeoutMs,
     removePlistOnFailure: false,
+    validatePreservedPlist: validateProfile,
+    preservedPlistKind,
     expectedHealth: expectedStartupHealth({
       label,
       expectedRuntimeRelease,
@@ -1385,11 +1431,34 @@ export async function startOnceLaunchAgent({
       checkoutPath,
       serviceConfigSha256,
       requiredLabel,
-      runAtLoad: false,
-      keepAlive: false,
+      runAtLoad: installedProfile.runAtLoad,
+      keepAlive: installedProfile.keepAlive,
       pollMs,
       maxTasksPerPoll,
     }),
+  })
+}
+
+export async function startOnceLaunchAgent(options) {
+  return startExistingLaunchAgent({
+    ...options,
+    validateProfile: (contents) => {
+      validateDisabledLaunchAgentPlist(contents)
+      return Object.freeze({ runAtLoad: false, keepAlive: false, autoCommit: false })
+    },
+    preservedPlistKind: "disabled",
+  })
+}
+
+export async function startInstalledLaunchAgent({
+  approveRunAtLoad = false,
+  ...options
+}) {
+  return startExistingLaunchAgent({
+    ...options,
+    validateProfile: (contents) =>
+      validateInstalledLaunchAgentPlist(contents, { approveRunAtLoad }),
+    preservedPlistKind: "installed",
   })
 }
 

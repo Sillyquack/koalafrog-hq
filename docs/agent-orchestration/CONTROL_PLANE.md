@@ -190,7 +190,7 @@ coexistence checks, and atomically installs a mode-`0600`, `RunAtLoad=false`
 plist without `KeepAlive`. It never invokes `bootstrap`, `kickstart`, or `load`,
 and rejects `--approve-run-at-load`.
 
-`start-once` is the only supported manual activation of that already installed
+`start-once` is the supported manual activation of an already installed
 disabled profile. It verifies the canonical checkout, immutable release, exact
 generated plist hash and mode, absence of the launchd target and conflicting
 process trees, then performs one `bootstrap` followed by non-force
@@ -216,6 +216,28 @@ Incomplete cleanup is a hard manual-recovery state. The legacy-named `install`
 active path routes through the same verified primitive and has no weaker
 bootstrap-only success condition.
 
+`start-installed` is the supported explicit activation of an exact already
+installed canonical profile when no artifact refresh is required. Unlike
+`install`, it never materializes a runtime, writes or chmods a plist, changes
+`RunAtLoad`/`KeepAlive`, or falls back to installation. It verifies the clean
+canonical coordinator, the complete installed immutable runtime and manifest,
+the exact canonical rendered plist and service-configuration digest, mode
+`0600`, required label, polling policy, absent `KeepAlive`, disabled global
+auto-commit, and launchd/process coexistence before bootstrap. It then delegates
+to the same bootstrap, non-force `kickstart -p`, same-PID xpcproxy transition,
+strict Node/argv, fresh health, stable PID/launch-count, and bounded stability
+primitive used by the reviewed active paths.
+
+For an installed `RunAtLoad=true` profile, the exact command must include
+`--approve-run-at-load`. Within `start-installed` that flag is startup
+authorization only: it does not permit artifact installation, replacement,
+policy change, persistence change, or automatic retry. A verified
+`RunAtLoad=false` profile may start without it. Health expectations derive
+`runAtLoad` from the exact verified installed/canonical profile. Any failure
+performs controlled bootout and bounded target/process absence verification
+while retaining the pre-existing runtime and plist unchanged; cleanup never
+deletes or downgrades that valid installed profile.
+
 Disabled installation proves the launchd target and watcher/broker process tree
 remain absent after plist readback. Any failure after a write preserves the
 attempted and prior inactive plist evidence, removes the active plist, and
@@ -226,7 +248,9 @@ Installing artifacts, starting once, enrolling an issue, and authorizing boot
 persistence are four separate gates:
 
 - `install-disabled` installs artifacts only;
-- `start-once` manually starts a `RunAtLoad=false` profile once;
+- `start-once` starts an installed `RunAtLoad=false` profile once, while
+  `start-installed` starts any exact installed canonical profile and requires
+  startup-only `--approve-run-at-load` when that profile has `RunAtLoad=true`;
 - applying the required watcher label authorizes issue execution;
 - explicit `RunAtLoad=true` approval authorizes later boot/login persistence.
 
