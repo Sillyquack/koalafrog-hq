@@ -18,6 +18,18 @@ import { currentStateSchemaVersion } from "./state-store.mjs"
 const instructionIdPattern = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/
 const digestPattern = /^[0-9a-f]{64}$/
 const ownerApprovalDecisionTtlMs = 24 * 60 * 60 * 1_000
+const terminalCloseoutStateSchemaCompatibility = new Map([
+  [12, new Set([12, 13])],
+  [13, new Set([13])],
+])
+const schema13AdditiveLedgerNames = [
+  "instructionQuarantines",
+  "quarantineReopens",
+  "watcherNotifications",
+  "watcherNotificationDeliveries",
+  "checkpointRecoveryRejections",
+  "commitAuthorizationReceipts",
+]
 
 function rejected(code, details = {}) {
   return { accepted: false, rejection: { code, ...details } }
@@ -60,6 +72,38 @@ function terminalCloseoutIdentity(binding) {
   )}`
 }
 
+function supportedHistoricalStateSchema(expectedSchemaVersion) {
+  return Boolean(
+    Number.isSafeInteger(expectedSchemaVersion) &&
+      expectedSchemaVersion <= currentStateSchemaVersion &&
+      terminalCloseoutStateSchemaCompatibility.has(expectedSchemaVersion),
+  )
+}
+
+function terminalCloseoutStateSchemaIsCompatible(record, state) {
+  const compatibleStateSchemas =
+    terminalCloseoutStateSchemaCompatibility.get(record.expectedSchemaVersion)
+  if (
+    !compatibleStateSchemas?.has(state.schemaVersion) ||
+    state.schemaVersion > currentStateSchemaVersion
+  ) {
+    return false
+  }
+  if (record.expectedSchemaVersion !== 12) return true
+  if (state.schemaVersion === 12) {
+    return schema13AdditiveLedgerNames.every(
+      (name) => !Object.hasOwn(state, name),
+    )
+  }
+  return Boolean(
+    state.schemaVersion === 13 &&
+      state.stateRevision > record.committedStateRevision &&
+      schema13AdditiveLedgerNames.every(
+        (name) => Array.isArray(state[name]) && state[name].length === 0,
+      ),
+  )
+}
+
 function basicRecordIsValid(record) {
   return Boolean(
     record?.schemaVersion === 1 &&
@@ -75,7 +119,7 @@ function basicRecordIsValid(record) {
       digestPattern.test(record.closeoutControlDigest ?? "") &&
       record.priorTaskState === "needs_review" &&
       record.terminalState === "done" &&
-      record.expectedSchemaVersion === currentStateSchemaVersion &&
+      supportedHistoricalStateSchema(record.expectedSchemaVersion) &&
       Number.isSafeInteger(record.expectedStateRevision) &&
       record.expectedStateRevision >= 0 &&
       record.committedStateRevision === record.expectedStateRevision + 1 &&
@@ -151,7 +195,7 @@ export function validateTerminalCloseoutRecord(
   }
   if (state) {
     if (
-      state.schemaVersion !== currentStateSchemaVersion ||
+      !terminalCloseoutStateSchemaIsCompatible(record, state) ||
       state.status !== "done" ||
       state.activeInstruction !== null ||
       state.lastConsumedInstructionId !== record.closeoutInstructionId ||

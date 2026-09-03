@@ -1,5 +1,5 @@
 import assert from "node:assert/strict"
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
 import test from "node:test"
@@ -284,6 +284,83 @@ function decide(input = fixture()) {
     claimRecords: input.claimRecords,
     now: closeoutTime,
   })
+}
+
+const schema13AdditiveLedgerNames = [
+  "instructionQuarantines",
+  "quarantineReopens",
+  "watcherNotifications",
+  "watcherNotificationDeliveries",
+  "checkpointRecoveryRejections",
+  "commitAuthorizationReceipts",
+]
+
+function fixtureCloseoutIdentity(binding) {
+  return `task-terminal-closeout:${controlPlaneBindingDigest(
+    JSON.stringify([
+      1,
+      binding.issueNumber,
+      binding.originIssueUrl,
+      binding.closeoutInstructionId,
+      binding.closeoutControlIndex,
+      binding.closeoutControlDigest,
+      binding.priorTaskState,
+      binding.terminalState,
+      binding.expectedStateRevision,
+      binding.committedStateRevision,
+      binding.expectedLastConsumedInstructionId,
+      binding.retiredInstructionIds,
+      binding.retiredControls,
+      binding.approvalTombstones,
+      binding.githubIssueState,
+      binding.githubIssueUpdatedAt,
+      binding.claimInspectionDigest,
+    ]),
+  )}`
+}
+
+function closedStateFixture({
+  targetIssueNumber = issueNumber,
+  expectedSchemaVersion = currentStateSchemaVersion,
+  stateSchemaVersion = expectedSchemaVersion,
+} = {}) {
+  const input = fixture({ supersessionRevision: 1_496, finalRevision: 1_498 })
+  const decision = decide(input)
+  const record = recordTerminalCloseout(input.state, decision.value, {
+    now: closeoutTime,
+  })
+  input.state.stateRevision = record.committedStateRevision
+  const targetIssueUrl = `https://github.com/${repository}/issues/${targetIssueNumber}`
+  record.issueNumber = targetIssueNumber
+  record.originIssueUrl = targetIssueUrl
+  record.expectedSchemaVersion = expectedSchemaVersion
+  record.closeoutId = fixtureCloseoutIdentity(record)
+  input.state.schemaVersion = stateSchemaVersion
+  input.state.task.issueNumber = targetIssueNumber
+  input.state.task.originIssueNumber = targetIssueNumber
+  input.state.task.originIssueUrl = targetIssueUrl
+  for (const pending of input.state.pendingApprovalRequests) {
+    pending.terminalCloseoutId = record.closeoutId
+  }
+  if (stateSchemaVersion === 12) {
+    for (const name of schema13AdditiveLedgerNames) delete input.state[name]
+  } else if (expectedSchemaVersion === 12 && stateSchemaVersion === 13) {
+    input.state.stateRevision = record.committedStateRevision + 1
+  }
+  return { state: input.state, record }
+}
+
+async function persistRawState(directory, state) {
+  const taskDirectory = path.join(
+    directory,
+    `${repository.replaceAll("/", "-")}-issue-${state.task.originIssueNumber}`,
+  )
+  await mkdir(taskDirectory, { recursive: true })
+  const statePath = path.join(taskDirectory, "state.json")
+  await writeFile(statePath, `${JSON.stringify(state, null, 2)}\n`, {
+    mode: 0o600,
+  })
+  return { taskDirectory, statePath }
 }
 
 function rejectAfter(mutator, code) {
@@ -628,6 +705,222 @@ test("audit reconstruction after a committed CAS is idempotent", async (t) => {
   const events = await store.readEvents()
   assert.equal(events.length, terminalCloseoutAuditEvents(record).length)
   assert.equal(new Set(events.map((event) => event.eventId)).size, events.length)
+})
+
+test("Issue-70-shaped schema-12 closeout remains valid immutable audit evidence", () => {
+  const historical = closedStateFixture({
+    expectedSchemaVersion: 12,
+    stateSchemaVersion: 12,
+  })
+  const before = structuredClone(historical.state)
+  assert.equal(historical.state.stateRevision, 1_499)
+  assert.equal(historical.record.expectedSchemaVersion, 12)
+  assert.equal(
+    validateTerminalCloseoutRecord(historical.record, {
+      state: historical.state,
+    }),
+    historical.record,
+  )
+  assert.deepEqual(historical.state, before)
+  assert.equal(terminalCloseoutAuditEvents(historical.record).length, 5)
+
+  const migrated = closedStateFixture({
+    expectedSchemaVersion: 12,
+    stateSchemaVersion: 13,
+  })
+  assert.equal(migrated.state.stateRevision, 1_500)
+  assert.equal(
+    validateTerminalCloseoutRecord(migrated.record, {
+      state: migrated.state,
+    }),
+    migrated.record,
+  )
+})
+
+test("terminal-closeout schema compatibility is explicit and fails closed at every version boundary", () => {
+  for (const expectedSchemaVersion of [0, -1, 11, 12.5, 14]) {
+    const input = closedStateFixture()
+    input.record.expectedSchemaVersion = expectedSchemaVersion
+    input.record.closeoutId = fixtureCloseoutIdentity(input.record)
+    assert.throws(
+      () => validateTerminalCloseoutRecord(input.record),
+      /record is malformed/i,
+    )
+  }
+
+  const schema12WithCurrentProvenance = closedStateFixture({
+    expectedSchemaVersion: 12,
+    stateSchemaVersion: 12,
+  })
+  schema12WithCurrentProvenance.state.instructionQuarantines = []
+  assert.throws(
+    () =>
+      validateTerminalCloseoutRecord(schema12WithCurrentProvenance.record, {
+        state: schema12WithCurrentProvenance.state,
+      }),
+    /state binding drifted/i,
+  )
+
+  const migratedWithActivity = closedStateFixture({
+    expectedSchemaVersion: 12,
+    stateSchemaVersion: 13,
+  })
+  migratedWithActivity.state.instructionQuarantines.push({
+    instructionId: "foreign-schema-13-provenance",
+  })
+  assert.throws(
+    () =>
+      validateTerminalCloseoutRecord(migratedWithActivity.record, {
+        state: migratedWithActivity.state,
+      }),
+    /state binding drifted/i,
+  )
+
+  const uncommittedMigration = closedStateFixture({
+    expectedSchemaVersion: 12,
+    stateSchemaVersion: 13,
+  })
+  uncommittedMigration.state.stateRevision =
+    uncommittedMigration.record.committedStateRevision
+  assert.throws(
+    () =>
+      validateTerminalCloseoutRecord(uncommittedMigration.record, {
+        state: uncommittedMigration.state,
+      }),
+    /state binding drifted/i,
+  )
+
+  const downgraded = closedStateFixture({
+    expectedSchemaVersion: 13,
+    stateSchemaVersion: 13,
+  })
+  downgraded.state.schemaVersion = 12
+  for (const name of schema13AdditiveLedgerNames) delete downgraded.state[name]
+  assert.throws(
+    () =>
+      validateTerminalCloseoutRecord(downgraded.record, {
+        state: downgraded.state,
+      }),
+    /state binding drifted/i,
+  )
+})
+
+test("current schema-13 closeout validation retains strict identity, revision, and terminal bindings", () => {
+  const valid = closedStateFixture()
+  assert.equal(
+    validateTerminalCloseoutRecord(valid.record, { state: valid.state }),
+    valid.record,
+  )
+  for (const mutate of [
+    ({ record }) => { record.terminalState = "failed" },
+    ({ record }) => { record.closeoutInstructionId = "wrong-instruction" },
+    ({ record }) => { record.issueNumber += 1 },
+    ({ record }) => { record.committedStateRevision += 1 },
+    ({ state }) => { state.status = "needs_review" },
+    ({ state }) => { state.task.originIssueNumber += 1 },
+  ]) {
+    const input = closedStateFixture()
+    mutate(input)
+    assert.throws(
+      () => validateTerminalCloseoutRecord(input.record, { state: input.state }),
+      /malformed|identity is invalid|binding drifted/i,
+    )
+  }
+})
+
+test("global terminal-closeout audit replays mixed schema-12 and schema-13 history without state migration", async (t) => {
+  const directory = await mkdtemp(
+    path.join(os.tmpdir(), "koalafrog-mixed-closeout-audit-"),
+  )
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const historical = closedStateFixture({
+    targetIssueNumber: 70,
+    expectedSchemaVersion: 12,
+    stateSchemaVersion: 12,
+  })
+  const current = closedStateFixture({
+    targetIssueNumber: 71,
+    expectedSchemaVersion: 13,
+    stateSchemaVersion: 13,
+  })
+  const ordinary = initialState({
+    repository,
+    issueNumber: 72,
+    issueUrl: `https://github.com/${repository}/issues/72`,
+  })
+  const historicalPath = await persistRawState(directory, historical.state)
+  const currentPath = await persistRawState(directory, current.state)
+  const ordinaryPath = await persistRawState(directory, ordinary)
+  const before = await Promise.all(
+    [historicalPath, currentPath, ordinaryPath].map(({ statePath }) =>
+      readFile(statePath, "utf8"),
+    ),
+  )
+
+  const config = { stateDirectory: directory, repository }
+  assert.deepEqual(
+    await reconcilePersistedTerminalCloseoutAudits(config),
+    [70, 71],
+  )
+  assert.deepEqual(
+    await reconcilePersistedTerminalCloseoutAudits(config),
+    [70, 71],
+  )
+  const after = await Promise.all(
+    [historicalPath, currentPath, ordinaryPath].map(({ statePath }) =>
+      readFile(statePath, "utf8"),
+    ),
+  )
+  assert.deepEqual(after, before)
+  for (const { taskDirectory } of [historicalPath, currentPath]) {
+    const events = (await readFile(
+      path.join(taskDirectory, "events.jsonl"),
+      "utf8",
+    ))
+      .split("\n")
+      .filter(Boolean)
+      .map(JSON.parse)
+    assert.equal(events.length, 5)
+    assert.equal(new Set(events.map((event) => event.eventId)).size, 5)
+  }
+  await assert.rejects(
+    readFile(path.join(ordinaryPath.taskDirectory, "events.jsonl"), "utf8"),
+    { code: "ENOENT" },
+  )
+  await assert.rejects(
+    readFile(path.join(directory, "repository-queue"), "utf8"),
+    { code: "ENOENT" },
+  )
+})
+
+test("global terminal-closeout audit rejects an invalid historical version without rewriting state", async (t) => {
+  const directory = await mkdtemp(
+    path.join(os.tmpdir(), "koalafrog-invalid-closeout-audit-"),
+  )
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const invalid = closedStateFixture({
+    expectedSchemaVersion: 12,
+    stateSchemaVersion: 12,
+  })
+  invalid.record.expectedSchemaVersion = 11
+  invalid.record.closeoutId = fixtureCloseoutIdentity(invalid.record)
+  const { statePath, taskDirectory } = await persistRawState(
+    directory,
+    invalid.state,
+  )
+  const before = await readFile(statePath, "utf8")
+  await assert.rejects(
+    reconcilePersistedTerminalCloseoutAudits({
+      stateDirectory: directory,
+      repository,
+    }),
+    /record is malformed/i,
+  )
+  assert.equal(await readFile(statePath, "utf8"), before)
+  await assert.rejects(
+    readFile(path.join(taskDirectory, "events.jsonl"), "utf8"),
+    { code: "ENOENT" },
+  )
 })
 
 test("duplicate closeout reconciliation appends events once and never creates a run", async () => {
