@@ -1,60 +1,76 @@
 # Watcher v2 Status
 
-As of 2026-09-01:
+As of 2026-09-03:
 
-- **Watcher v2:** PROMOTED
+- **Watcher v2:** PRODUCTION EXECUTION VALIDATED
+- **Production validation:** ISSUE #86 TERMINALLY CLOSED
 - **RunAtLoad:** VALIDATED (`true` in the promoted profile)
 - **KeepAlive:** ABSENT BY DESIGN
 - **Service-wide auto-commit:** DISABLED
-- **Production enrollment:** NOT YET AUTHORIZED
 - **Current eligible issues:** ZERO
 - **Current service state:** stopped / launchd target unloaded
 
-## Canonical promoted baseline
+## Canonical production baseline
 
 - Repository: `Sillyquack/koalafrog-hq`
-- Source commit: `7d4d30d934f841c08f11268c20dae922ea02f0f6`
-- Source tree: `cf9c49d3928f4d171bcef7ed11d92677bd39c5d0`
-- Immutable runtime: `a6154683806d26b2c5fb6aac53ebf1f32ba8731f77980bd2d96a76aab671803b`
-- Manifest SHA-256: `52c61c0950712d005e9ca3772f4fa3dfae9b34a435db2a65208b319a60d36724`
-- Service-configuration SHA-256: `f152e08bcd4c3a8767b9329940cf010a4cfb6abf58ac0a77aed4d1bc7c640fb2`
-- Installed plist SHA-256: `d00ecc33b70ee95b7b435b85b09e1056260d7b6eef257a21001f91f5bff2985a`
-- Stopped health SHA-256: `bf788136cd0d6f8f67f9fa5f07e634c84c3a38fb27a1bb1234517c23b4089a10`
+- Source commit: `9e4310104a2adea44ed4446514a415f66d87e3c6`
+- Source tree: `1943d89cbc765f62d89b36862ce447a7b03127b4`
+- Immutable runtime: `6af56037d1444e9e20593cce6700de6ea2615fc758c5a5ca48627d39dd012f1e`
+- Manifest SHA-256: `757ce443ee0d54fe151b048914820bc78d540da2c030d7eeb77fdfcffa8c77e9`
+- Service-configuration SHA-256: `1c4a68eef28e9d57e68ae21aab90ba16f9a1acc320804948bda1e75e22d414ac`
+- Installed plist SHA-256: `93a6156fe2e70e71e2232fd4a457d1120c5fc9d966d130446177c4f038041ae4`
 - Required label: `koalafrog-orchestrator`
 
 The installed profile has `RunAtLoad=true`, no `KeepAlive`, and no
-service-wide `--auto-commit`. GUI login starts the watcher once; zero eligible
-labels means idle polling only. Controlled bootout does not cause a same-session
+service-wide `--auto-commit`. GUI login starts the watcher once; zero labeled
+issues means idle polling only. Controlled bootout does not cause a same-session
 restart, while a later GUI login loads the service again.
 
-## Validated promotion evidence
+## Production-validation result
 
-Promotion validated the canonical immutable runtime, disabled installation,
-verified manual start, strict Darwin/xpcproxy process identity, authoritative
-live-label admission, and zero-read isolation for unlabeled legacy state. The
-synthetic Issue #82 installed-service lifecycle completed once, its label was
-revoked, and controlled bootout completed without leakage.
+Promotion and production validation established the complete operating path:
 
-RunAtLoad Phase A validated the explicitly approved active installation. Phase
-B validated genuine GUI-login automatic startup, zero-eligibility idle polls,
-controlled shutdown after automatic startup, and no same-session restart.
-Concise immutable snapshots are retained at:
+- disabled installation, `start-installed`, active RunAtLoad promotion, and
+  genuine GUI-login auto-start passed strict launchd/xpcproxy, executable,
+  structured-argv, health, PID, and launch-count verification;
+- authoritative issue hydration and final live-label admission prevented
+  summary or cached label metadata from granting execution;
+- Issue #86's interrupted `-001` lifecycle was reconciled append-only after
+  accepting `shutdown_requested`, preserving its original thread, turn, and
+  queue failure history;
+- schema-12 historical terminal-closeout evidence remains valid under the
+  explicit schema-12/schema-13 replay contract;
+- the fresh `-002` production control produced exactly one claim, pickup,
+  thread, turn, and `needs_review` result, with zero retries and zero mutation
+  authority;
+- two labeled idle polls, label revocation, one empty revoked poll, controlled
+  bootout, and stopped stability all passed; and
+- terminal closeout advanced Issue #86 without a claim, pickup, thread, turn,
+  run, retry, or other task execution.
 
-- Phase A post-validation:
-  `service/disabled/watcher-v2-trials/runatload-phase-a/2026-09-01T15-55-16.311Z/phase-a-post-snapshot.json`
-  (SHA-256 `018d616ed7ac95fb3430defffbd2ed16361decbf9722c571e67dfba805e86536`)
-- Phase B final:
-  `service/disabled/watcher-v2-trials/runatload-phase-b/2026-09-01T20-23-14.489Z/phase-b-final-snapshot.json`
-  (SHA-256 `87ad1cfda37c6ddd0261af4dba705ce44113658b58896695f7ba27f3b9ce3959`)
+Issue #86 is now GitHub `closed/completed` and durable schema 13 revision 23,
+`status: done`, `originIssueClosed: true`, and `activeInstruction: null`. The
+final state SHA-256 is
+`4946465ae25c08f996b9eecf101f04d2683a82c6846035ba12e4793eccda09c1`.
+Its immutable closeout record is
+`task-terminal-closeout:354bf690afa6b977d4db79c887277fa1600a625b64f080275c7e5f4f36550b38`.
 
-No real production issue has been enrolled. Applying the required label is the
-separate execution-authorization gate described in `CONTROL_PLANE.md`.
+Concise sealed evidence is retained in the local operator evidence tree:
 
-## Synthetic Issue #82
+- Production execution post-snapshot SHA-256:
+  `8f895817bf6fc6d19b131c33e6321494de550b079bec337822af64693adc3144`
+- Terminal closeout post-snapshot SHA-256:
+  `82b672d399b807888c8eee08e2510c28713896e58b538d1bc90847bd33e6899d`
 
-Issue #82 remains intentionally open, unlabeled, `needs_review`, with no active
-instruction. It is retained temporarily as promotion evidence, not production
-work. Its later closeout sequence is: confirm exact state/revision, close the
-GitHub issue, publish one exact revision-bound terminal-closeout control, run
-bounded terminal closeout, and verify durable `done` plus
-`originIssueClosed=true`.
+## Current enforced invariants
+
+The production path now enforces strict launchd/xpcproxy identity,
+authoritative issue hydration, installed-profile verified startup,
+`shutdown_requested` settlement without retry inflation, append-only queue
+failure history across claims, and explicit historical terminal-closeout schema
+compatibility. These are current behavior, not unresolved enrollment blockers.
+
+Issue #82 remains synthetic promotion evidence. Issues #68 and #71 must never
+be enrolled without reconciliation. The complete legacy classification and the
+normal controlled-production procedure are maintained in `NEXT.md` and
+`CONTROL_PLANE.md`.

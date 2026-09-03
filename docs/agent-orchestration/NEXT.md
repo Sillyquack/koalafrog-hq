@@ -1,22 +1,26 @@
 # Next
 
-Watcher v2 promotion is complete. Production enrollment is not yet authorized.
-The next sequence is:
+Watcher v2 production execution is validated and Issue #86 is terminally
+closed. The next operating phase is **normal controlled production use**. No
+new synthetic enrollment task is required.
 
-1. land the Watcher v2 promotion documentation closeout;
-2. review and create one fresh, bounded production-enrollment issue;
-3. require one read-only, one-turn task;
-4. permit no Git, application, Supabase, or production mutation;
-5. review the exact production-extractable control and its unique instruction
-   identity;
-6. apply `koalafrog-orchestrator` only as the final owner authorization;
-7. observe exactly one lifecycle and verify unrelated issues remain untouched;
-8. revoke the label after completion;
-9. only then consider a separate documentation-only mutation task; and
-10. terminally close synthetic Issue #82 after the promotion/enrollment policy
-    is canonical.
+For each future task:
 
-Do **not** use Issues #68 or #71 as the first production enrollment.
+1. use a fresh current control with a repository-wide unique instruction ID;
+2. verify canonical source/runtime/profile bindings and resolve all durable
+   state, queue, retry, approval, and publication residue;
+3. keep mutation authority absent unless a separately reviewed control grants
+   one exact bounded mutation;
+4. apply `koalafrog-orchestrator` last, as execution authorization rather than
+   issue taxonomy;
+5. observe the authorized lifecycle and unrelated-issue isolation;
+6. revoke the label when authorization ends; and
+7. use controlled bootout for active work or `install-disabled` when persistent
+   login startup itself must be disabled.
+
+Do not reuse Issue #86 as a synthetic enrollment task. Closed and durable
+`done` evidence is terminal. Any future production task requires a fresh issue
+or a valid fresh control on an appropriate non-terminal issue.
 
 ## Legacy issue classification
 
@@ -32,42 +36,39 @@ Do **not** use Issues #68 or #71 as the first production enrollment.
 | #66 | Terminal / closeout candidate |
 | #67 | Terminal / closeout candidate |
 | #68 | Never enroll without reconciliation |
+| #70 | Historical terminal-closeout / audit evidence |
 | #71 | Never enroll without reconciliation |
 | #72 | Terminal / closeout candidate |
 | #78 | Synthetic evidence only |
-| #82 | Synthetic evidence only |
+| #82 | Synthetic promotion evidence |
+| #86 | Production-validation evidence — terminally closed |
 
 This table is an enrollment policy, not an instruction to mutate any issue.
 Review-before-enrollment items still require the complete control-plane
-checklist. Never-enroll items require an explicit reconciliation first.
+checklist. Never-enroll items require explicit reconciliation first.
 
-## Issue #82 closeout plan
+## Synthetic Issue #82
 
-Keep Issue #82 open and unlabeled while this policy lands. It remains
-`needs_review` with no active instruction. Later closeout is a separate bounded
-operation:
-
-1. confirm its exact supported schema, state revision, last-consumed
-   instruction, and lack of active residue;
-2. close the GitHub issue;
-3. publish one exact revision-bound terminal-closeout control;
-4. run `once --issue 82 --terminal-closeout`; and
-5. verify durable `done`, `originIssueClosed=true`, and append-only terminal
-   evidence.
+Issue #82 remains synthetic promotion evidence and must not be used as normal
+production work. Its terminal closeout, if still desired, is separate bounded
+housekeeping: verify its exact supported state, close the GitHub issue, publish
+one revision-bound terminal-closeout control, run
+`once --issue 82 --terminal-closeout`, and verify append-only `done` evidence.
+It is not a prerequisite for normal controlled production use.
 
 ## Residual risk priority
 
-1. **Accidental label assignment:** primary governance risk; the label grants
-   unattended consideration.
-2. **Stale-control enrollment:** technically filtered at admission only when
-   evidence fails validation; owner review remains mandatory.
-3. **Unattended mutation authority:** technically denied unless explicitly
-   granted, but every proposed grant needs separate review.
-4. **Runtime/source drift:** fail-closed identity checks mitigate it; upgrades
-   still require canonical rebuild and validation.
-5. **GitHub outage/circuit breaker:** technically fail closed, with availability
-   and operator monitoring tradeoffs.
-6. **RunAtLoad versus KeepAlive misunderstanding:** operational documentation
-   must remain explicit—login start is enabled, crash restart is not.
-7. **Future macOS behavior changes:** requires periodic login/start/bootout
-   verification.
+1. **Accidental label assignment:** the primary governance risk because the
+   label grants unattended consideration on the next poll.
+2. **Stale controls:** current admission fails closed on invalid evidence, but
+   owner review must still establish that the intended control is current.
+3. **Explicit mutation-authority misuse:** service-wide mutation remains
+   disabled; every proposed bounded grant requires separate review.
+4. **Source/runtime drift:** identity checks fail closed, while every upgrade
+   still requires a canonical rebuild, promotion, and readback.
+5. **GitHub availability:** discovery and admission fail closed, trading
+   availability for safety.
+6. **RunAtLoad versus KeepAlive misunderstanding:** login start is enabled;
+   crash or controlled-bootout restart in the same session is not.
+7. **Future task-state schema upgrades:** historical compatibility must remain
+   explicit, bounded, and independently reviewed rather than inferred.
