@@ -319,6 +319,32 @@ test("third transient failure creates the one warning threshold", () => {
   assert.deepEqual(notifications, [null, null, "third_failure_warning", null])
 })
 
+test("failure history remains append-only when the rolling retry window resets", () => {
+  const historical = {
+    at: "2026-08-29T00:00:00.000Z",
+    errorDigest: "a".repeat(64),
+  }
+  const now = new Date("2026-08-31T00:00:00.000Z")
+  const decision = watcherV2QueueFailureDecision({
+    existing: {
+      failureCount: 1,
+      failureHistory: [historical],
+    },
+    error: failure(),
+    now,
+  })
+  assert.equal(decision.failureCount, 2)
+  assert.equal(decision.history.length, 2)
+  assert.deepEqual(decision.history[0], historical)
+  assert.equal(decision.history[1].at, now.toISOString())
+  assert.equal(decision.quarantined, false)
+  assert.equal(decision.notificationKind, null)
+  assert.equal(
+    Date.parse(decision.nextEligibleAt) - now.getTime(),
+    watcherV2QueueBackoffMs[0],
+  )
+})
+
 test("permanent branch and provenance errors quarantine immediately", () => {
   for (const message of [
     "branch is already checked out at /tmp/worktree",

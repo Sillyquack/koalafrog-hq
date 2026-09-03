@@ -328,6 +328,358 @@ test("a fail-closed needs_review terminality result completes its queue claim on
   assert.equal(record.resultStatus, "needs_review")
 })
 
+test("Issue-86 reconciliation preserves prior failure history through a terminal failed result", async (t) => {
+  const directory = await mkdtemp(
+    path.join(os.tmpdir(), "koalafrog-issue-86-queue-history-"),
+  )
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const instructionId = "orchestrator-production-enrollment-readonly-health-001"
+  const originIssueUrl =
+    "https://github.com/Sillyquack/koalafrog-hq/issues/86"
+  const history = [{
+    at: "2026-09-02T12:22:52.978Z",
+    errorDigest: "2e54dbd100adc72ada41669b295dd2b210ddbc9990f83de417005e189b538b21",
+  }]
+  const store = new QueueClaimStore({ stateDirectory: directory })
+  await mkdir(store.recordDirectory, { recursive: true })
+  const recordPath = path.join(store.recordDirectory, `${instructionId}.json`)
+  await writeFile(
+    recordPath,
+    `${JSON.stringify({
+      schemaVersion: 1,
+      instructionId,
+      originIssueNumber: 86,
+      originIssueUrl,
+      status: "retryable_error",
+      attempt: 1,
+      pid: 91_195,
+      token: "fb26a3f7-6ffe-4aee-b71c-8d6ccb6beb0f",
+      retryAuthorizationId: null,
+      claimedAt: "2026-09-02T12:22:16.865Z",
+      updatedAt: "2026-09-02T12:22:52.980Z",
+      failureCount: 1,
+      failureHistory: history,
+      failureClass: "transient_instruction",
+      normalizedErrorDigest: history[0].errorDigest,
+      error: "command cancellation observation is invalid",
+      nextEligibleAt: "2026-09-02T12:23:52.978Z",
+    })}\n`,
+    { mode: 0o600 },
+  )
+
+  let active
+  const recovered = await store.withClaim(
+    { instructionId, originIssueNumber: 86, originIssueUrl },
+    async () => {
+      active = JSON.parse(await readFile(recordPath, "utf8"))
+      return { status: "failed" }
+    },
+  )
+  assert.equal(recovered.claimed, true)
+  assert.equal(active.status, "active")
+  assert.equal(active.attempt, 2)
+  assert.equal(active.failureCount, 1)
+  assert.deepEqual(active.failureHistory, history)
+  assert.notEqual(active.token, "fb26a3f7-6ffe-4aee-b71c-8d6ccb6beb0f")
+  assert.equal(active.pid, process.pid)
+
+  const completed = JSON.parse(await readFile(recordPath, "utf8"))
+  assert.equal(completed.status, "completed")
+  assert.equal(completed.resultStatus, "failed")
+  assert.equal(completed.attempt, 2)
+  assert.equal(completed.failureCount, 1)
+  assert.deepEqual(completed.failureHistory, history)
+})
+
+test("genuine later failure appends once and later success retains all prior failures", async (t) => {
+  const directory = await mkdtemp(
+    path.join(os.tmpdir(), "koalafrog-cumulative-queue-history-"),
+  )
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const instructionId = "cumulative-failure-history-001"
+  const originalHistory = [{
+    at: "2026-09-02T12:00:00.000Z",
+    errorDigest: "a".repeat(64),
+  }]
+  let now = new Date("2026-09-02T12:02:00.000Z")
+  const store = new QueueClaimStore({
+    stateDirectory: directory,
+    watcherV2: true,
+    now: () => now,
+  })
+  await mkdir(store.recordDirectory, { recursive: true })
+  const recordPath = path.join(store.recordDirectory, `${instructionId}.json`)
+  await writeFile(
+    recordPath,
+    `${JSON.stringify({
+      schemaVersion: 1,
+      instructionId,
+      originIssueNumber: 86,
+      originIssueUrl: null,
+      status: "retryable_error",
+      attempt: 1,
+      pid: 111,
+      token: "prior-token",
+      retryAuthorizationId: null,
+      failureCount: 1,
+      failureHistory: originalHistory,
+      nextEligibleAt: "2026-09-02T12:01:00.000Z",
+      updatedAt: "2026-09-02T12:00:00.000Z",
+    })}\n`,
+    { mode: 0o600 },
+  )
+
+  await assert.rejects(
+    store.withClaim(
+      { instructionId, originIssueNumber: 86 },
+      async () => {
+        throw new Error("genuine new transient failure")
+      },
+    ),
+    /genuine new transient failure/,
+  )
+  const failed = JSON.parse(await readFile(recordPath, "utf8"))
+  assert.equal(failed.status, "retryable_error")
+  assert.equal(failed.attempt, 2)
+  assert.equal(failed.failureCount, 2)
+  assert.equal(failed.failureHistory.length, 2)
+  assert.deepEqual(failed.failureHistory[0], originalHistory[0])
+  assert.equal(failed.failureHistory[1].at, now.toISOString())
+
+  now = new Date(Date.parse(failed.nextEligibleAt) + 1)
+  const succeeded = await store.withClaim(
+    { instructionId, originIssueNumber: 86 },
+    async () => ({ status: "needs_review" }),
+  )
+  assert.equal(succeeded.claimed, true)
+  const completed = JSON.parse(await readFile(recordPath, "utf8"))
+  assert.equal(completed.status, "completed")
+  assert.equal(completed.attempt, 3)
+  assert.equal(completed.failureCount, 2)
+  assert.deepEqual(completed.failureHistory, failed.failureHistory)
+})
+
+test("terminal queue reconciliation preserves prior failure history without replay", async (t) => {
+  const directory = await mkdtemp(
+    path.join(os.tmpdir(), "koalafrog-terminal-history-preservation-"),
+  )
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const instructionId = "terminal-history-preservation-001"
+  const history = [{
+    at: "2026-09-02T12:00:00.000Z",
+    errorDigest: "b".repeat(64),
+  }]
+  const store = new QueueClaimStore({ stateDirectory: directory })
+  await mkdir(store.recordDirectory, { recursive: true })
+  const recordPath = path.join(store.recordDirectory, `${instructionId}.json`)
+  await writeFile(
+    recordPath,
+    `${JSON.stringify({
+      schemaVersion: 1,
+      instructionId,
+      originIssueNumber: 86,
+      originIssueUrl: null,
+      status: "retryable_error",
+      attempt: 1,
+      pid: 111,
+      token: "prior-token",
+      retryAuthorizationId: null,
+      failureCount: 1,
+      failureHistory: history,
+      updatedAt: "2026-09-02T12:00:00.000Z",
+    })}\n`,
+    { mode: 0o600 },
+  )
+
+  const completion = await store.completeClaimFromDurableTerminalFailure({
+    instructionId,
+    originIssueNumber: 86,
+    resultStatus: "failed",
+  })
+  assert.equal(completion.completed, true)
+  const completed = JSON.parse(await readFile(recordPath, "utf8"))
+  assert.equal(completed.status, "completed")
+  assert.equal(completed.attempt, 2)
+  assert.equal(completed.failureCount, 1)
+  assert.deepEqual(completed.failureHistory, history)
+  assert.notEqual(completed.token, "prior-token")
+})
+
+test("cumulative failures still quarantine at the reviewed threshold", async (t) => {
+  const directory = await mkdtemp(
+    path.join(os.tmpdir(), "koalafrog-cumulative-quarantine-"),
+  )
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const instructionId = "cumulative-quarantine-001"
+  const history = Array.from({ length: 4 }, (_, index) => ({
+    at: `2026-09-02T12:0${index}:00.000Z`,
+    errorDigest: `${index + 1}`.repeat(64),
+  }))
+  const now = new Date("2026-09-02T12:05:00.000Z")
+  const store = new QueueClaimStore({
+    stateDirectory: directory,
+    watcherV2: true,
+    now: () => now,
+  })
+  await mkdir(store.recordDirectory, { recursive: true })
+  const recordPath = path.join(store.recordDirectory, `${instructionId}.json`)
+  await writeFile(
+    recordPath,
+    `${JSON.stringify({
+      schemaVersion: 1,
+      instructionId,
+      originIssueNumber: 86,
+      originIssueUrl: null,
+      status: "retryable_error",
+      attempt: 4,
+      pid: 111,
+      token: "prior-token",
+      retryAuthorizationId: null,
+      failureCount: 4,
+      failureHistory: history,
+      nextEligibleAt: "2026-09-02T12:04:00.000Z",
+      updatedAt: "2026-09-02T12:03:00.000Z",
+    })}\n`,
+    { mode: 0o600 },
+  )
+
+  await assert.rejects(
+    store.withClaim(
+      { instructionId, originIssueNumber: 86 },
+      async () => {
+        throw new Error("fifth genuine transient failure")
+      },
+    ),
+    /fifth genuine transient failure/,
+  )
+  const quarantined = JSON.parse(await readFile(recordPath, "utf8"))
+  assert.equal(quarantined.status, "quarantined")
+  assert.equal(quarantined.attempt, 5)
+  assert.equal(quarantined.failureCount, 5)
+  assert.equal(quarantined.failureHistory.length, 5)
+  assert.deepEqual(quarantined.failureHistory.slice(0, 4), history)
+  assert.equal(quarantined.nextEligibleAt, null)
+})
+
+test("origin URL and malformed cumulative failure history fail closed before callback", async (t) => {
+  const directory = await mkdtemp(
+    path.join(os.tmpdir(), "koalafrog-queue-history-binding-"),
+  )
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const store = new QueueClaimStore({ stateDirectory: directory })
+  await mkdir(store.recordDirectory, { recursive: true })
+  const instructionId = "queue-history-binding-001"
+  const recordPath = path.join(store.recordDirectory, `${instructionId}.json`)
+  const fixture = {
+    schemaVersion: 1,
+    instructionId,
+    originIssueNumber: 86,
+    originIssueUrl: "https://github.com/Sillyquack/koalafrog-hq/issues/86",
+    status: "released",
+    attempt: 1,
+    pid: 111,
+    token: "prior-token",
+    retryAuthorizationId: null,
+    failureCount: 1,
+    failureHistory: [{ at: "2026-09-02T12:00:00.000Z", errorDigest: "c".repeat(64) }],
+    updatedAt: "2026-09-02T12:00:00.000Z",
+  }
+  await writeFile(recordPath, `${JSON.stringify(fixture)}\n`, { mode: 0o600 })
+  let callbacks = 0
+  await assert.rejects(
+    store.withClaim(
+      {
+        instructionId,
+        originIssueNumber: 86,
+        originIssueUrl: "https://github.com/Sillyquack/koalafrog-hq/issues/87",
+      },
+      async () => {
+        callbacks += 1
+        return { status: "needs_review" }
+      },
+    ),
+    /origin URL conflicts/,
+  )
+  assert.equal(callbacks, 0)
+
+  fixture.originIssueUrl = null
+  fixture.failureCount = 0
+  await writeFile(recordPath, `${JSON.stringify(fixture)}\n`, { mode: 0o600 })
+  await assert.rejects(
+    store.withClaim(
+      { instructionId, originIssueNumber: 86 },
+      async () => {
+        callbacks += 1
+        return { status: "needs_review" }
+      },
+    ),
+    /failure history is malformed/,
+  )
+  assert.equal(callbacks, 0)
+})
+
+test("durable queue CAS rejects a successor that drops cumulative failure history", async (t) => {
+  const directory = await mkdtemp(
+    path.join(os.tmpdir(), "koalafrog-queue-history-cas-"),
+  )
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const instructionId = "queue-history-cas-001"
+  const history = [{
+    at: "2026-09-02T12:00:00.000Z",
+    errorDigest: "d".repeat(64),
+  }]
+  let tampered = false
+  const store = new QueueClaimStore({
+    stateDirectory: directory,
+    fileSystemHooks: {
+      afterTemporaryFileSynced: async ({ leafName, temporaryLeafName }) => {
+        if (tampered || leafName !== `${instructionId}.json`) return
+        tampered = true
+        const temporaryPath = path.join(store.recordDirectory, temporaryLeafName)
+        const successor = JSON.parse(await readFile(temporaryPath, "utf8"))
+        delete successor.failureCount
+        delete successor.failureHistory
+        await writeFile(temporaryPath, `${JSON.stringify(successor)}\n`, {
+          mode: 0o600,
+        })
+      },
+    },
+  })
+  await mkdir(store.recordDirectory, { recursive: true })
+  const recordPath = path.join(store.recordDirectory, `${instructionId}.json`)
+  const original = `${JSON.stringify({
+    schemaVersion: 1,
+    instructionId,
+    originIssueNumber: 86,
+    originIssueUrl: null,
+    status: "released",
+    attempt: 1,
+    pid: 111,
+    token: "prior-token",
+    retryAuthorizationId: null,
+    failureCount: 1,
+    failureHistory: history,
+    updatedAt: "2026-09-02T12:00:00.000Z",
+  })}\n`
+  await writeFile(recordPath, original, { mode: 0o600 })
+  let callbacks = 0
+
+  await assert.rejects(
+    store.withClaim(
+      { instructionId, originIssueNumber: 86 },
+      async () => {
+        callbacks += 1
+        return { status: "needs_review" }
+      },
+    ),
+    (error) =>
+      error instanceof DurableTransactionError &&
+      error.code === "DURABLE_TRANSACTION_TRANSITION_INVALID",
+  )
+  assert.equal(callbacks, 0)
+  assert.equal(await readFile(recordPath, "utf8"), original)
+})
+
 test("terminal queue completion recovers across both durable write crash boundaries", async (t) => {
   for (const failedWrite of [1, 2]) {
     await t.test(`write_${failedWrite}`, async (t) => {

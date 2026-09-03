@@ -41,6 +41,49 @@ function completedResult(result) {
   return !new Set(["queue_changed", "claim_deferred"]).has(result?.status)
 }
 
+function historicalFailureFields(record) {
+  if (!record) return {}
+  const hasFailureCount = Object.hasOwn(record, "failureCount")
+  const hasFailureHistory = Object.hasOwn(record, "failureHistory")
+  const failureCount = hasFailureCount ? record.failureCount : 0
+  const failureHistory = hasFailureHistory ? record.failureHistory : []
+  if (
+    (hasFailureCount &&
+      (!Number.isSafeInteger(failureCount) || failureCount < 0)) ||
+    (hasFailureHistory &&
+      (!Array.isArray(failureHistory) ||
+        failureHistory.some(
+          (entry) =>
+            !entry ||
+            typeof entry !== "object" ||
+            !Number.isFinite(Date.parse(entry.at ?? "")) ||
+            !/^[a-f0-9]{64}$/.test(entry.errorDigest ?? ""),
+        ))) ||
+    (hasFailureHistory && !hasFailureCount) ||
+    failureCount < failureHistory.length
+  ) {
+    throw new Error("Durable queue failure history is malformed")
+  }
+  return {
+    ...(hasFailureCount ? { failureCount } : {}),
+    ...(hasFailureHistory
+      ? { failureHistory: failureHistory.map((entry) => ({ ...entry })) }
+      : {}),
+  }
+}
+
+function failureHistoryIsPrefix(predecessor, successor) {
+  const prior = predecessor.failureHistory ?? []
+  const next = successor.failureHistory ?? []
+  return Boolean(
+    successor.failureCount >= predecessor.failureCount &&
+      prior.length <= next.length &&
+      prior.every(
+        (entry, index) => JSON.stringify(entry) === JSON.stringify(next[index]),
+      ),
+  )
+}
+
 function queueTransactionIdentity(contents) {
   if (contents === null) return { kind: "missing", attempt: 0 }
   const parsed = JSON.parse(contents.toString("utf8"))
@@ -61,6 +104,7 @@ function queueTransactionIdentity(contents) {
   ) {
     throw new Error("Durable queue transaction identity is malformed")
   }
+  const historicalFailure = historicalFailureFields(parsed)
   return {
     kind: "queue_claim",
     schemaVersion: parsed.schemaVersion ?? 0,
@@ -70,6 +114,8 @@ function queueTransactionIdentity(contents) {
     attempt: parsed.attempt,
     token: parsed.token ?? null,
     retryAuthorizationId: parsed.retryAuthorizationId ?? null,
+    failureCount: historicalFailure.failureCount ?? 0,
+    failureHistory: historicalFailure.failureHistory ?? [],
   }
 }
 
@@ -85,9 +131,15 @@ function sameQueueBinding(left, right) {
 function validQueueTransaction(predecessor, successor) {
   if (successor?.kind !== "queue_claim") return false
   if (predecessor?.kind === "missing") {
-    return successor.status === "active" && successor.attempt === 1
+    return Boolean(
+      successor.status === "active" &&
+        successor.attempt === 1 &&
+        successor.failureCount === 0 &&
+        successor.failureHistory.length === 0,
+    )
   }
   if (!sameQueueBinding(predecessor, successor)) return false
+  if (!failureHistoryIsPrefix(predecessor, successor)) return false
   if (
     successor.status === "quarantined" &&
     new Set(["active", "retryable_error", "released"]).has(
@@ -304,6 +356,13 @@ export class QueueClaimStore {
       ) {
         return { claimed: false, reason: "duplicate_instruction_origin" }
       }
+      if (
+        existing?.originIssueUrl &&
+        originIssueUrl &&
+        existing.originIssueUrl !== originIssueUrl
+      ) {
+        throw new Error("Durable queue claim origin URL conflicts")
+      }
       if (existing?.status === "completed") {
         if (!safeRetryId || existing.retryAuthorizationId === safeRetryId) {
           return { claimed: false, reason: "already_consumed" }
@@ -366,11 +425,13 @@ export class QueueClaimStore {
       }
 
       const attempt = (existing?.attempt ?? 0) + 1
+      const historicalFailure = historicalFailureFields(existing)
       const active = {
         schemaVersion: 1,
         instructionId: safeId,
         originIssueNumber,
-        originIssueUrl,
+        originIssueUrl: existing?.originIssueUrl ?? originIssueUrl,
+        ...historicalFailure,
         status: "active",
         attempt,
         pid: this.pid,
@@ -598,11 +659,13 @@ export class QueueClaimStore {
       }
 
       const now = this.now().toISOString()
+      const historicalFailure = historicalFailureFields(existing)
       const active = {
         schemaVersion: 1,
         instructionId: safeId,
         originIssueNumber,
         originIssueUrl: existing.originIssueUrl ?? originIssueUrl,
+        ...historicalFailure,
         status: "active",
         attempt: existing.attempt + 1,
         pid: this.pid,
