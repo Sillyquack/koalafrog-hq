@@ -208,6 +208,16 @@ validation of the terminal stop control. Schema 11 migrates once to schema 12
 by adding an empty `terminalCloseouts` ledger and advancing the state revision;
 older runtimes reject schema-12 state.
 
+A terminal-closeout record's `expectedSchemaVersion` is immutable provenance
+for the task-state schema closed by its CAS, not the schema of every later
+runtime that audits it. Record format 1 has an explicit compatibility policy
+for task-state schemas 12 and 13: schema-12 history validates either against
+the unchanged schema-12 state or its exact additive schema-13 migration with
+empty schema-13-only ledgers and a later revision. Unsupported, future,
+downgraded, non-additive, or conflicting provenance is rejected. Audit replay
+may restore missing append-only events but does not migrate or rewrite the
+historical state or record.
+
 Watcher v2 never grants commit authority from service configuration. A control
 may instead declare one exact `commit_authorization` binding: repository,
 issue/instruction, linked task worktree, branch, expected HEAD, allowed paths,

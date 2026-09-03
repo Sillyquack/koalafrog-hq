@@ -1,22 +1,105 @@
 import assert from "node:assert/strict"
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
 import test from "node:test"
 import { AppServerClient } from "../src/app-server.mjs"
+import { controlPlaneBindingDigest } from "../src/control-plane.mjs"
 import {
   Orchestrator,
   recordCommandCancellationRequested,
   recordCommandTerminalityPending,
 } from "../src/orchestrator.mjs"
 import { QueueClaimStore } from "../src/queue-claim-store.mjs"
-import { runRepositoryIssue } from "../src/repository-runner.mjs"
-import { StateStore } from "../src/state-store.mjs"
+import {
+  reconcilePersistedTerminalCloseoutAudits,
+  runRepositoryIssue,
+} from "../src/repository-runner.mjs"
+import { initialState, StateStore } from "../src/state-store.mjs"
 
 const repository = "Sillyquack/koalafrog-hq"
 const issueNumber = 86
 const issueUrl = `https://github.com/${repository}/issues/${issueNumber}`
 const instructionId = "orchestrator-production-enrollment-readonly-health-001"
+
+function fixtureCloseoutIdentity(binding) {
+  return `task-terminal-closeout:${controlPlaneBindingDigest(
+    JSON.stringify([
+      1,
+      binding.issueNumber,
+      binding.originIssueUrl,
+      binding.closeoutInstructionId,
+      binding.closeoutControlIndex,
+      binding.closeoutControlDigest,
+      binding.priorTaskState,
+      binding.terminalState,
+      binding.expectedStateRevision,
+      binding.committedStateRevision,
+      binding.expectedLastConsumedInstructionId,
+      binding.retiredInstructionIds,
+      binding.retiredControls,
+      binding.approvalTombstones,
+      binding.githubIssueState,
+      binding.githubIssueUpdatedAt,
+      binding.claimInspectionDigest,
+    ]),
+  )}`
+}
+
+function historicalIssue70CloseoutState() {
+  const historicalIssueNumber = 70
+  const historicalIssueUrl =
+    `https://github.com/${repository}/issues/${historicalIssueNumber}`
+  const closeoutInstructionId = "synthetic-issue-70-terminal-closeout-081"
+  const record = {
+    schemaVersion: 1,
+    issueNumber: historicalIssueNumber,
+    originIssueUrl: historicalIssueUrl,
+    closeoutInstructionId,
+    closeoutControlIndex: 92,
+    closeoutControlDigest: controlPlaneBindingDigest("historical-control"),
+    priorTaskState: "needs_review",
+    terminalState: "done",
+    expectedSchemaVersion: 12,
+    expectedStateRevision: 1_498,
+    committedStateRevision: 1_499,
+    expectedLastConsumedInstructionId: "synthetic-issue-70-reconciliation-080",
+    priorLastConsumedInstructionId: "synthetic-issue-70-reconciliation-080",
+    retiredInstructionIds: [],
+    retiredControls: [],
+    approvalTombstones: [],
+    githubIssueState: "closed",
+    githubIssueUpdatedAt: "2026-08-31T13:24:28.000Z",
+    claimInspectionDigest: controlPlaneBindingDigest("historical-claims"),
+    activeClaimCount: 0,
+    executionOccurred: false,
+    reason: "terminal_closeout",
+    recordedAt: "2026-08-31T13:25:09.404Z",
+  }
+  record.closeoutId = fixtureCloseoutIdentity(record)
+  const state = initialState({
+    repository,
+    issueNumber: historicalIssueNumber,
+    issueUrl: historicalIssueUrl,
+  })
+  state.schemaVersion = 12
+  state.stateRevision = record.committedStateRevision
+  state.status = "done"
+  state.activeInstruction = null
+  state.lastConsumedInstructionId = closeoutInstructionId
+  state.task.originIssueClosed = true
+  state.task.lastObservedIssueUpdatedAt = record.githubIssueUpdatedAt
+  state.terminalCloseouts = [record]
+  for (const name of [
+    "instructionQuarantines",
+    "quarantineReopens",
+    "watcherNotifications",
+    "watcherNotificationDeliveries",
+    "checkpointRecoveryRejections",
+    "commitAuthorizationReceipts",
+  ]) delete state[name]
+  return state
+}
 
 function controlBlock() {
   return `\`\`\`yaml
@@ -355,6 +438,39 @@ test("Issue-86-shaped historical failure recovers the original turn with append-
     path.join(os.tmpdir(), "koalafrog-issue-86-shutdown-recovery-"),
   )
   t.after(() => rm(directory, { recursive: true, force: true }))
+  const historicalState = historicalIssue70CloseoutState()
+  const historicalDirectory = path.join(
+    directory,
+    `${repository.replaceAll("/", "-")}-issue-70`,
+  )
+  await mkdir(historicalDirectory, { recursive: true })
+  const historicalStatePath = path.join(historicalDirectory, "state.json")
+  await writeFile(
+    historicalStatePath,
+    `${JSON.stringify(historicalState, null, 2)}\n`,
+    { mode: 0o600 },
+  )
+  const historicalStateBefore = await readFile(historicalStatePath, "utf8")
+  assert.deepEqual(
+    await reconcilePersistedTerminalCloseoutAudits({
+      stateDirectory: directory,
+      repository,
+    }),
+    [70],
+  )
+  assert.equal(
+    await readFile(historicalStatePath, "utf8"),
+    historicalStateBefore,
+  )
+  const historicalEvents = (await readFile(
+    path.join(historicalDirectory, "events.jsonl"),
+    "utf8",
+  ))
+    .split("\n")
+    .filter(Boolean)
+    .map(JSON.parse)
+  assert.equal(historicalEvents.length, 1)
+  assert.equal(historicalEvents[0].type, "task_terminally_closed")
   const comments = []
   const controller = new AbortController()
   const { client, counts } = instrumentedAppServer({

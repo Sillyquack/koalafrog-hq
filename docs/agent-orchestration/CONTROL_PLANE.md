@@ -358,6 +358,16 @@ events idempotently. A `done` task, or any state carrying terminal-closeout
 evidence, is never normally selectable even if its status is later corrupted.
 Reopening a terminal task is intentionally unsupported.
 
+`expectedSchemaVersion` permanently binds the task-state schema on which the
+closeout CAS operated; it is not rewritten to the current runtime schema during
+later audit replay. Record format 1 explicitly supports closeouts created on
+task-state schemas 12 and 13. A schema-12 record may be replayed against its
+unchanged schema-12 state or the exact additive schema-13 migration shape with
+empty schema-13-only ledgers and a later revision. Ancient, unknown, future,
+downgraded, non-additive, or provenance-conflicting shapes fail closed. Replay
+reconstructs missing audit events only and never migrates or rewrites the
+historical state or closeout record.
+
 Closing the GitHub issue and reaching durable `done` are separate facts. The
 former is an external precondition observed read-only; only the terminal state
 CAS establishes the latter.
