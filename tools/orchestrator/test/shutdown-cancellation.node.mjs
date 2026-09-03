@@ -1,5 +1,5 @@
 import assert from "node:assert/strict"
-import { mkdtemp, readFile, rm } from "node:fs/promises"
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
 import test from "node:test"
@@ -350,7 +350,7 @@ test("repository shutdown accepts App Server cancellation and completes one term
   assert.equal(queue.failureHistory, undefined)
 })
 
-test("Issue-86-shaped pending shutdown releases its claim and restart terminalizes the original turn exactly once", async (t) => {
+test("Issue-86-shaped historical failure recovers the original turn with append-only queue history", async (t) => {
   const directory = await mkdtemp(
     path.join(os.tmpdir(), "koalafrog-issue-86-shutdown-recovery-"),
   )
@@ -401,7 +401,8 @@ test("Issue-86-shaped pending shutdown releases its claim and restart terminaliz
   assert.equal(released.failureCount, undefined)
   assert.equal(released.failureHistory, undefined)
   const storeOptions = { stateDirectory: directory, repository, issueNumber }
-  let durable = await new StateStore(storeOptions).load()
+  const stateStore = new StateStore(storeOptions)
+  let durable = await stateStore.load()
   assert.equal(durable.status, "running")
   assert.equal(durable.activeInstruction.phase, "turn_started")
   assert.equal(durable.activeInstruction.turnCount, 1)
@@ -414,6 +415,36 @@ test("Issue-86-shaped pending shutdown releases its claim and restart terminaliz
     "terminality_pending",
   )
   assert.equal(durable.runs.length, 0)
+
+  // Match the live Issue #86 shape produced by the pre-fix validator: the
+  // cancellation observation did not become durable state, while the queue
+  // retained one retryable failure for the same active thread and turn.
+  delete durable.activeInstruction.commandTerminality
+  await stateStore.save(durable)
+  const historicalFailure = {
+    at: "2026-09-02T12:22:52.978Z",
+    errorDigest: "2e54dbd100adc72ada41669b295dd2b210ddbc9990f83de417005e189b538b21",
+  }
+  await writeFile(
+    path.join(
+      claimStore.recordDirectory,
+      `${instructionId}.json`,
+    ),
+    `${JSON.stringify({
+      ...released,
+      status: "retryable_error",
+      failureCount: 1,
+      failureHistory: [historicalFailure],
+      failureClass: "transient_instruction",
+      normalizedErrorDigest: historicalFailure.errorDigest,
+      error: "command cancellation observation is invalid",
+      nextEligibleAt: "2026-09-02T12:23:52.978Z",
+      updatedAt: "2026-09-02T12:22:52.980Z",
+    })}\n`,
+    { mode: 0o600 },
+  )
+  durable = await stateStore.load()
+  assert.equal(durable.activeInstruction.commandTerminality, undefined)
 
   let resumes = 0
   let reads = 0
@@ -484,7 +515,7 @@ test("Issue-86-shaped pending shutdown releases its claim and restart terminaliz
     },
   )
 
-  assert.equal(recovered.status, "needs_review")
+  assert.equal(recovered.status, "failed")
   assert.equal(replay.status, "no_pending_agent_control")
   assert.equal(resumes, 1)
   assert.equal(reads, 1)
@@ -500,11 +531,11 @@ test("Issue-86-shaped pending shutdown releases its claim and restart terminaliz
       .length,
     1,
   )
-  durable = await new StateStore(storeOptions).load()
+  durable = await stateStore.load()
   assert.equal(durable.activeInstruction, null)
   assert.equal(durable.runs.length, 1)
   assert.equal(durable.runs[0].turnCount, 1)
-  assert.equal(durable.runs[0].status, "needs_review")
+  assert.equal(durable.runs[0].status, "failed")
   assert.equal(durable.terminalityReconciliations.length, 1)
   assert.equal(
     durable.terminalityReconciliations[0].classification,
@@ -512,8 +543,8 @@ test("Issue-86-shaped pending shutdown releases its claim and restart terminaliz
   )
   const completed = await queueRecord(directory)
   assert.equal(completed.status, "completed")
-  assert.equal(completed.resultStatus, "needs_review")
+  assert.equal(completed.resultStatus, "failed")
   assert.equal(completed.attempt, 2)
-  assert.equal(completed.failureCount, undefined)
-  assert.equal(completed.failureHistory, undefined)
+  assert.equal(completed.failureCount, 1)
+  assert.deepEqual(completed.failureHistory, [historicalFailure])
 })

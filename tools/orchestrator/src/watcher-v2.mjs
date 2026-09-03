@@ -91,19 +91,21 @@ export function watcherV2QueueFailureDecision({
 }) {
   const failure = normalizeWatcherFailure(error)
   const nowMs = now.getTime()
-  const history = (existing?.failureHistory ?? [])
+  const history = (existing?.failureHistory ?? []).map((entry) => ({ ...entry }))
+  const recentHistory = history
     .filter(
       (entry) =>
         Number.isFinite(Date.parse(entry?.at ?? "")) &&
         nowMs - Date.parse(entry.at) < watcherV2ClaimWindowMs,
     )
-    .map((entry) => ({ ...entry }))
-  history.push({ at: now.toISOString(), errorDigest: failure.errorDigest })
+  const nextFailure = { at: now.toISOString(), errorDigest: failure.errorDigest }
+  history.push(nextFailure)
+  recentHistory.push(nextFailure)
   const legacyFailureCount = Number.isSafeInteger(existing?.failureCount)
     ? existing.failureCount
     : 0
   const migratedLegacyExhaustion =
-    history.length === 1 &&
+    recentHistory.length === 1 &&
     legacyFailureCount >= watcherV2MaximumClaimFailures &&
     !Array.isArray(existing?.failureHistory)
   const maximumFailures =
@@ -113,7 +115,7 @@ export function watcherV2QueueFailureDecision({
   const quarantined =
     failure.permanent ||
     migratedLegacyExhaustion ||
-    history.length >= maximumFailures
+    recentHistory.length >= maximumFailures
   const failureCount = Math.max(legacyFailureCount + 1, history.length)
   const schedule =
     failure.failureClass === "result_publication"
@@ -121,7 +123,7 @@ export function watcherV2QueueFailureDecision({
       : watcherV2QueueBackoffMs
   const backoffIndex = Math.max(
     0,
-    Math.min(history.length - 1, schedule.length - 1),
+    Math.min(recentHistory.length - 1, schedule.length - 1),
   )
   return Object.freeze({
     failure,
@@ -143,7 +145,7 @@ export function watcherV2QueueFailureDecision({
           : null,
     notificationKind: quarantined
       ? "quarantine"
-      : history.length === 3
+      : recentHistory.length === 3
         ? "third_failure_warning"
         : null,
   })
