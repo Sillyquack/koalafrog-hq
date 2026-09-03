@@ -243,9 +243,15 @@ was not read, zero-eligibility polls remained idle, controlled shutdown after
 automatic startup completed cleanly, and the service did not restart in the
 same GUI session.
 
-Watcher v2 is now promoted, but no production task is enrolled. Issue #82 is
-synthetic evidence, not production work. The production enrollment gate remains
-the deliberate assignment of the required label to one reviewed issue.
+Watcher v2 has now completed its first controlled production enrollment on
+Issue #86. The read-only `-002` lifecycle produced exactly one claim, pickup,
+thread, turn, and expected `needs_review` result, with zero retries and zero
+mutation authority. Two labeled idle polls, label revocation, one empty revoked
+poll, controlled bootout, and stopped stability passed. Issue #86 then reached
+durable `done` through terminal closeout without another claim, pickup, thread,
+turn, or run. Issue #82 remains synthetic promotion evidence, not production
+work. Future execution still requires deliberate final assignment of the
+required label to one reviewed issue.
 
 ## Persistent Watcher v2 service
 

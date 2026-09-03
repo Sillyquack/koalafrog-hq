@@ -64,6 +64,12 @@ open issue authorizes Watcher v2 to consider that issue for unattended
 execution on the next poll. Only an owner-reviewed issue may receive it, and
 the label is applied last, after every other enrollment gate passes.
 
+The first controlled production enrollment completed on Issue #86 with one
+read-only claim, pickup, thread, turn, and result, zero retries, and no mutation
+authority. Its later terminal closeout performed no task execution and left the
+issue closed with durable `done` evidence. This validates the mechanism; it
+does not waive any per-task enrollment gate below.
+
 Before enrollment, require all of the following:
 
 - the origin is an open issue, not a pull request;
@@ -154,6 +160,15 @@ migration behavior. Older runtimes reject schema 13.
 Transient instruction/claim failures back off for 1, 2, 4, then 8 minutes and
 quarantine on failure five within 24 hours. Permanent checkout, provenance,
 task-shape, and deterministic configuration errors quarantine immediately.
+Queue records keep cumulative audit evidence separate from current-attempt
+ownership. A later claim receives a fresh token, PID, lease, and timestamps
+while preserving monotonic `failureCount` and an append-only ordered
+`failureHistory`; the predecessor history must be an exact prefix of every
+successor. Terminal completion never erases prior failures, and a failed task
+result does not itself fabricate a queue-processing failure. Rolling 24-hour
+retry/quarantine policy may inspect a time-window subset without truncating the
+durable history. Regression, truncation, malformed history, stale ownership,
+and conflicting origin identity fail closed.
 `shutdown_requested` is an explicit durable command-cancellation reason for an
 active turn interrupted by orchestration shutdown. It follows the bounded
 shutdown settlement/restart-reconciliation path and does not increment an
