@@ -3,7 +3,7 @@
   "generatedAt": "2026-07-29T14:00:00+02:00",
   "rcTag": "finished-goods-traceability-recall-v1-rc1",
   "rcCommit": "bd5617c70dd8ca21611f63750f2293e40a83c8b4",
-  "localMigrationHead": "20260816044500",
+  "localMigrationHead": "20260816044645",
   "hostedStateVerified": false,
   "count": 99,
   "provenance": {
@@ -3734,8 +3734,8 @@
     },
     {
       "orderedIndex": 99,
-      "filename": "20260816044500_fragrance_product_studio_type.sql",
-      "timestamp": "20260816044500",
+      "filename": "20260816044645_fragrance_product_studio_type.sql",
+      "timestamp": "20260816044645",
       "milestone": "fragrance product studio type",
       "purpose": "fragrance product studio type",
       "dependencies": [

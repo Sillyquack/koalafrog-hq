@@ -2,14 +2,32 @@ import { describe, expect, it } from "vitest";
 import { comparePlatformMigrationStatus } from "./platformMigrationStatus";
 
 describe("platform migration compatibility", () => {
-  it("matches actual local state to generated repository evidence", () => {
+  it("matches the reconciled production identity to generated repository evidence", () => {
     expect(
       comparePlatformMigrationStatus({
         migrationCount: 99,
-        currentMigrationVersion: "20260816044500",
-        evaluatedAt: "2026-08-01T05:00:00.000Z",
+        currentMigrationVersion: "20260816044645",
+        evaluatedAt: "2026-09-22T04:42:59.668966+00:00",
+      }),
+    ).toMatchObject({
+      state: "match",
+      expected: {
+        migrationCount: 99,
+        currentMigrationVersion: "20260816044645",
+      },
+    });
+  });
+
+  it.each([
+    { migrationCount: 99, currentMigrationVersion: "20260816044500" },
+    { migrationCount: 98, currentMigrationVersion: "20260816044645" },
+  ])("fails closed for an unreconciled head or different count: %j", (actual) => {
+    expect(
+      comparePlatformMigrationStatus({
+        ...actual,
+        evaluatedAt: "2026-09-22T04:42:59.668966+00:00",
       }).state,
-    ).toBe("match");
+    ).toBe("mismatch");
   });
 
   it("fails closed for mismatch and unavailable status", () => {
