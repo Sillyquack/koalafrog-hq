@@ -1,15 +1,15 @@
 {
   "counts": {
-    "foreignKeys": 660,
-    "functions": 225,
-    "indexes": 684,
+    "foreignKeys": 639,
+    "functions": 220,
+    "indexes": 652,
     "materializedViews": 0,
-    "policies": 194,
+    "policies": 187,
     "providers": 5,
-    "repositories": 17,
+    "repositories": 18,
     "routes": 65,
-    "tables": 207,
-    "triggers": 74,
+    "tables": 200,
+    "triggers": 75,
     "views": 0
   },
   "generatedAt": "2026-07-29T12:00:00+02:00",
@@ -1128,9 +1128,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -1196,9 +1195,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arw/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -1325,9 +1323,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arw/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -1410,9 +1407,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=ar/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -1508,9 +1504,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arw/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -1582,9 +1577,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arw/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -1650,9 +1644,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arw/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -1719,9 +1712,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -1778,9 +1770,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -1838,9 +1829,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -1882,9 +1872,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -1973,9 +1962,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -2021,9 +2009,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -2088,9 +2075,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -2171,9 +2157,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -2219,9 +2204,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arw/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -2313,9 +2297,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arw/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -2424,9 +2407,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=rDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=r/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -2517,9 +2499,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arw/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -2599,9 +2580,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=rDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=r/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -2691,9 +2671,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arw/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -2850,9 +2829,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=rwDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=rw/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -2956,9 +2934,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -3027,9 +3004,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arw/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -3108,9 +3084,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arw/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -3176,9 +3151,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arw/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -3240,9 +3214,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arw/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -3331,8 +3304,7 @@
       "generatedColumns": [],
       "grants": [
         "authenticated=r/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -3441,7 +3413,7 @@
       "grants": [
         "authenticated=r/postgres",
         "postgres=arwdDxt/postgres",
-        "service_role=arwdDxt/postgres"
+        "service_role=arwd/postgres"
       ],
       "indexes": [
         {
@@ -3571,7 +3543,7 @@
       "grants": [
         "authenticated=r/postgres",
         "postgres=arwdDxt/postgres",
-        "service_role=arwdDxt/postgres"
+        "service_role=arwd/postgres"
       ],
       "indexes": [
         {
@@ -3693,7 +3665,7 @@
       "grants": [
         "authenticated=r/postgres",
         "postgres=arwdDxt/postgres",
-        "service_role=arwdDxt/postgres"
+        "service_role=arwd/postgres"
       ],
       "indexes": [
         {
@@ -3806,7 +3778,7 @@
       "grants": [
         "authenticated=r/postgres",
         "postgres=arwdDxt/postgres",
-        "service_role=arwdDxt/postgres"
+        "service_role=arwd/postgres"
       ],
       "indexes": [
         {
@@ -3934,7 +3906,7 @@
       "grants": [
         "authenticated=r/postgres",
         "postgres=arwdDxt/postgres",
-        "service_role=arwdDxt/postgres"
+        "service_role=arwd/postgres"
       ],
       "indexes": [
         {
@@ -4055,7 +4027,7 @@
       "grants": [
         "authenticated=r/postgres",
         "postgres=arwdDxt/postgres",
-        "service_role=arwdDxt/postgres"
+        "service_role=arwd/postgres"
       ],
       "indexes": [
         {
@@ -4159,7 +4131,7 @@
       "grants": [
         "authenticated=r/postgres",
         "postgres=arwdDxt/postgres",
-        "service_role=arwdDxt/postgres"
+        "service_role=arwd/postgres"
       ],
       "indexes": [
         {
@@ -4286,7 +4258,7 @@
       "grants": [
         "authenticated=r/postgres",
         "postgres=arwdDxt/postgres",
-        "service_role=arwdDxt/postgres"
+        "service_role=arwd/postgres"
       ],
       "indexes": [
         {
@@ -4535,7 +4507,7 @@
       "grants": [
         "authenticated=r/postgres",
         "postgres=arwdDxt/postgres",
-        "service_role=arwdDxt/postgres"
+        "service_role=arwd/postgres"
       ],
       "indexes": [
         {
@@ -4721,8 +4693,7 @@
       "generatedColumns": [],
       "grants": [
         "authenticated=r/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -4788,7 +4759,7 @@
       "grants": [
         "authenticated=r/postgres",
         "postgres=arwdDxt/postgres",
-        "service_role=arwdDxt/postgres"
+        "service_role=arwd/postgres"
       ],
       "indexes": [
         {
@@ -4914,7 +4885,7 @@
       "grants": [
         "authenticated=r/postgres",
         "postgres=arwdDxt/postgres",
-        "service_role=arwdDxt/postgres"
+        "service_role=arwd/postgres"
       ],
       "indexes": [
         {
@@ -5007,9 +4978,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -5091,9 +5061,9 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwdDxt/postgres",
+        "authenticated=arwd/postgres",
         "postgres=arwdDxt/postgres",
-        "service_role=arwdDxt/postgres"
+        "service_role=arwd/postgres"
       ],
       "indexes": [
         {
@@ -5142,9 +5112,9 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwdDxt/postgres",
+        "authenticated=arwd/postgres",
         "postgres=arwdDxt/postgres",
-        "service_role=arwdDxt/postgres"
+        "service_role=arwd/postgres"
       ],
       "indexes": [
         {
@@ -5195,9 +5165,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -5280,9 +5249,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arw/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -5330,6 +5298,69 @@
       "schema": "public"
     },
     {
+      "checks": [
+        {
+          "definition": "CHECK ((command = ANY (ARRAY['owner_mapping'::text, 'historical_purchase'::text])))",
+          "name": "historical_purchase_command_receipts_command_check"
+        },
+        {
+          "definition": "CHECK ((jsonb_typeof(result) = 'object'::text))",
+          "name": "historical_purchase_command_receipts_result_check"
+        }
+      ],
+      "estimatedRows": 0,
+      "foreignKeys": [
+        {
+          "columns": [
+            "workspace_id"
+          ],
+          "name": "historical_purchase_command_receipts_workspace_id_fkey",
+          "references": "workspaces"
+        }
+      ],
+      "generatedColumns": [],
+      "grants": [
+        "authenticated=r/postgres",
+        "postgres=arwdDxt/postgres",
+        "service_role=arwdDxt/postgres"
+      ],
+      "indexes": [
+        {
+          "columns": [
+            "workspace_id",
+            "command",
+            "idempotency_key"
+          ],
+          "name": "historical_purchase_command_r_workspace_id_command_idempote_key",
+          "unique": true,
+          "valid": true
+        },
+        {
+          "columns": [
+            "id"
+          ],
+          "name": "historical_purchase_command_receipts_pkey",
+          "unique": true,
+          "valid": true
+        }
+      ],
+      "name": "historical_purchase_command_receipts",
+      "objectType": "table",
+      "policies": [
+        {
+          "command": "r",
+          "name": "owner_select",
+          "roles": [
+            "authenticated"
+          ],
+          "using": "((owner_id = ( SELECT auth.uid() AS uid)) AND (EXISTS ( SELECT 1\n   FROM workspaces w\n  WHERE ((w.id = historical_purchase_command_receipts.workspace_id) AND (w.owner_id = ( SELECT auth.uid() AS uid)) AND (w.lifecycle_state = 'active'::text)))))",
+          "withCheck": null
+        }
+      ],
+      "rlsEnabled": true,
+      "schema": "public"
+    },
+    {
       "checks": [],
       "estimatedRows": 0,
       "foreignKeys": [
@@ -5351,9 +5382,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -5375,108 +5405,6 @@
           "roles": null,
           "using": "(owner_id = auth.uid())",
           "withCheck": "(owner_id = auth.uid())"
-        }
-      ],
-      "rlsEnabled": true,
-      "schema": "public"
-    },
-    {
-      "checks": [
-        {
-          "definition": "CHECK ((alias_type = ANY (ARRAY['common_name'::text, 'inci'::text, 'cas'::text, 'ec'::text, 'supplier_sku'::text, 'legacy_identifier'::text, 'other'::text])))",
-          "name": "ingredient_identity_aliases_alias_type_check"
-        },
-        {
-          "definition": "CHECK ((length(TRIM(BOTH FROM alias_value)) > 0))",
-          "name": "ingredient_identity_aliases_alias_value_check"
-        }
-      ],
-      "estimatedRows": 0,
-      "foreignKeys": [
-        {
-          "columns": [
-            "workspace_id",
-            "ingredient_id"
-          ],
-          "name": "ingredient_identity_aliases_workspace_id_ingredient_id_fkey",
-          "references": "ingredients"
-        },
-        {
-          "columns": [
-            "workspace_id",
-            "owner_id"
-          ],
-          "name": "ingredient_identity_aliases_workspace_id_owner_id_fkey",
-          "references": "workspaces"
-        }
-      ],
-      "generatedColumns": [],
-      "grants": [
-        "authenticated=r/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
-      ],
-      "indexes": [
-        {
-          "columns": [
-            "workspace_id",
-            "alias_type",
-            "scope_reference"
-          ],
-          "expressions": "lower(TRIM(BOTH FROM alias_value))",
-          "name": "ingredient_identity_aliases_active_identity",
-          "predicate": "(retired_at IS NULL)",
-          "unique": true,
-          "valid": true
-        },
-        {
-          "columns": [
-            "workspace_id",
-            "confirmation_key"
-          ],
-          "name": "ingredient_identity_aliases_confirmation_key",
-          "unique": true,
-          "valid": true
-        },
-        {
-          "columns": [
-            "workspace_id",
-            "ingredient_id",
-            "confirmed_at"
-          ],
-          "name": "ingredient_identity_aliases_ingredient_idx",
-          "unique": false,
-          "valid": true
-        },
-        {
-          "columns": [
-            "id"
-          ],
-          "name": "ingredient_identity_aliases_pkey",
-          "unique": true,
-          "valid": true
-        },
-        {
-          "columns": [
-            "workspace_id",
-            "id"
-          ],
-          "name": "ingredient_identity_aliases_workspace_id_id_key",
-          "unique": true,
-          "valid": true
-        }
-      ],
-      "name": "ingredient_identity_aliases",
-      "objectType": "table",
-      "policies": [
-        {
-          "command": "r",
-          "name": "owner_select",
-          "roles": [
-            "authenticated"
-          ],
-          "using": "((owner_id = ( SELECT auth.uid() AS uid)) AND (EXISTS ( SELECT 1\n   FROM workspaces w\n  WHERE ((w.id = ingredient_identity_aliases.workspace_id) AND (w.owner_id = ( SELECT auth.uid() AS uid)) AND (w.lifecycle_state = 'active'::text)))))",
-          "withCheck": null
         }
       ],
       "rlsEnabled": true,
@@ -5536,10 +5464,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "anon=Dxt/postgres",
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -5635,10 +5561,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "anon=Dxt/postgres",
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -5709,10 +5633,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "anon=Dxt/postgres",
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -5809,10 +5731,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "anon=Dxt/postgres",
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -5880,9 +5800,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -6539,9 +6458,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -6608,9 +6526,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -6701,9 +6618,9 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwdDxt/postgres",
+        "authenticated=arwd/postgres",
         "postgres=arwdDxt/postgres",
-        "service_role=arwdDxt/postgres"
+        "service_role=arwd/postgres"
       ],
       "indexes": [
         {
@@ -6768,7 +6685,7 @@
       "grants": [
         "authenticated=r/postgres",
         "postgres=arwdDxt/postgres",
-        "service_role=arDxt/postgres"
+        "service_role=ar/postgres"
       ],
       "indexes": [
         {
@@ -7300,9 +7217,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arw/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -7404,9 +7320,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -7504,9 +7419,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -7585,9 +7499,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -7636,9 +7549,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -7700,9 +7612,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -7775,9 +7686,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -7826,9 +7736,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -7885,9 +7794,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -7936,9 +7844,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -7995,9 +7902,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -8025,820 +7931,6 @@
       "schema": "public"
     },
     {
-      "checks": [
-        {
-          "definition": "CHECK ((((provenance = 'system_derived'::text) AND (state = 'potential'::text) AND (confirmation_basis IS NULL) AND (confirmed_at IS NULL) AND (excluded_at IS NULL)) OR (provenance = 'owner_confirmed'::text)))",
-          "name": "material_applicabilities_check"
-        },
-        {
-          "definition": "CHECK ((((state = 'confirmed'::text) AND (confirmed_at IS NOT NULL) AND (confirmation_basis IS NOT NULL)) OR (state <> 'confirmed'::text)))",
-          "name": "material_applicabilities_check1"
-        },
-        {
-          "definition": "CHECK ((((state = 'excluded'::text) AND (excluded_at IS NOT NULL)) OR (state <> 'excluded'::text)))",
-          "name": "material_applicabilities_check2"
-        },
-        {
-          "definition": "CHECK (((confirmation_basis IS NULL) OR (confirmation_basis = ANY (ARRAY['current_approved_formula'::text, 'owner_designated_active_development_formula'::text, 'owner_context_confirmation'::text]))))",
-          "name": "material_applicabilities_confirmation_basis_check"
-        },
-        {
-          "definition": "CHECK ((length(TRIM(BOTH FROM context_id)) > 0))",
-          "name": "material_applicabilities_context_id_check"
-        },
-        {
-          "definition": "CHECK ((context_type = ANY (ARRAY['product'::text, 'formula_version'::text, 'product_studio_concept'::text, 'development_experiment'::text, 'lab_batch'::text, 'production_run'::text, 'production_round'::text])))",
-          "name": "material_applicabilities_context_type_check"
-        },
-        {
-          "definition": "CHECK ((provenance = ANY (ARRAY['system_derived'::text, 'owner_confirmed'::text])))",
-          "name": "material_applicabilities_provenance_check"
-        },
-        {
-          "definition": "CHECK ((source_adapter = ANY (ARRAY['product_studio'::text, 'formula'::text, 'development'::text, 'lab'::text, 'production'::text, 'owner'::text])))",
-          "name": "material_applicabilities_source_adapter_check"
-        },
-        {
-          "definition": "CHECK ((length(TRIM(BOTH FROM source_key)) > 0))",
-          "name": "material_applicabilities_source_key_check"
-        },
-        {
-          "definition": "CHECK ((state = ANY (ARRAY['potential'::text, 'planned'::text, 'confirmed'::text, 'excluded'::text])))",
-          "name": "material_applicabilities_state_check"
-        }
-      ],
-      "estimatedRows": 0,
-      "foreignKeys": [
-        {
-          "columns": [
-            "workspace_id",
-            "ingredient_id"
-          ],
-          "name": "material_applicabilities_workspace_id_ingredient_id_fkey",
-          "references": "ingredients"
-        },
-        {
-          "columns": [
-            "workspace_id",
-            "owner_id"
-          ],
-          "name": "material_applicabilities_workspace_id_owner_id_fkey",
-          "references": "workspaces"
-        }
-      ],
-      "generatedColumns": [],
-      "grants": [
-        "authenticated=r/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
-      ],
-      "indexes": [
-        {
-          "columns": [
-            "workspace_id",
-            "context_type",
-            "context_id",
-            "ingredient_id",
-            "state"
-          ],
-          "name": "material_applicabilities_context_idx",
-          "unique": false,
-          "valid": true
-        },
-        {
-          "columns": [
-            "workspace_id",
-            "ingredient_id",
-            "state",
-            "updated_at"
-          ],
-          "name": "material_applicabilities_ingredient_idx",
-          "unique": false,
-          "valid": true
-        },
-        {
-          "columns": [
-            "id"
-          ],
-          "name": "material_applicabilities_pkey",
-          "unique": true,
-          "valid": true
-        },
-        {
-          "columns": [
-            "workspace_id",
-            "id"
-          ],
-          "name": "material_applicabilities_workspace_id_id_key",
-          "unique": true,
-          "valid": true
-        },
-        {
-          "columns": [
-            "workspace_id",
-            "ingredient_id",
-            "context_type",
-            "context_id",
-            "source_adapter",
-            "source_key"
-          ],
-          "name": "material_applicabilities_workspace_id_ingredient_id_context_key",
-          "unique": true,
-          "valid": true
-        }
-      ],
-      "name": "material_applicabilities",
-      "objectType": "table",
-      "policies": [
-        {
-          "command": "r",
-          "name": "owner_select",
-          "roles": [
-            "authenticated"
-          ],
-          "using": "((owner_id = ( SELECT auth.uid() AS uid)) AND (EXISTS ( SELECT 1\n   FROM workspaces w\n  WHERE ((w.id = material_applicabilities.workspace_id) AND (w.owner_id = ( SELECT auth.uid() AS uid)) AND (w.lifecycle_state = 'active'::text)))))",
-          "withCheck": null
-        }
-      ],
-      "rlsEnabled": true,
-      "schema": "public"
-    },
-    {
-      "checks": [
-        {
-          "definition": "CHECK ((((to_state = 'confirmed'::text) AND (confirmation_basis IS NOT NULL)) OR ((to_state <> 'confirmed'::text) AND (confirmation_basis IS NULL))))",
-          "name": "material_applicability_events_check"
-        },
-        {
-          "definition": "CHECK (((confirmation_basis IS NULL) OR (confirmation_basis = ANY (ARRAY['current_approved_formula'::text, 'owner_designated_active_development_formula'::text, 'owner_context_confirmation'::text]))))",
-          "name": "material_applicability_events_confirmation_basis_check"
-        },
-        {
-          "definition": "CHECK (((from_state IS NULL) OR (from_state = ANY (ARRAY['potential'::text, 'planned'::text, 'confirmed'::text, 'excluded'::text]))))",
-          "name": "material_applicability_events_from_state_check"
-        },
-        {
-          "definition": "CHECK ((to_state = ANY (ARRAY['potential'::text, 'planned'::text, 'confirmed'::text, 'excluded'::text])))",
-          "name": "material_applicability_events_to_state_check"
-        }
-      ],
-      "estimatedRows": 0,
-      "foreignKeys": [
-        {
-          "columns": [
-            "workspace_id",
-            "applicability_id"
-          ],
-          "name": "material_applicability_events_workspace_id_applicability_i_fkey",
-          "references": "material_applicabilities"
-        },
-        {
-          "columns": [
-            "workspace_id",
-            "owner_id"
-          ],
-          "name": "material_applicability_events_workspace_id_owner_id_fkey",
-          "references": "workspaces"
-        }
-      ],
-      "generatedColumns": [],
-      "grants": [
-        "authenticated=r/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
-      ],
-      "indexes": [
-        {
-          "columns": [
-            "id"
-          ],
-          "name": "material_applicability_events_pkey",
-          "unique": true,
-          "valid": true
-        },
-        {
-          "columns": [
-            "workspace_id",
-            "applicability_id",
-            "occurred_at"
-          ],
-          "name": "material_applicability_events_timeline_idx",
-          "unique": false,
-          "valid": true
-        },
-        {
-          "columns": [
-            "workspace_id",
-            "id"
-          ],
-          "name": "material_applicability_events_workspace_id_id_key",
-          "unique": true,
-          "valid": true
-        },
-        {
-          "columns": [
-            "workspace_id",
-            "idempotency_key"
-          ],
-          "name": "material_applicability_events_workspace_id_idempotency_key_key",
-          "unique": true,
-          "valid": true
-        }
-      ],
-      "name": "material_applicability_events",
-      "objectType": "table",
-      "policies": [
-        {
-          "command": "r",
-          "name": "owner_select",
-          "roles": [
-            "authenticated"
-          ],
-          "using": "((owner_id = ( SELECT auth.uid() AS uid)) AND (EXISTS ( SELECT 1\n   FROM workspaces w\n  WHERE ((w.id = material_applicability_events.workspace_id) AND (w.owner_id = ( SELECT auth.uid() AS uid)) AND (w.lifecycle_state = 'active'::text)))))",
-          "withCheck": null
-        }
-      ],
-      "rlsEnabled": true,
-      "schema": "public"
-    },
-    {
-      "checks": [
-        {
-          "definition": "CHECK ((((quantification_state = 'unknown'::text) AND (quantity IS NULL) AND (unit IS NULL)) OR ((quantification_state = 'known'::text) AND (quantity IS NOT NULL) AND (quantity > (0)::numeric) AND (unit = ANY (ARRAY['mg'::text, 'g'::text, 'kg'::text, 'ml'::text, 'L'::text, 'pcs'::text])))))",
-          "name": "material_demand_contributions_check"
-        },
-        {
-          "definition": "CHECK ((demand_state = ANY (ARRAY['potential'::text, 'planned'::text, 'confirmed'::text])))",
-          "name": "material_demand_contributions_demand_state_check"
-        },
-        {
-          "definition": "CHECK ((quantification_state = ANY (ARRAY['known'::text, 'unknown'::text])))",
-          "name": "material_demand_contributions_quantification_state_check"
-        }
-      ],
-      "estimatedRows": 0,
-      "foreignKeys": [
-        {
-          "columns": [
-            "workspace_id",
-            "first_seen_run_id"
-          ],
-          "name": "material_demand_contributions_workspace_id_first_seen_run__fkey",
-          "references": "material_reconciliation_runs"
-        },
-        {
-          "columns": [
-            "workspace_id",
-            "ingredient_id"
-          ],
-          "name": "material_demand_contributions_workspace_id_ingredient_id_fkey",
-          "references": "ingredients"
-        },
-        {
-          "columns": [
-            "workspace_id",
-            "last_seen_run_id"
-          ],
-          "name": "material_demand_contributions_workspace_id_last_seen_run_i_fkey",
-          "references": "material_reconciliation_runs"
-        },
-        {
-          "columns": [
-            "workspace_id",
-            "origin_id"
-          ],
-          "name": "material_demand_contributions_workspace_id_origin_id_fkey",
-          "references": "material_demand_origins"
-        },
-        {
-          "columns": [
-            "workspace_id",
-            "owner_id"
-          ],
-          "name": "material_demand_contributions_workspace_id_owner_id_fkey",
-          "references": "workspaces"
-        }
-      ],
-      "generatedColumns": [],
-      "grants": [
-        "authenticated=r/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
-      ],
-      "indexes": [
-        {
-          "columns": [
-            "workspace_id",
-            "origin_id",
-            "source_fingerprint"
-          ],
-          "name": "material_demand_contributions_active_fingerprint",
-          "predicate": "active",
-          "unique": true,
-          "valid": true
-        },
-        {
-          "columns": [
-            "workspace_id",
-            "ingredient_id",
-            "quantification_state",
-            "demand_state"
-          ],
-          "name": "material_demand_contributions_material_idx",
-          "predicate": "active",
-          "unique": false,
-          "valid": true
-        },
-        {
-          "columns": [
-            "id"
-          ],
-          "name": "material_demand_contributions_pkey",
-          "unique": true,
-          "valid": true
-        },
-        {
-          "columns": [
-            "workspace_id",
-            "id"
-          ],
-          "name": "material_demand_contributions_workspace_id_id_key",
-          "unique": true,
-          "valid": true
-        }
-      ],
-      "name": "material_demand_contributions",
-      "objectType": "table",
-      "policies": [
-        {
-          "command": "r",
-          "name": "owner_select",
-          "roles": [
-            "authenticated"
-          ],
-          "using": "((owner_id = ( SELECT auth.uid() AS uid)) AND (EXISTS ( SELECT 1\n   FROM workspaces w\n  WHERE ((w.id = material_demand_contributions.workspace_id) AND (w.owner_id = ( SELECT auth.uid() AS uid)) AND (w.lifecycle_state = 'active'::text)))))",
-          "withCheck": null
-        }
-      ],
-      "rlsEnabled": true,
-      "schema": "public"
-    },
-    {
-      "checks": [
-        {
-          "definition": "CHECK ((((origin_kind = 'scope_control'::text) AND (ingredient_id IS NULL) AND (owner_included_at IS NOT NULL) AND (owner_inclusion_key IS NOT NULL)) OR ((origin_kind = 'material_need'::text) AND (ingredient_id IS NOT NULL) AND (owner_included_at IS NULL) AND (owner_inclusion_key IS NULL))))",
-          "name": "material_demand_origins_check"
-        },
-        {
-          "definition": "CHECK ((origin_kind = ANY (ARRAY['material_need'::text, 'scope_control'::text])))",
-          "name": "material_demand_origins_origin_kind_check"
-        },
-        {
-          "definition": "CHECK ((source_adapter = ANY (ARRAY['product_studio'::text, 'formula'::text, 'development'::text, 'lab'::text, 'production'::text])))",
-          "name": "material_demand_origins_source_adapter_check"
-        }
-      ],
-      "estimatedRows": 0,
-      "foreignKeys": [
-        {
-          "columns": [
-            "workspace_id",
-            "first_seen_run_id"
-          ],
-          "name": "material_demand_origins_workspace_id_first_seen_run_id_fkey",
-          "references": "material_reconciliation_runs"
-        },
-        {
-          "columns": [
-            "workspace_id",
-            "ingredient_id"
-          ],
-          "name": "material_demand_origins_workspace_id_ingredient_id_fkey",
-          "references": "ingredients"
-        },
-        {
-          "columns": [
-            "workspace_id",
-            "last_seen_run_id"
-          ],
-          "name": "material_demand_origins_workspace_id_last_seen_run_id_fkey",
-          "references": "material_reconciliation_runs"
-        },
-        {
-          "columns": [
-            "workspace_id",
-            "owner_id"
-          ],
-          "name": "material_demand_origins_workspace_id_owner_id_fkey",
-          "references": "workspaces"
-        },
-        {
-          "columns": [
-            "workspace_id",
-            "parent_origin_id"
-          ],
-          "name": "material_demand_origins_workspace_id_parent_origin_id_fkey",
-          "references": "material_demand_origins"
-        }
-      ],
-      "generatedColumns": [],
-      "grants": [
-        "authenticated=r/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
-      ],
-      "indexes": [
-        {
-          "columns": [
-            "workspace_id",
-            "source_adapter",
-            "source_key"
-          ],
-          "expressions": "COALESCE(ingredient_id, ''::text)",
-          "name": "material_demand_origins_active_source",
-          "predicate": "active",
-          "unique": true,
-          "valid": true
-        },
-        {
-          "columns": [
-            "workspace_id",
-            "ingredient_id",
-            "eligible",
-            "active"
-          ],
-          "name": "material_demand_origins_ingredient_idx",
-          "unique": false,
-          "valid": true
-        },
-        {
-          "columns": [
-            "workspace_id",
-            "lineage_key",
-            "ingredient_id",
-            "active"
-          ],
-          "name": "material_demand_origins_lineage_idx",
-          "unique": false,
-          "valid": true
-        },
-        {
-          "columns": [
-            "workspace_id",
-            "owner_inclusion_key"
-          ],
-          "name": "material_demand_origins_owner_inclusion_key",
-          "predicate": "(owner_inclusion_key IS NOT NULL)",
-          "unique": true,
-          "valid": true
-        },
-        {
-          "columns": [
-            "id"
-          ],
-          "name": "material_demand_origins_pkey",
-          "unique": true,
-          "valid": true
-        },
-        {
-          "columns": [
-            "workspace_id",
-            "id"
-          ],
-          "name": "material_demand_origins_workspace_id_id_key",
-          "unique": true,
-          "valid": true
-        }
-      ],
-      "name": "material_demand_origins",
-      "objectType": "table",
-      "policies": [
-        {
-          "command": "r",
-          "name": "owner_select",
-          "roles": [
-            "authenticated"
-          ],
-          "using": "((owner_id = ( SELECT auth.uid() AS uid)) AND (EXISTS ( SELECT 1\n   FROM workspaces w\n  WHERE ((w.id = material_demand_origins.workspace_id) AND (w.owner_id = ( SELECT auth.uid() AS uid)) AND (w.lifecycle_state = 'active'::text)))))",
-          "withCheck": null
-        }
-      ],
-      "rlsEnabled": true,
-      "schema": "public"
-    },
-    {
-      "checks": [
-        {
-          "definition": "CHECK ((jsonb_typeof(details) = 'object'::text))",
-          "name": "material_reconciliation_findings_details_check"
-        },
-        {
-          "definition": "CHECK ((finding_type = ANY (ARRAY['unresolved_functional_target'::text, 'unresolved_development_material'::text, 'invalid_canonical_reference'::text, 'ineligible_source'::text, 'missing_demand_lineage'::text])))",
-          "name": "material_reconciliation_findings_finding_type_check"
-        },
-        {
-          "definition": "CHECK ((severity = ANY (ARRAY['information'::text, 'review_required'::text, 'blocked'::text])))",
-          "name": "material_reconciliation_findings_severity_check"
-        },
-        {
-          "definition": "CHECK ((status = ANY (ARRAY['open'::text, 'resolved'::text, 'ignored'::text])))",
-          "name": "material_reconciliation_findings_status_check"
-        }
-      ],
-      "estimatedRows": 0,
-      "foreignKeys": [
-        {
-          "columns": [
-            "workspace_id",
-            "owner_id"
-          ],
-          "name": "material_reconciliation_findings_workspace_id_owner_id_fkey",
-          "references": "workspaces"
-        },
-        {
-          "columns": [
-            "workspace_id",
-            "run_id"
-          ],
-          "name": "material_reconciliation_findings_workspace_id_run_id_fkey",
-          "references": "material_reconciliation_runs"
-        }
-      ],
-      "generatedColumns": [],
-      "grants": [
-        "authenticated=r/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
-      ],
-      "indexes": [
-        {
-          "columns": [
-            "workspace_id",
-            "run_id",
-            "finding_key"
-          ],
-          "name": "material_reconciliation_findi_workspace_id_run_id_finding_k_key",
-          "unique": true,
-          "valid": true
-        },
-        {
-          "columns": [
-            "id"
-          ],
-          "name": "material_reconciliation_findings_pkey",
-          "unique": true,
-          "valid": true
-        },
-        {
-          "columns": [
-            "workspace_id",
-            "status",
-            "severity",
-            "created_at"
-          ],
-          "name": "material_reconciliation_findings_review_idx",
-          "unique": false,
-          "valid": true
-        },
-        {
-          "columns": [
-            "workspace_id",
-            "id"
-          ],
-          "name": "material_reconciliation_findings_workspace_id_id_key",
-          "unique": true,
-          "valid": true
-        }
-      ],
-      "name": "material_reconciliation_findings",
-      "objectType": "table",
-      "policies": [
-        {
-          "command": "r",
-          "name": "owner_select",
-          "roles": [
-            "authenticated"
-          ],
-          "using": "((owner_id = ( SELECT auth.uid() AS uid)) AND (EXISTS ( SELECT 1\n   FROM workspaces w\n  WHERE ((w.id = material_reconciliation_findings.workspace_id) AND (w.owner_id = ( SELECT auth.uid() AS uid)) AND (w.lifecycle_state = 'active'::text)))))",
-          "withCheck": null
-        }
-      ],
-      "rlsEnabled": true,
-      "schema": "public"
-    },
-    {
-      "checks": [
-        {
-          "definition": "CHECK ((mode = ANY (ARRAY['reconcile'::text, 'canonicalization_preview'::text, 'canonicalization_apply'::text])))",
-          "name": "material_reconciliation_runs_mode_check"
-        },
-        {
-          "definition": "CHECK ((status = ANY (ARRAY['running'::text, 'completed'::text, 'failed'::text])))",
-          "name": "material_reconciliation_runs_status_check"
-        },
-        {
-          "definition": "CHECK ((jsonb_typeof(summary) = 'object'::text))",
-          "name": "material_reconciliation_runs_summary_check"
-        }
-      ],
-      "estimatedRows": 0,
-      "foreignKeys": [
-        {
-          "columns": [
-            "workspace_id",
-            "owner_id"
-          ],
-          "name": "material_reconciliation_runs_workspace_id_owner_id_fkey",
-          "references": "workspaces"
-        },
-        {
-          "columns": [
-            "workspace_id",
-            "preview_run_id"
-          ],
-          "name": "material_reconciliation_runs_workspace_id_preview_run_id_fkey",
-          "references": "material_reconciliation_runs"
-        }
-      ],
-      "generatedColumns": [],
-      "grants": [
-        "authenticated=r/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
-      ],
-      "indexes": [
-        {
-          "columns": [
-            "id"
-          ],
-          "name": "material_reconciliation_runs_pkey",
-          "unique": true,
-          "valid": true
-        },
-        {
-          "columns": [
-            "workspace_id",
-            "started_at"
-          ],
-          "name": "material_reconciliation_runs_recent_idx",
-          "unique": false,
-          "valid": true
-        },
-        {
-          "columns": [
-            "workspace_id",
-            "id"
-          ],
-          "name": "material_reconciliation_runs_workspace_id_id_key",
-          "unique": true,
-          "valid": true
-        },
-        {
-          "columns": [
-            "workspace_id",
-            "mode",
-            "idempotency_key"
-          ],
-          "name": "material_reconciliation_runs_workspace_id_mode_idempotency__key",
-          "unique": true,
-          "valid": true
-        }
-      ],
-      "name": "material_reconciliation_runs",
-      "objectType": "table",
-      "policies": [
-        {
-          "command": "r",
-          "name": "owner_select",
-          "roles": [
-            "authenticated"
-          ],
-          "using": "((owner_id = ( SELECT auth.uid() AS uid)) AND (EXISTS ( SELECT 1\n   FROM workspaces w\n  WHERE ((w.id = material_reconciliation_runs.workspace_id) AND (w.owner_id = ( SELECT auth.uid() AS uid)) AND (w.lifecycle_state = 'active'::text)))))",
-          "withCheck": null
-        }
-      ],
-      "rlsEnabled": true,
-      "schema": "public"
-    },
-    {
-      "checks": [
-        {
-          "definition": "CHECK ((resolution_basis = ANY (ARRAY['explicit_owner_confirmation'::text, 'canonicalization_apply'::text])))",
-          "name": "material_target_resolutions_resolution_basis_check"
-        },
-        {
-          "definition": "CHECK ((length(TRIM(BOTH FROM source_id)) > 0))",
-          "name": "material_target_resolutions_source_id_check"
-        },
-        {
-          "definition": "CHECK ((source_type = ANY (ARRAY['product_studio_target'::text, 'procurement_requested_item'::text, 'supplier_offer'::text, 'development_change'::text])))",
-          "name": "material_target_resolutions_source_type_check"
-        }
-      ],
-      "estimatedRows": 0,
-      "foreignKeys": [
-        {
-          "columns": [
-            "workspace_id",
-            "ingredient_id"
-          ],
-          "name": "material_target_resolutions_workspace_id_ingredient_id_fkey",
-          "references": "ingredients"
-        },
-        {
-          "columns": [
-            "workspace_id",
-            "owner_id"
-          ],
-          "name": "material_target_resolutions_workspace_id_owner_id_fkey",
-          "references": "workspaces"
-        },
-        {
-          "columns": [
-            "workspace_id",
-            "reconciliation_run_id"
-          ],
-          "name": "material_target_resolutions_workspace_id_reconciliation_ru_fkey",
-          "references": "material_reconciliation_runs"
-        }
-      ],
-      "generatedColumns": [],
-      "grants": [
-        "authenticated=r/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
-      ],
-      "indexes": [
-        {
-          "columns": [
-            "workspace_id",
-            "source_type",
-            "source_id",
-            "source_target_key",
-            "ingredient_id"
-          ],
-          "name": "material_target_resolutions_active_component",
-          "predicate": "(retired_at IS NULL)",
-          "unique": true,
-          "valid": true
-        },
-        {
-          "columns": [
-            "workspace_id",
-            "resolution_group_id"
-          ],
-          "name": "material_target_resolutions_group_idx",
-          "unique": false,
-          "valid": true
-        },
-        {
-          "columns": [
-            "workspace_id",
-            "source_type",
-            "source_id",
-            "source_target_key",
-            "confirmed_at"
-          ],
-          "name": "material_target_resolutions_lookup_idx",
-          "predicate": "(retired_at IS NULL)",
-          "unique": false,
-          "valid": true
-        },
-        {
-          "columns": [
-            "id"
-          ],
-          "name": "material_target_resolutions_pkey",
-          "unique": true,
-          "valid": true
-        },
-        {
-          "columns": [
-            "workspace_id",
-            "id"
-          ],
-          "name": "material_target_resolutions_workspace_id_id_key",
-          "unique": true,
-          "valid": true
-        }
-      ],
-      "name": "material_target_resolutions",
-      "objectType": "table",
-      "policies": [
-        {
-          "command": "r",
-          "name": "owner_select",
-          "roles": [
-            "authenticated"
-          ],
-          "using": "((owner_id = ( SELECT auth.uid() AS uid)) AND (EXISTS ( SELECT 1\n   FROM workspaces w\n  WHERE ((w.id = material_target_resolutions.workspace_id) AND (w.owner_id = ( SELECT auth.uid() AS uid)) AND (w.lifecycle_state = 'active'::text)))))",
-          "withCheck": null
-        }
-      ],
-      "rlsEnabled": true,
-      "schema": "public"
-    },
-    {
       "checks": [],
       "estimatedRows": 0,
       "foreignKeys": [
@@ -8859,9 +7951,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arw/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -8971,7 +8062,7 @@
       "grants": [
         "authenticated=r/postgres",
         "postgres=arwdDxt/postgres",
-        "service_role=arwdDxt/postgres"
+        "service_role=arwd/postgres"
       ],
       "indexes": [
         {
@@ -9097,8 +8188,7 @@
       "generatedColumns": [],
       "grants": [
         "authenticated=r/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -9174,9 +8264,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -9253,9 +8342,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -9320,7 +8408,7 @@
       "grants": [
         "authenticated=r/postgres",
         "postgres=arwdDxt/postgres",
-        "service_role=arDxt/postgres"
+        "service_role=ar/postgres"
       ],
       "indexes": [
         {
@@ -9421,8 +8509,7 @@
       "generatedColumns": [],
       "grants": [
         "authenticated=r/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -9564,8 +8651,7 @@
       "generatedColumns": [],
       "grants": [
         "authenticated=r/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -9702,8 +8788,7 @@
       "generatedColumns": [],
       "grants": [
         "authenticated=r/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -9880,8 +8965,7 @@
       "generatedColumns": [],
       "grants": [
         "authenticated=r/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -10025,8 +9109,7 @@
       "generatedColumns": [],
       "grants": [
         "authenticated=r/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -10166,8 +9249,7 @@
       "generatedColumns": [],
       "grants": [
         "authenticated=r/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -10327,8 +9409,7 @@
       "generatedColumns": [],
       "grants": [
         "authenticated=r/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -10517,7 +9598,7 @@
       "grants": [
         "authenticated=r/postgres",
         "postgres=arwdDxt/postgres",
-        "service_role=arwdDxt/postgres"
+        "service_role=arwd/postgres"
       ],
       "indexes": [
         {
@@ -10671,9 +9752,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -10730,9 +9810,9 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwdDxt/postgres",
+        "authenticated=arwd/postgres",
         "postgres=arwdDxt/postgres",
-        "service_role=arwdDxt/postgres"
+        "service_role=arwd/postgres"
       ],
       "indexes": [
         {
@@ -10781,9 +9861,9 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwdDxt/postgres",
+        "authenticated=arwd/postgres",
         "postgres=arwdDxt/postgres",
-        "service_role=arwdDxt/postgres"
+        "service_role=arwd/postgres"
       ],
       "indexes": [
         {
@@ -10877,9 +9957,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -10951,9 +10030,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -11003,9 +10081,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -11060,9 +10137,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arw/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -11340,9 +10416,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -11468,9 +10543,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -11662,9 +10736,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arw/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -11811,8 +10884,7 @@
       "generatedColumns": [],
       "grants": [
         "authenticated=r/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -11882,9 +10954,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -11978,9 +11049,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -12079,9 +11149,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -12200,9 +11269,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arw/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -12350,9 +11418,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -12523,9 +11590,8 @@
         "source_raw_material_product_id"
       ],
       "grants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -12721,9 +11787,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -12843,9 +11908,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -12934,9 +11998,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -13011,8 +12074,7 @@
       "generatedColumns": [],
       "grants": [
         "authenticated=r/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -13121,8 +12183,7 @@
       "generatedColumns": [],
       "grants": [
         "authenticated=r/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -13233,8 +12294,7 @@
       "generatedColumns": [],
       "grants": [
         "authenticated=r/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -13335,8 +12395,7 @@
       "generatedColumns": [],
       "grants": [
         "authenticated=r/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -13490,7 +12549,7 @@
       "grants": [
         "authenticated=r/postgres",
         "postgres=arwdDxt/postgres",
-        "service_role=arwdDxt/postgres"
+        "service_role=arwd/postgres"
       ],
       "indexes": [
         {
@@ -13595,9 +12654,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -13645,8 +12703,7 @@
       "generatedColumns": [],
       "grants": [
         "authenticated=r/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -13778,8 +12835,7 @@
       "generatedColumns": [],
       "grants": [
         "authenticated=r/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -13890,8 +12946,7 @@
       "generatedColumns": [],
       "grants": [
         "authenticated=r/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -14026,8 +13081,7 @@
       "generatedColumns": [],
       "grants": [
         "authenticated=r/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -14129,8 +13183,7 @@
       "generatedColumns": [],
       "grants": [
         "authenticated=r/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -14263,8 +13316,7 @@
       "generatedColumns": [],
       "grants": [
         "authenticated=r/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -14405,8 +13457,7 @@
       "generatedColumns": [],
       "grants": [
         "authenticated=r/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -14531,8 +13582,7 @@
       "generatedColumns": [],
       "grants": [
         "authenticated=r/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -14627,8 +13677,7 @@
       "generatedColumns": [],
       "grants": [
         "authenticated=r/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -14739,8 +13788,7 @@
       "generatedColumns": [],
       "grants": [
         "authenticated=r/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -14860,8 +13908,7 @@
       "generatedColumns": [],
       "grants": [
         "authenticated=r/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -14962,9 +14009,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -15042,9 +14088,9 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwdDxt/postgres",
+        "authenticated=arwd/postgres",
         "postgres=arwdDxt/postgres",
-        "service_role=arwdDxt/postgres"
+        "service_role=arwd/postgres"
       ],
       "indexes": [
         {
@@ -15110,9 +14156,9 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwdDxt/postgres",
+        "authenticated=arwd/postgres",
         "postgres=arwdDxt/postgres",
-        "service_role=arwdDxt/postgres"
+        "service_role=arwd/postgres"
       ],
       "indexes": [
         {
@@ -15660,6 +14706,10 @@
           "name": "purchase_order_lines_ordered_quantity_check"
         },
         {
+          "definition": "CHECK ((((record_origin = 'planned'::text) AND (source_purchase_plan_line_id IS NOT NULL)) OR ((record_origin = 'historical_external'::text) AND (source_purchase_plan_line_id IS NULL) AND (source_purchase_plan_basket_id IS NULL) AND (source_requirement_id IS NULL) AND (source_scenario_line_id IS NULL))))",
+          "name": "purchase_order_lines_origin_lineage"
+        },
+        {
           "definition": "CHECK (((package_size IS NULL) OR (package_size > (0)::numeric)))",
           "name": "purchase_order_lines_package_size_check"
         },
@@ -15674,6 +14724,10 @@
         {
           "definition": "CHECK ((jsonb_typeof(product_snapshot) = 'object'::text))",
           "name": "purchase_order_lines_product_snapshot_check"
+        },
+        {
+          "definition": "CHECK ((record_origin = ANY (ARRAY['planned'::text, 'historical_external'::text])))",
+          "name": "purchase_order_lines_record_origin_check"
         },
         {
           "definition": "CHECK (((required_quantity IS NULL) OR (required_quantity > (0)::numeric)))",
@@ -15702,6 +14756,15 @@
       ],
       "estimatedRows": 0,
       "foreignKeys": [
+        {
+          "columns": [
+            "workspace_id",
+            "purchase_order_id",
+            "record_origin"
+          ],
+          "name": "purchase_order_lines_order_origin_fk",
+          "references": "purchase_orders"
+        },
         {
           "columns": [
             "workspace_id",
@@ -16975,6 +16038,10 @@
           "name": "purchase_orders_merchandise_subtotal_check"
         },
         {
+          "definition": "CHECK ((((record_origin = 'planned'::text) AND (source_purchase_plan_id IS NOT NULL) AND (source_purchase_plan_revision IS NOT NULL) AND (reconciliation_key IS NULL) AND (reconciliation_fingerprint IS NULL) AND (reconstruction_evidence IS NULL)) OR ((record_origin = 'historical_external'::text) AND (source_purchase_plan_id IS NULL) AND (source_purchase_plan_revision IS NULL) AND (source_purchase_plan_version IS NULL) AND (source_purchase_plan_basket_id IS NULL) AND (source_round_id IS NULL) AND (source_scenario_id IS NULL) AND (reconciliation_key IS NOT NULL) AND (reconciliation_fingerprint IS NOT NULL) AND (reconstruction_evidence IS NOT NULL) AND (jsonb_typeof(reconstruction_evidence) = 'object'::text) AND (NOT ((reconstruction_evidence ->> 'acknowledgement'::text) IS DISTINCT FROM 'already_completed_external_purchase'::text)) AND (external_order_date IS NOT NULL) AND (status <> 'draft'::text))))",
+          "name": "purchase_orders_origin_lineage"
+        },
+        {
           "definition": "CHECK (((payment_state_recorded IS NULL) OR (payment_state_recorded = ANY (ARRAY['unknown'::text, 'initiated'::text, 'captured_as_reported'::text]))))",
           "name": "purchase_orders_payment_state_recorded_check"
         },
@@ -16997,6 +16064,10 @@
         {
           "definition": "CHECK ((jsonb_typeof(placement_evidence) = 'object'::text))",
           "name": "purchase_orders_placement_evidence_check"
+        },
+        {
+          "definition": "CHECK ((record_origin = ANY (ARRAY['planned'::text, 'historical_external'::text])))",
+          "name": "purchase_orders_record_origin_check"
         },
         {
           "definition": "CHECK ((revision > 0))",
@@ -17116,6 +16187,16 @@
         },
         {
           "columns": [
+            "workspace_id",
+            "id",
+            "record_origin"
+          ],
+          "name": "purchase_orders_origin_key",
+          "unique": true,
+          "valid": true
+        },
+        {
+          "columns": [
             "owner_id",
             "updated_at"
           ],
@@ -17144,6 +16225,15 @@
         {
           "columns": [
             "workspace_id",
+            "reconciliation_key"
+          ],
+          "name": "purchase_orders_reconciliation_key",
+          "unique": true,
+          "valid": true
+        },
+        {
+          "columns": [
+            "workspace_id",
             "source_purchase_plan_id"
           ],
           "name": "purchase_orders_source_plan",
@@ -17165,9 +16255,20 @@
             "workspace_id",
             "supplier_id"
           ],
-          "expressions": "lower(order_reference)",
+          "expressions": "lower(btrim(supplier_order_number))",
+          "name": "purchase_orders_supplier_order_number",
+          "predicate": "(supplier_order_number IS NOT NULL)",
+          "unique": true,
+          "valid": true
+        },
+        {
+          "columns": [
+            "workspace_id",
+            "supplier_id"
+          ],
+          "expressions": "lower(btrim(order_reference))",
           "name": "purchase_orders_supplier_reference",
-          "predicate": "((status = ANY (ARRAY['placed'::text, 'confirmed'::text, 'partially_fulfilled'::text, 'fulfilled'::text])) AND (order_reference IS NOT NULL))",
+          "predicate": "(order_reference IS NOT NULL)",
           "unique": true,
           "valid": true
         },
@@ -17945,9 +17046,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -18002,8 +17102,7 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -18074,8 +17173,7 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -18172,8 +17270,7 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -18238,8 +17335,7 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -18335,8 +17431,7 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -18413,8 +17508,7 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -18506,8 +17600,7 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -18569,8 +17662,7 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -18643,8 +17735,7 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -18725,8 +17816,7 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -18811,8 +17901,7 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -18861,9 +17950,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -18913,9 +18001,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -18956,9 +18043,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -19046,7 +18132,7 @@
       "grants": [
         "authenticated=r/postgres",
         "postgres=arwdDxt/postgres",
-        "service_role=arwdDxt/postgres"
+        "service_role=arwd/postgres"
       ],
       "indexes": [
         {
@@ -19138,9 +18224,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -19259,9 +18344,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=rDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=r/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -19416,9 +18500,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arw/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -19505,9 +18588,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arw/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -19550,9 +18632,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arw/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -19631,9 +18712,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -19732,9 +18812,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arw/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -19849,9 +18928,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arw/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -19960,8 +19038,7 @@
       "generatedColumns": [],
       "grants": [
         "authenticated=r/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -20097,9 +19174,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -20191,9 +19267,8 @@
         "line_total"
       ],
       "grants": [
-        "authenticated=arwDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arw/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -20255,9 +19330,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arw/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -20340,9 +19414,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arw/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -20418,9 +19491,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arw/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -20490,9 +19562,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -20550,9 +19621,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -20609,9 +19679,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -20653,9 +19722,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -20696,9 +19764,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -20739,9 +19806,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -20814,9 +19880,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -20914,9 +19979,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -20999,9 +20063,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arw/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -21077,9 +20140,8 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -21126,8 +20188,7 @@
       "generatedColumns": [],
       "grants": [
         "authenticated=r/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -21186,8 +20247,7 @@
       "generatedColumns": [],
       "grants": [
         "authenticated=r/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "indexes": [
         {
@@ -21243,9 +20303,9 @@
       ],
       "generatedColumns": [],
       "grants": [
-        "authenticated=arwDxt/postgres",
+        "authenticated=arw/postgres",
         "postgres=arwdDxt/postgres",
-        "service_role=rDxt/postgres"
+        "service_role=r/postgres"
       ],
       "indexes": [
         {
@@ -21758,6 +20818,13 @@
       "name": "normalize_production_runs_legacy_write",
       "schema": "public",
       "table": "production_runs"
+    },
+    {
+      "definition": "CREATE TRIGGER purchase_order_audit_lineage BEFORE INSERT OR UPDATE ON public.purchase_order_audit_events FOR EACH ROW EXECUTE FUNCTION enforce_purchase_order_audit_lineage()",
+      "function": "enforce_purchase_order_audit_lineage()",
+      "name": "purchase_order_audit_lineage",
+      "schema": "public",
+      "table": "purchase_order_audit_events"
     },
     {
       "definition": "CREATE TRIGGER released_finished_goods_inventory_lots_append_only BEFORE DELETE OR UPDATE ON public.released_finished_goods_inventory_lots FOR EACH ROW EXECUTE FUNCTION kf_finished_goods_append_only()",

@@ -19,6 +19,9 @@ const write = process.argv.includes("--write")
 const check = process.argv.includes("--check")
 if (!write && !check) throw new Error("Use --write or --check.")
 
+const localDatabase = process.argv.find(arg => arg.startsWith("--local-database="))?.split("=")[1] ?? "postgres"
+if (!/^[a-z][a-z0-9_]*$/.test(localDatabase)) throw new Error("Invalid local database name.")
+
 const sql = String.raw`
 with relation_objects as (
   select n.nspname schema_name,
@@ -75,7 +78,7 @@ select json_build_object(
 
 function queryCatalogue() {
   const output = execFileSync("docker", [
-    "exec", "supabase_db_koalafrog-hq", "psql", "-U", "postgres", "-d", "postgres",
+    "exec", "supabase_db_koalafrog-hq", "psql", "-U", "postgres", "-d", localDatabase,
     "-At", "-v", "ON_ERROR_STOP=1", "-c", sql,
   ], { encoding: "utf8", maxBuffer: 100 * 1024 * 1024 })
   const catalogue = JSON.parse(output)
@@ -108,7 +111,7 @@ function classifyRelation(item) {
   if (explicit) return explicit
   if (item.objectType !== "table") return { classification: "canonical_read_model", domain: domainFor(item.name) }
   if (/(_events|_event|audit|history)$/.test(item.name)) return { classification: "audit_only", domain: domainFor(item.name) }
-  if (/(_movements|_consumptions|_weighings|_inspections|_reviews|_snapshots|_measurements|_reconciliations)$/.test(item.name))
+  if (/(_command_receipts|_movements|_consumptions|_weighings|_inspections|_reviews|_snapshots|_measurements|_reconciliations)$/.test(item.name))
     return { classification: "immutable_history", domain: domainFor(item.name) }
   if (/(operations|idempotency|jobs|attempts|diagnostics|migration_runs|document_objects)/.test(item.name))
     return { classification: "operational_support", domain: domainFor(item.name) }

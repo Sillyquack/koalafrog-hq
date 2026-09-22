@@ -3913,7 +3913,7 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 33188,
+        "bytes": 33297,
         "lines": 131
       }
     },
@@ -4168,6 +4168,56 @@
       "crossDomainDependencies": [],
       "domainOwner": "procurement",
       "legacyDependency": [],
+      "modulePath": "src/features/procurement/historical-purchases/historicalPurchase.ts",
+      "objectType": "module",
+      "responsibility": "module",
+      "riskNotes": [],
+      "serverAuthoritativePoliciesConsumed": [],
+      "sizeMetrics": {
+        "bytes": 3155,
+        "lines": 92
+      }
+    },
+    {
+      "canonicalRepository": "./historicalPurchaseRepository",
+      "classification": "canonical_read_model",
+      "crossDomainDependencies": [],
+      "domainOwner": "procurement",
+      "legacyDependency": [],
+      "modulePath": "src/features/procurement/historical-purchases/historicalPurchaseRepository.test.ts",
+      "objectType": "module",
+      "responsibility": "module",
+      "riskNotes": [],
+      "serverAuthoritativePoliciesConsumed": [
+        "./historicalPurchaseRepository"
+      ],
+      "sizeMetrics": {
+        "bytes": 3329,
+        "lines": 48
+      }
+    },
+    {
+      "canonicalRepository": null,
+      "classification": "canonical_read_model",
+      "crossDomainDependencies": [],
+      "domainOwner": "procurement",
+      "legacyDependency": [],
+      "modulePath": "src/features/procurement/historical-purchases/historicalPurchaseRepository.ts",
+      "objectType": "repository",
+      "responsibility": "repository",
+      "riskNotes": [],
+      "serverAuthoritativePoliciesConsumed": [],
+      "sizeMetrics": {
+        "bytes": 1578,
+        "lines": 31
+      }
+    },
+    {
+      "canonicalRepository": null,
+      "classification": "canonical_read_model",
+      "crossDomainDependencies": [],
+      "domainOwner": "procurement",
+      "legacyDependency": [],
       "modulePath": "src/features/procurement/LegacySupplierDetailRedirect.tsx",
       "objectType": "module",
       "responsibility": "module",
@@ -4327,7 +4377,7 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 48286,
+        "bytes": 48405,
         "lines": 312
       }
     },
@@ -7433,8 +7483,8 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 1408,
-        "lines": 44
+        "bytes": 1569,
+        "lines": 46
       }
     },
     {
@@ -7841,8 +7891,8 @@
       ],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 673566,
-        "lines": 19709
+        "bytes": 676180,
+        "lines": 19788
       }
     },
     {

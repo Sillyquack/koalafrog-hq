@@ -4622,6 +4622,47 @@ export type Database = {
           },
         ]
       }
+      historical_purchase_command_receipts: {
+        Row: {
+          command: string
+          id: string
+          idempotency_key: string
+          owner_id: string
+          payload_fingerprint: string
+          recorded_at: string
+          result: Json
+          workspace_id: string
+        }
+        Insert: {
+          command: string
+          id?: string
+          idempotency_key: string
+          owner_id: string
+          payload_fingerprint: string
+          recorded_at?: string
+          result: Json
+          workspace_id: string
+        }
+        Update: {
+          command?: string
+          id?: string
+          idempotency_key?: string
+          owner_id?: string
+          payload_fingerprint?: string
+          recorded_at?: string
+          result?: Json
+          workspace_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "historical_purchase_command_receipts_workspace_id_fkey"
+            columns: ["workspace_id"]
+            isOneToOne: false
+            referencedRelation: "workspaces"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inci_declarations: {
         Row: {
           compliance_dossier_id: string
@@ -12319,7 +12360,7 @@ export type Database = {
           purchase_order_id: string
           reason: string
           source_purchase_plan_basket_id: string | null
-          source_purchase_plan_id: string
+          source_purchase_plan_id: string | null
           source_purchase_plan_version: number | null
           supplier_id: string
           workspace_id: string
@@ -12337,7 +12378,7 @@ export type Database = {
           purchase_order_id: string
           reason?: string
           source_purchase_plan_basket_id?: string | null
-          source_purchase_plan_id: string
+          source_purchase_plan_id?: string | null
           source_purchase_plan_version?: number | null
           supplier_id: string
           workspace_id: string
@@ -12355,7 +12396,7 @@ export type Database = {
           purchase_order_id?: string
           reason?: string
           source_purchase_plan_basket_id?: string | null
-          source_purchase_plan_id?: string
+          source_purchase_plan_id?: string | null
           source_purchase_plan_version?: number | null
           supplier_id?: string
           workspace_id?: string
@@ -12720,11 +12761,12 @@ export type Database = {
           product_snapshot: Json
           product_url_snapshot: string | null
           purchase_order_id: string
+          record_origin: string
           required_quantity: number | null
           required_unit: string | null
           shipping_allocation: number | null
           source_purchase_plan_basket_id: string | null
-          source_purchase_plan_line_id: string
+          source_purchase_plan_line_id: string | null
           source_requirement_id: string | null
           source_scenario_line_id: string | null
           supplier_product_id: string | null
@@ -12774,11 +12816,12 @@ export type Database = {
           product_snapshot?: Json
           product_url_snapshot?: string | null
           purchase_order_id: string
+          record_origin?: string
           required_quantity?: number | null
           required_unit?: string | null
           shipping_allocation?: number | null
           source_purchase_plan_basket_id?: string | null
-          source_purchase_plan_line_id: string
+          source_purchase_plan_line_id?: string | null
           source_requirement_id?: string | null
           source_scenario_line_id?: string | null
           supplier_product_id?: string | null
@@ -12828,11 +12871,12 @@ export type Database = {
           product_snapshot?: Json
           product_url_snapshot?: string | null
           purchase_order_id?: string
+          record_origin?: string
           required_quantity?: number | null
           required_unit?: string | null
           shipping_allocation?: number | null
           source_purchase_plan_basket_id?: string | null
-          source_purchase_plan_line_id?: string
+          source_purchase_plan_line_id?: string | null
           source_requirement_id?: string | null
           source_scenario_line_id?: string | null
           supplier_product_id?: string | null
@@ -12845,6 +12889,13 @@ export type Database = {
           workspace_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "purchase_order_lines_order_origin_fk"
+            columns: ["workspace_id", "purchase_order_id", "record_origin"]
+            isOneToOne: false
+            referencedRelation: "purchase_orders"
+            referencedColumns: ["workspace_id", "id", "record_origin"]
+          },
           {
             foreignKeyName: "purchase_order_lines_plan_basket_fk"
             columns: ["workspace_id", "source_purchase_plan_basket_id"]
@@ -13813,12 +13864,16 @@ export type Database = {
           placement_policy_version: string | null
           placement_revision: number | null
           placement_warnings: string[]
+          reconciliation_fingerprint: string | null
+          reconciliation_key: string | null
+          reconstruction_evidence: Json | null
+          record_origin: string
           requires_receiving_review: boolean
           revision: number
           shipping: number | null
           source_purchase_plan_basket_id: string | null
-          source_purchase_plan_id: string
-          source_purchase_plan_revision: number
+          source_purchase_plan_id: string | null
+          source_purchase_plan_revision: number | null
           source_purchase_plan_version: number | null
           source_round_id: string | null
           source_scenario_id: string | null
@@ -13889,12 +13944,16 @@ export type Database = {
           placement_policy_version?: string | null
           placement_revision?: number | null
           placement_warnings?: string[]
+          reconciliation_fingerprint?: string | null
+          reconciliation_key?: string | null
+          reconstruction_evidence?: Json | null
+          record_origin?: string
           requires_receiving_review?: boolean
           revision?: number
           shipping?: number | null
           source_purchase_plan_basket_id?: string | null
-          source_purchase_plan_id: string
-          source_purchase_plan_revision: number
+          source_purchase_plan_id?: string | null
+          source_purchase_plan_revision?: number | null
           source_purchase_plan_version?: number | null
           source_round_id?: string | null
           source_scenario_id?: string | null
@@ -13965,12 +14024,16 @@ export type Database = {
           placement_policy_version?: string | null
           placement_revision?: number | null
           placement_warnings?: string[]
+          reconciliation_fingerprint?: string | null
+          reconciliation_key?: string | null
+          reconstruction_evidence?: Json | null
+          record_origin?: string
           requires_receiving_review?: boolean
           revision?: number
           shipping?: number | null
           source_purchase_plan_basket_id?: string | null
-          source_purchase_plan_id?: string
-          source_purchase_plan_revision?: number
+          source_purchase_plan_id?: string | null
+          source_purchase_plan_revision?: number | null
           source_purchase_plan_version?: number | null
           source_round_id?: string | null
           source_scenario_id?: string | null
@@ -18044,6 +18107,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      accept_owner_reviewed_supplier_product_mapping: {
+        Args: {
+          candidate_idempotency_key: string
+          mapping_payload: Json
+          target_workspace_id: string
+        }
+        Returns: Json
+      }
       accept_procurement_offer_candidate: {
         Args: {
           candidate_id: string
@@ -18994,6 +19065,14 @@ export type Database = {
           variance_approval_state: string
           variance_evidence: string
           variance_reason: string
+        }
+        Returns: Json
+      }
+      reconcile_historical_external_purchase: {
+        Args: {
+          candidate_idempotency_key: string
+          purchase_payload: Json
+          target_workspace_id: string
         }
         Returns: Json
       }

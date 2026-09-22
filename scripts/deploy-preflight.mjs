@@ -6,13 +6,14 @@ const tagCommit = execFileSync("git", ["rev-parse", `${expectedTag}^{commit}`], 
 if (tagCommit !== expectedCommit) throw new Error(`RC tag drift: expected ${expectedCommit}, received ${tagCommit}`)
 if (execFileSync("git", ["status", "--porcelain"], { encoding: "utf8" }).trim()) throw new Error("Deployment preflight requires a clean working tree.")
 
+const localDatabaseArgs = process.argv.filter(arg => arg.startsWith("--local-database="))
 const checks = [
   ["node", ["scripts/deployment-preparation-audit.mjs", "--check"]],
   ["node", ["scripts/test-deployment-preparation.mjs"]],
   ["node", ["scripts/check-secrets.mjs"]],
   ["node", ["scripts/test-cloudflare-readiness.mjs"]],
   ["node", ["scripts/documentation-audit.mjs"]],
-  ["node", ["scripts/platform-audit.mjs", "--check"]],
+  ["node", ["scripts/platform-audit.mjs", "--check", ...localDatabaseArgs]],
   ["npm", ["run", "build"]],
 ]
 for (const [command, args] of checks) execFileSync(command, args, { stdio: "inherit" })

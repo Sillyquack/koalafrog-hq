@@ -3912,7 +3912,7 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 33188,
+        "bytes": 33297,
         "lines": 131
       }
     },
@@ -4167,6 +4167,56 @@
       "crossDomainDependencies": [],
       "domainOwner": "procurement",
       "legacyDependency": [],
+      "modulePath": "src/features/procurement/historical-purchases/historicalPurchase.ts",
+      "objectType": "module",
+      "responsibility": "module",
+      "riskNotes": [],
+      "serverAuthoritativePoliciesConsumed": [],
+      "sizeMetrics": {
+        "bytes": 3155,
+        "lines": 92
+      }
+    },
+    {
+      "canonicalRepository": "./historicalPurchaseRepository",
+      "classification": "canonical_read_model",
+      "crossDomainDependencies": [],
+      "domainOwner": "procurement",
+      "legacyDependency": [],
+      "modulePath": "src/features/procurement/historical-purchases/historicalPurchaseRepository.test.ts",
+      "objectType": "module",
+      "responsibility": "module",
+      "riskNotes": [],
+      "serverAuthoritativePoliciesConsumed": [
+        "./historicalPurchaseRepository"
+      ],
+      "sizeMetrics": {
+        "bytes": 3329,
+        "lines": 48
+      }
+    },
+    {
+      "canonicalRepository": null,
+      "classification": "canonical_read_model",
+      "crossDomainDependencies": [],
+      "domainOwner": "procurement",
+      "legacyDependency": [],
+      "modulePath": "src/features/procurement/historical-purchases/historicalPurchaseRepository.ts",
+      "objectType": "repository",
+      "responsibility": "repository",
+      "riskNotes": [],
+      "serverAuthoritativePoliciesConsumed": [],
+      "sizeMetrics": {
+        "bytes": 1578,
+        "lines": 31
+      }
+    },
+    {
+      "canonicalRepository": null,
+      "classification": "canonical_read_model",
+      "crossDomainDependencies": [],
+      "domainOwner": "procurement",
+      "legacyDependency": [],
       "modulePath": "src/features/procurement/LegacySupplierDetailRedirect.tsx",
       "objectType": "module",
       "responsibility": "module",
@@ -4326,7 +4376,7 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 48286,
+        "bytes": 48405,
         "lines": 312
       }
     },
@@ -7432,8 +7482,8 @@
       "riskNotes": [],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 1408,
-        "lines": 44
+        "bytes": 1569,
+        "lines": 46
       }
     },
     {
@@ -7840,8 +7890,8 @@
       ],
       "serverAuthoritativePoliciesConsumed": [],
       "sizeMetrics": {
-        "bytes": 673566,
-        "lines": 19709
+        "bytes": 676180,
+        "lines": 19788
       }
     },
     {
@@ -7983,6 +8033,28 @@
       "browserWritable": true,
       "classification": "canonical_write_authority",
       "deprecationState": "canonical_write_authority",
+      "domainOwner": "suppliers",
+      "evidenceSource": "local PostgreSQL catalogue and migration source",
+      "expectedGrants": [
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
+      ],
+      "historicalOrCurrent": "current",
+      "mutationPath": "authenticated RPC or internal helper",
+      "name": "accept_owner_reviewed_supplier_product_mapping",
+      "notes": "",
+      "objectType": "function",
+      "readAuthority": "result only",
+      "replacement": null,
+      "rlsEnabled": null,
+      "schema": "public",
+      "signature": "target_workspace_id uuid, candidate_idempotency_key uuid, mapping_payload jsonb",
+      "writeAuthority": "public.accept_owner_reviewed_supplier_product_mapping"
+    },
+    {
+      "browserWritable": true,
+      "classification": "canonical_write_authority",
+      "deprecationState": "canonical_write_authority",
       "domainOwner": "procurement",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
@@ -8113,28 +8185,6 @@
       "schema": "public",
       "signature": "candidate_movement jsonb",
       "writeAuthority": "public.append_packaging_inventory_movement_v1"
-    },
-    {
-      "browserWritable": true,
-      "classification": "compatibility_read_only",
-      "deprecationState": "compatibility_read_only",
-      "domainOwner": "platform",
-      "evidenceSource": "local PostgreSQL catalogue and migration source",
-      "expectedGrants": [
-        "authenticated=X/postgres",
-        "postgres=X/postgres"
-      ],
-      "historicalOrCurrent": "historical",
-      "mutationPath": "authenticated RPC or internal helper",
-      "name": "apply_material_canonicalization_v1",
-      "notes": "",
-      "objectType": "function",
-      "readAuthority": "result only",
-      "replacement": null,
-      "rlsEnabled": null,
-      "schema": "public",
-      "signature": "target_preview_run_id uuid, candidate_decisions jsonb, candidate_idempotency_key uuid",
-      "writeAuthority": "public.apply_material_canonicalization_v1"
     },
     {
       "browserWritable": true,
@@ -8664,28 +8714,6 @@
       "schema": "public",
       "signature": "run_id uuid, report jsonb",
       "writeAuthority": "public.complete_v9_reconciliation"
-    },
-    {
-      "browserWritable": true,
-      "classification": "compatibility_read_only",
-      "deprecationState": "compatibility_read_only",
-      "domainOwner": "ingredients",
-      "evidenceSource": "local PostgreSQL catalogue and migration source",
-      "expectedGrants": [
-        "authenticated=X/postgres",
-        "postgres=X/postgres"
-      ],
-      "historicalOrCurrent": "historical",
-      "mutationPath": "authenticated RPC or internal helper",
-      "name": "confirm_ingredient_identity_alias_v1",
-      "notes": "",
-      "objectType": "function",
-      "readAuthority": "result only",
-      "replacement": null,
-      "rlsEnabled": null,
-      "schema": "public",
-      "signature": "candidate_workspace_id uuid, candidate_ingredient_id text, candidate_alias_type text, candidate_alias_value text, candidate_scope_reference text, candidate_evidence_note text, candidate_idempotency_key uuid",
-      "writeAuthority": "public.confirm_ingredient_identity_alias_v1"
     },
     {
       "browserWritable": true,
@@ -9288,6 +9316,27 @@
       "domainOwner": "procurement",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
+        "postgres=X/postgres"
+      ],
+      "historicalOrCurrent": "current",
+      "mutationPath": "authenticated RPC or internal helper",
+      "name": "enforce_purchase_order_audit_lineage",
+      "notes": "",
+      "objectType": "function",
+      "readAuthority": "result only",
+      "replacement": null,
+      "rlsEnabled": null,
+      "schema": "public",
+      "signature": "",
+      "writeAuthority": "public.enforce_purchase_order_audit_lineage"
+    },
+    {
+      "browserWritable": false,
+      "classification": "canonical_write_authority",
+      "deprecationState": "canonical_write_authority",
+      "domainOwner": "procurement",
+      "evidenceSource": "local PostgreSQL catalogue and migration source",
+      "expectedGrants": [
         "postgres=X/postgres",
         "service_role=X/postgres"
       ],
@@ -9595,28 +9644,6 @@
       "rlsEnabled": null,
       "schema": "public",
       "signature": "target_finished_goods_lot_id uuid",
-      "writeAuthority": "none"
-    },
-    {
-      "browserWritable": false,
-      "classification": "canonical_read_model",
-      "deprecationState": "canonical_read_model",
-      "domainOwner": "platform",
-      "evidenceSource": "local PostgreSQL catalogue and migration source",
-      "expectedGrants": [
-        "authenticated=X/postgres",
-        "postgres=X/postgres"
-      ],
-      "historicalOrCurrent": "current",
-      "mutationPath": "none",
-      "name": "get_material_intelligence_v1",
-      "notes": "",
-      "objectType": "function",
-      "readAuthority": "public.get_material_intelligence_v1",
-      "replacement": null,
-      "rlsEnabled": null,
-      "schema": "public",
-      "signature": "candidate_workspace_id uuid, target_ingredient_id text",
       "writeAuthority": "none"
     },
     {
@@ -10231,28 +10258,6 @@
       "schema": "public",
       "signature": "payload jsonb",
       "writeAuthority": "public.import_v9_relational_pre_ingredient_knowledge"
-    },
-    {
-      "browserWritable": true,
-      "classification": "compatibility_read_only",
-      "deprecationState": "compatibility_read_only",
-      "domainOwner": "production",
-      "evidenceSource": "local PostgreSQL catalogue and migration source",
-      "expectedGrants": [
-        "authenticated=X/postgres",
-        "postgres=X/postgres"
-      ],
-      "historicalOrCurrent": "historical",
-      "mutationPath": "authenticated RPC or internal helper",
-      "name": "include_material_production_round_v1",
-      "notes": "",
-      "objectType": "function",
-      "readAuthority": "result only",
-      "replacement": null,
-      "rlsEnabled": null,
-      "schema": "public",
-      "signature": "target_round_id uuid, candidate_reason text, candidate_idempotency_key uuid",
-      "writeAuthority": "public.include_material_production_round_v1"
     },
     {
       "browserWritable": false,
@@ -11385,28 +11390,6 @@
       "writeAuthority": "public.prevent_supplier_event_execution_forgery"
     },
     {
-      "browserWritable": true,
-      "classification": "compatibility_read_only",
-      "deprecationState": "compatibility_read_only",
-      "domainOwner": "platform",
-      "evidenceSource": "local PostgreSQL catalogue and migration source",
-      "expectedGrants": [
-        "authenticated=X/postgres",
-        "postgres=X/postgres"
-      ],
-      "historicalOrCurrent": "historical",
-      "mutationPath": "authenticated RPC or internal helper",
-      "name": "preview_material_canonicalization_v1",
-      "notes": "",
-      "objectType": "function",
-      "readAuthority": "result only",
-      "replacement": null,
-      "rlsEnabled": null,
-      "schema": "public",
-      "signature": "candidate_workspace_id uuid, candidate_source_adapters text[], candidate_idempotency_key uuid",
-      "writeAuthority": "public.preview_material_canonicalization_v1"
-    },
-    {
       "browserWritable": false,
       "classification": "canonical_write_authority",
       "deprecationState": "canonical_write_authority",
@@ -11570,25 +11553,25 @@
     },
     {
       "browserWritable": true,
-      "classification": "compatibility_read_only",
-      "deprecationState": "compatibility_read_only",
-      "domainOwner": "platform",
+      "classification": "canonical_write_authority",
+      "deprecationState": "canonical_write_authority",
+      "domainOwner": "procurement",
       "evidenceSource": "local PostgreSQL catalogue and migration source",
       "expectedGrants": [
         "authenticated=X/postgres",
         "postgres=X/postgres"
       ],
-      "historicalOrCurrent": "historical",
+      "historicalOrCurrent": "current",
       "mutationPath": "authenticated RPC or internal helper",
-      "name": "reconcile_material_intelligence_v1",
+      "name": "reconcile_historical_external_purchase",
       "notes": "",
       "objectType": "function",
       "readAuthority": "result only",
       "replacement": null,
       "rlsEnabled": null,
       "schema": "public",
-      "signature": "candidate_workspace_id uuid, candidate_source_adapters text[], candidate_idempotency_key uuid",
-      "writeAuthority": "public.reconcile_material_intelligence_v1"
+      "signature": "target_workspace_id uuid, candidate_idempotency_key uuid, purchase_payload jsonb",
+      "writeAuthority": "public.reconcile_historical_external_purchase"
     },
     {
       "browserWritable": true,
@@ -12512,28 +12495,6 @@
     },
     {
       "browserWritable": true,
-      "classification": "compatibility_read_only",
-      "deprecationState": "compatibility_read_only",
-      "domainOwner": "platform",
-      "evidenceSource": "local PostgreSQL catalogue and migration source",
-      "expectedGrants": [
-        "authenticated=X/postgres",
-        "postgres=X/postgres"
-      ],
-      "historicalOrCurrent": "historical",
-      "mutationPath": "authenticated RPC or internal helper",
-      "name": "resolve_material_target_v1",
-      "notes": "",
-      "objectType": "function",
-      "readAuthority": "result only",
-      "replacement": null,
-      "rlsEnabled": null,
-      "schema": "public",
-      "signature": "candidate_workspace_id uuid, candidate_source_type text, candidate_source_id text, candidate_source_target_key text, candidate_ingredient_ids text[], candidate_component_roles jsonb, candidate_evidence_note text, candidate_resolution_basis text, candidate_reconciliation_run_id uuid, candidate_idempotency_key uuid",
-      "writeAuthority": "public.resolve_material_target_v1"
-    },
-    {
-      "browserWritable": true,
       "classification": "canonical_write_authority",
       "deprecationState": "canonical_write_authority",
       "domainOwner": "inventory",
@@ -12750,28 +12711,6 @@
       "schema": "public",
       "signature": "target_id uuid, target_status text, expected_revision bigint, note text",
       "writeAuthority": "public.transition_development_experiment"
-    },
-    {
-      "browserWritable": true,
-      "classification": "compatibility_read_only",
-      "deprecationState": "compatibility_read_only",
-      "domainOwner": "platform",
-      "evidenceSource": "local PostgreSQL catalogue and migration source",
-      "expectedGrants": [
-        "authenticated=X/postgres",
-        "postgres=X/postgres"
-      ],
-      "historicalOrCurrent": "historical",
-      "mutationPath": "authenticated RPC or internal helper",
-      "name": "transition_material_applicability_v1",
-      "notes": "",
-      "objectType": "function",
-      "readAuthority": "result only",
-      "replacement": null,
-      "rlsEnabled": null,
-      "schema": "public",
-      "signature": "target_applicability_id uuid, candidate_to_state text, candidate_reason text, candidate_confirmation_basis text, candidate_idempotency_key uuid",
-      "writeAuthority": "public.transition_material_applicability_v1"
     },
     {
       "browserWritable": true,
@@ -13918,13 +13857,15 @@
       "browserWritable": false,
       "classification": "operational_support",
       "deprecationState": "operational_support",
-      "domainOwner": "platform",
+      "domainOwner": "procurement",
       "evidenceSource": "local PostgreSQL catalogue",
-      "expectedGrants": null,
+      "expectedGrants": [
+        "authenticated"
+      ],
       "historicalOrCurrent": "current",
       "mutationPath": "RLS",
-      "name": "inci_declarations.owner_all",
-      "notes": "*: (owner_id = auth.uid()) (owner_id = auth.uid())",
+      "name": "historical_purchase_command_receipts.owner_select",
+      "notes": "r: ((owner_id = ( SELECT auth.uid() AS uid)) AND (EXISTS ( SELECT 1\n   FROM workspaces w\n  WHERE ((w.id = historical_purchase_command_receipts.workspace_id) AND (w.owner_id = ( SELECT auth.uid() AS uid)) AND (w.lifecycle_state = 'active'::text)))))",
       "objectType": "rls_policy",
       "readAuthority": "database policy",
       "replacement": null,
@@ -13936,15 +13877,13 @@
       "browserWritable": false,
       "classification": "operational_support",
       "deprecationState": "operational_support",
-      "domainOwner": "ingredients",
+      "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
-      "expectedGrants": [
-        "authenticated"
-      ],
+      "expectedGrants": null,
       "historicalOrCurrent": "current",
       "mutationPath": "RLS",
-      "name": "ingredient_identity_aliases.owner_select",
-      "notes": "r: ((owner_id = ( SELECT auth.uid() AS uid)) AND (EXISTS ( SELECT 1\n   FROM workspaces w\n  WHERE ((w.id = ingredient_identity_aliases.workspace_id) AND (w.owner_id = ( SELECT auth.uid() AS uid)) AND (w.lifecycle_state = 'active'::text)))))",
+      "name": "inci_declarations.owner_all",
+      "notes": "*: (owner_id = auth.uid()) (owner_id = auth.uid())",
       "objectType": "rls_policy",
       "readAuthority": "database policy",
       "replacement": null,
@@ -14481,146 +14420,6 @@
       "mutationPath": "RLS",
       "name": "launch_plans.owner_all",
       "notes": "*: (owner_id = auth.uid()) (owner_id = auth.uid())",
-      "objectType": "rls_policy",
-      "readAuthority": "database policy",
-      "replacement": null,
-      "rlsEnabled": true,
-      "schema": "public",
-      "writeAuthority": "database policy"
-    },
-    {
-      "browserWritable": false,
-      "classification": "operational_support",
-      "deprecationState": "operational_support",
-      "domainOwner": "platform",
-      "evidenceSource": "local PostgreSQL catalogue",
-      "expectedGrants": [
-        "authenticated"
-      ],
-      "historicalOrCurrent": "current",
-      "mutationPath": "RLS",
-      "name": "material_applicabilities.owner_select",
-      "notes": "r: ((owner_id = ( SELECT auth.uid() AS uid)) AND (EXISTS ( SELECT 1\n   FROM workspaces w\n  WHERE ((w.id = material_applicabilities.workspace_id) AND (w.owner_id = ( SELECT auth.uid() AS uid)) AND (w.lifecycle_state = 'active'::text)))))",
-      "objectType": "rls_policy",
-      "readAuthority": "database policy",
-      "replacement": null,
-      "rlsEnabled": true,
-      "schema": "public",
-      "writeAuthority": "database policy"
-    },
-    {
-      "browserWritable": false,
-      "classification": "operational_support",
-      "deprecationState": "operational_support",
-      "domainOwner": "platform",
-      "evidenceSource": "local PostgreSQL catalogue",
-      "expectedGrants": [
-        "authenticated"
-      ],
-      "historicalOrCurrent": "current",
-      "mutationPath": "RLS",
-      "name": "material_applicability_events.owner_select",
-      "notes": "r: ((owner_id = ( SELECT auth.uid() AS uid)) AND (EXISTS ( SELECT 1\n   FROM workspaces w\n  WHERE ((w.id = material_applicability_events.workspace_id) AND (w.owner_id = ( SELECT auth.uid() AS uid)) AND (w.lifecycle_state = 'active'::text)))))",
-      "objectType": "rls_policy",
-      "readAuthority": "database policy",
-      "replacement": null,
-      "rlsEnabled": true,
-      "schema": "public",
-      "writeAuthority": "database policy"
-    },
-    {
-      "browserWritable": false,
-      "classification": "operational_support",
-      "deprecationState": "operational_support",
-      "domainOwner": "platform",
-      "evidenceSource": "local PostgreSQL catalogue",
-      "expectedGrants": [
-        "authenticated"
-      ],
-      "historicalOrCurrent": "current",
-      "mutationPath": "RLS",
-      "name": "material_demand_contributions.owner_select",
-      "notes": "r: ((owner_id = ( SELECT auth.uid() AS uid)) AND (EXISTS ( SELECT 1\n   FROM workspaces w\n  WHERE ((w.id = material_demand_contributions.workspace_id) AND (w.owner_id = ( SELECT auth.uid() AS uid)) AND (w.lifecycle_state = 'active'::text)))))",
-      "objectType": "rls_policy",
-      "readAuthority": "database policy",
-      "replacement": null,
-      "rlsEnabled": true,
-      "schema": "public",
-      "writeAuthority": "database policy"
-    },
-    {
-      "browserWritable": false,
-      "classification": "operational_support",
-      "deprecationState": "operational_support",
-      "domainOwner": "platform",
-      "evidenceSource": "local PostgreSQL catalogue",
-      "expectedGrants": [
-        "authenticated"
-      ],
-      "historicalOrCurrent": "current",
-      "mutationPath": "RLS",
-      "name": "material_demand_origins.owner_select",
-      "notes": "r: ((owner_id = ( SELECT auth.uid() AS uid)) AND (EXISTS ( SELECT 1\n   FROM workspaces w\n  WHERE ((w.id = material_demand_origins.workspace_id) AND (w.owner_id = ( SELECT auth.uid() AS uid)) AND (w.lifecycle_state = 'active'::text)))))",
-      "objectType": "rls_policy",
-      "readAuthority": "database policy",
-      "replacement": null,
-      "rlsEnabled": true,
-      "schema": "public",
-      "writeAuthority": "database policy"
-    },
-    {
-      "browserWritable": false,
-      "classification": "operational_support",
-      "deprecationState": "operational_support",
-      "domainOwner": "platform",
-      "evidenceSource": "local PostgreSQL catalogue",
-      "expectedGrants": [
-        "authenticated"
-      ],
-      "historicalOrCurrent": "current",
-      "mutationPath": "RLS",
-      "name": "material_reconciliation_findings.owner_select",
-      "notes": "r: ((owner_id = ( SELECT auth.uid() AS uid)) AND (EXISTS ( SELECT 1\n   FROM workspaces w\n  WHERE ((w.id = material_reconciliation_findings.workspace_id) AND (w.owner_id = ( SELECT auth.uid() AS uid)) AND (w.lifecycle_state = 'active'::text)))))",
-      "objectType": "rls_policy",
-      "readAuthority": "database policy",
-      "replacement": null,
-      "rlsEnabled": true,
-      "schema": "public",
-      "writeAuthority": "database policy"
-    },
-    {
-      "browserWritable": false,
-      "classification": "operational_support",
-      "deprecationState": "operational_support",
-      "domainOwner": "platform",
-      "evidenceSource": "local PostgreSQL catalogue",
-      "expectedGrants": [
-        "authenticated"
-      ],
-      "historicalOrCurrent": "current",
-      "mutationPath": "RLS",
-      "name": "material_reconciliation_runs.owner_select",
-      "notes": "r: ((owner_id = ( SELECT auth.uid() AS uid)) AND (EXISTS ( SELECT 1\n   FROM workspaces w\n  WHERE ((w.id = material_reconciliation_runs.workspace_id) AND (w.owner_id = ( SELECT auth.uid() AS uid)) AND (w.lifecycle_state = 'active'::text)))))",
-      "objectType": "rls_policy",
-      "readAuthority": "database policy",
-      "replacement": null,
-      "rlsEnabled": true,
-      "schema": "public",
-      "writeAuthority": "database policy"
-    },
-    {
-      "browserWritable": false,
-      "classification": "operational_support",
-      "deprecationState": "operational_support",
-      "domainOwner": "platform",
-      "evidenceSource": "local PostgreSQL catalogue",
-      "expectedGrants": [
-        "authenticated"
-      ],
-      "historicalOrCurrent": "current",
-      "mutationPath": "RLS",
-      "name": "material_target_resolutions.owner_select",
-      "notes": "r: ((owner_id = ( SELECT auth.uid() AS uid)) AND (EXISTS ( SELECT 1\n   FROM workspaces w\n  WHERE ((w.id = material_target_resolutions.workspace_id) AND (w.owner_id = ( SELECT auth.uid() AS uid)) AND (w.lifecycle_state = 'active'::text)))))",
       "objectType": "rls_policy",
       "readAuthority": "database policy",
       "replacement": null,
@@ -16837,9 +16636,8 @@
       "domainOwner": "beard-studio",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -16859,9 +16657,8 @@
       "domainOwner": "beard-studio",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arw/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -16881,9 +16678,8 @@
       "domainOwner": "beard-studio",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arw/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -16903,9 +16699,8 @@
       "domainOwner": "beard-studio",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=ar/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -16925,9 +16720,8 @@
       "domainOwner": "beard-studio",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arw/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -16947,9 +16741,8 @@
       "domainOwner": "beard-studio",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arw/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -16969,9 +16762,8 @@
       "domainOwner": "beard-studio",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arw/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -16991,9 +16783,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -17013,9 +16804,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -17035,9 +16825,8 @@
       "domainOwner": "compliance",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "historical",
       "mutationPath": "authenticated direct grant (audited)",
@@ -17057,9 +16846,8 @@
       "domainOwner": "compliance",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -17079,9 +16867,8 @@
       "domainOwner": "compliance",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -17101,9 +16888,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -17123,9 +16909,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -17145,9 +16930,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -17167,9 +16951,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arw/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -17189,9 +16972,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arw/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -17211,9 +16993,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=rDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=r/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -17233,9 +17014,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arw/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -17255,9 +17035,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=rDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=r/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "historical",
       "mutationPath": "RPC/service/migration only",
@@ -17277,9 +17056,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arw/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -17299,9 +17077,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=rwDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=rw/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -17321,9 +17098,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -17343,9 +17119,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arw/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -17365,9 +17140,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arw/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -17387,9 +17161,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arw/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -17409,9 +17182,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arw/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "historical",
       "mutationPath": "authenticated direct grant (audited)",
@@ -17432,8 +17204,7 @@
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
         "authenticated=r/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "historical",
       "mutationPath": "RPC/service/migration only",
@@ -17455,7 +17226,7 @@
       "expectedGrants": [
         "authenticated=r/postgres",
         "postgres=arwdDxt/postgres",
-        "service_role=arwdDxt/postgres"
+        "service_role=arwd/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -17477,7 +17248,7 @@
       "expectedGrants": [
         "authenticated=r/postgres",
         "postgres=arwdDxt/postgres",
-        "service_role=arwdDxt/postgres"
+        "service_role=arwd/postgres"
       ],
       "historicalOrCurrent": "historical",
       "mutationPath": "RPC/service/migration only",
@@ -17499,7 +17270,7 @@
       "expectedGrants": [
         "authenticated=r/postgres",
         "postgres=arwdDxt/postgres",
-        "service_role=arwdDxt/postgres"
+        "service_role=arwd/postgres"
       ],
       "historicalOrCurrent": "historical",
       "mutationPath": "RPC/service/migration only",
@@ -17521,7 +17292,7 @@
       "expectedGrants": [
         "authenticated=r/postgres",
         "postgres=arwdDxt/postgres",
-        "service_role=arwdDxt/postgres"
+        "service_role=arwd/postgres"
       ],
       "historicalOrCurrent": "historical",
       "mutationPath": "RPC/service/migration only",
@@ -17543,7 +17314,7 @@
       "expectedGrants": [
         "authenticated=r/postgres",
         "postgres=arwdDxt/postgres",
-        "service_role=arwdDxt/postgres"
+        "service_role=arwd/postgres"
       ],
       "historicalOrCurrent": "historical",
       "mutationPath": "RPC/service/migration only",
@@ -17565,7 +17336,7 @@
       "expectedGrants": [
         "authenticated=r/postgres",
         "postgres=arwdDxt/postgres",
-        "service_role=arwdDxt/postgres"
+        "service_role=arwd/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -17587,7 +17358,7 @@
       "expectedGrants": [
         "authenticated=r/postgres",
         "postgres=arwdDxt/postgres",
-        "service_role=arwdDxt/postgres"
+        "service_role=arwd/postgres"
       ],
       "historicalOrCurrent": "historical",
       "mutationPath": "RPC/service/migration only",
@@ -17609,7 +17380,7 @@
       "expectedGrants": [
         "authenticated=r/postgres",
         "postgres=arwdDxt/postgres",
-        "service_role=arwdDxt/postgres"
+        "service_role=arwd/postgres"
       ],
       "historicalOrCurrent": "historical",
       "mutationPath": "RPC/service/migration only",
@@ -17631,7 +17402,7 @@
       "expectedGrants": [
         "authenticated=r/postgres",
         "postgres=arwdDxt/postgres",
-        "service_role=arwdDxt/postgres"
+        "service_role=arwd/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -17652,8 +17423,7 @@
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
         "authenticated=r/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "historical",
       "mutationPath": "RPC/service/migration only",
@@ -17675,7 +17445,7 @@
       "expectedGrants": [
         "authenticated=r/postgres",
         "postgres=arwdDxt/postgres",
-        "service_role=arwdDxt/postgres"
+        "service_role=arwd/postgres"
       ],
       "historicalOrCurrent": "historical",
       "mutationPath": "RPC/service/migration only",
@@ -17697,7 +17467,7 @@
       "expectedGrants": [
         "authenticated=r/postgres",
         "postgres=arwdDxt/postgres",
-        "service_role=arwdDxt/postgres"
+        "service_role=arwd/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -17717,9 +17487,8 @@
       "domainOwner": "formulas",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -17739,9 +17508,9 @@
       "domainOwner": "formulas",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwdDxt/postgres",
+        "authenticated=arwd/postgres",
         "postgres=arwdDxt/postgres",
-        "service_role=arwdDxt/postgres"
+        "service_role=arwd/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -17761,9 +17530,9 @@
       "domainOwner": "formulas",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwdDxt/postgres",
+        "authenticated=arwd/postgres",
         "postgres=arwdDxt/postgres",
-        "service_role=arwdDxt/postgres"
+        "service_role=arwd/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -17783,9 +17552,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -17805,9 +17573,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arw/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -17821,15 +17588,36 @@
       "writeAuthority": "versioned RPC or documented relational command"
     },
     {
+      "browserWritable": false,
+      "classification": "immutable_history",
+      "deprecationState": "immutable_history",
+      "domainOwner": "procurement",
+      "evidenceSource": "local PostgreSQL catalogue",
+      "expectedGrants": [
+        "authenticated=r/postgres",
+        "postgres=arwdDxt/postgres",
+        "service_role=arwdDxt/postgres"
+      ],
+      "historicalOrCurrent": "historical",
+      "mutationPath": "RPC/service/migration only",
+      "name": "historical_purchase_command_receipts",
+      "notes": "",
+      "objectType": "table",
+      "readAuthority": "owner/workspace scoped relation",
+      "replacement": null,
+      "rlsEnabled": true,
+      "schema": "public",
+      "writeAuthority": "none"
+    },
+    {
       "browserWritable": true,
       "classification": "canonical_write_authority",
       "deprecationState": "canonical_write_authority",
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -17843,38 +17631,14 @@
       "writeAuthority": "versioned RPC or documented relational command"
     },
     {
-      "browserWritable": false,
-      "classification": "canonical_write_authority",
-      "deprecationState": "canonical_write_authority",
-      "domainOwner": "ingredients",
-      "evidenceSource": "local PostgreSQL catalogue",
-      "expectedGrants": [
-        "authenticated=r/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
-      ],
-      "historicalOrCurrent": "current",
-      "mutationPath": "RPC/service/migration only",
-      "name": "ingredient_identity_aliases",
-      "notes": "",
-      "objectType": "table",
-      "readAuthority": "owner/workspace scoped relation",
-      "replacement": null,
-      "rlsEnabled": true,
-      "schema": "public",
-      "writeAuthority": "versioned RPC or documented relational command"
-    },
-    {
       "browserWritable": true,
       "classification": "canonical_write_authority",
       "deprecationState": "canonical_write_authority",
       "domainOwner": "ingredients",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "anon=Dxt/postgres",
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -17894,10 +17658,8 @@
       "domainOwner": "ingredients",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "anon=Dxt/postgres",
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -17917,10 +17679,8 @@
       "domainOwner": "ingredients",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "anon=Dxt/postgres",
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -17940,10 +17700,8 @@
       "domainOwner": "ingredients",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "anon=Dxt/postgres",
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -17963,9 +17721,8 @@
       "domainOwner": "ingredients",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -18095,9 +17852,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -18117,9 +17873,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -18139,9 +17894,9 @@
       "domainOwner": "inventory",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwdDxt/postgres",
+        "authenticated=arwd/postgres",
         "postgres=arwdDxt/postgres",
-        "service_role=arwdDxt/postgres"
+        "service_role=arwd/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -18163,7 +17918,7 @@
       "expectedGrants": [
         "authenticated=r/postgres",
         "postgres=arwdDxt/postgres",
-        "service_role=arDxt/postgres"
+        "service_role=ar/postgres"
       ],
       "historicalOrCurrent": "historical",
       "mutationPath": "RPC/service/migration only",
@@ -18249,9 +18004,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arw/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -18271,9 +18025,8 @@
       "domainOwner": "lab",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -18293,9 +18046,8 @@
       "domainOwner": "lab",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -18315,9 +18067,8 @@
       "domainOwner": "lab",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -18337,9 +18088,8 @@
       "domainOwner": "lab",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -18359,9 +18109,8 @@
       "domainOwner": "lab",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -18381,9 +18130,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -18403,9 +18151,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -18425,9 +18172,8 @@
       "domainOwner": "launch",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -18447,9 +18193,8 @@
       "domainOwner": "launch",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -18469,167 +18214,12 @@
       "domainOwner": "launch",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
       "name": "launch_plans",
-      "notes": "",
-      "objectType": "table",
-      "readAuthority": "owner/workspace scoped relation",
-      "replacement": null,
-      "rlsEnabled": true,
-      "schema": "public",
-      "writeAuthority": "versioned RPC or documented relational command"
-    },
-    {
-      "browserWritable": false,
-      "classification": "canonical_write_authority",
-      "deprecationState": "canonical_write_authority",
-      "domainOwner": "platform",
-      "evidenceSource": "local PostgreSQL catalogue",
-      "expectedGrants": [
-        "authenticated=r/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
-      ],
-      "historicalOrCurrent": "current",
-      "mutationPath": "RPC/service/migration only",
-      "name": "material_applicabilities",
-      "notes": "",
-      "objectType": "table",
-      "readAuthority": "owner/workspace scoped relation",
-      "replacement": null,
-      "rlsEnabled": true,
-      "schema": "public",
-      "writeAuthority": "versioned RPC or documented relational command"
-    },
-    {
-      "browserWritable": false,
-      "classification": "audit_only",
-      "deprecationState": "audit_only",
-      "domainOwner": "platform",
-      "evidenceSource": "local PostgreSQL catalogue",
-      "expectedGrants": [
-        "authenticated=r/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
-      ],
-      "historicalOrCurrent": "historical",
-      "mutationPath": "RPC/service/migration only",
-      "name": "material_applicability_events",
-      "notes": "",
-      "objectType": "table",
-      "readAuthority": "owner/workspace scoped relation",
-      "replacement": null,
-      "rlsEnabled": true,
-      "schema": "public",
-      "writeAuthority": "none"
-    },
-    {
-      "browserWritable": false,
-      "classification": "canonical_write_authority",
-      "deprecationState": "canonical_write_authority",
-      "domainOwner": "platform",
-      "evidenceSource": "local PostgreSQL catalogue",
-      "expectedGrants": [
-        "authenticated=r/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
-      ],
-      "historicalOrCurrent": "current",
-      "mutationPath": "RPC/service/migration only",
-      "name": "material_demand_contributions",
-      "notes": "",
-      "objectType": "table",
-      "readAuthority": "owner/workspace scoped relation",
-      "replacement": null,
-      "rlsEnabled": true,
-      "schema": "public",
-      "writeAuthority": "versioned RPC or documented relational command"
-    },
-    {
-      "browserWritable": false,
-      "classification": "canonical_write_authority",
-      "deprecationState": "canonical_write_authority",
-      "domainOwner": "platform",
-      "evidenceSource": "local PostgreSQL catalogue",
-      "expectedGrants": [
-        "authenticated=r/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
-      ],
-      "historicalOrCurrent": "current",
-      "mutationPath": "RPC/service/migration only",
-      "name": "material_demand_origins",
-      "notes": "",
-      "objectType": "table",
-      "readAuthority": "owner/workspace scoped relation",
-      "replacement": null,
-      "rlsEnabled": true,
-      "schema": "public",
-      "writeAuthority": "versioned RPC or documented relational command"
-    },
-    {
-      "browserWritable": false,
-      "classification": "canonical_write_authority",
-      "deprecationState": "canonical_write_authority",
-      "domainOwner": "platform",
-      "evidenceSource": "local PostgreSQL catalogue",
-      "expectedGrants": [
-        "authenticated=r/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
-      ],
-      "historicalOrCurrent": "current",
-      "mutationPath": "RPC/service/migration only",
-      "name": "material_reconciliation_findings",
-      "notes": "",
-      "objectType": "table",
-      "readAuthority": "owner/workspace scoped relation",
-      "replacement": null,
-      "rlsEnabled": true,
-      "schema": "public",
-      "writeAuthority": "versioned RPC or documented relational command"
-    },
-    {
-      "browserWritable": false,
-      "classification": "canonical_write_authority",
-      "deprecationState": "canonical_write_authority",
-      "domainOwner": "platform",
-      "evidenceSource": "local PostgreSQL catalogue",
-      "expectedGrants": [
-        "authenticated=r/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
-      ],
-      "historicalOrCurrent": "current",
-      "mutationPath": "RPC/service/migration only",
-      "name": "material_reconciliation_runs",
-      "notes": "",
-      "objectType": "table",
-      "readAuthority": "owner/workspace scoped relation",
-      "replacement": null,
-      "rlsEnabled": true,
-      "schema": "public",
-      "writeAuthority": "versioned RPC or documented relational command"
-    },
-    {
-      "browserWritable": false,
-      "classification": "canonical_write_authority",
-      "deprecationState": "canonical_write_authority",
-      "domainOwner": "platform",
-      "evidenceSource": "local PostgreSQL catalogue",
-      "expectedGrants": [
-        "authenticated=r/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
-      ],
-      "historicalOrCurrent": "current",
-      "mutationPath": "RPC/service/migration only",
-      "name": "material_target_resolutions",
       "notes": "",
       "objectType": "table",
       "readAuthority": "owner/workspace scoped relation",
@@ -18645,9 +18235,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arw/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -18669,7 +18258,7 @@
       "expectedGrants": [
         "authenticated=r/postgres",
         "postgres=arwdDxt/postgres",
-        "service_role=arwdDxt/postgres"
+        "service_role=arwd/postgres"
       ],
       "historicalOrCurrent": "historical",
       "mutationPath": "RPC/service/migration only",
@@ -18690,8 +18279,7 @@
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
         "authenticated=r/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "historical",
       "mutationPath": "RPC/service/migration only",
@@ -18711,9 +18299,8 @@
       "domainOwner": "packaging",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -18733,9 +18320,8 @@
       "domainOwner": "packaging",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -18757,7 +18343,7 @@
       "expectedGrants": [
         "authenticated=r/postgres",
         "postgres=arwdDxt/postgres",
-        "service_role=arDxt/postgres"
+        "service_role=ar/postgres"
       ],
       "historicalOrCurrent": "historical",
       "mutationPath": "RPC/service/migration only",
@@ -18778,8 +18364,7 @@
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
         "authenticated=r/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -18800,8 +18385,7 @@
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
         "authenticated=r/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -18822,8 +18406,7 @@
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
         "authenticated=r/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "historical",
       "mutationPath": "RPC/service/migration only",
@@ -18844,8 +18427,7 @@
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
         "authenticated=r/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -18866,8 +18448,7 @@
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
         "authenticated=r/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "historical",
       "mutationPath": "RPC/service/migration only",
@@ -18888,8 +18469,7 @@
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
         "authenticated=r/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -18910,8 +18490,7 @@
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
         "authenticated=r/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -18933,7 +18512,7 @@
       "expectedGrants": [
         "authenticated=r/postgres",
         "postgres=arwdDxt/postgres",
-        "service_role=arwdDxt/postgres"
+        "service_role=arwd/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -18953,9 +18532,8 @@
       "domainOwner": "packaging",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -18975,9 +18553,9 @@
       "domainOwner": "packaging",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwdDxt/postgres",
+        "authenticated=arwd/postgres",
         "postgres=arwdDxt/postgres",
-        "service_role=arwdDxt/postgres"
+        "service_role=arwd/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -18997,9 +18575,9 @@
       "domainOwner": "packaging",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwdDxt/postgres",
+        "authenticated=arwd/postgres",
         "postgres=arwdDxt/postgres",
-        "service_role=arwdDxt/postgres"
+        "service_role=arwd/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -19019,9 +18597,8 @@
       "domainOwner": "packaging",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -19041,9 +18618,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -19063,9 +18639,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -19085,9 +18660,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arw/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -19149,9 +18723,8 @@
       "domainOwner": "procurement",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -19171,9 +18744,8 @@
       "domainOwner": "procurement",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -19193,9 +18765,8 @@
       "domainOwner": "procurement",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arw/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -19216,8 +18787,7 @@
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
         "authenticated=r/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -19237,9 +18807,8 @@
       "domainOwner": "procurement",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -19259,9 +18828,8 @@
       "domainOwner": "procurement",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -19281,9 +18849,8 @@
       "domainOwner": "procurement",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -19303,9 +18870,8 @@
       "domainOwner": "procurement",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arw/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -19325,9 +18891,8 @@
       "domainOwner": "procurement",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -19347,9 +18912,8 @@
       "domainOwner": "procurement",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -19369,9 +18933,8 @@
       "domainOwner": "procurement",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -19391,9 +18954,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -19413,9 +18975,8 @@
       "domainOwner": "production",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -19436,8 +18997,7 @@
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
         "authenticated=r/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -19458,8 +19018,7 @@
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
         "authenticated=r/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "historical",
       "mutationPath": "RPC/service/migration only",
@@ -19480,8 +19039,7 @@
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
         "authenticated=r/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "historical",
       "mutationPath": "RPC/service/migration only",
@@ -19502,8 +19060,7 @@
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
         "authenticated=r/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "historical",
       "mutationPath": "RPC/service/migration only",
@@ -19525,7 +19082,7 @@
       "expectedGrants": [
         "authenticated=r/postgres",
         "postgres=arwdDxt/postgres",
-        "service_role=arwdDxt/postgres"
+        "service_role=arwd/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -19545,9 +19102,8 @@
       "domainOwner": "production",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -19568,8 +19124,7 @@
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
         "authenticated=r/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -19590,8 +19145,7 @@
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
         "authenticated=r/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -19612,8 +19166,7 @@
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
         "authenticated=r/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -19634,8 +19187,7 @@
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
         "authenticated=r/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -19656,8 +19208,7 @@
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
         "authenticated=r/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -19678,8 +19229,7 @@
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
         "authenticated=r/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -19700,8 +19250,7 @@
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
         "authenticated=r/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -19722,8 +19271,7 @@
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
         "authenticated=r/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -19744,8 +19292,7 @@
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
         "authenticated=r/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -19766,8 +19313,7 @@
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
         "authenticated=r/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -19788,8 +19334,7 @@
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
         "authenticated=r/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -19809,9 +19354,8 @@
       "domainOwner": "production",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -19831,9 +19375,9 @@
       "domainOwner": "production",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwdDxt/postgres",
+        "authenticated=arwd/postgres",
         "postgres=arwdDxt/postgres",
-        "service_role=arwdDxt/postgres"
+        "service_role=arwd/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -19853,9 +19397,9 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwdDxt/postgres",
+        "authenticated=arwd/postgres",
         "postgres=arwdDxt/postgres",
-        "service_role=arwdDxt/postgres"
+        "service_role=arwd/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -20271,9 +19815,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -20293,8 +19836,7 @@
       "domainOwner": "recall-readiness",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -20314,8 +19856,7 @@
       "domainOwner": "recall-readiness",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -20335,8 +19876,7 @@
       "domainOwner": "recall-readiness",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -20356,8 +19896,7 @@
       "domainOwner": "recall-readiness",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -20377,8 +19916,7 @@
       "domainOwner": "recall-readiness",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -20398,8 +19936,7 @@
       "domainOwner": "recall-readiness",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "historical",
       "mutationPath": "RPC/service/migration only",
@@ -20419,8 +19956,7 @@
       "domainOwner": "recall-readiness",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -20440,8 +19976,7 @@
       "domainOwner": "recall-readiness",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -20461,8 +19996,7 @@
       "domainOwner": "inventory",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -20482,8 +20016,7 @@
       "domainOwner": "recall-readiness",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "historical",
       "mutationPath": "RPC/service/migration only",
@@ -20503,8 +20036,7 @@
       "domainOwner": "recall-readiness",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "historical",
       "mutationPath": "RPC/service/migration only",
@@ -20524,9 +20056,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -20546,9 +20077,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "historical",
       "mutationPath": "authenticated direct grant (audited)",
@@ -20568,9 +20098,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -20592,7 +20121,7 @@
       "expectedGrants": [
         "authenticated=r/postgres",
         "postgres=arwdDxt/postgres",
-        "service_role=arwdDxt/postgres"
+        "service_role=arwd/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -20612,9 +20141,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -20634,9 +20162,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=rDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=r/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -20656,9 +20183,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arw/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -20678,9 +20204,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arw/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -20700,9 +20225,8 @@
       "domainOwner": "suppliers",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arw/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -20722,9 +20246,8 @@
       "domainOwner": "suppliers",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -20744,9 +20267,8 @@
       "domainOwner": "suppliers",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arw/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -20766,9 +20288,8 @@
       "domainOwner": "suppliers",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arw/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "historical",
       "mutationPath": "authenticated direct grant (audited)",
@@ -20789,8 +20310,7 @@
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
         "authenticated=r/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -20810,9 +20330,8 @@
       "domainOwner": "suppliers",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -20832,9 +20351,8 @@
       "domainOwner": "suppliers",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arw/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -20854,9 +20372,8 @@
       "domainOwner": "suppliers",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arw/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -20876,9 +20393,8 @@
       "domainOwner": "suppliers",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arw/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -20898,9 +20414,8 @@
       "domainOwner": "suppliers",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arw/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -20920,9 +20435,8 @@
       "domainOwner": "testing",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -20942,9 +20456,8 @@
       "domainOwner": "testing",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -20964,9 +20477,8 @@
       "domainOwner": "testing",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -20986,9 +20498,8 @@
       "domainOwner": "testing",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -21008,9 +20519,8 @@
       "domainOwner": "testing",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -21030,9 +20540,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -21052,9 +20561,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -21074,9 +20582,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -21096,9 +20603,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arw/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -21118,9 +20624,8 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwdDxt/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "authenticated=arwd/postgres",
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -21141,8 +20646,7 @@
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
         "authenticated=r/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "historical",
       "mutationPath": "RPC/service/migration only",
@@ -21163,8 +20667,7 @@
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
         "authenticated=r/postgres",
-        "postgres=arwdDxt/postgres",
-        "service_role=Dxt/postgres"
+        "postgres=arwdDxt/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "RPC/service/migration only",
@@ -21184,9 +20687,9 @@
       "domainOwner": "platform",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [
-        "authenticated=arwDxt/postgres",
+        "authenticated=arw/postgres",
         "postgres=arwdDxt/postgres",
-        "service_role=rDxt/postgres"
+        "service_role=r/postgres"
       ],
       "historicalOrCurrent": "current",
       "mutationPath": "authenticated direct grant (audited)",
@@ -22409,6 +21912,24 @@
       "browserWritable": false,
       "classification": "operational_support",
       "deprecationState": "operational_support",
+      "domainOwner": "procurement",
+      "evidenceSource": "local PostgreSQL catalogue",
+      "expectedGrants": [],
+      "historicalOrCurrent": "current",
+      "mutationPath": "database trigger",
+      "name": "purchase_order_audit_events.purchase_order_audit_lineage",
+      "notes": "CREATE TRIGGER purchase_order_audit_lineage BEFORE INSERT OR UPDATE ON public.purchase_order_audit_events FOR EACH ROW EXECUTE FUNCTION enforce_purchase_order_audit_lineage()",
+      "objectType": "trigger",
+      "readAuthority": "none",
+      "replacement": null,
+      "rlsEnabled": null,
+      "schema": "public",
+      "writeAuthority": "enforce_purchase_order_audit_lineage()"
+    },
+    {
+      "browserWritable": false,
+      "classification": "operational_support",
+      "deprecationState": "operational_support",
       "domainOwner": "finished-goods",
       "evidenceSource": "local PostgreSQL catalogue",
       "expectedGrants": [],
@@ -22534,6 +22055,6 @@
   ],
   "generatedAt": "2026-07-29T12:00:00+02:00",
   "sourceCommit": "content-addressed-by-sourceHash",
-  "sourceHash": "e20076aceba84c95e50d135585933946f192d69cee9c0546d3920dfa88169e0e",
+  "sourceHash": "ee44479623edb3f39f33ce43abe435788ee9ee68c04958b21e1e65c7a8d75c20",
   "version": "1.0.0"
 }
