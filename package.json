@@ -60,7 +60,8 @@
     "test:docs": "node scripts/documentation-audit.mjs",
     "library:validate": "node scripts/ingredient-library.mjs",
     "library:report": "node scripts/ingredient-library.mjs --report",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:historical-external-purchase": "node scripts/test-historical-external-purchase.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.110.5",

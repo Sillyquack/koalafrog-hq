@@ -165,6 +165,19 @@
       "directTableWrites": [],
       "domainOwner": "procurement",
       "idempotency": "present",
+      "modulePath": "src/features/procurement/historical-purchases/historicalPurchaseRepository.ts",
+      "revision": "not_detected",
+      "rpcTargets": [
+        "accept_owner_reviewed_supplier_product_mapping",
+        "reconcile_historical_external_purchase"
+      ],
+      "serverDerivedActor": true
+    },
+    {
+      "controlledBoundaryViolation": false,
+      "directTableWrites": [],
+      "domainOwner": "procurement",
+      "idempotency": "present",
       "modulePath": "src/features/procurement/production-readiness/data/productionReadinessRepository.ts",
       "revision": "present",
       "rpcTargets": [

@@ -1,6 +1,23 @@
 {
   "functions": [
     {
+      "approximateComplexity": 33,
+      "grants": [
+        "authenticated=X/postgres",
+        "postgres=X/postgres"
+      ],
+      "name": "accept_owner_reviewed_supplier_product_mapping",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "jsonb",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": true,
+      "signature": "target_workspace_id uuid, candidate_idempotency_key uuid, mapping_payload jsonb",
+      "sourceLength": 44,
+      "volatility": "v"
+    },
+    {
       "approximateComplexity": 20,
       "grants": [
         "authenticated=X/postgres",
@@ -103,23 +120,6 @@
       "securityDefiner": true,
       "signature": "candidate_movement jsonb",
       "sourceLength": 46,
-      "volatility": "v"
-    },
-    {
-      "approximateComplexity": 33,
-      "grants": [
-        "authenticated=X/postgres",
-        "postgres=X/postgres"
-      ],
-      "name": "apply_material_canonicalization_v1",
-      "objectType": "function",
-      "owner": "postgres",
-      "returnType": "jsonb",
-      "schema": "public",
-      "searchPath": "\"\"",
-      "securityDefiner": true,
-      "signature": "target_preview_run_id uuid, candidate_decisions jsonb, candidate_idempotency_key uuid",
-      "sourceLength": 82,
       "volatility": "v"
     },
     {
@@ -529,23 +529,6 @@
       "securityDefiner": false,
       "signature": "run_id uuid, report jsonb",
       "sourceLength": 14,
-      "volatility": "v"
-    },
-    {
-      "approximateComplexity": 19,
-      "grants": [
-        "authenticated=X/postgres",
-        "postgres=X/postgres"
-      ],
-      "name": "confirm_ingredient_identity_alias_v1",
-      "objectType": "function",
-      "owner": "postgres",
-      "returnType": "jsonb",
-      "schema": "public",
-      "searchPath": "\"\"",
-      "securityDefiner": true,
-      "signature": "candidate_workspace_id uuid, candidate_ingredient_id text, candidate_alias_type text, candidate_alias_value text, candidate_scope_reference text, candidate_evidence_note text, candidate_idempotency_key uuid",
-      "sourceLength": 56,
       "volatility": "v"
     },
     {
@@ -1008,6 +991,22 @@
       "volatility": "v"
     },
     {
+      "approximateComplexity": 3,
+      "grants": [
+        "postgres=X/postgres"
+      ],
+      "name": "enforce_purchase_order_audit_lineage",
+      "objectType": "function",
+      "owner": "postgres",
+      "returnType": "trigger",
+      "schema": "public",
+      "searchPath": "public, pg_temp",
+      "securityDefiner": false,
+      "signature": "",
+      "sourceLength": 13,
+      "volatility": "v"
+    },
+    {
       "approximateComplexity": 7,
       "grants": [
         "postgres=X/postgres",
@@ -1251,23 +1250,6 @@
       "securityDefiner": true,
       "signature": "target_finished_goods_lot_id uuid",
       "sourceLength": 14,
-      "volatility": "v"
-    },
-    {
-      "approximateComplexity": 24,
-      "grants": [
-        "authenticated=X/postgres",
-        "postgres=X/postgres"
-      ],
-      "name": "get_material_intelligence_v1",
-      "objectType": "function",
-      "owner": "postgres",
-      "returnType": "jsonb",
-      "schema": "public",
-      "searchPath": "\"\"",
-      "securityDefiner": false,
-      "signature": "candidate_workspace_id uuid, target_ingredient_id text",
-      "sourceLength": 133,
       "volatility": "v"
     },
     {
@@ -1741,23 +1723,6 @@
       "securityDefiner": false,
       "signature": "payload jsonb",
       "sourceLength": 59,
-      "volatility": "v"
-    },
-    {
-      "approximateComplexity": 23,
-      "grants": [
-        "authenticated=X/postgres",
-        "postgres=X/postgres"
-      ],
-      "name": "include_material_production_round_v1",
-      "objectType": "function",
-      "owner": "postgres",
-      "returnType": "jsonb",
-      "schema": "public",
-      "searchPath": "\"\"",
-      "securityDefiner": true,
-      "signature": "target_round_id uuid, candidate_reason text, candidate_idempotency_key uuid",
-      "sourceLength": 54,
       "volatility": "v"
     },
     {
@@ -2621,23 +2586,6 @@
       "volatility": "v"
     },
     {
-      "approximateComplexity": 38,
-      "grants": [
-        "authenticated=X/postgres",
-        "postgres=X/postgres"
-      ],
-      "name": "preview_material_canonicalization_v1",
-      "objectType": "function",
-      "owner": "postgres",
-      "returnType": "jsonb",
-      "schema": "public",
-      "searchPath": "\"\"",
-      "securityDefiner": true,
-      "signature": "candidate_workspace_id uuid, candidate_source_adapters text[], candidate_idempotency_key uuid",
-      "sourceLength": 157,
-      "volatility": "v"
-    },
-    {
       "approximateComplexity": 1,
       "grants": [],
       "name": "production_unit_factor",
@@ -2760,20 +2708,20 @@
       "volatility": "v"
     },
     {
-      "approximateComplexity": 83,
+      "approximateComplexity": 142,
       "grants": [
         "authenticated=X/postgres",
         "postgres=X/postgres"
       ],
-      "name": "reconcile_material_intelligence_v1",
+      "name": "reconcile_historical_external_purchase",
       "objectType": "function",
       "owner": "postgres",
       "returnType": "jsonb",
       "schema": "public",
-      "searchPath": "\"\"",
+      "searchPath": "public, pg_temp",
       "securityDefiner": true,
-      "signature": "candidate_workspace_id uuid, candidate_source_adapters text[], candidate_idempotency_key uuid",
-      "sourceLength": 436,
+      "signature": "target_workspace_id uuid, candidate_idempotency_key uuid, purchase_payload jsonb",
+      "sourceLength": 158,
       "volatility": "v"
     },
     {
@@ -3492,23 +3440,6 @@
       "volatility": "v"
     },
     {
-      "approximateComplexity": 42,
-      "grants": [
-        "authenticated=X/postgres",
-        "postgres=X/postgres"
-      ],
-      "name": "resolve_material_target_v1",
-      "objectType": "function",
-      "owner": "postgres",
-      "returnType": "jsonb",
-      "schema": "public",
-      "searchPath": "\"\"",
-      "securityDefiner": true,
-      "signature": "candidate_workspace_id uuid, candidate_source_type text, candidate_source_id text, candidate_source_target_key text, candidate_ingredient_ids text[], candidate_component_roles jsonb, candidate_evidence_note text, candidate_resolution_basis text, candidate_reconciliation_run_id uuid, candidate_idempotency_key uuid",
-      "sourceLength": 128,
-      "volatility": "v"
-    },
-    {
       "approximateComplexity": 58,
       "grants": [
         "authenticated=X/postgres",
@@ -3675,23 +3606,6 @@
       "securityDefiner": true,
       "signature": "target_id uuid, target_status text, expected_revision bigint, note text",
       "sourceLength": 14,
-      "volatility": "v"
-    },
-    {
-      "approximateComplexity": 28,
-      "grants": [
-        "authenticated=X/postgres",
-        "postgres=X/postgres"
-      ],
-      "name": "transition_material_applicability_v1",
-      "objectType": "function",
-      "owner": "postgres",
-      "returnType": "jsonb",
-      "schema": "public",
-      "searchPath": "\"\"",
-      "securityDefiner": true,
-      "signature": "target_applicability_id uuid, candidate_to_state text, candidate_reason text, candidate_confirmation_basis text, candidate_idempotency_key uuid",
-      "sourceLength": 84,
       "volatility": "v"
     },
     {

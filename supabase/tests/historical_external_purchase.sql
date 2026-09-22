@@ -1,0 +1,18 @@
+begin;
+select plan(14);
+select has_column('public','purchase_orders','record_origin','explicit PO origin');
+select has_column('public','purchase_order_lines','record_origin','explicit line origin');
+select has_table('public','historical_purchase_command_receipts','durable idempotent owner receipts');
+select has_function('public','accept_owner_reviewed_supplier_product_mapping',array['uuid','uuid','jsonb'],'owner identity RPC');
+select has_function('public','reconcile_historical_external_purchase',array['uuid','uuid','jsonb'],'transactional reconstruction RPC');
+select function_privs_are('public','accept_owner_reviewed_supplier_product_mapping',array['uuid','uuid','jsonb'],'anon',array[]::text[],'anonymous identity acceptance forbidden');
+select function_privs_are('public','reconcile_historical_external_purchase',array['uuid','uuid','jsonb'],'anon',array[]::text[],'anonymous reconstruction forbidden');
+select function_privs_are('public','reconcile_historical_external_purchase',array['uuid','uuid','jsonb'],'authenticated',array['EXECUTE'],'owner API available');
+select table_privs_are('public','historical_purchase_command_receipts','authenticated',array['SELECT'],'browser cannot alter command receipts');
+select ok((select relrowsecurity from pg_class where oid='public.historical_purchase_command_receipts'::regclass),'command receipts protected by RLS');
+select has_trigger('public','purchase_order_audit_events','purchase_order_audit_lineage','audit lineage follows actual origin');
+select ok(exists(select 1 from pg_constraint where conrelid='public.purchase_order_lines'::regclass and conname='purchase_order_lines_order_origin_fk'),'line origin bound to parent');
+select ok(exists(select 1 from pg_constraint where conrelid='public.purchase_orders'::regclass and conname='purchase_orders_origin_lineage'),'planned nonnull lineage enforced by conditional constraint');
+select ok(pg_get_functiondef('public.reconcile_historical_external_purchase(uuid,uuid,jsonb)'::regprocedure) !~ '(record_inventory_lot_receipt_v1|create_purchase_order_receipt|insert into public.inventory_)','reconciliation never invokes receiving or inventory');
+select * from finish();
+rollback;
